@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "shield-wizard",
+  "main": "./dist/_worker.js/index.js",
+  "compatibility_date": "2025-08-15",
+  "compatibility_flags": [
+    // "nodejs_compat"
+  ],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "kv_namespaces": [
+    {
+      "binding": "GIT_REPOS",
+      "id": "b24cdc62051b4a328b579932b4e9c6af"
+    }
+  ],
+}

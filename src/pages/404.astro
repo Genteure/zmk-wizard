@@ -1,0 +1,25 @@
+---
+import "~/styles/global.css";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
+    <title>404</title>
+    <meta http-equiv="refresh" content="3;url=/" />
+  </head>
+  <body class="flex items-center justify-center h-screen text-center">
+    <div class="p-4">
+      <h1 class="text-6xl font-extrabold mb-4">404</h1>
+      <p class="text-lg">Page not found</p>
+    </div>
+    <script>
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 3100);
+    </script>
+  </body>
+</html>
