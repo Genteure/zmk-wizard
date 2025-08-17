@@ -219,25 +219,11 @@ export const StepWiring: Component = function () {
 
       {/* Pin selection area */}
       <div class="max-w-2xl mx-auto p-2">
-        <div class="text-lg text-center font-bold p-1 text-lime-500 border border-lime-500 rounded-lg">
-          Input
-        </div>
-        <div class="my-2 flex gap-2 flex-wrap justify-center">
-          <For each={inputPins()}>
-            {(pin) => (
-              <button
-                class="btn btn-soft min-w-15 text-lime-500"
-                classList={{ "btn-active underline border border-lime-500": selectedPin() === pin }}
-                onClick={() => setSelectedPin(pin)}
-              >
-                {pinDisplayName(pin)}
-              </button>
-            )}
-          </For>
-        </div>
+
         <Show when={([WiringType.enum.matrix_diode, WiringType.enum.matrix_no_diode] as WiringType[]).includes(wizardContext.keyboard.info.wiring)}>
           <div class="text-lg text-center font-bold p-1 text-rose-500 border border-rose-500 rounded-lg">
             Output
+            <span class="text-sm"> (Driving)</span>
           </div>
           <div class="my-2 flex gap-2 flex-wrap justify-center">
             <For each={outputPins()}>
@@ -253,6 +239,25 @@ export const StepWiring: Component = function () {
             </For>
           </div>
         </Show>
+
+        <div class="text-lg text-center font-bold p-1 text-lime-500 border border-lime-500 rounded-lg">
+          Input
+          <span class="text-sm"> (Sensing)</span>
+        </div>
+        <div class="my-2 flex gap-2 flex-wrap justify-center">
+          <For each={inputPins()}>
+            {(pin) => (
+              <button
+                class="btn btn-soft min-w-15 text-lime-500"
+                classList={{ "btn-active underline border border-lime-500": selectedPin() === pin }}
+                onClick={() => setSelectedPin(pin)}
+              >
+                {pinDisplayName(pin)}
+              </button>
+            )}
+          </For>
+        </div>
+
       </div>
 
       <div class="text-center my-4">
