@@ -107,7 +107,7 @@ export const StepWiring: Component = function () {
       if (!w.input) return;
       if (matrixWiring && !w.output) return;
 
-      const recordKey = `${w.input || ''}-${w.output || ''}`;
+      const recordKey = JSON.stringify([wizardContext.keyboard.layout[index].partOf, w.input, w.output]);
       if (!pinsToKey[recordKey]) {
         pinsToKey[recordKey] = [];
       }
