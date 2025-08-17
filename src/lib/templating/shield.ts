@@ -592,8 +592,8 @@ function makeMatrixTransform(mte: MatrixTransformEntry[]): string {
   return `/ {
     matrix_transform0: matrix_transform0 {
         compatible = "zmk,matrix-transform";
-        columns = <${maxCol}>;
-        rows = <${maxRow}>;
+        columns = <${maxCol + 1}>;
+        rows = <${maxRow + 1}>;
         map = <${mte
       .sort((a, b) => a.pinIndex - b.pinIndex)
       .map(entry => {
