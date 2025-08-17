@@ -202,14 +202,15 @@ export const StepInfo: Component = function () {
           </div>
         </div>
 
-        {/* <div class="mb-4 flex items-center gap-2">
+        <div class="mb-4">
           <input
             type="checkbox" id="add-dongle" class="checkbox checkbox-primary"
             checked={wizardContext.keyboard.info.dongle}
             onChange={e => wizardContext.setKeyboard('info', 'dongle', e.currentTarget.checked)}
           />
-          <label for="add-dongle" class="label">Also generate config for an optional dongle</label>
-        </div> */}
+          <label for="add-dongle" class="label pl-1">Add an optional dongle</label>
+        </div>
+
         <div class="flex justify-end mt-4">
           <button
             class="btn btn-primary"

@@ -19,6 +19,7 @@ export function createShieldOverlayFiles(keyboard: KeyboardContext): VirtualText
     shield: keyboard.info.shield,
     controller: keyboard.info.controller,
     wiring: keyboard.info.wiring,
+    dongle: keyboard.info.dongle,
     keys: keyboard.layout.map((key, i) => ({
       ...key,
       inputPin: keyboard.wiring[i].input,
@@ -57,9 +58,50 @@ export function createShieldOverlayFiles(keyboard: KeyboardContext): VirtualText
       ? overlayMatrix(context)
       : overlayDirect(context);
 
-  shieldFiles[`${keyboard.info.shield}-layouts.dtsi`] = physicalLayout(keyboard);
+  shieldFiles[`${context.shield}-layouts.dtsi`] = physicalLayout(keyboard);
+  if (context.dongle) {
+    shieldFiles[`${context.shield}_dongle.overlay`] = dongleOverlay(context);
+  }
 
   return shieldFiles;
+}
+
+function dongleOverlay(context: KeyboardTemplatingContext): string {
+  if (context.pins.length > 1) {
+    return `#include "${context.shield}.dtsi"
+
+/ {
+    kscan_dongle: kscan_dongle {
+        compatible = "zmk,kscan-mock";
+        columns = <0>;
+        rows = <0>;
+        events = <0>;
+    };
+};
+
+&physical_layout_${context.shield} {
+    kscan = <&kscan_dongle>;
+};
+`;
+  } else {
+    return `#include "${context.shield}.overlay"
+
+/delete-node/ &kscan0;
+
+/ {
+    kscan_dongle: kscan_dongle {
+        compatible = "zmk,kscan-mock";
+        columns = <0>;
+        rows = <0>;
+        events = <0>;
+    };
+};
+
+&physical_layout_${context.shield} {
+    kscan = <&kscan_dongle>;
+};
+`;
+  }
 }
 
 // ----------------

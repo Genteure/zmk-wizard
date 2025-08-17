@@ -60,9 +60,10 @@ export function build_yaml(keyboard: KeyboardContext): string {
     [Controller.enum.seeed_xiao_ble]: 'seeeduino_xiao_ble',
     [Controller.enum.seeed_xiao_ble_plus]: 'seeeduino_xiao_ble',
   }
+  let content = '';
 
   if (keyboard.pinouts.length > 1) {
-    return `${header}
+    content = `${header}
 include:
 
   - board: ${boardMapping[keyboard.info.controller]}
@@ -84,7 +85,7 @@ include:
     shield: settings_reset
 `
   } else {
-    return `${header}
+    content = `${header}
 include:
 
   - board: ${boardMapping[keyboard.info.controller]}
@@ -103,45 +104,75 @@ include:
     shield: settings_reset
 `;
   }
+
+  if (keyboard.info.dongle) {
+    content += `
+# Using a dongle requires addtional cmake-args on the old central.
+# See https://zmk.dev/docs/development/hardware-integration/dongle#building-the-firmware
+
+#  - board: ${boardMapping[keyboard.info.controller]}
+#    shield: ${keyboard.info.shield}_dongle
+
+#  - board: ${boardMapping[keyboard.info.controller]}
+#    shield: ${keyboard.info.shield}_dongle
+#    snippet: studio-rpc-usb-uart
+#    cmake-args: -DCONFIG_ZMK_STUDIO=y
+#    artifact-name: ${keyboard.info.shield}_dongle_with_studio
+`;
+  }
+
+  return content;
 }
 
 export function shield__kconfig_shield(keyboard: KeyboardContext): string {
+  let content = '';
+
   if (keyboard.pinouts.length > 1) {
-    return `config SHIELD_${keyboard.info.shield.toUpperCase()}_LEFT
+    content = `config SHIELD_${keyboard.info.shield.toUpperCase()}_LEFT
     def_bool $(shields_list_contains,${keyboard.info.shield}_left)
 
 config SHIELD_${keyboard.info.shield.toUpperCase()}_RIGHT
     def_bool $(shields_list_contains,${keyboard.info.shield}_right)
 `
   } else {
-    return `config SHIELD_${keyboard.info.shield.toUpperCase()}
+    content = `config SHIELD_${keyboard.info.shield.toUpperCase()}
     def_bool $(shields_list_contains,${keyboard.info.shield})
 `
   }
+
+  if (keyboard.info.dongle) {
+    content += `
+config SHIELD_${keyboard.info.shield.toUpperCase()}_DONGLE
+    def_bool $(shields_list_contains,${keyboard.info.shield}_dongle)
+`;
+  }
+
+  return content;
 }
 
 export function shield__kconfig_defconfig(keyboard: KeyboardContext): string {
+  let content = '';
   if (keyboard.pinouts.length > 1) {
-    return `if SHIELD_${keyboard.info.shield.toUpperCase()}_LEFT
+    content = `if SHIELD_${keyboard.info.shield.toUpperCase()}_LEFT
 
 # Name must be less than 16 characters long!
 config ZMK_KEYBOARD_NAME
-  default "${keyboard.info.name}"
+    default "${keyboard.info.name}"
 
 config ZMK_SPLIT_ROLE_CENTRAL
-  default y
+    default y
 
 endif
 
 if SHIELD_${keyboard.info.shield.toUpperCase()}_LEFT || SHIELD_${keyboard.info.shield.toUpperCase()}_RIGHT
 
 config ZMK_SPLIT
-  default y
+    default y
 
 endif
 `
   } else {
-    return `if SHIELD_${keyboard.info.shield.toUpperCase()}
+    content = `if SHIELD_${keyboard.info.shield.toUpperCase()}
 
 # Name must be less than 16 characters long!
 config ZMK_KEYBOARD_NAME
@@ -150,6 +181,35 @@ config ZMK_KEYBOARD_NAME
 endif
 `
   }
+
+  if (keyboard.info.dongle) {
+    content += `
+if SHIELD_${keyboard.info.shield.toUpperCase()}_DONGLE
+
+# Name must be less than 16 characters long!
+config ZMK_KEYBOARD_NAME
+    default "${keyboard.info.name}"
+
+config ZMK_SPLIT
+    default y
+
+config ZMK_SPLIT_ROLE_CENTRAL
+    default y
+
+config ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS
+    default ${keyboard.pinouts.length}
+
+config BT_MAX_CONN
+    default ${keyboard.pinouts.length + 5}
+
+config BT_MAX_PAIRED
+    default ${keyboard.pinouts.length + 5}
+
+endif
+`
+  }
+
+  return content;
 }
 
 export function config__keymap(keyboard: KeyboardContext): string {
@@ -224,7 +284,7 @@ Trigger the initial build by going to the **Actions** tab, select **Build ZMK fi
 All subsequent builds will be triggered automatically whenever a change is pushed to the repository.
 
 Edit your keymap <https://zmk.dev/docs/keymaps>, or use <https://nickcoutsos.github.io/keymap-editor/> to edit it visually.
-Your user keymap is located at [\`config/${keyboard.info.shield}.keymap\`](config/${keyboard.info.shield}.keymap).
+User keymap is located at [\`config/${keyboard.info.shield}.keymap\`](config/${keyboard.info.shield}.keymap).
 
 -----
 
@@ -241,6 +301,5 @@ ${JSON.stringify(unwrap(keyboard))}
 
 
 </details>
-
 `
 }

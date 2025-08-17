@@ -87,7 +87,7 @@ export const KeyboardContext = z.object({
     shield: z.string(),
     controller: Controller,
     wiring: WiringType,
-    // dongle: z.boolean().optional(),
+    dongle: z.boolean(),
   }),
   layout: z.array(Key),
   pinouts: z.array(PinoutSelections),
@@ -103,6 +103,7 @@ export interface KeyboardTemplatingContext {
   shield: string;
   controller: Controller;
   wiring: WiringType;
+  dongle: boolean;
   keys: (Key & ({ inputPin: string | null, outputPin?: string | null }))[];
   /**
    * Pins to key index mapping, for each part of the keyboard.

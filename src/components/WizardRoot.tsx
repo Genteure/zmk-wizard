@@ -32,10 +32,10 @@ const App: Component = () => {
       shield: '',
       controller: Controller.enum.nice_nano_v2,
       wiring: WiringType.enum.matrix_diode,
-      // dongle: false,
+      dongle: false,
     },
     layout: [],
-    pinouts: [{}, {}],
+    pinouts: [{}],
     wiring: [],
   });
 
