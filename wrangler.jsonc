@@ -3,6 +3,7 @@
   "name": "shield-wizard",
   "main": "./dist/_worker.js/index.js",
   "compatibility_date": "2025-08-15",
+  "vars": {},
   "compatibility_flags": [
     // "nodejs_compat"
   ],
