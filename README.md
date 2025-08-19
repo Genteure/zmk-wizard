@@ -11,7 +11,10 @@ A web-based tool to create ZMK configurations for custom keyboards.
 ```bash
 pnpm i
 pnpm dev
+pnpm test
 ```
+
+If you're having trouble installing tree-sitter with the error `.../include/node/v8config.h:13:2: error: #error "C++20 or later required."`, `export CXXFLAGS="-std=c++20"` then run `pnpm rb` to rebuild.
 
 ## License
 

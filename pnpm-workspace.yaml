@@ -1,4 +1,9 @@
 onlyBuiltDependencies:
   - '@tailwindcss/oxide'
+  - '@tree-sitter-grammars/tree-sitter-yaml'
   - esbuild
   - sharp
+  - tree-sitter
+  - tree-sitter-devicetree
+  - tree-sitter-json
+  - tree-sitter-kconfig
