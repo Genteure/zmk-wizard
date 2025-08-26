@@ -104,6 +104,23 @@ function dongleOverlay(context: KeyboardTemplatingContext): string {
   }
 }
 
+const seeeduino_xiao_ble_plus_disable_vbatt = `
+/*
+ * D16/P0.31 on Seeeduino XIAO nRF52840 Plus is the the same pin as AIN7,
+ * it's connected to the BAT+ through a 1M resistor and used for measuring
+ * the battery voltage.
+ * See https://wiki.seeedstudio.com/XIAO_BLE/ for schematics.
+ *
+ * To use D16 (P0.31, AIN7) as GPIO in kscan, you must:
+ * - Hardware: DO NOT connect battery to VBAT pin, it may fry your pins due
+ *   to high voltage and sink side of the voltage divider disabled.
+ * - Firmware: Configured for you below.
+ */
+&adc { status = "disabled"; };
+&vbatt { status = "disabled"; };
+/ { chosen { /delete-property/ zmk,battery; }; };
+`;
+
 // ----------------
 //     Direct
 // ----------------
@@ -124,7 +141,7 @@ function overlayDirect(context: KeyboardTemplatingContext): VirtualTextFolder {
       })
       .map(([pin, _]) => pin);
 
-    const kscanDts = `/ {
+    let kscanDts = `/ {
     kscan0: kscan0 {
         compatible = "zmk,kscan-gpio-direct";
         wakeup-source;
@@ -137,6 +154,10 @@ function overlayDirect(context: KeyboardTemplatingContext): VirtualTextFolder {
     };
 };
 `;
+
+    if (context.controller === "seeed_xiao_ble_plus" && context.pins[part]['d16']) {
+      kscanDts += seeeduino_xiao_ble_plus_disable_vbatt;
+    }
 
     const mtMapping: MatrixTransformEntry[] = context.keys
       .map((key, index) => {
@@ -246,7 +267,7 @@ function overlayMatrix(context: KeyboardTemplatingContext): VirtualTextFolder {
     const kscan = matrixKscanOrder(context, inputIsRow, part);
     // console.log(`Input is row: ${inputIsRow}, a.k.a. diode-direction is ${inputIsRow ? "col2row" : "row2col"}`);
 
-    const kscanDts = `/ {
+    let kscanDts = `/ {
     kscan0: kscan0 {
         compatible = "zmk,kscan-gpio-matrix";
         diode-direction = "${inputIsRow ? "col2row" : "row2col"}";
@@ -266,6 +287,10 @@ function overlayMatrix(context: KeyboardTemplatingContext): VirtualTextFolder {
     };
 };
 `;
+
+    if (context.controller === "seeed_xiao_ble_plus" && context.pins[part]['d16']) {
+      kscanDts += seeeduino_xiao_ble_plus_disable_vbatt;
+    }
 
     const mtMapping: MatrixTransformEntry[] = context.keys
       .map((key, index) => {

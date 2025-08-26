@@ -149,8 +149,8 @@ const XiaoBlePlusPinMode: Component<{
             <PinModeSelector pin="d13" />
             <PinModeSelector pin="d14" />
             <PinModeSelector pin="d15" />
-
-            <div class="flex items-center justify-between p-2 bg-base-200 rounded-lg w-72">
+            <PinModeSelector pin="d16" />
+            {/* <div class="flex items-center justify-between p-2 bg-base-200 rounded-lg w-72">
               <div class="flex flex-col">
                 <div class="font-extrabold text-xl">D16</div>
                 <div class="whitespace-nowrap text-gray-500">
@@ -164,7 +164,7 @@ const XiaoBlePlusPinMode: Component<{
               <div class="text-wrap text-xs">
                 Despite marked as <span class="font-bold underline">D</span>igital, it's unusable due to hardware limitations.
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

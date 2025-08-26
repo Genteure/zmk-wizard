@@ -57,6 +57,8 @@ export const xiaoBlePlus = {
     d14: { name: 'D14', handle: '&gpio0 9' },
     d15: { name: 'D15', handle: '&gpio0 10' },
 
+    d16: { name: 'D16', handle: '&gpio0 31' },
+
     d17: { name: 'D17', handle: '&gpio1 3' },
     d18: { name: 'D18', handle: '&gpio1 5' },
     d19: { name: 'D19', handle: '&gpio1 7' },
