@@ -32,16 +32,16 @@ test.describe('controls buttons', () => {
       const editor = page.getByRole('application').nth(index);
       const toggle = editor.getByRole('button', { name: 'Toggle Mode' });
 
-      // initial mode is Edit (title contains current: Edit)
-      await expect(toggle).toHaveAttribute('title', /current:\s*Edit/);
+      // initial mode is Select (title contains current: Select)
+      await expect(toggle).toHaveAttribute('title', /current:\s*Select/);
 
       // click to switch to Pan
       await toggle.click();
       await expect(toggle).toHaveAttribute('title', /current:\s*Pan/);
 
-      // clicking again returns to Edit
+      // clicking again returns to Select
       await toggle.click();
-      await expect(toggle).toHaveAttribute('title', /current:\s*Edit/);
+      await expect(toggle).toHaveAttribute('title', /current:\s*Select/);
     })
   );
 
@@ -116,12 +116,11 @@ test.describe('pan and zoom', () => {
 
       // verify that the view has panned towards top-left
       const style = await displayArea.getAttribute('style');
-      const translateMatch = /translate\(\s*([-.\d]+)px,\s*([-.\d]+)px\s*\)/.exec(style || '');
+      const translateMatch = /translate\(\s*([-.\d]+)px(?:\s*,\s*([-.\d]+)px)?\s*\)/.exec(style || '');
       expect(translateMatch).toBeDefined();
       if (translateMatch) {
         const translateX = parseFloat(translateMatch[1]);
-        const translateY = parseFloat(translateMatch[2]);
-
+        const translateY = translateMatch[2] ? parseFloat(translateMatch[2]) : 0;
         expect(translateX).toBeLessThan(0);
         expect(translateY).toBeLessThan(0);
       }
@@ -165,19 +164,20 @@ test.describe('pan and zoom', () => {
       await expect(resetZoomButton).toBeEnabled();
 
       // verify we didn't pan during zoom
-      // since mouse is at center, we expect translate(0,0)
+      // since mouse is at center, we expect translate(0,0) or very close to it
+      // translate(x,y) or translate(x)
       const style = await displayArea.getAttribute('style');
-      const translateMatch = /translate\(\s*([-.\d]+)px,\s*([-.\d]+)px\s*\)/.exec(style || '');
+      const translateMatch = /translate\(\s*([-.\d]+)px(?:\s*,\s*([-.\d]+)px)?\s*\)/.exec(style || '');
       expect(translateMatch).toBeDefined();
       if (translateMatch) {
         const translateX = parseFloat(translateMatch[1]);
-        const translateY = parseFloat(translateMatch[2]);
+        const translateY = translateMatch[2] ? parseFloat(translateMatch[2]) : 0;
 
         // precision is no where near exact but should be close to 0
         expect(translateX).toBeCloseTo(0, 0);
         expect(translateY).toBeCloseTo(0, 0);
       } else {
-        throw new Error('No translate found');
+        throw new Error('No translate found: ' + style);
       }
 
       // reset
@@ -193,11 +193,11 @@ test.describe('pan and zoom', () => {
 
       const getTranslate = async () => {
         const style = await displayArea.getAttribute('style');
-        const translateMatch = /translate\(\s*([-.\d]+)px,\s*([-.\d]+)px\s*\)/.exec(style || '');
+        const translateMatch = /translate\(\s*([-.\d]+)px(?:\s*,\s*([-.\d]+)px)?\s*\)/.exec(style || '');
         expect(translateMatch).toBeDefined();
         if (!translateMatch) throw new Error('No translate found');
         const x = parseFloat(translateMatch[1]);
-        const y = parseFloat(translateMatch[2]);
+        const y = translateMatch[2] ? parseFloat(translateMatch[2]) : 0;
         expect(x).not.toBeNaN();
         expect(y).not.toBeNaN();
         return { x, y };
@@ -279,11 +279,11 @@ test.describe('pan and zoom', () => {
 
       // verify that the view has panned towards top-left
       const style = await displayArea.getAttribute('style');
-      const translateMatch = /translate\(\s*([-\.\d]+)px,\s*([-\.\d]+)px\s*\)/.exec(style || '');
+      const translateMatch = /translate\(\s*([-.\d]+)px(?:\s*,\s*([-.\d]+)px)?\s*\)/.exec(style || '');
       expect(translateMatch).toBeDefined();
       if (translateMatch) {
         const translateX = parseFloat(translateMatch[1]);
-        const translateY = parseFloat(translateMatch[2]);
+        const translateY = translateMatch[2] ? parseFloat(translateMatch[2]) : 0;
 
         expect(translateX).toBeLessThan(0);
         expect(translateY).toBeLessThan(0);
@@ -389,7 +389,7 @@ test.describe('selection', () => {
       const editor = page.getByRole('application').first();
       await expect(editor).toBeVisible();
 
-      // Current default mode is Edit, so no need to toggle
+      // Current default mode is Select, so no need to toggle
 
       // drag to select from top-left to bottom-right of editor
       const box = await editor.boundingBox();
