@@ -913,21 +913,26 @@ Generated At: ${version.generatedAt || '(unknown)'}
               onSelect={() => { console.log("TODO") }}
             >
               <button>
-                Run Tour
+                Run Tutorial (TODO)
               </button>
             </DropdownMenu.Item>
             <DropdownMenu.Item as="li"
-              onSelect={() => { console.log("TODO") }}
+              onSelect={() => {
+                // TODO investigate if we can just use a plain link, I hate button links
+                window.open('https://zmk.dev/community/discord/invite', '_blank', 'noopener');
+              }}
             >
               <button>
-                Discord
+                ZMK Community Discord
               </button>
             </DropdownMenu.Item>
             <DropdownMenu.Item as="li"
-              onSelect={() => { console.log("TODO") }}
+              onSelect={() => {
+                window.open('https://github.com/Genteure/zmk-wizard', '_blank', 'noopener');
+              }}
             >
               <button>
-                GitHub
+                Shield Wizard GitHub
               </button>
             </DropdownMenu.Item>
           </DropdownMenu.Content>
