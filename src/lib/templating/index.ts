@@ -1,4 +1,4 @@
-import type { KeyboardContext, VirtualTextFolder } from "../types";
+import { type Keyboard, type VirtualTextFolder } from "../../typedef";
 import {
   build_yaml,
   config__json,
@@ -12,14 +12,14 @@ import {
 } from "./contents";
 import { createShieldOverlayFiles } from "./shield";
 
-export function createZMKConfig(keyboard: KeyboardContext): VirtualTextFolder {
-  if (keyboard.info.shield === 'throwerror') {
+export function createZMKConfig(keyboard: Keyboard): VirtualTextFolder {
+  if (keyboard.shield === 'throwerror') {
     throw new Error("Throwing error to test error handling in templating");
   }
 
   const files: VirtualTextFolder = {};
 
-  const shieldPath = `boards/shields/${keyboard.info.shield}`;
+  const shieldPath = `boards/shields/${keyboard.shield}`;
 
   files['.github/workflows/build.yml'] = workflows_build_yml;
   files['config/west.yml'] = config_west_yml;
@@ -33,45 +33,42 @@ export function createZMKConfig(keyboard: KeyboardContext): VirtualTextFolder {
   addXiaoBlePlusExtraFiles(files, shieldPath, keyboard);
 
   const shieldFiles = createShieldOverlayFiles(keyboard);
-  for (const [filePath, content] of Object.entries(shieldFiles)) {
+  for (const [filePath, content] of Object.entries(shieldFiles) as [string, string][]) {
     files[`${shieldPath}/${filePath}`] = content;
   }
 
-  files[`config/${keyboard.info.shield}.conf`] = `\n`;
-  files[`config/${keyboard.info.shield}.keymap`] = config__keymap(keyboard);
-  files[`config/${keyboard.info.shield}.json`] = config__json(keyboard);
+  files[`config/${keyboard.shield}.conf`] = `\n`;
+  files[`config/${keyboard.shield}.keymap`] = config__keymap(keyboard);
+  files[`config/${keyboard.shield}.json`] = config__json(keyboard);
 
   return Object.fromEntries(
-    Object.entries(files).map(([filePath, content]) => [
+    (Object.entries(files) as [string, string][]).map(([filePath, content]) => [
       filePath,
       content.replace(/\n{3,}/gm, '\n\n')
     ])
   );
 }
 
-function addXiaoBlePlusExtraFiles(files: VirtualTextFolder, shieldPath: string, keyboard: KeyboardContext): void {
-  if (keyboard.info.controller !== "seeed_xiao_ble_plus") return;
+function addXiaoBlePlusExtraFiles(files: VirtualTextFolder, shieldPath: string, keyboard: Keyboard): void {
+  const parts = keyboard.parts;
+  if (parts.length === 0) return;
 
-  if (keyboard.pinouts.length === 1) {
-
-    if (keyboard.pinouts[0]['d14'] || keyboard.pinouts[0]['d15']) {
-      files[`${shieldPath}/${keyboard.info.shield}.conf`] = `# Enable NFC pins as GPIOs
+  // Single part
+  if (parts.length === 1) {
+    const p0 = parts[0];
+    if (p0.controller === "xiao_ble_plus" && (p0.pins['d14'] || p0.pins['d15'])) {
+      files[`${shieldPath}/${keyboard.shield}.conf`] = `# Enable NFC pins as GPIOs
 CONFIG_NFCT_PINS_AS_GPIOS=y\n`;
     }
+    return;
+  }
 
-  } else if (keyboard.pinouts.length === 2) {
-
-    if (keyboard.pinouts[0]['d14'] || keyboard.pinouts[0]['d15']) {
-      files[`${shieldPath}/${keyboard.info.shield}_left.conf`] = `# Enable NFC pins as GPIOs
-CONFIG_NFCT_PINS_AS_GPIOS=y\n`;
-
-    }
-
-    if (keyboard.pinouts[1]['d14'] || keyboard.pinouts[1]['d15']) {
-      files[`${shieldPath}/${keyboard.info.shield}_right.conf`] = `# Enable NFC pins as GPIOs
+  // loop over parts for multi-part keyboards
+  for (const part of parts) {
+    if (part.controller === "xiao_ble_plus" && (part.pins['d14'] || part.pins['d15'])) {
+      files[`${shieldPath}/${keyboard.shield}_${part.name}.conf`] = `# Enable NFC pins as GPIOs
 CONFIG_NFCT_PINS_AS_GPIOS=y\n`;
     }
-
   }
 }
 

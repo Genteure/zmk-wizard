@@ -1,5 +1,5 @@
 import { unwrap } from "solid-js/store";
-import { Controller, type KeyboardContext } from "../types";
+import { Controller, type Keyboard } from "~/typedef";
 
 export const workflows_build_yml = `name: Build ZMK firmware
 on: [push, pull_request, workflow_dispatch]
@@ -25,16 +25,19 @@ export const config_west_yml = `manifest:
     path: config
 `;
 
-export function zephyr_module_yml(keyboard: KeyboardContext): string {
-  return `name: zmk-keyboard-${keyboard.info.shield.replaceAll('_', '-')}
+export function zephyr_module_yml(keyboard: Keyboard): string {
+  return `name: zmk-keyboard-${keyboard.shield.replaceAll('_', '-')}
 build:
   settings:
     board_root: .
 `;
 }
 
-export function build_yaml(keyboard: KeyboardContext): string {
-  const header = `# This file generates the GitHub Actions matrix.
+export function build_yaml(keyboard: Keyboard): string {
+  const firstPart = keyboard.parts[0];
+  if (!firstPart) throw new Error("Keyboard must have at least one part");
+
+  let content = `# This file generates the GitHub Actions matrix.
 # For simple board + shield combinations, add them to the top level board and
 # shield arrays, for more control, add individual board + shield combinations
 # to the \`include\` property. You can also use the \`cmake-args\` property to
@@ -53,142 +56,190 @@ export function build_yaml(keyboard: KeyboardContext): string {
 #     cmake-args: -DCONFIG_ZMK_STUDIO=y
 #     artifact-name: corne_left_with_studio
 #
----`;
+---
+include:
+`;
 
   const boardMapping: Record<Controller, string> = {
     [Controller.enum.nice_nano_v2]: 'nice_nano_v2',
-    [Controller.enum.seeed_xiao_ble]: 'seeeduino_xiao_ble',
-    [Controller.enum.seeed_xiao_ble_plus]: 'seeeduino_xiao_ble',
+    [Controller.enum.xiao_ble]: 'seeeduino_xiao_ble',
+    [Controller.enum.xiao_ble_plus]: 'seeeduino_xiao_ble',
   }
-  let content = '';
 
-  if (keyboard.pinouts.length > 1) {
-    content = `${header}
-include:
+  if (keyboard.parts.length == 1) {
+    // unibody
 
-  - board: ${boardMapping[keyboard.info.controller]}
-    shield: ${keyboard.info.shield}_left
+    content += `
+  - board: ${boardMapping[firstPart.controller]}
+    shield: ${keyboard.shield}
 
 # To build with ZMK Studio support, uncomment the following block
 # by removing the leading '#' from each line.
 
-#  - board: ${boardMapping[keyboard.info.controller]}
-#    shield: ${keyboard.info.shield}_left
+#  - board: ${boardMapping[firstPart.controller]}
+#    shield: ${keyboard.shield}
 #    snippet: studio-rpc-usb-uart
 #    cmake-args: -DCONFIG_ZMK_STUDIO=y
-#    artifact-name: ${keyboard.info.shield}_left_with_studio
+#    artifact-name: ${keyboard.shield}_with_studio
 
-  - board: ${boardMapping[keyboard.info.controller]}
-    shield: ${keyboard.info.shield}_right
-
-  - board: ${boardMapping[keyboard.info.controller]}
+  - board: ${boardMapping[firstPart.controller]}
     shield: settings_reset
-`
-  } else {
-    content = `${header}
-include:
+  `;
+    if (keyboard.dongle) {
+      // dongle for unibody
+      content += `
 
-  - board: ${boardMapping[keyboard.info.controller]}
-    shield: ${keyboard.info.shield}
+# See ZMK documentation on how to build and flash the firmware for dongle mode.
+# The "board" for the dongle can be anything ZMK supports.
+
+#  - board: ${boardMapping[firstPart.controller]}
+#    shield: ${keyboard.shield}_dongle
+
+#  - board: ${boardMapping[firstPart.controller]}
+#    shield: ${keyboard.shield}
+#    cmake-args: -DCONFIG_ZMK_SPLIT=y -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n
+#    artifact-name: ${keyboard.shield}_as_peripheral
+
+#  - board: ${boardMapping[firstPart.controller]}
+#    shield: ${keyboard.shield}_dongle
+#    snippet: studio-rpc-usb-uart
+#    cmake-args: -DCONFIG_ZMK_STUDIO=y
+#    artifact-name: ${keyboard.shield}_dongle_with_studio
+`;
+    }
+
+  } else {
+    // split keyboard with multiple parts
+
+    // central (first part)
+    content += `
+  - board: ${boardMapping[firstPart.controller]}
+    shield: ${keyboard.shield}_${firstPart.name}
 
 # To build with ZMK Studio support, uncomment the following block
 # by removing the leading '#' from each line.
 
-#  - board: ${boardMapping[keyboard.info.controller]}
-#    shield: ${keyboard.info.shield}
+#  - board: ${boardMapping[firstPart.controller]}
+#    shield: ${keyboard.shield}_${firstPart.name}
 #    snippet: studio-rpc-usb-uart
 #    cmake-args: -DCONFIG_ZMK_STUDIO=y
-#    artifact-name: ${keyboard.info.shield}_with_studio
+#    artifact-name: ${keyboard.shield}_${firstPart.name}_with_studio
+`;
 
-  - board: ${boardMapping[keyboard.info.controller]}
+    if (keyboard.dongle) {
+      // dongle for central
+      content += `
+
+# See ZMK documentation on how to build and flash the firmware for dongle mode.
+# The "board" for the dongle can be anything ZMK supports.
+
+#  - board: ${boardMapping[firstPart.controller]}
+#    shield: ${keyboard.shield}_dongle
+
+#  - board: ${boardMapping[firstPart.controller]}
+#    shield: ${keyboard.shield}_${firstPart.name}
+#    cmake-args: -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n
+#    artifact-name: ${keyboard.shield}_${firstPart.name}_as_peripheral
+
+#  - board: ${boardMapping[firstPart.controller]}
+#    shield: ${keyboard.shield}_dongle
+#    snippet: studio-rpc-usb-uart
+#    cmake-args: -DCONFIG_ZMK_STUDIO=y
+#    artifact-name: ${keyboard.shield}_dongle_with_studio
+`;
+    }
+
+    // peripherals (rest parts)
+    for (const part of keyboard.parts.slice(1)) {
+      content += `
+  - board: ${boardMapping[part.controller]}
+    shield: ${keyboard.shield}_${part.name}
+`;
+    }
+
+    // settings reset
+    const uniqueControllers = Array.from(new Set(keyboard.parts.map(part => part.controller)));
+    for (const controller of uniqueControllers) {
+      content += `
+  - board: ${boardMapping[controller]}
     shield: settings_reset
 `;
+    }
   }
 
-  if (keyboard.info.dongle) {
+  return content;
+}
+
+export function shield__kconfig_shield(keyboard: Keyboard): string {
+  let content = '';
+
+  if (keyboard.parts.length > 1) {
+    content = keyboard.parts
+      .map(part => `config SHIELD_${keyboard.shield.toUpperCase()}_${part.name.toUpperCase()}
+    def_bool $(shields_list_contains,${keyboard.shield}_${part.name})
+  `)
+      .join('\n');
+
+  } else {
+    content = `config SHIELD_${keyboard.shield.toUpperCase()}
+    def_bool $(shields_list_contains,${keyboard.shield})
+`
+  }
+
+  if (keyboard.dongle) {
     content += `
-# Using a dongle requires addtional cmake-args on the old central.
-# See https://zmk.dev/docs/development/hardware-integration/dongle#building-the-firmware
-
-#  - board: ${boardMapping[keyboard.info.controller]}
-#    shield: ${keyboard.info.shield}_dongle
-
-#  - board: ${boardMapping[keyboard.info.controller]}
-#    shield: ${keyboard.info.shield}_dongle
-#    snippet: studio-rpc-usb-uart
-#    cmake-args: -DCONFIG_ZMK_STUDIO=y
-#    artifact-name: ${keyboard.info.shield}_dongle_with_studio
+config SHIELD_${keyboard.shield.toUpperCase()}_DONGLE
+    def_bool $(shields_list_contains,${keyboard.shield}_dongle)
 `;
   }
 
   return content;
 }
 
-export function shield__kconfig_shield(keyboard: KeyboardContext): string {
+export function shield__kconfig_defconfig(keyboard: Keyboard): string {
+  const partCount = keyboard.parts.length;
   let content = '';
+  if (partCount > 1) {
 
-  if (keyboard.pinouts.length > 1) {
-    content = `config SHIELD_${keyboard.info.shield.toUpperCase()}_LEFT
-    def_bool $(shields_list_contains,${keyboard.info.shield}_left)
-
-config SHIELD_${keyboard.info.shield.toUpperCase()}_RIGHT
-    def_bool $(shields_list_contains,${keyboard.info.shield}_right)
-`
-  } else {
-    content = `config SHIELD_${keyboard.info.shield.toUpperCase()}
-    def_bool $(shields_list_contains,${keyboard.info.shield})
-`
-  }
-
-  if (keyboard.info.dongle) {
-    content += `
-config SHIELD_${keyboard.info.shield.toUpperCase()}_DONGLE
-    def_bool $(shields_list_contains,${keyboard.info.shield}_dongle)
-`;
-  }
-
-  return content;
-}
-
-export function shield__kconfig_defconfig(keyboard: KeyboardContext): string {
-  let content = '';
-  if (keyboard.pinouts.length > 1) {
-    content = `if SHIELD_${keyboard.info.shield.toUpperCase()}_LEFT
+    content = `if SHIELD_${keyboard.shield.toUpperCase()}_${keyboard.parts[0].name.toUpperCase()}
 
 # Name must be less than 16 characters long!
 config ZMK_KEYBOARD_NAME
-    default "${keyboard.info.name}"
+    default "${keyboard.name}"
 
 config ZMK_SPLIT_ROLE_CENTRAL
     default y
 
 endif
+`;
 
-if SHIELD_${keyboard.info.shield.toUpperCase()}_LEFT || SHIELD_${keyboard.info.shield.toUpperCase()}_RIGHT
+
+    content += `
+if ${keyboard.parts.map(part => `SHIELD_${keyboard.shield.toUpperCase()}_${part.name.toUpperCase()}`).join(' || ')}
 
 config ZMK_SPLIT
     default y
 
 endif
-`
+`;
   } else {
-    content = `if SHIELD_${keyboard.info.shield.toUpperCase()}
+    content = `if SHIELD_${keyboard.shield.toUpperCase()}
 
 # Name must be less than 16 characters long!
 config ZMK_KEYBOARD_NAME
-    default "${keyboard.info.name}"
+    default "${keyboard.name}"
 
 endif
 `
   }
 
-  if (keyboard.info.dongle) {
+  if (keyboard.dongle) {
     content += `
-if SHIELD_${keyboard.info.shield.toUpperCase()}_DONGLE
+if SHIELD_${keyboard.shield.toUpperCase()}_DONGLE
 
 # Name must be less than 16 characters long!
 config ZMK_KEYBOARD_NAME
-    default "${keyboard.info.name}"
+    default "${keyboard.name}"
 
 config ZMK_SPLIT
     default y
@@ -197,13 +248,13 @@ config ZMK_SPLIT_ROLE_CENTRAL
     default y
 
 config ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS
-    default ${keyboard.pinouts.length}
+  default ${partCount}
 
 config BT_MAX_CONN
-    default ${keyboard.pinouts.length + 5}
+  default ${partCount + 5}
 
 config BT_MAX_PAIRED
-    default ${keyboard.pinouts.length + 5}
+  default ${partCount + 5}
 
 endif
 `
@@ -212,7 +263,7 @@ endif
   return content;
 }
 
-export function config__keymap(keyboard: KeyboardContext): string {
+export function config__keymap(keyboard: Keyboard): string {
   // TODO format keymap according to the layout
   const indexToAlphabet = (index: number): string => {
     return String.fromCharCode(65 + (index % 26)); // Loop back to 'A' after 'Z'
@@ -248,16 +299,16 @@ export function config__keymap(keyboard: KeyboardContext): string {
  * json for keymap editor
  * @param keyboard
  */
-export function config__json(keyboard: KeyboardContext): string {
+export function config__json(keyboard: Keyboard): string {
   const layout = keyboard.layout.map((key) => {
     const mapped: any = {
       row: key.row,
-      col: key.column,
+      col: key.col,
       x: key.x,
       y: key.y,
     };
-    if (key.width !== 1) mapped.w = key.width;
-    if (key.height !== 1) mapped.h = key.height;
+    if (key.w !== 1) mapped.w = key.w;
+    if (key.h !== 1) mapped.h = key.h;
     if (key.r !== 0) mapped.r = key.r;
     if (key.rx !== 0) mapped.rx = key.rx;
     if (key.ry !== 0) mapped.ry = key.ry;
@@ -266,15 +317,15 @@ export function config__json(keyboard: KeyboardContext): string {
 
   return JSON.stringify({
     layouts: {
-      [keyboard.info.shield]: {
+      [keyboard.shield]: {
         layout: layout,
       }
     }
   }, null, 2).replace(/(?<!},|\[)\n {7,}(?= )/gm, '') + '\n';
 }
 
-export function readme_md(keyboard: KeyboardContext): string {
-  return `# ZMK Configuration for ${keyboard.info.name}
+export function readme_md(keyboard: Keyboard): string {
+  return `# ZMK Configuration for ${keyboard.name}
 
 *Generated by Shield Wizard for ZMK*
 
@@ -284,7 +335,7 @@ Trigger the initial build by going to the **Actions** tab, select **Build ZMK fi
 All subsequent builds will be triggered automatically whenever a change is pushed to the repository.
 
 Edit your keymap <https://zmk.dev/docs/keymaps>, or use <https://nickcoutsos.github.io/keymap-editor/> to edit it visually.
-User keymap is located at [\`config/${keyboard.info.shield}.keymap\`](config/${keyboard.info.shield}.keymap).
+User keymap is located at [\`config/${keyboard.shield}.keymap\`](config/${keyboard.shield}.keymap).
 
 -----
 

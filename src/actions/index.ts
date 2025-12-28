@@ -6,12 +6,12 @@ import { ulid } from 'ulidx';
 import { createGitRepository } from '~/lib/gitrepo';
 import { getRepoKV } from '~/lib/kv';
 import { createZMKConfig } from '~/lib/templating';
-import { KeyboardContext } from '~/lib/types';
+import { KeyboardSchema } from '~/typedef';
 
 export const server = {
   buildRepository: defineAction({
     input: z.object({
-      keyboard: KeyboardContext,
+      keyboard: KeyboardSchema,
       captcha: z.string(),
     }),
     async handler(input, context) {

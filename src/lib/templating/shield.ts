@@ -1,74 +1,121 @@
-import { niceNanoV2, xiaoBle, xiaoBlePlus } from "../controllers";
+import type {
+  Controller,
+  Keyboard,
+  PinMode,
+  VirtualTextFolder,
+} from "~/typedef";
+import { controllerInfos } from "../../components/controllerInfo";
 import { getKeysBoundingBox } from "../geometry";
-import {
-  WiringType,
-  type Controller,
-  type Key,
-  type KeyboardContext,
-  type KeyboardTemplatingContext,
-  type PinMode,
-  type VirtualTextFolder,
-} from "../types";
 
 // TODO refactor and cleanup this file?
 // TODO add testing
 
-export function createShieldOverlayFiles(keyboard: KeyboardContext): VirtualTextFolder {
-  const context: KeyboardTemplatingContext = {
-    name: keyboard.info.name,
-    shield: keyboard.info.shield,
-    controller: keyboard.info.controller,
-    wiring: keyboard.info.wiring,
-    dongle: keyboard.info.dongle,
-    keys: keyboard.layout.map((key, i) => ({
-      ...key,
-      inputPin: keyboard.wiring[i].input,
-      outputPin: keyboard.wiring[i].output,
-    })),
-    pins: (() => {
-      const pins: Record<string, { mode: PinMode, keys: number[] }>[] = keyboard.pinouts.map(_ => ({}));
+export function createShieldOverlayFiles(keyboard: Keyboard): VirtualTextFolder {
+  const files: VirtualTextFolder = {};
 
-      keyboard.wiring.forEach((wiring, index) => {
-        const partOf = keyboard.layout[index].partOf;
+  // Build per-part kscan and local matrix transform data
+  const partResults: KscanSinglePartResult[] = keyboard.parts.map((part, idx) => {
+    const wiring = part.wiring;
+    if (wiring === "direct_gnd" || wiring === "direct_vcc") {
+      return buildDirectPart(keyboard, idx);
+    } else if (wiring === "matrix_diode" || wiring === "matrix_no_diode") {
+      return buildMatrixPart(keyboard, idx);
+    }
+    throw new Error(`Unsupported wiring type: ${wiring}`);
+  });
 
-        if (!pins[partOf]) {
-          pins[partOf] = {};
-        }
-        const pinsForPart = pins[partOf];
+  // Decide stacking axis: if any direct → use row-offset; else col-offset
+  const anyDirect = keyboard.parts.some(p => p.wiring === "direct_gnd" || p.wiring === "direct_vcc");
+  const useRowOffset = anyDirect;
 
-        if (wiring.input) {
-          if (!pinsForPart[wiring.input]) {
-            pinsForPart[wiring.input] = { mode: 'input', keys: [] };
-          }
-          pinsForPart[wiring.input].keys.push(index);
-        }
-        if (wiring.output) {
-          if (!pinsForPart[wiring.output]) {
-            pinsForPart[wiring.output] = { mode: 'output', keys: [] };;
-          }
-          pinsForPart[wiring.output].keys.push(index);
-        }
+  // Compute cumulative offsets and merge global matrix transform map
+  let rowAcc = 0;
+  let colAcc = 0;
+  const perPartOffsets = partResults.map((res) => {
+    const offsets = useRowOffset
+      ? { rowOffset: rowAcc, colOffset: 0 }
+      : { rowOffset: 0, colOffset: colAcc };
+    if (useRowOffset) {
+      rowAcc += res.mtRows;
+    } else {
+      colAcc += res.mtCols;
+    }
+    return offsets;
+  });
+
+  const globalMte: MatrixTransformEntry[] = [];
+  partResults.forEach((res, i) => {
+    const { rowOffset, colOffset } = perPartOffsets[i];
+    res.mtMapping.forEach(entry => {
+      globalMte.push({
+        ...entry,
+        kscanRow: entry.kscanRow + rowOffset,
+        kscanCol: entry.kscanCol + colOffset,
       });
-      return pins;
-    })()
+    });
+  });
+
+  const mtDts = makeMatrixTransform(globalMte);
+
+  if (keyboard.parts.length === 1) {
+    // Single-part fast path: emit overlay with kscan and transform
+    files[`${keyboard.shield}.overlay`] = `#include "${keyboard.shield}-layouts.dtsi"
+#include <dt-bindings/zmk/matrix_transform.h>
+
+${partResults[0].kscanDts}
+
+${mtDts}
+
+&physical_layout_${keyboard.shield} {
+    kscan = <&kscan0>;
+    transform = <&matrix_transform0>;
+};
+`;
+  } else {
+    // Multi-part: global transform in .dtsi and per-part overlays with offsets
+    files[`${keyboard.shield}.dtsi`] = `#include "${keyboard.shield}-layouts.dtsi"
+#include <dt-bindings/zmk/matrix_transform.h>
+
+${mtDts}
+
+&physical_layout_${keyboard.shield} {
+    transform = <&matrix_transform0>;
+};
+`;
+
+    keyboard.parts.forEach((part, idx) => {
+      const res = partResults[idx];
+      const { rowOffset, colOffset } = perPartOffsets[idx];
+      const offsetBlock = (useRowOffset && rowOffset !== 0) || (!useRowOffset && colOffset !== 0)
+        ? `
+&matrix_transform0 {
+    ${useRowOffset ? `row-offset = <${rowOffset}>;` : `col-offset = <${colOffset}>;`}
+};
+`
+        : "";
+
+      files[`${keyboard.shield}_${part.name}.overlay`] = `#include "${keyboard.shield}.dtsi"
+
+${res.kscanDts}
+${offsetBlock}
+&physical_layout_${keyboard.shield} {
+    kscan = <&kscan0>;
+};
+`;
+    });
   }
 
-  const shieldFiles: VirtualTextFolder =
-    ([WiringType.enum.matrix_diode, WiringType.enum.matrix_no_diode] as WiringType[]).includes(context.wiring)
-      ? overlayMatrix(context)
-      : overlayDirect(context);
-
-  shieldFiles[`${context.shield}-layouts.dtsi`] = physicalLayout(keyboard);
-  if (context.dongle) {
-    shieldFiles[`${context.shield}_dongle.overlay`] = dongleOverlay(context);
+  files[`${keyboard.shield}-layouts.dtsi`] = physicalLayoutKeyboard(keyboard);
+  if (keyboard.dongle) {
+    files[`${keyboard.shield}_dongle.overlay`] = dongleOverlayKeyboard(keyboard);
   }
 
-  return shieldFiles;
+  return files;
 }
 
-function dongleOverlay(context: KeyboardTemplatingContext): string {
-  if (context.pins.length > 1) {
-    return `#include "${context.shield}.dtsi"
+function dongleOverlayKeyboard(keyboard: Keyboard): string {
+  if (keyboard.parts.length > 1) {
+    return `#include "${keyboard.shield}.dtsi"
 
 / {
     kscan_dongle: kscan_dongle {
@@ -79,12 +126,12 @@ function dongleOverlay(context: KeyboardTemplatingContext): string {
     };
 };
 
-&physical_layout_${context.shield} {
+&physical_layout_${keyboard.shield} {
     kscan = <&kscan_dongle>;
 };
 `;
   } else {
-    return `#include "${context.shield}.overlay"
+    return `#include "${keyboard.shield}.overlay"
 
 /delete-node/ &kscan0;
 
@@ -97,7 +144,7 @@ function dongleOverlay(context: KeyboardTemplatingContext): string {
     };
 };
 
-&physical_layout_${context.shield} {
+&physical_layout_${keyboard.shield} {
     kscan = <&kscan_dongle>;
 };
 `;
@@ -107,13 +154,13 @@ function dongleOverlay(context: KeyboardTemplatingContext): string {
 const seeeduino_xiao_ble_plus_disable_vbatt = `
 /*
  * D16/P0.31 on Seeeduino XIAO nRF52840 Plus is the the same pin as AIN7,
- * it's connected to the BAT+ through a 1M resistor and used for measuring
- * the battery voltage.
+ * it's connected to the BAT+ through a 1M resistor for measuring the
+ * battery voltage.
  * See https://wiki.seeedstudio.com/XIAO_BLE/ for schematics.
  *
  * To use D16 (P0.31, AIN7) as GPIO in kscan, you must:
  * - Hardware: DO NOT connect battery to VBAT pin, it may fry your pins due
- *   to high voltage and sink side of the voltage divider disabled.
+ *   to high voltage since sink side of the voltage divider is disabled.
  * - Firmware: Configured for you below.
  */
 &adc { status = "disabled"; };
@@ -125,149 +172,85 @@ const seeeduino_xiao_ble_plus_disable_vbatt = `
 //     Direct
 // ----------------
 
-function overlayDirect(context: KeyboardTemplatingContext): VirtualTextFolder {
-  const files: VirtualTextFolder = {};
+// ----------------
+//  Per-part builders
+// ----------------
 
-  function kscanSinglePartDirect(part: number): KscanSinglePartResult {
-    const pinFlag = (context.wiring === 'direct_gnd') ? '(GPIO_ACTIVE_LOW | GPIO_PULL_UP)' : '(GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)';
-    const controllerPins = getControllerPins(context.controller);
+function buildDirectPart(keyboard: Keyboard, part: number): KscanSinglePartResult {
+  const thisPart = keyboard.parts[part];
+  const pinFlag = (thisPart.wiring === "direct_gnd") ? "(GPIO_ACTIVE_LOW | GPIO_PULL_UP)" : "(GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)";
+  const dtsMap = getControllerDtsMap(thisPart.controller);
+  const pinsForPart = getPinsForPart(keyboard, part);
 
-    const pins = Object
-      .entries(context.pins[part])
-      .sort((a, b) => {
-        const aIndex = Math.min(...a[1].keys);
-        const bIndex = Math.min(...b[1].keys);
-        return aIndex - bIndex;
-      })
-      .map(([pin, _]) => pin);
+  const pins = Object
+    .entries(pinsForPart)
+    .sort((a, b) => {
+      const aIndex = Math.min(...a[1].keys);
+      const bIndex = Math.min(...b[1].keys);
+      return aIndex - bIndex;
+    })
+    .map(([pin, _]) => pin);
 
-    let kscanDts = `/ {
+  let kscanDts = `/ {
     kscan0: kscan0 {
         compatible = "zmk,kscan-gpio-direct";
         wakeup-source;
 
         input-gpios
             = ${pins
-        .map(pin => `<${controllerPins[pin].handle} ${pinFlag}>`)
-        .join("\n            , ")}
+      .map(pin => `<${dtsMap[pin]} ${pinFlag}>`)
+      .join("\n            , ")}
             ;
     };
 };
 `;
 
-    if (context.controller === "seeed_xiao_ble_plus" && context.pins[part]['d16']) {
-      kscanDts += seeeduino_xiao_ble_plus_disable_vbatt;
-    }
-
-    const mtMapping: MatrixTransformEntry[] = context.keys
-      .map((key, index) => {
-        if (key.partOf !== part) return null;
-        const row = part;
-        const col = pins.indexOf(key.inputPin!);
-
-        if (row === -1 || col === -1) {
-          throw new Error(`Key ${index} (${key.inputPin}, ${key.outputPin}) not found in kscan pins`);
-        }
-
-        return {
-          pinIndex: index,
-          logicalRow: key.row,
-          kscanRow: row,
-          kscanCol: col,
-        } satisfies MatrixTransformEntry;
-      })
-      .filter((entry) => entry !== null);
-
-    return {
-      kscanDts,
-      mtCols: pins.length,
-      mtRows: 1,
-      mtMapping,
-    };
+  if (thisPart.controller === "xiao_ble_plus" && pinsForPart['d16']) {
+    kscanDts += seeeduino_xiao_ble_plus_disable_vbatt;
   }
 
-  if (context.pins.length === 1) {
+  const mtMapping: MatrixTransformEntry[] = keyboard.layout
+    .map((key, index) => {
+      if (key.part !== part) return null;
+      const wiring = (keyboard.parts[key.part].keys[key.id] ?? {});
+      const col = pins.indexOf(wiring.input!);
 
-    const unibody = kscanSinglePartDirect(0);
-    const mtDts = makeMatrixTransform(unibody.mtMapping);
-    files[`${context.shield}.overlay`] = `#include "${context.shield}-layouts.dtsi"
-#include <dt-bindings/zmk/matrix_transform.h>
+      if (col === -1) {
+        throw new Error(`Key ${index} (${wiring.input}, ${wiring.output}) not found in kscan pins`);
+      }
 
-${unibody.kscanDts}
+      return {
+        pinIndex: index,
+        logicalRow: key.row,
+        kscanRow: 0,
+        kscanCol: col,
+      } satisfies MatrixTransformEntry;
+    })
+    .filter((entry) => entry !== null);
 
-${mtDts}
-
-&physical_layout_${context.shield} {
-    kscan = <&kscan0>;
-    transform = <&matrix_transform0>;
-};
-`;
-
-  } else if (context.pins.length === 2) {
-
-    const left = kscanSinglePartDirect(0);
-    const right = kscanSinglePartDirect(1);
-
-    const mtData: MatrixTransformEntry[] = [...left.mtMapping, ...right.mtMapping]
-
-    const mtDts = makeMatrixTransform(mtData);
-
-    files[`${context.shield}.dtsi`] = `#include "${context.shield}-layouts.dtsi"
-#include <dt-bindings/zmk/matrix_transform.h>
-
-${mtDts}
-
-&physical_layout_${context.shield} {
-    transform = <&matrix_transform0>;
-};
-`;
-
-    files[`${context.shield}_left.overlay`] = `#include "${context.shield}.dtsi"
-
-${left.kscanDts}
-
-&physical_layout_${context.shield} {
-    kscan = <&kscan0>;
-};
-`;
-
-    files[`${context.shield}_right.overlay`] = `#include "${context.shield}.dtsi"
-
-${right.kscanDts}
-
-&matrix_transform0 {
-    row-offset = <1>;
-};
-
-&physical_layout_${context.shield} {
-    kscan = <&kscan0>;
-};
-`;
-
-  } else {
-    throw new Error(`Unsupported number of parts: ${context.pins.length}`);
-  }
-  return files;
+  return {
+    kscanDts,
+    mtCols: pins.length,
+    mtRows: 1,
+    mtMapping,
+  };
 }
 
 // ----------------
 //     Matrix
 // ----------------
 
-function overlayMatrix(context: KeyboardTemplatingContext): VirtualTextFolder {
-  const files: VirtualTextFolder = {};
+function buildMatrixPart(keyboard: Keyboard, part: number): KscanSinglePartResult {
+  const thisPart = keyboard.parts[part];
+  const inputPinFlag = "(GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)";
+  const outputPinFlag = thisPart.wiring !== "matrix_no_diode" ? "GPIO_ACTIVE_HIGH" : "GPIO_OPEN_SOURCE";
 
-  function kscanSinglePart(part: number): KscanSinglePartResult {
-    const inputPinFlag = '(GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)';
-    const outputPinFlag = context.wiring !== 'matrix_no_diode' ? 'GPIO_ACTIVE_HIGH' : 'GPIO_OPEN_SOURCE';
+  const dtsMap = getControllerDtsMap(thisPart.controller);
 
-    const controllerPins = getControllerPins(context.controller)
+  const inputIsRow = isInputRowKeyboard(keyboard, part);
+  const kscan = matrixKscanOrderKeyboard(keyboard, inputIsRow, part);
 
-    const inputIsRow = isInputRow(context, part);
-    const kscan = matrixKscanOrder(context, inputIsRow, part);
-    // console.log(`Input is row: ${inputIsRow}, a.k.a. diode-direction is ${inputIsRow ? "col2row" : "row2col"}`);
-
-    let kscanDts = `/ {
+  let kscanDts = `/ {
     kscan0: kscan0 {
         compatible = "zmk,kscan-gpio-matrix";
         diode-direction = "${inputIsRow ? "col2row" : "row2col"}";
@@ -275,143 +258,68 @@ function overlayMatrix(context: KeyboardTemplatingContext): VirtualTextFolder {
 
         col-gpios
             = ${kscan.colPins
-        .map(pin => `<${controllerPins[pin].handle} ${inputIsRow ? outputPinFlag : inputPinFlag}>`)
-        .join("\n            , ")}
+      .map(pin => `<${dtsMap[pin]} ${inputIsRow ? outputPinFlag : inputPinFlag}>`)
+      .join("\n            , ")}
             ;
 
         row-gpios
             = ${kscan.rowPins
-        .map(pin => `<${controllerPins[pin].handle} ${inputIsRow ? inputPinFlag : outputPinFlag}>`)
-        .join("\n            , ")}
+      .map(pin => `<${dtsMap[pin]} ${inputIsRow ? inputPinFlag : outputPinFlag}>`)
+      .join("\n            , ")}
             ;
     };
 };
 `;
 
-    if (context.controller === "seeed_xiao_ble_plus" && context.pins[part]['d16']) {
-      kscanDts += seeeduino_xiao_ble_plus_disable_vbatt;
-    }
-
-    const mtMapping: MatrixTransformEntry[] = context.keys
-      .map((key, index) => {
-        if (key.partOf !== part) return null;
-        const row = kscan.rowPins.indexOf(key[inputIsRow ? 'inputPin' : 'outputPin']!);
-        const col = kscan.colPins.indexOf(key[inputIsRow ? 'outputPin' : 'inputPin']!);
-
-        if (row === -1 || col === -1) {
-          throw new Error(`Key ${index} (${key.inputPin}, ${key.outputPin}) not found in kscan pins`);
-        }
-
-        return {
-          pinIndex: index,
-          logicalRow: key.row,
-          kscanRow: row,
-          kscanCol: col,
-        } satisfies MatrixTransformEntry;
-      })
-      .filter((entry) => entry !== null);
-
-    return {
-      kscanDts,
-      mtCols: kscan.colPins.length,
-      mtRows: kscan.rowPins.length,
-      mtMapping,
-    };
+  const pinsForPart = getPinsForPart(keyboard, part);
+  if (thisPart.controller === "xiao_ble_plus" && pinsForPart['d16']) {
+    kscanDts += seeeduino_xiao_ble_plus_disable_vbatt;
   }
 
-  if (context.pins.length === 1) {
+  const mtMapping: MatrixTransformEntry[] = keyboard.layout
+    .map((key, index) => {
+      if (key.part !== part) return null;
+      const wiring = (keyboard.parts[key.part].keys[key.id] ?? {});
+      const row = kscan.rowPins.indexOf((inputIsRow ? wiring.input : wiring.output)!);
+      const col = kscan.colPins.indexOf((inputIsRow ? wiring.output : wiring.input)!);
 
-    const unibody = kscanSinglePart(0);
-    const mtDts = makeMatrixTransform(unibody.mtMapping);
-    files[`${context.shield}.overlay`] = `#include "${context.shield}-layouts.dtsi"
-#include <dt-bindings/zmk/matrix_transform.h>
+      if (row === -1 || col === -1) {
+        throw new Error(`Key ${index} (${wiring.input}, ${wiring.output}) not found in kscan pins`);
+      }
 
-${unibody.kscanDts}
-
-${mtDts}
-
-&physical_layout_${context.shield} {
-    kscan = <&kscan0>;
-    transform = <&matrix_transform0>;
-};
-`;
-
-  } else if (context.pins.length === 2) {
-
-    const left = kscanSinglePart(0);
-    const right = kscanSinglePart(1);
-
-    const mtData: MatrixTransformEntry[] = [...left.mtMapping]
-    right.mtMapping.forEach(entry => {
-      mtData.push({
-        ...entry,
-        kscanCol: entry.kscanCol + left.mtCols, // offset the right side columns
-      });
+      return {
+        pinIndex: index,
+        logicalRow: key.row,
+        kscanRow: row,
+        kscanCol: col,
+      } satisfies MatrixTransformEntry;
     })
+    .filter((entry) => entry !== null);
 
-    const mtDts = makeMatrixTransform(mtData);
-
-    files[`${context.shield}.dtsi`] = `#include "${context.shield}-layouts.dtsi"
-#include <dt-bindings/zmk/matrix_transform.h>
-
-${mtDts}
-
-&physical_layout_${context.shield} {
-    transform = <&matrix_transform0>;
-};
-`;
-
-    files[`${context.shield}_left.overlay`] = `#include "${context.shield}.dtsi"
-
-${left.kscanDts}
-
-&physical_layout_${context.shield} {
-    kscan = <&kscan0>;
-};
-`;
-
-    files[`${context.shield}_right.overlay`] = `#include "${context.shield}.dtsi"
-
-${right.kscanDts}
-
-&matrix_transform0 {
-    col-offset = <${left.mtCols}>;
-};
-
-&physical_layout_${context.shield} {
-    kscan = <&kscan0>;
-};
-`;
-
-  } else {
-    throw new Error(`Unsupported number of parts: ${context.pins.length}`);
-  }
-
-  return files;
+  return {
+    kscanDts,
+    mtCols: kscan.colPins.length,
+    mtRows: kscan.rowPins.length,
+    mtMapping,
+  };
 }
 
-function getControllerPins(controller: Controller): Record<string, { name: string; handle: string; }> {
-  switch (controller) {
-    case "nice_nano_v2":
-      return niceNanoV2.pins;
-    case "seeed_xiao_ble":
-      return xiaoBle.pins;
-    case "seeed_xiao_ble_plus":
-      return xiaoBlePlus.pins;
-    default:
-      throw new Error(`Unsupported controller: ${controller}`);
-  }
+function getControllerDtsMap(controller: Controller): Record<string, string> {
+  const info = controllerInfos[controller];
+  if (!info) throw new Error(`Unsupported controller: ${controller}`);
+  return info.dtsMap;
 }
 
 /**
  * Try our best to order the kscan pins following the matrix order.
  * @param keyboard
  */
-export function matrixKscanOrder(context: KeyboardTemplatingContext, inputIsRow: boolean, part: number): {
+export function matrixKscanOrderKeyboard(keyboard: Keyboard, inputIsRow: boolean, part: number): {
   rowPins: string[];
   colPins: string[];
 } {
-  const popularIndexs = Object.entries(context.pins[part])
+  const pinMap = getPinsForPart(keyboard, part);
+  const popularIndexs = Object.entries(pinMap)
     .map(([pin, pinInfo]) => {
       const pinMode = pinInfo.mode;
       if (pinMode !== 'input' && pinMode !== 'output') return null;
@@ -421,8 +329,8 @@ export function matrixKscanOrder(context: KeyboardTemplatingContext, inputIsRow:
       // aggregate the keys by their row or column, count them and sort
       const highestOccurrence = pinInfo.keys
         .reduce((acc, keyIndex) => {
-          const key = context.keys[keyIndex];
-          const index = readRow ? key.row : key.column;
+          const key = keyboard.layout[keyIndex];
+          const index = readRow ? key.row : key.col;
 
           if (!acc[index]) {
             acc[index] = 0;
@@ -469,7 +377,7 @@ export function matrixKscanOrder(context: KeyboardTemplatingContext, inputIsRow:
   };
 }
 
-function physicalLayout(keyboard: KeyboardContext): string {
+function physicalLayoutKeyboard(keyboard: Keyboard): string {
   function num(n: number, pad: number): string {
     let text = Math.round(n * 100).toString();
     if (text.startsWith("-")) {
@@ -477,17 +385,16 @@ function physicalLayout(keyboard: KeyboardContext): string {
     }
     return text.padStart(pad);
   }
-
   const keys = keyboard.layout.map((key) => {
-    return `<&key_physical_attrs${num(key.width, 4)}${num(key.height, 4)}${num(key.x, 5)}${num(key.y, 5)}${num(key.r, 8)}${num(key.rx, 6)}${num(key.ry, 6)}>`;
+    return `<&key_physical_attrs${num(key.w, 4)}${num(key.h, 4)}${num(key.x, 5)}${num(key.y, 5)}${num(key.r, 8)}${num(key.rx, 6)}${num(key.ry, 6)}>`;
   }).join("\n            , ");
 
   return `#include <physical_layouts.dtsi>
 
 / {
-    physical_layout_${keyboard.info.shield}: physical_layout_${keyboard.info.shield} {
+    physical_layout_${keyboard.shield}: physical_layout_${keyboard.shield} {
         compatible = "zmk,physical-layout";
-        display-name = "${keyboard.info.name}";
+        display-name = "${keyboard.name}";
         keys  //                     w   h    x    y     rot    rx    ry
             = ${keys}
             ;
@@ -503,14 +410,16 @@ function physicalLayout(keyboard: KeyboardContext): string {
  * @param keyboard
  * @param filter callback to filter keys
  */
-export function isInputRow(context: KeyboardTemplatingContext, part: number): boolean {
+export function isInputRowKeyboard(keyboard: Keyboard, part: number): boolean {
   const inputShapeRatio: number[] = [];
   const outputShapeRatio: number[] = [];
 
-  Object.values(context.pins[part]).forEach(pinInfo => {
+  const pinEntries = Object.values(getPinsForPart(keyboard, part)) satisfies { mode: PinMode; keys: number[] }[];
+
+  pinEntries.forEach((pinInfo) => {
     if (pinInfo.keys.length === 0) return;
 
-    const bbox = getKeysBoundingBox(pinInfo.keys.map(index => context.keys[index] as Key));
+    const bbox = getKeysBoundingBox(pinInfo.keys.map((index) => keyboard.layout[index]));
     const width = bbox.max.x - bbox.min.x;
     const height = bbox.max.y - bbox.min.y;
 
@@ -535,6 +444,26 @@ export function isInputRow(context: KeyboardTemplatingContext, part: number): bo
 
   // if the input average is greater than the output average, it's input row
   return inputAvg >= outputAvg;
+}
+
+// Removed uniform parts validation: support heterogeneous controller/wiring per part
+
+function getPinsForPart(keyboard: Keyboard, partIndex: number): Record<string, { mode: PinMode; keys: number[] }> {
+  const pins: Record<string, { mode: PinMode; keys: number[] }> = {};
+  const part = keyboard.parts[partIndex];
+  keyboard.layout.forEach((key, index) => {
+    if (key.part !== partIndex) return;
+    const wiring = part.keys[key.id] ?? {};
+    if (wiring.input) {
+      if (!pins[wiring.input]) pins[wiring.input] = { mode: 'input', keys: [] };
+      pins[wiring.input].keys.push(index);
+    }
+    if (wiring.output) {
+      if (!pins[wiring.output]) pins[wiring.output] = { mode: 'output', keys: [] };
+      pins[wiring.output].keys.push(index);
+    }
+  });
+  return pins;
 }
 
 /**

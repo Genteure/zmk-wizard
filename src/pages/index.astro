@@ -1,18 +1,39 @@
 ---
-import "~/styles/global.css";
+import { Main } from "~/components/main";
 
-import WizardRoot from "~/components/WizardRoot";
+import "~/styles/global.css";
 ---
 
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>Shield Wizard for ZMK</title>
-    <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
   </head>
   <body>
-    <WizardRoot client:load />
+    <Main client:only="solid-js">
+      <div
+        slot="fallback"
+        class="flex flex-col items-center justify-center h-screen"
+      >
+        <h1 class="text-3xl font-bold">Shield Wizard for ZMK</h1>
+        <p role="status" aria-live="polite" class="text-lg mt-4">Loading…</p>
+        <noscript>
+          <div
+            class="m-4 p-2 bg-yellow-100 border border-yellow-300 text-yellow-900 rounded text-center"
+          >
+            <p class="font-semibold">JavaScript is disabled.</p>
+            <p>
+              This app requires JavaScript to function. Please enable JavaScript
+              in your browser.
+            </p>
+          </div>
+        </noscript>
+      </div>
+    </Main>
   </body>
 </html>

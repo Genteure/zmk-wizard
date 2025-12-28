@@ -1,41 +1,40 @@
-import { createContext, useContext, type Accessor } from "solid-js";
+import { createContext, useContext, type Accessor, type Setter } from "solid-js";
 import type { SetStoreFunction, Store } from "solid-js/store";
-import type { KeyboardContext, PinoutSelections } from "~/lib/types";
+import type { Keyboard, KeyboardSnapshot } from "../typedef";
 
-export const WizardContext = createContext<{
-  stepBack: () => void;
-  stepNext: () => void;
-  keyboard: Store<KeyboardContext>;
-  setKeyboard: SetStoreFunction<KeyboardContext>;
-}>();
+export interface Navigation {
+  dialog: {
+    info: boolean;
+    build: boolean;
+    generateLayout: boolean;
+    importDevicetree: boolean;
+    importLayoutJson: boolean;
+  };
+  repoLink: string;
+  selectedTab: string;
+  activeEditPart: number | null;
+  selectedKeys: string[];
+  /**
+   * Currently selected controller pin for wiring interactions
+   */
+  activeWiringPin: string | null;
+}
 
-export const WizardProvider = WizardContext.Provider;
+export interface WizardContextType {
+  nav: Store<Navigation>;
+  setNav: SetStoreFunction<Navigation>;
+  snapshot: Accessor<KeyboardSnapshot | null>;
+  setSnapshot: Setter<KeyboardSnapshot | null>;
+  keyboard: Store<Keyboard>;
+  setKeyboard: SetStoreFunction<Keyboard>;
+}
 
-export function useWizardContext() {
+export const WizardContext = createContext<WizardContextType>();
+
+export function useWizardContext(): WizardContextType {
   const context = useContext(WizardContext);
   if (!context) {
-    throw new Error("Keyboard context not found");
-  }
-  return context;
-}
-
-export interface PinoutInfo {
-  [pin: string]: {
-    name: string;
-    handle: string;
-  }
-}
-
-export const pinoutContext = createContext<{
-  info: Accessor<PinoutInfo>;
-  pins: Accessor<Store<PinoutSelections>>;
-  setPins: Accessor<SetStoreFunction<PinoutSelections>>;
-}>();
-
-export const usePinoutContext = () => {
-  const context = useContext(pinoutContext);
-  if (!context) {
-    throw new Error("Pinout context not found");
+    throw new Error("Wizard context not found");
   }
   return context;
 }

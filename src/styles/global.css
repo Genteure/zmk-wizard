@@ -1,3 +1,92 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 @plugin "daisyui";
+@plugin "@kobalte/tailwindcss";
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+@layer components {
+  .dialog--overlay {
+    @apply fixed inset-0 z-50 bg-neutral/75;
+    @apply motion-safe:ui-expanded:animate-overlay-fade-in motion-safe:ui-not-expanded:animate-overlay-fade-out;
+  }
+
+  .dialog--positioner {
+    @apply fixed inset-0 z-50 flex items-center justify-center p-1;
+  }
+
+  .dialog--content {
+    @apply z-50 w-full max-w-xl bg-base-200 rounded shadow-lg border p-4;
+    @apply motion-safe:ui-expanded:animate-content-pop-in motion-safe:ui-not-expanded:animate-content-pop-out;
+    transform-origin: center center;
+  }
+
+  .popover--content {
+    @apply z-50 bg-base-200 rounded shadow-lg border p-4;
+  }
+
+  .dialog--title {
+    @apply text-xl select-none;
+  }
+
+  .dialog--header {
+    @apply flex items-baseline justify-between mb-3 select-none;
+  }
+}
+
+@theme {
+  --animate-overlay-fade-in: overlay-fade-in 180ms cubic-bezier(0, 0, 0.2, 1)
+    both;
+  --animate-overlay-fade-out: overlay-fade-out 160ms cubic-bezier(0.4, 0, 1, 1)
+    both;
+  --animate-content-pop-in: content-pop-in 200ms cubic-bezier(0, 0, 0.2, 1) both;
+  --animate-content-pop-out: content-pop-out 160ms cubic-bezier(0.4, 0, 1, 1)
+    both;
+
+  /* Shield Wizard Part colors (swp0..swp4) */
+  --color-swp0: var(--color-amber-500);
+  --color-swp1: var(--color-teal-500);
+  --color-swp2: var(--color-fuchsia-500);
+  --color-swp3: var(--color-lime-500);
+  --color-swp4: var(--color-blue-500);
+
+  @keyframes overlay-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes overlay-fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes content-pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.992);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes content-pop-out {
+    from {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(6px) scale(0.992);
+    }
+  }
+}

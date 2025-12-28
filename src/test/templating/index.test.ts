@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { createZMKConfig } from "~/lib/templating";
-import type { KeyboardContext, VirtualTextFolder } from "~/lib/types";
+import type { Keyboard, VirtualTextFolder, Controller, WiringType, SingleKeyWiring, PinSelection } from "~/typedef";
 
 import Parser from 'tree-sitter';
 
@@ -44,6 +44,71 @@ function loadParsers(): Record<string, Parser | true> {
 
 const parsers = loadParsers();
 
+type LegacyTemplatingKey = {
+  partOf: number;
+  row: number;
+  col: number;
+  w: number;
+  h: number;
+  x: number;
+  y: number;
+  r: number;
+  rx: number;
+  ry: number;
+};
+
+interface LegacyKeyboardData {
+  name: string;
+  shield: string;
+  controller: Controller;
+  wiringType: WiringType;
+  dongle: boolean;
+  layout: LegacyTemplatingKey[];
+  pinouts: PinSelection[];
+  keyWiring: SingleKeyWiring[];
+}
+
+function makeKeyboard(data: LegacyKeyboardData): Keyboard {
+  const partNames = ["unibody", "left", "right", "third", "fourth", "fifth"];
+
+  const layout = data.layout.map((key, idx) => ({
+    id: `k${idx}`,
+    part: key.partOf,
+    row: key.row,
+    col: key.col,
+    w: key.w,
+    h: key.h,
+    x: key.x,
+    y: key.y,
+    r: key.r,
+    rx: key.rx,
+    ry: key.ry,
+  }));
+
+  const parts = data.pinouts.map((pins, index) => ({
+    name: partNames[index] ?? `part-${index + 1}`,
+    controller: data.controller,
+    wiring: data.wiringType,
+    pins,
+    keys: {} as Record<string, SingleKeyWiring>,
+  }));
+
+  data.keyWiring.forEach((wire, idx) => {
+    const key = layout[idx];
+    const part = parts[key.part];
+    if (!part) throw new Error(`Key index ${idx} references missing part ${key.part}`);
+    part.keys[key.id] = { ...wire };
+  });
+
+  return {
+    name: data.name,
+    shield: data.shield,
+    dongle: data.dongle,
+    layout,
+    parts,
+  } satisfies Keyboard;
+}
+
 function validateFileSyntax(files: VirtualTextFolder) {
   for (const [fileName, content] of Object.entries(files)) {
     const ext = fileName.split('.').pop();
@@ -61,12 +126,16 @@ function validateFileSyntax(files: VirtualTextFolder) {
 }
 
 describe("unibody", () => {
-  const unibodyConfig: KeyboardContext = {
-    "info": { "name": "UnitTest", "shield": "unittest", "controller": "nice_nano_v2", "wiring": "matrix_diode", "dongle": false },
-    "layout": [{ "partOf": 0, "row": 0, "column": 0, "width": 1, "height": 1, "x": 0, "y": 0, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 0, "column": 1, "width": 1, "height": 1, "x": 1, "y": 0, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 0, "column": 2, "width": 1, "height": 1, "x": 2, "y": 0, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 0, "column": 3, "width": 1, "height": 1, "x": 3, "y": 0, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 1, "column": 0, "width": 1, "height": 1, "x": 0, "y": 1, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 1, "column": 1, "width": 1, "height": 1, "x": 1, "y": 1, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 1, "column": 2, "width": 1, "height": 1, "x": 2, "y": 1, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 1, "column": 3, "width": 1, "height": 1, "x": 3, "y": 1, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 2, "column": 0, "width": 1, "height": 1, "x": 0, "y": 2, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 2, "column": 1, "width": 1, "height": 1, "x": 1, "y": 2, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 2, "column": 2, "width": 1, "height": 1, "x": 2, "y": 2, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 2, "column": 3, "width": 1, "height": 1, "x": 3, "y": 2, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 3, "column": 0, "width": 1, "height": 1, "x": 0, "y": 3, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 3, "column": 1, "width": 1, "height": 1, "x": 1, "y": 3, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 3, "column": 2, "width": 1, "height": 1, "x": 2, "y": 3, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 3, "column": 3, "width": 1, "height": 1, "x": 3, "y": 3, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 4, "column": 0, "width": 1, "height": 1, "x": 0, "y": 4, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 4, "column": 1, "width": 1, "height": 1, "x": 1, "y": 4, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 4, "column": 2, "width": 1, "height": 1, "x": 2, "y": 4, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 4, "column": 3, "width": 1, "height": 1, "x": 3, "y": 4, "r": 0, "rx": 0, "ry": 0 }],
-    "pinouts": [{ "d1": "output", "d0": "output", "d2": "output", "d3": "output", "d4": "output", "d20": "input", "d19": "input", "d18": "input", "d15": "input" }],
-    "wiring": [{ "input": "d20", "output": "d1" }, { "input": "d19", "output": "d1" }, { "input": "d18", "output": "d1" }, { "input": "d15", "output": "d1" }, { "input": "d20", "output": "d2" }, { "input": "d19", "output": "d2" }, { "input": "d18", "output": "d2" }, { "input": "d15", "output": "d2" }, { "input": "d20", "output": "d0" }, { "input": "d19", "output": "d0" }, { "input": "d18", "output": "d0" }, { "input": "d15", "output": "d0" }, { "input": "d20", "output": "d4" }, { "input": "d19", "output": "d4" }, { "input": "d18", "output": "d4" }, { "input": "d15", "output": "d4" }, { "input": "d20", "output": "d3" }, { "input": "d19", "output": "d3" }, { "input": "d18", "output": "d3" }, { "input": "d15", "output": "d3" }]
-  };
+  const unibodyConfig: Keyboard = makeKeyboard({
+    name: "UnitTest",
+    shield: "unittest",
+    controller: "nice_nano_v2",
+    wiringType: "matrix_diode",
+    dongle: false,
+    layout: [{ "partOf": 0, "row": 0, "col": 0, "w": 1, "h": 1, "x": 0, "y": 0, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 0, "col": 1, "w": 1, "h": 1, "x": 1, "y": 0, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 0, "col": 2, "w": 1, "h": 1, "x": 2, "y": 0, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 0, "col": 3, "w": 1, "h": 1, "x": 3, "y": 0, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 1, "col": 0, "w": 1, "h": 1, "x": 0, "y": 1, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 1, "col": 1, "w": 1, "h": 1, "x": 1, "y": 1, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 1, "col": 2, "w": 1, "h": 1, "x": 2, "y": 1, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 1, "col": 3, "w": 1, "h": 1, "x": 3, "y": 1, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 2, "col": 0, "w": 1, "h": 1, "x": 0, "y": 2, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 2, "col": 1, "w": 1, "h": 1, "x": 1, "y": 2, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 2, "col": 2, "w": 1, "h": 1, "x": 2, "y": 2, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 2, "col": 3, "w": 1, "h": 1, "x": 3, "y": 2, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 3, "col": 0, "w": 1, "h": 1, "x": 0, "y": 3, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 3, "col": 1, "w": 1, "h": 1, "x": 1, "y": 3, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 3, "col": 2, "w": 1, "h": 1, "x": 2, "y": 3, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 3, "col": 3, "w": 1, "h": 1, "x": 3, "y": 3, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 4, "col": 0, "w": 1, "h": 1, "x": 0, "y": 4, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 4, "col": 1, "w": 1, "h": 1, "x": 1, "y": 4, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 4, "col": 2, "w": 1, "h": 1, "x": 2, "y": 4, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 4, "col": 3, "w": 1, "h": 1, "x": 3, "y": 4, "r": 0, "rx": 0, "ry": 0 }],
+    pinouts: [{ "d1": "output", "d0": "output", "d2": "output", "d3": "output", "d4": "output", "d20": "input", "d19": "input", "d18": "input", "d15": "input" }],
+    keyWiring: [{ "input": "d20", "output": "d1" }, { "input": "d19", "output": "d1" }, { "input": "d18", "output": "d1" }, { "input": "d15", "output": "d1" }, { "input": "d20", "output": "d2" }, { "input": "d19", "output": "d2" }, { "input": "d18", "output": "d2" }, { "input": "d15", "output": "d2" }, { "input": "d20", "output": "d0" }, { "input": "d19", "output": "d0" }, { "input": "d18", "output": "d0" }, { "input": "d15", "output": "d0" }, { "input": "d20", "output": "d4" }, { "input": "d19", "output": "d4" }, { "input": "d18", "output": "d4" }, { "input": "d15", "output": "d4" }, { "input": "d20", "output": "d3" }, { "input": "d19", "output": "d3" }, { "input": "d18", "output": "d3" }, { "input": "d15", "output": "d3" }],
+  });
 
   test("have expected files", () => {
     const files = createZMKConfig(unibodyConfig);
@@ -92,7 +161,7 @@ describe("unibody", () => {
 
   test("have expected files w/ dongle", () => {
     const config = structuredClone(unibodyConfig);
-    config.info.dongle = true;
+    config.dongle = true;
     const files = createZMKConfig(config);
     const fileNames = Object.keys(files).sort();
 
@@ -117,12 +186,16 @@ describe("unibody", () => {
 })
 
 describe("split", () => {
-  const splitConfig: KeyboardContext = {
-    "info": { "name": "UnitTest", "shield": "unittest", "controller": "nice_nano_v2", "wiring": "matrix_diode", "dongle": false },
-    "layout": [{ "partOf": 0, "row": 0, "column": 0, "width": 1, "height": 1, "x": 0, "y": 0, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 0, "column": 1, "width": 1, "height": 1, "x": 1, "y": 0, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 1, "row": 0, "column": 2, "width": 1, "height": 1, "x": 2, "y": 0, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 1, "row": 0, "column": 3, "width": 1, "height": 1, "x": 3, "y": 0, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 1, "column": 0, "width": 1, "height": 1, "x": 0, "y": 1, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 1, "column": 1, "width": 1, "height": 1, "x": 1, "y": 1, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 1, "row": 1, "column": 2, "width": 1, "height": 1, "x": 2, "y": 1, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 1, "row": 1, "column": 3, "width": 1, "height": 1, "x": 3, "y": 1, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 2, "column": 0, "width": 1, "height": 1, "x": 0, "y": 2, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 2, "column": 1, "width": 1, "height": 1, "x": 1, "y": 2, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 1, "row": 2, "column": 2, "width": 1, "height": 1, "x": 2, "y": 2, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 1, "row": 2, "column": 3, "width": 1, "height": 1, "x": 3, "y": 2, "r": 0, "rx": 0, "ry": 0 }],
-    "pinouts": [{ "d1": "output", "d0": "input", "d2": "output", "d3": "input", "d4": "output" }, { "d0": "output", "d2": "input", "d3": "output", "d4": "input", "d5": "output" }],
-    "wiring": [{ "input": "d0", "output": "d1" }, { "input": "d3", "output": "d1" }, { "input": "d4", "output": "d0" }, { "input": "d2", "output": "d0" }, { "input": "d0", "output": "d2" }, { "input": "d3", "output": "d2" }, { "input": "d4", "output": "d3" }, { "input": "d2", "output": "d3" }, { "input": "d0", "output": "d4" }, { "input": "d3", "output": "d4" }, { "input": "d4", "output": "d5" }, { "input": "d2", "output": "d5" }]
-  };
+  const splitConfig: Keyboard = makeKeyboard({
+    name: "UnitTest",
+    shield: "unittest",
+    controller: "nice_nano_v2",
+    wiringType: "matrix_diode",
+    dongle: false,
+    layout: [{ "partOf": 0, "row": 0, "col": 0, "w": 1, "h": 1, "x": 0, "y": 0, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 0, "col": 1, "w": 1, "h": 1, "x": 1, "y": 0, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 1, "row": 0, "col": 2, "w": 1, "h": 1, "x": 2, "y": 0, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 1, "row": 0, "col": 3, "w": 1, "h": 1, "x": 3, "y": 0, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 1, "col": 0, "w": 1, "h": 1, "x": 0, "y": 1, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 1, "col": 1, "w": 1, "h": 1, "x": 1, "y": 1, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 1, "row": 1, "col": 2, "w": 1, "h": 1, "x": 2, "y": 1, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 1, "row": 1, "col": 3, "w": 1, "h": 1, "x": 3, "y": 1, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 2, "col": 0, "w": 1, "h": 1, "x": 0, "y": 2, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 0, "row": 2, "col": 1, "w": 1, "h": 1, "x": 1, "y": 2, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 1, "row": 2, "col": 2, "w": 1, "h": 1, "x": 2, "y": 2, "r": 0, "rx": 0, "ry": 0 }, { "partOf": 1, "row": 2, "col": 3, "w": 1, "h": 1, "x": 3, "y": 2, "r": 0, "rx": 0, "ry": 0 }],
+    pinouts: [{ "d1": "output", "d0": "input", "d2": "output", "d3": "input", "d4": "output" }, { "d0": "output", "d2": "input", "d3": "output", "d4": "input", "d5": "output" }],
+    keyWiring: [{ "input": "d0", "output": "d1" }, { "input": "d3", "output": "d1" }, { "input": "d4", "output": "d0" }, { "input": "d2", "output": "d0" }, { "input": "d0", "output": "d2" }, { "input": "d3", "output": "d2" }, { "input": "d4", "output": "d3" }, { "input": "d2", "output": "d3" }, { "input": "d0", "output": "d4" }, { "input": "d3", "output": "d4" }, { "input": "d4", "output": "d5" }, { "input": "d2", "output": "d5" }],
+  });
 
   test("have expected files", () => {
     const files = createZMKConfig(splitConfig);
@@ -150,7 +223,7 @@ describe("split", () => {
 
   test("have expected files w/ dongle", () => {
     const config = structuredClone(splitConfig);
-    config.info.dongle = true;
+    config.dongle = true;
     const files = createZMKConfig(config);
     const fileNames = Object.keys(files).sort();
 

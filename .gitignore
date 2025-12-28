@@ -144,3 +144,10 @@ vite.config.ts.timestamp-*
 # Cloudflare
 .wrangler
 worker-configuration.d.ts
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

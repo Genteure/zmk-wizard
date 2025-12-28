@@ -1,4 +1,4 @@
-import { type VirtualBinaryFolder, type VirtualFolder } from "./types";
+import { type VirtualBinaryFolder, type VirtualFolder } from "../typedef";
 
 type VirtualTreeItem = VirtualTreeFolder | VirtualTreeFile;
 
@@ -18,7 +18,7 @@ function convertFlatToTree(vfs: VirtualFolder): VirtualTreeFolder {
     items: {}
   };
 
-  for (const [filePath, content] of Object.entries(vfs)) {
+  for (const [filePath, content] of Object.entries(vfs) as [string, string | Uint8Array][]) {
     const parts = filePath.split('/');
     let currentFolder: VirtualTreeFolder = root;
 

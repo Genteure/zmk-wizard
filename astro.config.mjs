@@ -3,6 +3,7 @@ import { defineConfig, envField } from 'astro/config';
 
 import solidJs from '@astrojs/solid-js';
 import tailwindcss from '@tailwindcss/vite';
+import versionPlugin from './scripts/vite-plugin-version.js';
 
 import cloudflare from '@astrojs/cloudflare';
 
@@ -35,7 +36,12 @@ export default defineConfig({
         '~': new URL('./src', import.meta.url).pathname,
       },
     },
-    plugins: [tailwindcss()]
+    server: {
+      watch: {
+        ignored: ['**/*.test.*', '**/__tests__/**', '**/*.spec.*']
+      }
+    },
+    plugins: [versionPlugin(), tailwindcss()]
   },
 
 });

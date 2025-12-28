@@ -1,0 +1,981 @@
+import { createTimer, makeTimer } from "@solid-primitives/timer";
+import { createEffect, createMemo, createSignal, For, type Accessor, type Component, type VoidComponent } from "solid-js";
+import { createStore, produce } from "solid-js/store";
+
+import { Button } from "@kobalte/core/button";
+import { Dialog } from "@kobalte/core/dialog";
+import { DropdownMenu } from "@kobalte/core/dropdown-menu";
+import { Menubar } from "@kobalte/core/menubar";
+import { Popover } from "@kobalte/core/popover";
+import { ulid } from "ulidx";
+
+import ArrowBigUp from "lucide-solid/icons/arrow-big-up";
+import ArrowRight from "lucide-solid/icons/arrow-right";
+import ChevronRight from "lucide-solid/icons/chevron-right";
+import Copy from "lucide-solid/icons/copy";
+import ExternalLink from "lucide-solid/icons/external-link";
+import LucideKeyboard from "lucide-solid/icons/keyboard";
+import Pencil from "lucide-solid/icons/pencil";
+import SquarePen from "lucide-solid/icons/square-pen";
+
+import { Tabs } from "@kobalte/core/tabs";
+import { bboxCenter, getKeysBoundingBox, keyCenter } from "~/lib/geometry";
+import { layouts } from "~/lib/physicalLayouts";
+import { swpBgClass } from "~/lib/swpColors";
+import { copyWiringBetweenParts, type WiringTransform } from "~/lib/wiringMapping";
+import { type Controller, type Key, type WiringType } from "../typedef";
+import { useWizardContext } from "./context";
+import { ControllerPinConfigurator } from "./controller";
+import { DataTable } from "./datatable";
+import { GenerateLayoutDialog, ImportDevicetreeDialog, ImportLayoutJsonDialog } from "./dialogs";
+import { KeyboardPreview, type GraphicsKey } from "./graphics";
+import { physicalToLogical } from "./layouthelper";
+import { BuildButton, HelpButton, InfoEditButton } from "./navbar";
+
+export function ensureKeyIds(keys: any[]) {
+  return keys.map(k => ({ ...k, id: (k as any).id ?? ulid() }));
+}
+
+export const App: VoidComponent = () => {
+  const context = useWizardContext();
+
+  const physicalLayoutKeys = createMemo(() => context.keyboard.layout.map((k, i) => ({
+    x: k.x,
+    y: k.y,
+    r: k.r,
+    rx: k.rx,
+    ry: k.ry,
+    w: k.w,
+    h: k.h,
+
+    index: i,
+    part: k.part,
+
+    key: k,
+  } satisfies GraphicsKey)));
+
+  const logicalLayoutKeys = createMemo(() => context.keyboard.layout.map((k, i) => ({
+    x: k.col,
+    y: k.row,
+    r: 0,
+    rx: 0,
+    ry: 0,
+    w: 1,
+    h: 1,
+
+    index: i,
+    part: k.part,
+
+    key: k,
+  } satisfies GraphicsKey)));
+
+  const keyWiringSetter = (gkey: GraphicsKey) => {
+    const key = gkey.key;
+    const partIdx = context.nav.activeEditPart;
+    if (partIdx === null) return;
+    if (key.part !== partIdx) return;
+
+    const pinId = context.nav.activeWiringPin;
+    if (!pinId) return;
+    const mode = context.keyboard.parts[partIdx].pins[pinId];
+    if (!mode) return;
+
+    const keyId = key.id;
+    context.setKeyboard("parts", partIdx, "keys", produce((keys) => {
+      const current = keys[keyId] || {};
+      if (mode === "input") current.input = pinId;
+      else if (mode === "output") current.output = pinId;
+      keys[keyId] = current;
+    }));
+  };
+
+  return (<div id="app" class="flex flex-col h-screen isolate">
+    <div
+      // class="p-2 bg-base-200 flex flex-col gap-2 md:flex-row items-center justify-between"
+      class="p-2 bg-base-200 flex gap-2 items-center justify-between"
+    >
+      <div class="flex items-center gap-1 md:gap-2">
+        <div
+          class="w-10 h-10 md:w-12 md:h-12 shrink-0 rounded border-fuchsia-500 border flex justify-center items-center select-none"
+        >
+          icon?
+        </div>
+
+        <InfoEditButton />
+        <BuildButton />
+      </div>
+
+      <HelpButton />
+    </div>
+    {/* <!-- /Header --> */}
+    {/* <!-- Content --> */}
+    <div class="flex flex-col lg:flex-row flex-1 min-h-0">
+      {/* <!-- Config --> */}
+      <Tabs
+        class="flex-2 min-w-0 min-h-0 border-b lg:border-b-0 lg:border-r border-base-300 p-1 flex flex-col"
+        value={context.nav.selectedTab}
+        onChange={v => {
+          context.setNav("selectedTab", v);
+          context.setNav("selectedKeys", []);
+          if (v.startsWith("part-")) {
+            const index = parseInt(v.substring(5));
+            if (!isNaN(index) && index >= 0 && index < context.keyboard.parts.length) {
+              context.setNav("activeEditPart", index);
+              return;
+            }
+          }
+          context.setNav("activeEditPart", null);
+        }}
+      >
+        <div
+          class="overflow-x-auto mb-2"
+          onWheel={e => {
+            if (e.deltaY === 0 || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
+            e.preventDefault();
+            (e.currentTarget as HTMLElement).scrollLeft += e.deltaY / 3;
+          }}
+        >
+          <Tabs.List class="flex relative items-center border-b border-base-300 mb-4">
+            <Tabs.Trigger class="btn btn-ghost" value="layout">
+              <LucideKeyboard class="inline-block w-6 h-6 mr-1" />
+              Layout
+            </Tabs.Trigger>
+
+            <div class="p-1 border-b-3 border-transparent select-none">
+              Parts:
+            </div>
+
+            <For
+              each={context.keyboard.parts}
+              fallback={<div class="text-base-content/65 select-none">No parts</div>}
+            >
+              {(part, i) => (<Tabs.Trigger
+                class="btn btn-ghost"
+                value={`part-${i()}`}
+              >
+                <span
+                  class="inline-block rounded-full w-3 h-3 mr-1"
+                  classList={{ [swpBgClass(i())]: true }}
+                />
+                <span>
+                  {part.name}
+                </span>
+              </Tabs.Trigger>)}
+            </For>
+            <Tabs.Indicator class="absolute transition-all bg-primary h-0.5 -bottom-[1px]" />
+          </Tabs.List>
+        </div>
+
+        <Tabs.Content value="layout" class="flex flex-col gap-2 overflow-y-auto flex-1">
+          <ConfigLayout />
+        </Tabs.Content>
+
+        <For each={context.keyboard.parts}>
+          {(_part, i) => (
+            <Tabs.Content value={`part-${i()}`} class="flex flex-col gap-2 overflow-y-auto flex-1">
+              <ConfigPart partIndex={() => i()} />
+            </Tabs.Content>
+          )}
+        </For>
+      </Tabs>
+      {/* <!-- /Config, Preview --> */}
+      <div class="flex-3 flex flex-col">
+        <div class="flex-1 border-b border-base-300">
+          <KeyboardPreview title="Physical Layout"
+            keys={physicalLayoutKeys}
+            editMode={() => (context.nav.selectedTab.startsWith("part-")) ? "wiring" : "select"}
+            onKeySetWiring={keyWiringSetter} />
+        </div>
+        <div class="flex-1">
+          <KeyboardPreview title="Logical Layout"
+            keys={logicalLayoutKeys}
+            editMode={() => (context.nav.selectedTab.startsWith("part-")) ? "wiring" : "select"}
+            onKeySetWiring={keyWiringSetter}
+          />
+        </div>
+      </div>
+      {/* <!-- /Preview --> */}
+    </div>
+  </div>);
+};
+
+const ConfigLayout: Component = () => {
+  const context = useWizardContext();
+
+  const normalizeKeys = () => {
+    context.setKeyboard("layout", produce(draft => {
+      const minX = Math.min(...draft.map(k => k.x));
+      const minY = Math.min(...draft.map(k => k.y));
+      if (minX !== 0 || minY !== 0) {
+        draft.forEach(k => {
+          k.x -= minX;
+          k.y -= minY;
+          if (k.rx !== 0) k.rx -= minX;
+          if (k.ry !== 0) k.ry -= minY;
+        });
+      }
+
+      const minRow = Math.min(...draft.map(k => k.row));
+      const minCol = Math.min(...draft.map(k => k.col));
+      if (minRow !== 0 || minCol !== 0) {
+        draft.forEach(k => {
+          k.row -= minRow;
+          k.col -= minCol;
+        });
+      }
+
+      // Round everything to 2 decimal places
+      draft.forEach(k => {
+        k.x = Math.round(k.x * 100) / 100;
+        k.y = Math.round(k.y * 100) / 100;
+        k.r = Math.round(k.r * 100) / 100;
+        k.rx = Math.round(k.rx * 100) / 100;
+        k.ry = Math.round(k.ry * 100) / 100;
+      });
+
+      // Sort keys by logical row/col
+      draft.sort((a, b) => (a.row - b.row) || (a.col - b.col));
+    }));
+  };
+
+  function repeatTrigger(
+    callback: () => void,
+    delay: number = 500,
+    interval: number = 100
+  ): [
+      ((e?: Event) => void),
+      ((e?: Event) => void)
+    ] {
+    const [timer, setTimer] = createSignal<number | false>(false);
+    let failsafeCounter = 0;
+    let cancelDelay: VoidFunction | null = null;
+
+    createTimer(() => {
+      if (failsafeCounter++ > 25) {
+        stop();
+        return;
+      }
+      callback();
+    }, timer, setInterval);
+
+    const start = (e?: Event) => {
+      e?.preventDefault();
+
+      callback();
+      failsafeCounter = 0;
+      cancelDelay = makeTimer(() => {
+        callback();
+        setTimer(interval);
+      }, delay, setTimeout);
+    }
+
+    const stop = (e?: Event) => {
+      e?.preventDefault();
+
+      setTimer(false);
+      cancelDelay?.();
+      cancelDelay = null;
+    }
+
+    return [start, stop];
+  }
+
+  const moveKeys = (callback: (k: Key) => void) => repeatTrigger(() => {
+    context.setKeyboard("layout", produce((layout) => {
+      context.nav.selectedKeys.forEach(id => {
+        const k = layout.find(kk => kk.id === id);
+        if (k) callback(k);
+      });
+    }));
+    normalizeKeys();
+  })
+
+  const [physicalUpStart, physicalUpStop] = moveKeys(k => { k.y -= 0.25; if (k.ry !== 0) k.ry -= 0.25; });
+  const [physicalDownStart, physicalDownStop] = moveKeys(k => { k.y += 0.25; if (k.ry !== 0) k.ry += 0.25; });
+  const [physicalLeftStart, physicalLeftStop] = moveKeys(k => { k.x -= 0.25; if (k.rx !== 0) k.rx -= 0.25; });
+  const [physicalRightStart, physicalRightStop] = moveKeys(k => { k.x += 0.25; if (k.rx !== 0) k.rx += 0.25; });
+  const [logicalUpStart, logicalUpStop] = moveKeys(k => k.row -= 1);
+  const [logicalDownStart, logicalDownStop] = moveKeys(k => k.row += 1);
+  const [logicalLeftStart, logicalLeftStop] = moveKeys(k => k.col -= 1);
+  const [logicalRightStart, logicalRightStop] = moveKeys(k => k.col += 1);
+
+  return (
+    <>
+      <GenerateLayoutDialog />
+      <ImportDevicetreeDialog />
+      <ImportLayoutJsonDialog />
+
+      <div class="flex flex-row gap-2 items-center flex-wrap justify-center">
+
+        <Menubar class="join">
+          <Menubar.Menu>
+            <Menubar.Trigger class="join-item btn btn-sm btn-soft">Layout Tools</Menubar.Trigger>
+            <Menubar.Portal>
+              <Menubar.Content class="p-2 bg-base-200 rounded shadow-lg border menu">
+                <Menubar.Item
+                  as="li"
+                  onSelect={() => context.setNav("dialog", "generateLayout", true)}
+                ><button>Bootstrap</button></Menubar.Item>
+                <Menubar.Sub overlap>
+                  <Menubar.SubTrigger as="li"><button>
+                    Presets
+                    <div class="ml-auto pl-6">
+                      <ChevronRight class="w-5 h-5" />
+                    </div>
+                  </button></Menubar.SubTrigger>
+                  <Menubar.Portal>
+                    <Menubar.Content class="p-2 bg-base-200 rounded shadow-lg border menu max-h-96 overflow-x-auto flex-nowrap">
+                      <For each={Object.entries(layouts)}>
+                        {([category, layouts]) => (
+                          <Menubar.Group>
+                            <Menubar.GroupLabel>{category}</Menubar.GroupLabel>
+                            <For each={layouts}>
+                              {(layout) => (
+                                <Menubar.Item as="li">
+                                  <button
+                                    onClick={() => {
+                                      context.setNav("selectedKeys", []);
+                                      const newKeys = ensureKeyIds(structuredClone(layout.keys));
+                                      context.setKeyboard("layout", newKeys);
+                                      normalizeKeys();
+
+                                      if (context.keyboard.parts.length > 1) {
+                                        // assign half the keys to part 0, half to part 1
+                                        // based on x position
+
+                                        const centerX = bboxCenter(getKeysBoundingBox(context.keyboard.layout)).x;
+                                        context.setKeyboard("layout", produce(keys => {
+                                          keys.forEach(k => {
+                                            const kc = keyCenter(k);
+                                            k.part = (kc.x < centerX) ? 0 : 1;
+                                          })
+                                        }));
+                                      }
+                                    }}
+                                  >
+                                    {layout.name}
+                                  </button>
+                                </Menubar.Item>
+                              )}
+                            </For>
+                          </Menubar.Group>
+                        )}
+                      </For>
+                    </Menubar.Content>
+                  </Menubar.Portal>
+                </Menubar.Sub>
+
+                <Menubar.Sub overlap>
+                  <Menubar.SubTrigger as="li"><button>
+                    Generate
+                    <div class="ml-auto pl-6">
+                      <ChevronRight class="w-5 h-5" />
+                    </div>
+                  </button></Menubar.SubTrigger>
+                  <Menubar.Portal>
+                    <Menubar.Content class="p-2 bg-base-200 rounded shadow-lg border menu">
+                      <Menubar.Item
+                        as="li"
+                        onSelect={() => {
+                          context.setKeyboard("layout", produce(keys => {
+                            keys.forEach(k => {
+                              k.x = k.col;
+                              k.y = k.row;
+                              k.w = 1;
+                              k.h = 1;
+                              k.rx = 0;
+                              k.ry = 0;
+                              k.r = 0;
+                            })
+                          }))
+                          normalizeKeys();
+                        }}
+                      ><button>Generate Physical Layout from Logical</button></Menubar.Item>
+                      <Menubar.Item
+                        as="li"
+                        onSelect={() => context.setKeyboard("layout", produce(keys => physicalToLogical(keys, false)))}
+                      ><button>Generate Logical Layout from Physical</button></Menubar.Item>
+                      <Menubar.Item
+                        as="li"
+                        onSelect={() => context.setKeyboard("layout", produce(keys => physicalToLogical(keys, true)))}
+                      ><button>Generate Logical Layout from Physical (allow reordering)</button></Menubar.Item>
+                    </Menubar.Content>
+                  </Menubar.Portal>
+                </Menubar.Sub>
+
+                <Menubar.Separator class="my-1" />
+                <Menubar.Item
+                  as="li"
+                  onSelect={() => context.setNav("dialog", "importDevicetree", true)}
+                ><button>Import ZMK Physical Layout DTS</button></Menubar.Item>
+                <Menubar.Item
+                  as="li"
+                  onSelect={() => context.setNav("dialog", "importLayoutJson", true)}
+                ><button>Import QMK-like Layout JSON</button></Menubar.Item>
+                <Menubar.Item disabled as="li" class="menu-disabled"><button>Import KLE JSON (TODO)</button></Menubar.Item>
+                <Menubar.Separator class="my-1" />
+                <Menubar.Item disabled as="li" class="menu-disabled"><button>Export ZMK Physical Layout DTS (TODO)</button></Menubar.Item>
+                <Menubar.Item disabled as="li" class="menu-disabled"><button>Export Layout JSON (TODO)</button></Menubar.Item>
+                <Menubar.Item disabled as="li" class="menu-disabled"><button>Export KLE JSON (TODO)</button></Menubar.Item>
+                <Menubar.Separator class="my-1" />
+                <Menubar.Item as="li"
+                  onSelect={() => window.open('https://nickcoutsos.github.io/keymap-layout-tools/', '_blank', 'noopener')}
+                ><a target="_blank" rel="noopener" href="https://nickcoutsos.github.io/keymap-layout-tools/"><span>KiCAD PCB<ArrowRight class="w-4 h-4 inline-block mx-1" />Layout JSON</span><div class="ml-auto pl-6"><ExternalLink class="w-5 h-5" /></div></a></Menubar.Item>
+                <Menubar.Item as="li"
+                  onSelect={() => window.open('https://nickcoutsos.github.io/keymap-layout-tools/', '_blank', 'noopener')}
+                ><a target="_blank" rel="noopener" href="https://nickcoutsos.github.io/keymap-layout-tools/"><span>KLE JSON<ArrowRight class="w-4 h-4 inline-block mx-1" />Layout JSON</span><div class="ml-auto pl-6"><ExternalLink class="w-5 h-5" /></div></a></Menubar.Item>
+                <Menubar.Item as="li"
+                  onSelect={() => window.open('https://qmk.fm/converter/', '_blank', 'noopener')}
+                ><a target="_blank" rel="noopener" href="https://qmk.fm/converter/"><span>KLE RAW<ArrowRight class="w-4 h-4 inline-block mx-1" />Layout JSON</span><div class="ml-auto pl-6"><ExternalLink class="w-5 h-5" /></div></a></Menubar.Item>
+              </Menubar.Content>
+            </Menubar.Portal>
+          </Menubar.Menu>
+          {/* <Menubar.Menu>
+            <Menubar.Trigger class="join-item btn btn-sm btn-soft">Map</Menubar.Trigger>
+            <Menubar.Portal>
+              <Menubar.Content class="p-2 bg-base-200 rounded shadow-lg border menu">
+                <Menubar.Item
+                  as="li"
+                  onSelect={() => context.setKeyboard("layout", produce(keys => physicalToLogical(keys, true)))}
+                ><button>From Physical to Logical (ignore current ordering)</button></Menubar.Item>
+                <Menubar.Item
+                  as="li"
+                  onSelect={() => context.setKeyboard("layout", produce(keys => physicalToLogical(keys, false)))}
+                ><button>From Physical to Logical (follow current ordering)</button></Menubar.Item>
+                <Menubar.Item
+                  as="li"
+                  onSelect={() => {
+                    context.setKeyboard("layout", produce(keys => {
+                      keys.forEach(k => {
+                        k.x = k.col;
+                        k.y = k.row;
+                        k.w = 1;
+                        k.h = 1;
+                        k.rx = 0;
+                        k.ry = 0;
+                        k.r = 0;
+                      })
+                    }))
+                    normalizeKeys();
+                  }}
+                ><button>From Logical to Physical</button></Menubar.Item>
+              </Menubar.Content>
+            </Menubar.Portal>
+          </Menubar.Menu> */}
+        </Menubar>
+
+        <Button
+          class="btn btn-sm btn-soft"
+          onClick={() => {
+            const newId = ulid();
+            context.setKeyboard("layout",
+              produce(draft => {
+                const row = Math.ceil(Math.max(0, ...context.keyboard.layout.map(k => k.row)));
+                const col = Math.ceil(Math.max(0, ...context.keyboard.layout.filter(k => k.row === row).map(k => k.col)) + 1);
+                const x = Math.ceil(Math.max(0, ...context.keyboard.layout.map(k => k.x)) + 1);
+                const y = Math.ceil(Math.max(0, ...context.keyboard.layout.map(k => k.y)));
+
+                draft.push({
+                  id: newId,
+                  part: 0, // default to part 0
+                  row,
+                  col,
+                  w: 1,
+                  h: 1,
+                  x,
+                  y,
+                  r: 0,
+                  rx: 0,
+                  ry: 0,
+                });
+              })
+            );
+            context.setNav("selectedKeys", [newId]);
+          }}
+        >
+          Add Key
+        </Button>
+
+        <div class="join">
+          <DropdownMenu>
+            <DropdownMenu.Trigger class="btn btn-sm btn-soft join-item" disabled={context.nav.selectedKeys.length === 0}>
+              Assign to Part
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content class="p-2 bg-base-200 rounded shadow-lg border menu">
+                <For each={context.keyboard.parts}>
+                  {(part, i) => (
+                    <DropdownMenu.Item as="li" onSelect={() => {
+                      context.setKeyboard("layout", produce((layout) => {
+                        context.nav.selectedKeys.forEach(id => {
+                          const k = layout.find(kk => kk.id === id);
+                          if (k) k.part = i();
+                        });
+                      }));
+                    }}>
+                      <button>
+                        <span
+                          class="inline-block rounded-full w-3 h-3 mr-1"
+                          classList={{ [swpBgClass(i())]: true }}
+                        />
+                        <span>
+                          {part.name}
+                        </span>
+                      </button>
+                    </DropdownMenu.Item>
+                  )}
+                </For>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu>
+          <Button
+            class="btn btn-sm btn-soft join-item btn-error"
+            disabled={context.nav.selectedKeys.length === 0}
+            onClick={() => {
+              context.setKeyboard("layout", produce((layout) => {
+                context.nav.selectedKeys.forEach(id => {
+                  const idx = layout.findIndex(k => k.id === id);
+                  if (idx !== -1) layout.splice(idx, 1);
+                });
+              }));
+              context.setNav("selectedKeys", []);
+            }}
+          >
+            Delete Selected
+          </Button>
+        </div>
+      </div>
+      <div class="flex flex-row gap-2 items-center flex-wrap justify-center">
+        <div class="border bg-base-200 p-1 rounded-xl">
+          <div class="relative w-32 h-24">
+            <div class="absolute top-1 left-0 pointer-events-none select-none">
+              Physical
+            </div>
+            <div class="absolute top-0 left-8">
+              <div class="relative w-24 h-24">
+                <div class="absolute top-0 left-1/2 -translate-x-1/2">
+                  <Button
+                    class="btn btn-soft btn-square btn-sm"
+                    title="Move selected keys in physical layout Up"
+                    disabled={context.nav.selectedKeys.length === 0}
+
+                    onMouseDown={physicalUpStart}
+                    onMouseUp={physicalUpStop}
+                    onMouseLeave={physicalUpStop}
+
+                    onTouchStart={physicalUpStart}
+                    onTouchEnd={physicalUpStop}
+                    onTouchCancel={physicalUpStop}
+                  >
+                    <ArrowBigUp aria-hidden />
+                  </Button>
+                </div>
+                <div class="absolute top-1/2 right-0 -translate-y-1/2">
+                  <Button
+                    class="btn btn-soft btn-square btn-sm"
+                    title="Move selected keys in physical layout Right"
+                    disabled={context.nav.selectedKeys.length === 0}
+
+                    onMouseDown={physicalRightStart}
+                    onMouseUp={physicalRightStop}
+                    onMouseLeave={physicalRightStop}
+
+                    onTouchStart={physicalRightStart}
+                    onTouchEnd={physicalRightStop}
+                    onTouchCancel={physicalRightStop}
+                  >
+                    <ArrowBigUp class="rotate-90" aria-hidden />
+                  </Button>
+                </div>
+                <div class="absolute bottom-0 left-1/2 -translate-x-1/2">
+                  <Button
+                    class="btn btn-soft btn-square btn-sm"
+                    title="Move selected keys in physical layout Down"
+                    disabled={context.nav.selectedKeys.length === 0}
+
+                    onMouseDown={physicalDownStart}
+                    onMouseUp={physicalDownStop}
+                    onMouseLeave={physicalDownStop}
+
+                    onTouchStart={physicalDownStart}
+                    onTouchEnd={physicalDownStop}
+                    onTouchCancel={physicalDownStop}
+                  >
+                    <ArrowBigUp class="rotate-180" aria-hidden />
+                  </Button>
+                </div>
+                <div class="absolute top-1/2 left-0 -translate-y-1/2">
+                  <Button
+                    class="btn btn-soft btn-square btn-sm"
+                    title="Move selected keys in physical layout Left"
+                    disabled={context.nav.selectedKeys.length === 0}
+
+                    onMouseDown={physicalLeftStart}
+                    onMouseUp={physicalLeftStop}
+                    onMouseLeave={physicalLeftStop}
+
+                    onTouchStart={physicalLeftStart}
+                    onTouchEnd={physicalLeftStop}
+                    onTouchCancel={physicalLeftStop}
+                  >
+                    <ArrowBigUp class="-rotate-90" aria-hidden />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="border bg-base-200 p-1 rounded-xl">
+          <div class="relative w-32 h-24">
+            <div class="absolute top-1 left-0 pointer-events-none select-none">
+              Logical
+            </div>
+            <div class="absolute top-0 left-8">
+              <div class="relative w-24 h-24">
+                <div class="absolute top-0 left-1/2 -translate-x-1/2">
+                  <Button
+                    class="btn btn-soft btn-square btn-sm"
+                    title="Move selected keys in logical layout Up"
+                    disabled={context.nav.selectedKeys.length === 0}
+
+                    onMouseDown={logicalUpStart}
+                    onMouseUp={logicalUpStop}
+                    onMouseLeave={logicalUpStop}
+
+                    onTouchStart={logicalUpStart}
+                    onTouchEnd={logicalUpStop}
+                    onTouchCancel={logicalUpStop}
+                  >
+                    <ArrowBigUp aria-hidden />
+                  </Button>
+                </div>
+                {/* right middle */}
+                <div class="absolute top-1/2 right-0 -translate-y-1/2">
+                  <Button
+                    class="btn btn-soft btn-square btn-sm"
+                    title="Move selected keys in logical layout Right"
+                    disabled={context.nav.selectedKeys.length === 0}
+
+                    onMouseDown={logicalRightStart}
+                    onMouseUp={logicalRightStop}
+                    onMouseLeave={logicalRightStop}
+
+                    onTouchStart={logicalRightStart}
+                    onTouchEnd={logicalRightStop}
+                    onTouchCancel={logicalRightStop}
+                  >
+                    <ArrowBigUp class="rotate-90" aria-hidden />
+                  </Button>
+                </div>
+                {/* bottom center */}
+                <div class="absolute bottom-0 left-1/2 -translate-x-1/2">
+                  <Button
+                    class="btn btn-soft btn-square btn-sm"
+                    title="Move selected keys in logical layout Down"
+                    disabled={context.nav.selectedKeys.length === 0}
+
+                    onMouseDown={logicalDownStart}
+                    onMouseUp={logicalDownStop}
+                    onMouseLeave={logicalDownStop}
+
+                    onTouchStart={logicalDownStart}
+                    onTouchEnd={logicalDownStop}
+                    onTouchCancel={logicalDownStop}
+                  >
+                    <ArrowBigUp class="rotate-180" aria-hidden />
+                  </Button>
+                </div>
+                {/* left middle */}
+                <div class="absolute top-1/2 left-0 -translate-y-1/2">
+                  <Button
+                    class="btn btn-soft btn-square btn-sm"
+                    title="Move selected keys in logical layout Left"
+                    disabled={context.nav.selectedKeys.length === 0}
+
+                    onMouseDown={logicalLeftStart}
+                    onMouseUp={logicalLeftStop}
+                    onMouseLeave={logicalLeftStop}
+
+                    onTouchStart={logicalLeftStart}
+                    onTouchEnd={logicalLeftStop}
+                    onTouchCancel={logicalLeftStop}
+                  >
+                    <ArrowBigUp class="-rotate-90" aria-hidden />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div >
+      <div class="min-h-64 rounded border border-base-300">
+        <DataTable />
+      </div>
+    </>
+  )
+}
+
+const controllerLabelMap = {
+  "nice_nano_v2": "nice!nano v2",
+  "xiao_ble": "Seeed XIAO nRF52840",
+  "xiao_ble_plus": "Seeed XIAO nRF52840 Plus",
+}
+const controllerLabel = (id: Controller) => controllerLabelMap[id] ?? id;
+const wiringLabelMap = {
+  "matrix_diode": "Matrix with Diodes",
+  "matrix_no_diode": "Matrix without Diodes",
+  "direct_gnd": "Direct to GND",
+  "direct_vcc": "Direct to VCC",
+};
+const wiringLabel = (id: WiringType) => wiringLabelMap[id] ?? id;
+
+const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
+  const context = useWizardContext();
+  const part = createMemo(() => context.keyboard.parts[props.partIndex()]);
+  const pinStoreFunctions = createMemo(() => createStore(part().pins || {}));
+
+  // -- Part Name Editing -- //
+
+  const [nameDraft, setNameDraft] = createSignal(part().name ?? "");
+  const [namePopoverOpen, setNamePopoverOpen] = createSignal(false);
+
+  createEffect(() => setNameDraft(part().name ?? ""));
+
+  const saveName = () => {
+    const trimmed = nameDraft().trim();
+    if (!/^[a-z]+$/.test(trimmed)) {
+      return;
+    }
+
+    context.setKeyboard("parts", props.partIndex(), "name", trimmed);
+    setNamePopoverOpen(false);
+  };
+
+  // -- Board and Wiring Editing -- //
+
+  const [controllerDraft, setControllerDraft] = createSignal(part().controller);
+  const [wiringDraft, setWiringDraft] = createSignal(part().wiring);
+  const [boardDialogOpen, setBoardDialogOpen] = createSignal(false);
+
+  createEffect(() => {
+    setControllerDraft(part().controller);
+    setWiringDraft(part().wiring);
+  });
+
+  const saveBoardAndWiring = () => {
+    const controllerChanged = part().controller !== controllerDraft();
+    const wiringChanged = part().wiring !== wiringDraft();
+
+    context.setKeyboard("parts", props.partIndex(), produce((p) => {
+      p.controller = controllerDraft();
+      p.wiring = wiringDraft();
+
+      if (controllerChanged || wiringChanged) {
+        p.pins = {};
+        p.keys = {};
+      }
+    }));
+
+    setBoardDialogOpen(false);
+  };
+
+  const copyFromPart = (sourceIndex: number, transform: WiringTransform) => {
+    const source = context.keyboard.parts[sourceIndex];
+    const targetIndex = props.partIndex();
+    const target = context.keyboard.parts[targetIndex];
+
+    if (!source || !target) {
+      alert("Invalid source or target part.");
+      return;
+    }
+
+    const result = copyWiringBetweenParts({
+      layout: context.keyboard.layout,
+      sourcePartIndex: sourceIndex,
+      targetPartIndex: targetIndex,
+      sourcePart: source,
+      targetPart: target,
+      transform,
+    });
+
+    context.setKeyboard("parts", targetIndex, produce((p) => {
+      p.controller = result.controller;
+      p.wiring = result.wiring;
+      p.pins = result.pins;
+      p.keys = result.keys;
+    }));
+  };
+
+  return (
+    <div class="flex flex-col items-center gap-2 py-2">
+
+      <div class="w-full max-w-xs border-b border-base-300 p-2 bg-base-200/60 rounded-xl flex items-center gap-2">
+        <div class="flex-1 flex items-center justify-center text-lg">
+          <span class="truncate">{part().name}</span>
+        </div>
+        <Popover open={namePopoverOpen()} onOpenChange={(v) => {
+          if (v) {
+            setNameDraft(part().name ?? "");
+          }
+          setNamePopoverOpen(v);
+        }}>
+          <Popover.Trigger class="btn btn-sm btn-soft btn-circle" title="Edit part name">
+            <Pencil class="w-5 h-5" aria-hidden />
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content class="popover--content w-64 p-3 flex flex-col gap-2">
+              <div class="text-sm font-semibold">Edit part name</div>
+              <input
+                class="input input-bordered w-full"
+                value={nameDraft()}
+                onInput={e => setNameDraft(e.currentTarget.value)}
+              />
+              <div class="text-xs text-base-content/70">Part names must be lowercase letters (a-z) only, no spaces or special characters.</div>
+              <div class="flex justify-end gap-2">
+                <Popover.CloseButton class="btn btn-ghost btn-sm">Cancel</Popover.CloseButton>
+                <Button class="btn btn-primary btn-sm" disabled={!/^[a-z]+$/.test(nameDraft().trim())} onClick={saveName}>Save</Button>
+              </div>
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover>
+      </div>
+
+      <div class="flex items-center gap-2">
+
+        <Dialog open={boardDialogOpen()} onOpenChange={(v) => {
+          if (v) {
+            setControllerDraft(part().controller);
+            setWiringDraft(part().wiring);
+          }
+          setBoardDialogOpen(v);
+        }}>
+          <Dialog.Trigger class="btn flex justify-between items-center rounded-xl p-4 text-left h-auto gap-2">
+            <div class="flex flex-col items-start gap-1">
+              <span class="text-base font-semibold">{controllerLabel(part().controller)}</span>
+              <span class="text-xs text-base-content/70">{wiringLabel(part().wiring)}</span>
+            </div>
+            <SquarePen class="w-5 h-5" aria-hidden />
+          </Dialog.Trigger>
+          <Dialog.Portal>
+            <Dialog.Overlay class="dialog--overlay" />
+            <div class="dialog--positioner">
+              <Dialog.Content class="dialog--content w-full max-w-sm p-4 rounded-2xl border border-base-300 bg-base-100 shadow-xl">
+                <Dialog.Title class="text-lg font-bold mb-2">Choose board and wiring type</Dialog.Title>
+                <div class="flex flex-col items-center">
+                  <label class="select">
+                    <span class="label">Board&nbsp;</span>
+                    <select
+                      class="select select-bordered w-full"
+                      value={controllerDraft()}
+                      onChange={e => setControllerDraft(e.currentTarget.value as Controller)}
+                    >
+                      <option value="nice_nano_v2">nice!nano v2</option>
+                      <option value="nice_nano_v2">Supermini NRF52840 (nice!nano v2 clone)</option>
+                      <option value="nice_nano_v2">PROMICRO NRF52840 (nice!nano v2 clone)</option>
+                      <option value="nice_nano_v2">52840nano (nice!nano v2 clone)</option>
+                      <option value="" disabled>──────────</option>
+                      <option value="xiao_ble">Seeed XIAO nRF52840</option>
+                      <option value="xiao_ble_plus">Seeed XIAO nRF52840 Plus</option>
+                    </select>
+                  </label>
+                  <label class="select mt-4">
+                    <span class="label">Wiring</span>
+                    <select
+                      class="select select-bordered w-full"
+                      value={wiringDraft()}
+                      onChange={e => setWiringDraft(e.currentTarget.value as WiringType)}
+                    >
+                      <option value="matrix_diode">Matrix with Diodes</option>
+                      <option value="direct_gnd">Direct to GND</option>
+                      <option value="" disabled>──────────</option>
+                      <option value="" disabled>Uncommon Wiring Types</option>
+                      <option value="matrix_no_diode">Matrix without Diodes</option>
+                      <option value="direct_vcc">Direct to VCC</option>
+                    </select>
+                  </label>
+
+                </div>
+                <div class="text-sm text-base-content/70 mt-3">
+                  Changing the board or wiring type will reset all pin assignments and key wiring for this part.
+                </div>
+                <div class="mt-4 flex justify-end gap-2">
+                  <Dialog.CloseButton class="btn btn-ghost btn-sm">Cancel</Dialog.CloseButton>
+                  <Button
+                    class="btn btn-primary btn-sm"
+                    onClick={saveBoardAndWiring}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </Dialog.Content>
+            </div>
+          </Dialog.Portal>
+        </Dialog>
+
+        <DropdownMenu>
+          <DropdownMenu.Trigger class="btn btn-circle" title="Copy pin configuration from another part">
+            <Copy class="w-5 h-5" aria-hidden />
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content class="p-2 bg-base-200 rounded shadow-lg border menu min-w-[16rem]">
+              <For
+                each={context.keyboard.parts
+                  .map((p, idx) => ({ p, idx }))
+                  .filter(entry => entry.idx !== props.partIndex())}
+                fallback={<div class="text-base-content/65 px-2 py-1">No other parts</div>}
+              >
+                {(entry, i) => (
+                  <DropdownMenu.Sub overlap>
+                    <DropdownMenu.SubTrigger as="li" class="">
+                      <button>
+                        <span>
+
+                          <span class="mr-1">Copy wiring from</span>
+                          <span
+                            class="inline-block rounded-full w-2 h-2 mx-1"
+                            classList={{ [swpBgClass(i())]: true }}
+                          />
+                          <span>{entry.p.name || `Part ${entry.idx + 1}`}</span>
+                        </span>
+                        <div class="ml-auto pl-6">
+                          <ChevronRight class="w-5 h-5" aria-hidden />
+                        </div>
+                      </button>
+                    </DropdownMenu.SubTrigger>
+                    <DropdownMenu.Portal>
+                      <DropdownMenu.SubContent class="p-2 bg-base-200 rounded shadow-lg border menu">
+                        <DropdownMenu.Item as="li" onSelect={() => copyFromPart(entry.idx, "flip-horiz")}>
+                          <button class="w-full text-left">Mirrored Horizontally</button>
+                        </DropdownMenu.Item>
+                        <DropdownMenu.Item as="li" onSelect={() => copyFromPart(entry.idx, "flip-vert")}>
+                          <button class="w-full text-left">Mirrored Vertically</button>
+                        </DropdownMenu.Item>
+                        <DropdownMenu.Item as="li" onSelect={() => copyFromPart(entry.idx, "none")}>
+                          <button class="w-full text-left">Direct Copy</button>
+                        </DropdownMenu.Item>
+                        <DropdownMenu.Item as="li" onSelect={() => copyFromPart(entry.idx, "flip-both")}>
+                          <button class="w-full text-left">Mirrored Both</button>
+                        </DropdownMenu.Item>
+                      </DropdownMenu.SubContent>
+                    </DropdownMenu.Portal>
+                  </DropdownMenu.Sub>
+                )}
+              </For>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu>
+      </div>
+
+      <div class="w-full max-w-5xl">
+        <ControllerPinConfigurator
+          partIndex={props.partIndex}
+          pins={pinStoreFunctions()[0]}
+          setPins={pinStoreFunctions()[1]}
+          controllerId={part().controller}
+        />
+      </div>
+    </div>
+  );
+};
