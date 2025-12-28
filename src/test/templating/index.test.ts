@@ -69,7 +69,7 @@ interface LegacyKeyboardData {
 }
 
 function makeKeyboard(data: LegacyKeyboardData): Keyboard {
-  const partNames = ["unibody", "left", "right", "third", "fourth", "fifth"];
+  const partNames = ["left", "right", "third", "fourth", "fifth"];
 
   const layout = data.layout.map((key, idx) => ({
     id: `k${idx}`,
@@ -92,6 +92,10 @@ function makeKeyboard(data: LegacyKeyboardData): Keyboard {
     pins,
     keys: {} as Record<string, SingleKeyWiring>,
   }));
+
+  if (parts.length === 1) {
+    parts[0].name = "unibody";
+  }
 
   data.keyWiring.forEach((wire, idx) => {
     const key = layout[idx];
