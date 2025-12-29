@@ -199,8 +199,9 @@ export function parseLayoutJson(json: string): Key[] | null {
 
     if (keys.length === 0) return null;
 
-    if (keys.some(k => !(k.row > 0 && k.col > 0))) {
+    if (keys.some(k => k.row < 0 || k.col < 0)) {
       // key is missing row or col
+      console.log("some keys are missing row or col, running physicalToLogical");
       physicalToLogical(keys, false);
     } else {
       for (let i = 1; i < keys.length; i++) {
@@ -208,6 +209,7 @@ export function parseLayoutJson(json: string): Key[] | null {
         if ((keys[i].row < keys[i - 1].row) || (keys[i].row === keys[i - 1].row && keys[i].col <= keys[i - 1].col)) {
           // row is smaller than previous key's row
           // or row is the same but col is smaller but col is not greater
+          console.log("keys are not properly ordered, running physicalToLogical");
           physicalToLogical(keys, false);
           break;
         }
