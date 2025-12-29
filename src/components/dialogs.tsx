@@ -34,7 +34,7 @@ export const GenerateLayoutDialog: VoidComponent = () => {
                   <button disabled class="btn btn-ghost">TODO</button>
                   <button disabled class="btn btn-ghost">TODO</button>
                   {/* <Tabs.Trigger class="btn btn-ghost" value="todo">todo</Tabs.Trigger> */}
-                  <Tabs.Indicator class="absolute transition-all bg-primary h-0.5 -bottom-[1px]" />
+                  <Tabs.Indicator class="absolute transition-all bg-primary h-0.5 -bottom-px" />
                 </Tabs.List>
               </div>
               <Tabs.Content value="grid" class="flex flex-col gap-2 items-center">

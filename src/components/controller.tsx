@@ -32,7 +32,7 @@ const Pin: Component<{
       <Popover open={open()} onOpenChange={setOpen} placement={props.left ? "left" : "right"} gutter={8}>
         <Popover.Anchor>
           <Button disabled={props.pin.type !== 'gpio'} as={props.pin.type === 'gpio' ? undefined : "div"}
-            class="w-14 font-bold rounded border select-none flex-shrink-0 flex justify-center items-center"
+            class="w-14 font-bold rounded border select-none shrink-0 flex justify-center items-center"
             classList={{
               "border-transparent": props.pin.type === 'empty',
               "cursor-pointer text-base-content/50 border-dashed": props.pin.type === "gpio" && props.usage === 'none',

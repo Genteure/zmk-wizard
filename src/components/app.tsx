@@ -162,7 +162,7 @@ export const App: VoidComponent = () => {
                 </span>
               </Tabs.Trigger>)}
             </For>
-            <Tabs.Indicator class="absolute transition-all bg-primary h-0.5 -bottom-[1px]" />
+            <Tabs.Indicator class="absolute transition-all bg-primary h-0.5 -bottom-px" />
           </Tabs.List>
         </div>
 
