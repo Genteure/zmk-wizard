@@ -1,6 +1,7 @@
-import { keyCenter, type Point } from "~/lib/geometry";
 import { ulid } from "ulidx";
+import { keyCenter, type Point } from "~/lib/geometry";
 import type { Key } from "../typedef";
+import { Serial } from "./kle-serial";
 
 export function physicalToLogical(keys: Key[], ignoreOrder: boolean): void {
   if (keys.length === 0) return;
@@ -214,6 +215,49 @@ export function parseLayoutJson(json: string): Key[] | null {
           break;
         }
       }
+    }
+
+    return keys;
+  } catch (e) {
+    return null;
+  }
+}
+
+export function parseKLE(json: string): Key[] | null {
+  try {
+    const root = JSON.parse(json);
+    if (!Array.isArray(root) || root.length === 0) return null;
+
+    const parsed = Serial.deserialize(root);
+
+    if (!parsed || !parsed.keys || parsed.keys.length === 0) {
+      return null;
+    }
+
+    const keys = parsed.keys.map(k => ({
+      id: ulid(),
+      part: 0,
+      row: 0,
+      col: 0,
+      w: k.width,
+      h: k.height,
+      x: k.x,
+      y: k.y,
+      r: k.rotation_angle,
+      rx: k.rotation_x,
+      ry: k.rotation_y,
+    }));
+
+    physicalToLogical(keys, false);
+
+    // total height of the entire layout = max y - min y
+    const totalHeightPhysical = Math.max(...keys.map(k => k.y + k.h)) - Math.min(...keys.map(k => k.y));
+    const totalRows = Math.max(...keys.map(k => k.row)) + 1;
+
+    // if we have wayy too many rows compared to physical height, likely the row/col info is garbage
+    if (totalRows > (totalHeightPhysical * 2)) {
+      console.log("too many rows compared to physical height, rerunning physicalToLogical");
+      physicalToLogical(keys, true); // allow reordering
     }
 
     return keys;

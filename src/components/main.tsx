@@ -1,8 +1,8 @@
 import { createSignal, type VoidComponent } from "solid-js";
 import { createStore } from "solid-js/store";
+import type { Keyboard, KeyboardSnapshot } from "../typedef";
 import { App } from "./app";
 import { type Navigation, WizardContext, type WizardContextType } from "./context";
-import type { Keyboard, KeyboardSnapshot } from "../typedef";
 
 export const Main: VoidComponent = () => {
   const context: WizardContextType = rootContextHelper();
@@ -16,7 +16,8 @@ function rootContextHelper(): WizardContextType {
       build: false,
       generateLayout: false,
       importDevicetree: false,
-      importLayoutJson: false
+      importLayoutJson: false,
+      importKleJson: false
     },
     selectedTab: "layout",
     activeEditPart: null,

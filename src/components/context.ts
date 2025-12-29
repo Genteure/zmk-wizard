@@ -9,6 +9,7 @@ export interface Navigation {
     generateLayout: boolean;
     importDevicetree: boolean;
     importLayoutJson: boolean;
+    importKleJson: boolean;
   };
   repoLink: string;
   selectedTab: string;

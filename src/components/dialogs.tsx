@@ -4,9 +4,9 @@ import { Tabs } from "@kobalte/core/tabs";
 import X from "lucide-solid/icons/x";
 import { createSignal, type VoidComponent } from "solid-js";
 import { ulid } from "ulidx";
-import { useWizardContext } from "./context";
 import type { Key } from "../typedef";
-import { parseLayoutJson, parsePhysicalLayoutDts } from "./layouthelper";
+import { useWizardContext } from "./context";
+import { parseKLE, parseLayoutJson, parsePhysicalLayoutDts } from "./layouthelper";
 
 export const GenerateLayoutDialog: VoidComponent = () => {
   const context = useWizardContext();
@@ -216,6 +216,57 @@ export const ImportLayoutJsonDialog: VoidComponent = () => {
                   }
                   context.setKeyboard("layout", parsed);
                   context.setNav("dialog", "importLayoutJson", false);
+                }}
+              >
+                Import
+              </Button>
+            </div>
+          </Dialog.Description>
+        </Dialog.Content>
+      </div>
+    </Dialog.Portal>
+  </Dialog>)
+}
+
+export const ImportKleJsonDialog: VoidComponent = () => {
+  const context = useWizardContext();
+  const [text, setText] = createSignal("");
+
+  return (<Dialog open={context.nav.dialog.importKleJson} onOpenChange={v => context.setNav("dialog", "importKleJson", v)}>
+    <Dialog.Portal>
+      <Dialog.Overlay class="dialog--overlay" />
+      <div class="dialog--positioner">
+        <Dialog.Content class="dialog--content max-w-lg">
+          <div class="dialog--header">
+            <Dialog.Title class="dialog--title">
+              Import Layout from KLE JSON
+            </Dialog.Title>
+            <Dialog.CloseButton class="btn btn-sm btn-circle btn-ghost cursor-pointer">
+              <X class="w-6 h-6" />
+            </Dialog.CloseButton>
+          </div>
+          <Dialog.Description>
+            <div class="flex flex-col gap-2">
+              <textarea
+                class="textarea w-full font-mono text-xs h-48"
+                placeholder={`Paste Keyboard Layout Editor (KLE) exported JSON here`}
+                value={text()}
+                onInput={e => setText(e.currentTarget.value)}
+                onChange={e => setText(e.currentTarget.value)}
+              />
+              <Button
+                class="btn btn-primary self-end"
+                disabled={text().trim().length === 0}
+                onClick={() => {
+                  const parsed = parseKLE(text());
+                  setText("");
+                  if (!parsed) {
+                    // TODO better UI
+                    alert("Unable to parse KLE JSON.");
+                    return;
+                  }
+                  context.setKeyboard("layout", parsed);
+                  context.setNav("dialog", "importKleJson", false);
                 }}
               >
                 Import

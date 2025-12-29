@@ -27,7 +27,7 @@ import { type Controller, type Key, type WiringType } from "../typedef";
 import { useWizardContext } from "./context";
 import { ControllerPinConfigurator } from "./controller";
 import { DataTable } from "./datatable";
-import { GenerateLayoutDialog, ImportDevicetreeDialog, ImportLayoutJsonDialog } from "./dialogs";
+import { GenerateLayoutDialog, ImportDevicetreeDialog, ImportKleJsonDialog, ImportLayoutJsonDialog } from "./dialogs";
 import { KeyboardPreview, type GraphicsKey } from "./graphics";
 import { physicalToLogical } from "./layouthelper";
 import { BuildButton, HelpButton, InfoEditButton } from "./navbar";
@@ -304,6 +304,7 @@ const ConfigLayout: Component = () => {
       <GenerateLayoutDialog />
       <ImportDevicetreeDialog />
       <ImportLayoutJsonDialog />
+      <ImportKleJsonDialog />
 
       <div class="flex flex-row gap-2 items-center flex-wrap justify-center">
 
@@ -412,56 +413,24 @@ const ConfigLayout: Component = () => {
                   as="li"
                   onSelect={() => context.setNav("dialog", "importLayoutJson", true)}
                 ><button>Import QMK-like Layout JSON</button></Menubar.Item>
-                <Menubar.Item disabled as="li" class="menu-disabled"><button>Import KLE JSON (TODO)</button></Menubar.Item>
+                <Menubar.Item
+                  as="li"
+                  onSelect={() => context.setNav("dialog", "importKleJson", true)}
+                ><button>Import KLE JSON</button></Menubar.Item>
                 <Menubar.Separator class="my-1" />
                 <Menubar.Item disabled as="li" class="menu-disabled"><button>Export ZMK Physical Layout DTS (TODO)</button></Menubar.Item>
                 <Menubar.Item disabled as="li" class="menu-disabled"><button>Export Layout JSON (TODO)</button></Menubar.Item>
                 <Menubar.Item disabled as="li" class="menu-disabled"><button>Export KLE JSON (TODO)</button></Menubar.Item>
                 <Menubar.Separator class="my-1" />
                 <Menubar.Item as="li"
-                  onSelect={() => window.open('https://nickcoutsos.github.io/keymap-layout-tools/', '_blank', 'noopener')}
+                // onSelect={() => window.open('https://nickcoutsos.github.io/keymap-layout-tools/', '_blank', 'noopener')}
                 ><a target="_blank" rel="noopener" href="https://nickcoutsos.github.io/keymap-layout-tools/"><span>KiCAD PCB<ArrowRight class="w-4 h-4 inline-block mx-1" />Layout JSON</span><div class="ml-auto pl-6"><ExternalLink class="w-5 h-5" /></div></a></Menubar.Item>
                 <Menubar.Item as="li"
-                  onSelect={() => window.open('https://nickcoutsos.github.io/keymap-layout-tools/', '_blank', 'noopener')}
-                ><a target="_blank" rel="noopener" href="https://nickcoutsos.github.io/keymap-layout-tools/"><span>KLE JSON<ArrowRight class="w-4 h-4 inline-block mx-1" />Layout JSON</span><div class="ml-auto pl-6"><ExternalLink class="w-5 h-5" /></div></a></Menubar.Item>
-                <Menubar.Item as="li"
-                  onSelect={() => window.open('https://qmk.fm/converter/', '_blank', 'noopener')}
-                ><a target="_blank" rel="noopener" href="https://qmk.fm/converter/"><span>KLE RAW<ArrowRight class="w-4 h-4 inline-block mx-1" />Layout JSON</span><div class="ml-auto pl-6"><ExternalLink class="w-5 h-5" /></div></a></Menubar.Item>
+                // onSelect={() => window.open('https://editor.keyboard-tools.xyz/', '_blank', 'noopener')}
+                ><a target="_blank" rel="noopener" href="https://editor.keyboard-tools.xyz/"><span>Keyboard Layout Editor NG</span><div class="ml-auto pl-6"><ExternalLink class="w-5 h-5" /></div></a></Menubar.Item>
               </Menubar.Content>
             </Menubar.Portal>
           </Menubar.Menu>
-          {/* <Menubar.Menu>
-            <Menubar.Trigger class="join-item btn btn-sm btn-soft">Map</Menubar.Trigger>
-            <Menubar.Portal>
-              <Menubar.Content class="p-2 bg-base-200 rounded shadow-lg border menu">
-                <Menubar.Item
-                  as="li"
-                  onSelect={() => context.setKeyboard("layout", produce(keys => physicalToLogical(keys, true)))}
-                ><button>From Physical to Logical (ignore current ordering)</button></Menubar.Item>
-                <Menubar.Item
-                  as="li"
-                  onSelect={() => context.setKeyboard("layout", produce(keys => physicalToLogical(keys, false)))}
-                ><button>From Physical to Logical (follow current ordering)</button></Menubar.Item>
-                <Menubar.Item
-                  as="li"
-                  onSelect={() => {
-                    context.setKeyboard("layout", produce(keys => {
-                      keys.forEach(k => {
-                        k.x = k.col;
-                        k.y = k.row;
-                        k.w = 1;
-                        k.h = 1;
-                        k.rx = 0;
-                        k.ry = 0;
-                        k.r = 0;
-                      })
-                    }))
-                    normalizeKeys();
-                  }}
-                ><button>From Logical to Physical</button></Menubar.Item>
-              </Menubar.Content>
-            </Menubar.Portal>
-          </Menubar.Menu> */}
         </Menubar>
 
         <Button
