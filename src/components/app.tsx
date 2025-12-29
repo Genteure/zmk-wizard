@@ -871,11 +871,11 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                       value={controllerDraft()}
                       onChange={e => setControllerDraft(e.currentTarget.value as Controller)}
                     >
-                      <option value="nice_nano_v2">nice!nano v2</option>
-                      <option value="nice_nano_v2">Supermini NRF52840 (nice!nano v2 clone)</option>
-                      <option value="nice_nano_v2">PROMICRO NRF52840 (nice!nano v2 clone)</option>
-                      <option value="nice_nano_v2">52840nano (nice!nano v2 clone)</option>
-                      <option value="" disabled>──────────</option>
+                      <option value="nice_nano_v2">nice!nano v2 (and clones)</option>
+                      <option disabled>├  Supermini NRF52840</option>
+                      <option disabled>├  PROMICRO NRF52840</option>
+                      <option disabled>├  52840nano</option>
+                      <option disabled>└  ...</option>
                       <option value="xiao_ble">Seeed XIAO nRF52840</option>
                       <option value="xiao_ble_plus">Seeed XIAO nRF52840 Plus</option>
                     </select>
@@ -889,8 +889,8 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                     >
                       <option value="matrix_diode">Matrix with Diodes</option>
                       <option value="direct_gnd">Direct to GND</option>
-                      <option value="" disabled>──────────</option>
-                      <option value="" disabled>Uncommon Wiring Types</option>
+                      <option disabled>──────────</option>
+                      <option disabled>Uncommon Wiring Types</option>
                       <option value="matrix_no_diode">Matrix without Diodes</option>
                       <option value="direct_vcc">Direct to VCC</option>
                     </select>
