@@ -1,5 +1,11 @@
 import { unwrap } from "solid-js/store";
-import { Controller, type Keyboard } from "~/typedef";
+import { controllerInfos } from "~/components/controllerInfo";
+import {
+  ControllerSchema,
+  type Controller,
+  type Keyboard,
+  type KeyboardPart
+} from "~/typedef";
 
 export const workflows_build_yml = `name: Build ZMK firmware
 on: [push, pull_request, workflow_dispatch]
@@ -60,29 +66,28 @@ export function build_yaml(keyboard: Keyboard): string {
 include:
 `;
 
-  const boardMapping: Record<Controller, string> = {
-    [Controller.enum.nice_nano_v2]: 'nice_nano_v2',
-    [Controller.enum.xiao_ble]: 'seeeduino_xiao_ble',
-    [Controller.enum.xiao_ble_plus]: 'seeeduino_xiao_ble',
-  }
+  const boardName = (controller: Controller): string => controllerInfos[controller].board;
+  const niceView = (part: KeyboardPart): string => (part.buses.some(bus => bus.devices.some(device => device.type === 'niceview')))
+    ? ' nice_view'
+    : '';
 
   if (keyboard.parts.length == 1) {
     // unibody
 
     content += `
-  - board: ${boardMapping[firstPart.controller]}
-    shield: ${keyboard.shield}
+  - board: ${boardName(firstPart.controller)}
+    shield: ${keyboard.shield}${niceView(firstPart)}
 
 # To build with ZMK Studio support, uncomment the following block
 # by removing the leading '#' from each line.
 
-#  - board: ${boardMapping[firstPart.controller]}
-#    shield: ${keyboard.shield}
+#  - board: ${boardName(firstPart.controller)}
+#    shield: ${keyboard.shield}${niceView(firstPart)}
 #    snippet: studio-rpc-usb-uart
 #    cmake-args: -DCONFIG_ZMK_STUDIO=y
 #    artifact-name: ${keyboard.shield}_with_studio
 
-  - board: ${boardMapping[firstPart.controller]}
+  - board: ${boardName(firstPart.controller)}
     shield: settings_reset
   `;
     if (keyboard.dongle) {
@@ -92,15 +97,15 @@ include:
 # See ZMK documentation on how to build and flash the firmware for dongle mode.
 # The "board" for the dongle can be anything ZMK supports.
 
-#  - board: ${boardMapping[firstPart.controller]}
+#  - board: ${boardName(firstPart.controller)}
 #    shield: ${keyboard.shield}_dongle
 
-#  - board: ${boardMapping[firstPart.controller]}
-#    shield: ${keyboard.shield}
+#  - board: ${boardName(firstPart.controller)}
+#    shield: ${keyboard.shield}${niceView(firstPart)}
 #    cmake-args: -DCONFIG_ZMK_SPLIT=y -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n
 #    artifact-name: ${keyboard.shield}_as_peripheral
 
-#  - board: ${boardMapping[firstPart.controller]}
+#  - board: ${boardName(firstPart.controller)}
 #    shield: ${keyboard.shield}_dongle
 #    snippet: studio-rpc-usb-uart
 #    cmake-args: -DCONFIG_ZMK_STUDIO=y
@@ -113,14 +118,14 @@ include:
 
     // central (first part)
     content += `
-  - board: ${boardMapping[firstPart.controller]}
-    shield: ${keyboard.shield}_${firstPart.name}
+  - board: ${boardName(firstPart.controller)}
+    shield: ${keyboard.shield}_${firstPart.name}${niceView(firstPart)}
 
 # To build with ZMK Studio support, uncomment the following block
 # by removing the leading '#' from each line.
 
-#  - board: ${boardMapping[firstPart.controller]}
-#    shield: ${keyboard.shield}_${firstPart.name}
+#  - board: ${boardName(firstPart.controller)}
+#    shield: ${keyboard.shield}_${firstPart.name}${niceView(firstPart)}
 #    snippet: studio-rpc-usb-uart
 #    cmake-args: -DCONFIG_ZMK_STUDIO=y
 #    artifact-name: ${keyboard.shield}_${firstPart.name}_with_studio
@@ -133,15 +138,15 @@ include:
 # See ZMK documentation on how to build and flash the firmware for dongle mode.
 # The "board" for the dongle can be anything ZMK supports.
 
-#  - board: ${boardMapping[firstPart.controller]}
+#  - board: ${boardName(firstPart.controller)}
 #    shield: ${keyboard.shield}_dongle
 
-#  - board: ${boardMapping[firstPart.controller]}
-#    shield: ${keyboard.shield}_${firstPart.name}
+#  - board: ${boardName(firstPart.controller)}
+#    shield: ${keyboard.shield}_${firstPart.name}${niceView(firstPart)}
 #    cmake-args: -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n
 #    artifact-name: ${keyboard.shield}_${firstPart.name}_as_peripheral
 
-#  - board: ${boardMapping[firstPart.controller]}
+#  - board: ${boardName(firstPart.controller)}
 #    shield: ${keyboard.shield}_dongle
 #    snippet: studio-rpc-usb-uart
 #    cmake-args: -DCONFIG_ZMK_STUDIO=y
@@ -152,8 +157,8 @@ include:
     // peripherals (rest parts)
     for (const part of keyboard.parts.slice(1)) {
       content += `
-  - board: ${boardMapping[part.controller]}
-    shield: ${keyboard.shield}_${part.name}
+  - board: ${boardName(part.controller)}
+    shield: ${keyboard.shield}_${part.name}${niceView(part)}
 `;
     }
 
@@ -161,7 +166,7 @@ include:
     const uniqueControllers = Array.from(new Set(keyboard.parts.map(part => part.controller)));
     for (const controller of uniqueControllers) {
       content += `
-  - board: ${boardMapping[controller]}
+  - board: ${boardName(controller)}
     shield: settings_reset
 `;
     }

@@ -1,9 +1,12 @@
-import { controllerInfos } from "~/components/controllerInfo";
-import { type Keyboard, ShieldNameSchema } from "~/typedef";
+import { busDeviceInfos, controllerInfos } from "~/components/controllerInfo";
+import { ShieldNameSchema, type Keyboard } from "~/typedef";
+import { BusNameSchema, isI2cBus, isSpiBus, type BusDeviceTypeName } from "~/types/buses";
 import { CommonShieldNames } from "./shieldNames";
 
 type ValidatorResult = string | string[] | null;
 type ValidatorFunction = (keyboard: Keyboard) => ValidatorResult;
+
+const validShifterPinIds: string[] = Array.from({ length: 32 }, (_, i) => `shifter${i}`);
 
 const Validators: Record<string, ValidatorFunction> = {
   displayName: (keyboard: Keyboard) => {
@@ -82,6 +85,206 @@ const Validators: Record<string, ValidatorFunction> = {
 
     return null;
   },
+  busConfiguration: (keyboard: Keyboard) => {
+    const errors: string[] = [];
+
+    keyboard.parts.forEach((part, partIndex) => {
+      const controllerInfo = controllerInfos[part.controller];
+      const validPins = controllerInfo ? new Set(Object.keys(controllerInfo.pins || {})) : null;
+
+      const busPinUsage = new Map<string, string>();
+      const seenBusNames = new Set<string>();
+      const seenDeviceTypes = new Set<BusDeviceTypeName>();
+
+      const recordPinUsage = (pinId: string, label: string) => {
+        const prev = busPinUsage.get(pinId);
+        if (prev && prev !== label) {
+          errors.push(`Pin "${pinId}" in part "${part.name}" is used for ${prev} and ${label}; choose distinct pins.`);
+        } else {
+          busPinUsage.set(pinId, label);
+        }
+      };
+
+      const validatePin = (pinId: string | undefined, label: string, required = false) => {
+        if (!pinId) {
+          if (required) {
+            errors.push(`${label} in part "${part.name}" is not set`);
+          }
+          return false;
+        }
+
+        if (validPins && !validPins.has(pinId)) {
+          errors.push(`Pin "${pinId}" for ${label} in part "${part.name}" does not exist on controller "${part.controller}"`);
+        }
+
+        const mode = part.pins?.[pinId];
+        if (mode && mode !== "bus") {
+          errors.push(`Pin "${pinId}" for ${label} in part "${part.name}" is marked as "${mode}" instead of "bus"`);
+        }
+
+        recordPinUsage(pinId, label);
+        return true;
+      };
+
+      for (const bus of part.buses || []) {
+        const nameValidation = BusNameSchema.safeParse(bus.name);
+        if (!nameValidation.success) {
+          const [issue] = nameValidation.error.issues;
+          errors.push(`Bus name "${bus.name}" in part "${part.name}" is invalid${issue?.message ? `: ${issue.message}` : ""}`);
+        }
+
+        if (seenBusNames.has(bus.name)) {
+          errors.push(`Bus name "${bus.name}" is duplicated in part "${part.name}"`);
+        }
+        seenBusNames.add(bus.name);
+
+        const devices = bus.devices || [];
+
+        for (const device of devices) {
+          const type = device.type as BusDeviceTypeName;
+          if (seenDeviceTypes.has(type)) {
+            errors.push(`Part "${part.name}" has multiple "${type}" devices; only one is supported per part`);
+          }
+          seenDeviceTypes.add(type);
+        }
+
+        if (isI2cBus(bus)) {
+          for (const device of devices) {
+            if (device.type !== "ssd1306") {
+              errors.push(`Device type "${device.type}" is not allowed on I2C bus "${bus.name}" in part "${part.name}"`);
+            }
+          }
+
+          if (devices.length > 0) {
+            const hasSda = validatePin(bus.sda, `bus "${bus.name}" SDA`, true);
+            const hasScl = validatePin(bus.scl, `bus "${bus.name}" SCL`, true);
+
+            if (hasSda && hasScl && bus.sda === bus.scl) {
+              errors.push(`Bus "${bus.name}" in part "${part.name}" must use different pins for SDA and SCL`);
+            }
+          }
+        } else if (isSpiBus(bus)) {
+          const exclusiveDevices = devices.filter((d) => busDeviceInfos[d.type as BusDeviceTypeName]?.exclusive);
+          if (exclusiveDevices.length > 0 && devices.length > 1) {
+            errors.push(`Bus "${bus.name}" in part "${part.name}" contains exclusive device "${exclusiveDevices[0]?.type}" and cannot share the bus with other devices`);
+          }
+
+          for (const device of devices) {
+            if (device.type === "ssd1306") {
+              errors.push(`Device type "${device.type}" is not allowed on SPI bus "${bus.name}" in part "${part.name}"`);
+            }
+          }
+
+          const requiredSignals = new Set<string>();
+          for (const device of devices) {
+            const info = busDeviceInfos[device.type as BusDeviceTypeName];
+            if (!info?.needs) continue;
+            for (const [signal, needed] of Object.entries(info.needs)) {
+              if (!needed) continue;
+              if (signal !== "cs") {
+                requiredSignals.add(signal);
+              }
+            }
+          }
+
+          if (devices.length > 0) {
+            for (const sig of requiredSignals) {
+              const value = (bus as unknown as Record<string, string | undefined>)[sig];
+              validatePin(value, `bus "${bus.name}" ${sig.toUpperCase()}`, true);
+            }
+          }
+
+          (["mosi", "miso", "sck"] as const).forEach((sig) => {
+            const value = bus[sig];
+            if (value) {
+              validatePin(value, `bus "${bus.name}" ${sig.toUpperCase()}`);
+            }
+          });
+
+          const csUsage = new Map<string, string>();
+          devices.forEach((device, idx) => {
+            const info = busDeviceInfos[device.type as BusDeviceTypeName];
+            const needsCs = info?.needs?.cs;
+            const cs = (device as Record<string, string | undefined>).cs;
+
+            if (needsCs && !cs) {
+              errors.push(`Device "${device.type}" on bus "${bus.name}" in part "${part.name}" requires a CS pin`);
+              return;
+            }
+
+            if (cs) {
+              validatePin(cs, `bus "${bus.name}" CS for device ${device.type}`, Boolean(needsCs));
+              if (csUsage.has(cs)) {
+                csUsage.set(cs, `${csUsage.get(cs)} and device ${device.type}`);
+                errors.push(`Multiple devices on bus "${bus.name}" in part "${part.name}" share CS pin "${cs}"`);
+              } else {
+                csUsage.set(cs, `device ${device.type} #${idx}`);
+              }
+            }
+          });
+
+          const definedBusPins = [
+            { label: "MOSI", value: bus.mosi },
+            { label: "MISO", value: bus.miso },
+            { label: "SCK", value: bus.sck },
+          ].filter((entry) => Boolean(entry.value));
+
+          const seenWithinBus = new Map<string, string>();
+          for (const entry of definedBusPins) {
+            const pinId = entry.value as string;
+            if (seenWithinBus.has(pinId)) {
+              errors.push(`Bus "${bus.name}" in part "${part.name}" uses pin "${pinId}" for both ${seenWithinBus.get(pinId)} and ${entry.label}`);
+            } else {
+              seenWithinBus.set(pinId, entry.label);
+            }
+          }
+        } else {
+          const unknownBus = bus as unknown as { name?: string; type?: string };
+          errors.push(`Bus "${unknownBus.name ?? "<unknown>"}" in part "${part.name}" has unknown type "${unknownBus.type ?? "unknown"}"`);
+        }
+      }
+
+      const activeBuses = (part.buses || []).filter((b) => (b.devices || []).length > 0);
+      const seenConflictPairs = new Set<string>();
+      for (const bus of activeBuses) {
+        const conflicts = controllerInfo?.busConflicts?.[bus.name] || [];
+        for (const conflictName of conflicts) {
+          if (activeBuses.some((b) => b.name === conflictName)) {
+            const key = [bus.name, conflictName].sort().join("|");
+            if (!seenConflictPairs.has(key)) {
+              seenConflictPairs.add(key);
+              errors.push(`Part "${part.name}" uses conflicting buses "${bus.name}" and "${conflictName}" simultaneously`);
+            }
+          }
+        }
+      }
+
+      if (validPins) {
+        const keyPinUsage = new Map<string, string[]>();
+        keyboard.layout.forEach((key) => {
+          if (key.part !== partIndex) return;
+          const wiring = part.keys[key.id];
+          if (!wiring) return;
+          const pins = [wiring.input, wiring.output];
+          pins.forEach((pin) => {
+            if (!pin || !validPins.has(pin)) return;
+            const list = keyPinUsage.get(pin) || [];
+            list.push(key.id);
+            keyPinUsage.set(pin, list);
+          });
+        });
+
+        for (const [pinId, label] of busPinUsage.entries()) {
+          const wiredKeys = keyPinUsage.get(pinId);
+          if (wiredKeys && wiredKeys.length > 0) {
+            errors.push(`Pin "${pinId}" in part "${part.name}" is used for ${label} and also wired to key(s) ${wiredKeys.join(", ")}`);
+          }
+        }
+      }
+    });
+
+    return errors.length > 0 ? errors : null;
+  },
   keyHaveValidWiring: (keyboard: Keyboard) => {
     // Validate each key based on its owning part's wiring type and pin modes
     const visitedKeyIds = new Set<string>();
@@ -107,6 +310,20 @@ const Validators: Record<string, ValidatorFunction> = {
       }
     };
 
+    const shifterPinCountPerPart: number[] = keyboard.parts.map((part) => {
+      const shifterDevice = (() => {
+        for (const bus of part.buses) {
+          for (const device of bus.devices) {
+            if (device.type === "74hc595") {
+              return device;
+            }
+          }
+        }
+        return null;
+      })();
+      return shifterDevice?.ngpios || 0;
+    });
+
     keyboard.layout.forEach((key, index) => {
       // Skip duplicate IDs defensively
       if (visitedKeyIds.has(key.id)) {
@@ -129,6 +346,11 @@ const Validators: Record<string, ValidatorFunction> = {
       const inputPin = wiring?.input;
       const outputPin = wiring?.output;
 
+      // shifterPinIndex is either not found (-1) or the index of the pin within the shifter pins
+      const shifterPinIndex = validShifterPinIds.findIndex((pid) => pid === outputPin);
+      // for a shifter pin to be valid, it must be within the range of pins provided by the shifter device on this part
+      const isValidShifterOutput = shifterPinIndex >= 0 && shifterPinIndex < shifterPinCountPerPart[key.part];
+
       if (isMatrix) {
         // Matrix wiring requires both input and output pins and they must exist with correct modes
         const hasInput = typeof inputPin === "string" && inputPin !== "";
@@ -144,7 +366,7 @@ const Validators: Record<string, ValidatorFunction> = {
         if (!hasOutput) {
           ensurePartRecord(part.name);
           missingPinsByPart[part.name].output.push(index);
-        } else if (part.pins[outputPin] !== "output") {
+        } else if (!isValidShifterOutput && part.pins[outputPin] !== "output") {
           errors.push(`Key ${index} in part "${part.name}" uses output pin "${outputPin}" which is not configured as output`);
         }
 
@@ -242,7 +464,7 @@ const Validators: Record<string, ValidatorFunction> = {
         continue;
       }
 
-      const validPinIds = Object.keys(controllerInfo.dtsMap);
+      const validPinIds = Object.keys(controllerInfo.pins);
       const invalidSelections: string[] = [];
 
       // Validate selected pin modes against controller pin availability
@@ -262,6 +484,7 @@ const Validators: Record<string, ValidatorFunction> = {
     }
     return null;
   },
+
 };
 
 export function validateKeyboard(keyboard: Keyboard): string[] {

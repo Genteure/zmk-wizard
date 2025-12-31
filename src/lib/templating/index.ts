@@ -5,8 +5,6 @@ import {
   config__keymap,
   config_west_yml,
   readme_md,
-  shield__kconfig_defconfig,
-  shield__kconfig_shield,
   workflows_build_yml,
   zephyr_module_yml,
 } from "./contents";
@@ -26,9 +24,6 @@ export function createZMKConfig(keyboard: Keyboard): VirtualTextFolder {
   files['zephyr/module.yml'] = zephyr_module_yml(keyboard);
   files['build.yaml'] = build_yaml(keyboard);
   files['README.md'] = readme_md(keyboard);
-
-  files[`${shieldPath}/Kconfig.shield`] = shield__kconfig_shield(keyboard);
-  files[`${shieldPath}/Kconfig.defconfig`] = shield__kconfig_defconfig(keyboard);
 
   addXiaoBlePlusExtraFiles(files, shieldPath, keyboard);
 

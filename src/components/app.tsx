@@ -1,6 +1,6 @@
 import { createTimer, makeTimer } from "@solid-primitives/timer";
 import { createEffect, createMemo, createSignal, For, type Accessor, type Component, type VoidComponent } from "solid-js";
-import { createStore, produce } from "solid-js/store";
+import { produce } from "solid-js/store";
 
 import { Button } from "@kobalte/core/button";
 import { Dialog } from "@kobalte/core/dialog";
@@ -25,15 +25,16 @@ import { swpBgClass } from "~/lib/swpColors";
 import { copyWiringBetweenParts, type WiringTransform } from "~/lib/wiringMapping";
 import { type Controller, type Key, type WiringType } from "../typedef";
 import { useWizardContext } from "./context";
-import { ControllerPinConfigurator } from "./controller";
+import { BusDevicesConfigurator, ControllerPinConfigurator, ShiftRegisterPinConfigurator } from "./controller";
 import { DataTable } from "./datatable";
 import { GenerateLayoutDialog, ImportDevicetreeDialog, ImportKleJsonDialog, ImportLayoutJsonDialog } from "./dialogs";
 import { KeyboardPreview, type GraphicsKey } from "./graphics";
 import { physicalToLogical } from "./layouthelper";
 import { BuildButton, HelpButton, InfoEditButton } from "./navbar";
+import { loadBusesForController } from "./controllerInfo";
 
-export function ensureKeyIds(keys: any[]) {
-  return keys.map(k => ({ ...k, id: (k as any).id ?? ulid() }));
+export function ensureKeyIds(keys: Key[]) {
+  return keys.map(k => ({ ...k, id: k.id ?? ulid() }));
 }
 
 export const App: VoidComponent = () => {
@@ -77,8 +78,14 @@ export const App: VoidComponent = () => {
 
     const pinId = context.nav.activeWiringPin;
     if (!pinId) return;
-    const mode = context.keyboard.parts[partIdx].pins[pinId];
+
+    const isShifterPin = pinId.startsWith("shifter");
+    const mode = isShifterPin ? "output" : context.keyboard.parts[partIdx].pins[pinId];
     if (!mode) return;
+
+    const wiringType = context.keyboard.parts[partIdx].wiring;
+    const isMatrix = wiringType === "matrix_diode" || wiringType === "matrix_no_diode";
+    if (isShifterPin && !isMatrix) return;
 
     const keyId = key.id;
     context.setKeyboard("parts", partIdx, "keys", produce((keys) => {
@@ -703,7 +710,6 @@ const wiringLabel = (id: WiringType) => wiringLabelMap[id] ?? id;
 const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
   const context = useWizardContext();
   const part = createMemo(() => context.keyboard.parts[props.partIndex()]);
-  const pinStoreFunctions = createMemo(() => createStore(part().pins || {}));
 
   // -- Part Name Editing -- //
 
@@ -740,6 +746,9 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
     context.setKeyboard("parts", props.partIndex(), produce((p) => {
       p.controller = controllerDraft();
       p.wiring = wiringDraft();
+      if (controllerChanged) {
+        p.buses = loadBusesForController(p.controller);
+      }
 
       if (controllerChanged || wiringChanged) {
         p.pins = {};
@@ -773,12 +782,13 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
       p.controller = result.controller;
       p.wiring = result.wiring;
       p.pins = result.pins;
+      p.buses = result.buses;
       p.keys = result.keys;
     }));
   };
 
   return (
-    <div class="flex flex-col items-center gap-2 py-2">
+    <div class="flex flex-col items-center gap-2 py-2 mb-8">
 
       <div class="w-full max-w-xs border-b border-base-300 p-2 bg-base-200/60 rounded-xl flex items-center gap-2">
         <div class="flex-1 flex items-center justify-center text-lg">
@@ -940,11 +950,18 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
       <div class="w-full max-w-5xl">
         <ControllerPinConfigurator
           partIndex={props.partIndex}
-          pins={pinStoreFunctions()[0]}
-          setPins={pinStoreFunctions()[1]}
           controllerId={part().controller}
         />
       </div>
+
+      <div class="w-full p-2">
+        <ShiftRegisterPinConfigurator partIndex={props.partIndex} />
+      </div>
+
+      <div class="w-full p-2">
+        <BusDevicesConfigurator partIndex={props.partIndex} />
+      </div>
+
     </div>
   );
 };

@@ -1,5 +1,7 @@
 import { z } from "astro:schema";
-import { ulid } from "ulidx";
+import { isValid as isValidUlid, ulid } from "ulidx";
+import { AnyBusSchema } from "./types/buses";
+export * from "./types/buses";
 
 export interface Point {
   x: number;
@@ -21,7 +23,6 @@ export const ControllerSchema = z.enum([
   "xiao_ble",
   "xiao_ble_plus",
 ]);
-export const Controller = ControllerSchema;
 export type Controller = z.infer<typeof ControllerSchema>;
 
 export const WiringTypeSchema = z.enum([
@@ -30,33 +31,19 @@ export const WiringTypeSchema = z.enum([
   "direct_gnd",
   "direct_vcc",
 ]);
-export const WiringType = WiringTypeSchema;
 export type WiringType = z.infer<typeof WiringTypeSchema>;
 
-export const PinModeSchema = z.enum(["input", "output"]);
-export const PinMode = PinModeSchema;
+export const PinModeSchema = z.enum(["input", "output", "bus"]);
 export type PinMode = z.infer<typeof PinModeSchema>;
 
 export const PinSelectionSchema = z.record(PinModeSchema.optional());
-export const PinSelection = PinSelectionSchema;
 export type PinSelection = z.infer<typeof PinSelectionSchema>;
 
 export const SingleKeyWiringSchema = z.object({
   input: z.string().max(10).optional(),
   output: z.string().max(10).optional(),
 });
-export const SingleKeyWiring = SingleKeyWiringSchema;
 export type SingleKeyWiring = z.infer<typeof SingleKeyWiringSchema>;
-
-export interface PinInfo {
-  name: string;
-  /** Example: "&pro_micro 0" */
-  handle: string;
-}
-
-export interface ControllerInfo {
-  pins: Record<string, PinInfo>;
-}
 
 export const KeyboardPartSchema = z.object({
   name: z.string()
@@ -73,13 +60,46 @@ export const KeyboardPartSchema = z.object({
    * Key wiring
    */
   keys: z.record(z.string(), SingleKeyWiringSchema.optional()), // key id to wiring
-});
 
-export const KeyboardPart = KeyboardPartSchema;
+  buses: z.array(AnyBusSchema).default([]),
+
+  // // TODO need to think about this, should devices stored here or under each bus?
+  // devices: z.array(z.object({
+  //   name: z.string().min(1).max(32),
+  //   cs: z.string().max(10),
+  // })).optional(),
+
+  // devices: z.object({
+  //   display: DisplayDeviceSchema.optional(),
+  //   ledStrip: LEDStripDeviceSchema.optional(),
+  //   shifter: ShiftRegisterDeviceSchema.optional(),
+  // }),
+
+  // Users can attach devices to one or more SPI buses
+  // spi: z.array(z.object({
+  //   name: BusNameSchema,
+  //   enable: z.boolean().default(false),
+  //   mosi: z.string().max(10).optional(),
+  //   miso: z.string().max(10).optional(),
+  //   sck: z.string().max(10).optional(),
+  // })),
+
+  // i2c: z.array(z.object({
+  //   name: BusNameSchema,
+  //   enable: z.boolean().default(false),
+  //   sda: z.string().max(10),
+  //   scl: z.string().max(10),
+  // })),
+});
 export type KeyboardPart = z.infer<typeof KeyboardPartSchema>;
 
 export const KeySchema = z.object({
-  id: z.string().min(1).default(() => ulid()),
+  // ULID is 26 chars Crockford base32 (no I, L, O, U)
+  id: z.string()
+    .length(26, "Key id must be 26 characters long")
+    .refine((value) => isValidUlid(value), "Key id must be a valid ULID")
+    .default(() => ulid()),
+
   /**
    * Which part of the split keyboard this key belongs to.
    * For unibody keyboards, this is always 0.
@@ -124,7 +144,6 @@ export const KeySchema = z.object({
    */
   ry: z.number(), // .default(0),
 });
-export const Key = KeySchema;
 export type Key = z.infer<typeof KeySchema>;
 
 export const ShieldNameSchema = z.string()
@@ -142,8 +161,6 @@ export const KeyboardSchema = z.object({
   layout: z.array(KeySchema).min(1, "Keyboard must have at least one key"),
   parts: z.array(KeyboardPartSchema).min(1, "Keyboard must have at least one part"),
 });
-
-export const Keyboard = KeyboardSchema;
 export type Keyboard = z.infer<typeof KeyboardSchema>;
 
 export type KeyboardSnapshot = {

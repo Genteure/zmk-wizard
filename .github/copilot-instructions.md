@@ -1,4 +1,6 @@
-Shield Wizard for ZMK
+# Shield Wizard for ZMK
+
+## Overview
 
 - Purpose: a Solid + Astro web app that generates a ZMK keyboard user config git repository (packed as a tar.gz) and stores it in a Cloudflare Workers KV binding for later download.
 
@@ -9,6 +11,7 @@ Shield Wizard for ZMK
 - Intended audience: Users who want to create custom keyboard layouts and configurations for ZMK-powered keyboards without manually writing configuration files.
 
 - High-level architecture (what to read first):
+
   - `src/components/typedef.ts` — shared types/interfaces for keyboard model.
   - `src/components/context.ts` — SolidJS context provider for UI state management.
   - `src/components/*` — UI built with SolidJS components (entry point: `src/components/main.tsx`).
@@ -20,6 +23,7 @@ Shield Wizard for ZMK
   - `scripts/updatePhysicalLayouts.ts` → generates `src/lib/physicalLayouts.json` from a local ZMK repo; invoked via `pnpm layouts <path-to-zmk>`.
 
 - Important workflows / commands:
+
   - Install: `pnpm i` (this repo uses pnpm)
   - Dev server: `pnpm dev`
   - Build: `pnpm build`
@@ -34,3 +38,19 @@ Shield Wizard for ZMK
   - Kobalte: https://kobalte.dev/ (SolidJS component library, unstyled). Commonly used components are:
     - Dialog: https://kobalte.dev/docs/core/components/dialog
     - Popover: https://kobalte.dev/docs/core/components/popover
+
+## Development notes
+
+### Solid.js reactivity
+
+- SolidJS uses fine-grained reactivity based on signals. Unlike React, components do not re-render when state changes; instead, only the parts of the DOM that depend on changed signals are updated.
+- SolidJS uses JSX syntax similar to React, but with key differences in how state and effects are managed. Make sure we are not using React patterns.
+- State management is typically done using `createSignal`, `createEffect`, and `createMemo` from `solid-js`.
+- Signals are created with `createSignal(initialValue)`, which returns a getter and setter function. Always evoke the getter function to access the value. Do not destructure signals. Do not access signals prematurely outside of reactive contexts.
+- Do not destructure props in SolidJS components, as this breaks reactivity. Always access props directly via `props.propName`.
+- Use `createMemo` for derived/computed values that depend on other signals. Simple multi-stage data access can be done without `createMemo`, for example: `const value = () => props.obj().nested.value`.
+- Use `createEffect` for side effects that should run when signals change. Avoid putting non-side-effect code inside `createEffect`.
+- Use SolidJS built-in control flow components like `<For>`, `<Show>`, and `<Switch>` for conditional rendering and lists, instead of JavaScript control flow.
+- Do not destructure stores created with `createStore`. Always access store properties directly via `store.propName` to maintain reactivity.
+- Use `mergeProps` from `solid-js` to provide default prop values in components. Use `splitProps` to separate props into local and passthrough groups when needed.
+- There's no `useCallback` in SolidJS.

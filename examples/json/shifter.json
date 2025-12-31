@@ -1,0 +1,391 @@
+{
+  "name": "Shifter Test",
+  "shield": "shifter_test",
+  "dongle": true,
+  "layout": [
+    {
+      "id": "01KDSFG46MT7EF8KND08JBAXAD",
+      "part": 0, "row": 0, "col": 0, "w": 1, "h": 1, "x": 0, "y": 0.95, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46M6EJ1T9JZFN5AT78G",
+      "part": 0, "row": 0, "col": 1, "w": 1, "h": 1, "x": 1, "y": 0.32, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46MNB3JCCD44BGWWPND",
+      "part": 0, "row": 0, "col": 2, "w": 1, "h": 1, "x": 2, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46M186RE59WWMWE0MDP",
+      "part": 0, "row": 0, "col": 3, "w": 1, "h": 1, "x": 3, "y": 0.28, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46MJW4SZHXQMKVTEGCK",
+      "part": 0, "row": 0, "col": 4, "w": 1, "h": 1, "x": 4, "y": 0.42, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46M1SB9A7G3K4ZPKF68",
+      "part": 1, "row": 0, "col": 5, "w": 1, "h": 1, "x": 7, "y": 0.42, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46MQ8X9EQ88MCGTMAKQ",
+      "part": 1, "row": 0, "col": 6, "w": 1, "h": 1, "x": 8, "y": 0.28, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46M3W5D4THCDCHKE8PD",
+      "part": 1, "row": 0, "col": 7, "w": 1, "h": 1, "x": 9, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46MYRKK03H2PBGH0W1N",
+      "part": 1, "row": 0, "col": 8, "w": 1, "h": 1, "x": 10, "y": 0.32, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46MBK52QP2EA6ECRG4E",
+      "part": 1, "row": 0, "col": 9, "w": 1, "h": 1, "x": 11, "y": 0.95, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46M4MMJJR0YM9GFMNAF",
+      "part": 0, "row": 1, "col": 0, "w": 1, "h": 1, "x": 0, "y": 1.95, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46N8KTYQVPCTF1R90KB",
+      "part": 0, "row": 1, "col": 1, "w": 1, "h": 1, "x": 1, "y": 1.32, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46NV152NZ4PMQ30XAQP",
+      "part": 0, "row": 1, "col": 2, "w": 1, "h": 1, "x": 2, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46NSNK1SK894Q1AGYGM",
+      "part": 0, "row": 1, "col": 3, "w": 1, "h": 1, "x": 3, "y": 1.29, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46NZV8ZCNTPE2KNGZBH",
+      "part": 0, "row": 1, "col": 4, "w": 1, "h": 1, "x": 4, "y": 1.42, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46NMTWCY2J5FDT0PQJ7",
+      "part": 1, "row": 1, "col": 5, "w": 1, "h": 1, "x": 7, "y": 1.42, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46NYXDV2PFZGC9YBJZE",
+      "part": 1, "row": 1, "col": 6, "w": 1, "h": 1, "x": 8, "y": 1.29, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46NDB7FWS6FFY8W3THZ",
+      "part": 1, "row": 1, "col": 7, "w": 1, "h": 1, "x": 9, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46N7JNCT1WHH9B09NFM",
+      "part": 1, "row": 1, "col": 8, "w": 1, "h": 1, "x": 10, "y": 1.32, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46NNC0KSFMEY5MMHCXX",
+      "part": 1, "row": 1, "col": 9, "w": 1, "h": 1, "x": 11, "y": 1.95, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46NVNY65ZXNBCRK1M5P",
+      "part": 0, "row": 2, "col": 0, "w": 1, "h": 1, "x": 0, "y": 2.95, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46NGMN3PNSCC145K13G",
+      "part": 0, "row": 2, "col": 1, "w": 1, "h": 1, "x": 1, "y": 2.31, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46NFK3Z9TGZPB6C2H9D",
+      "part": 0, "row": 2, "col": 2, "w": 1, "h": 1, "x": 2, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46NECY7ATDN8XT3H3Y6",
+      "part": 0, "row": 2, "col": 3, "w": 1, "h": 1, "x": 3, "y": 2.29, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46NS7AG066JKNQMRFYA",
+      "part": 0, "row": 2, "col": 4, "w": 1, "h": 1, "x": 4, "y": 2.42, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46NHRASG700HGJN1SRW",
+      "part": 1, "row": 2, "col": 5, "w": 1, "h": 1, "x": 7, "y": 2.42, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46N5X21AR1YSA5G438A",
+      "part": 1, "row": 2, "col": 6, "w": 1, "h": 1, "x": 8, "y": 2.29, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46NV9BRJSPATXD252B9",
+      "part": 1, "row": 2, "col": 7, "w": 1, "h": 1, "x": 9, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46N6Z5ARZV05PRFPTZ9",
+      "part": 1, "row": 2, "col": 8, "w": 1, "h": 1, "x": 10, "y": 2.31, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46NWRVMP36J0EGW0ND9",
+      "part": 1, "row": 2, "col": 9, "w": 1, "h": 1, "x": 11, "y": 2.95, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KDSFG46N4PBHGEQ0VFX62SDH",
+      "part": 0, "row": 3, "col": 3, "w": 1, "h": 1, "x": 3.3, "y": 3.55, "r": 15, "rx": 4.3, "ry": 4.55
+    },
+    {
+      "id": "01KDSFG46N78CXTDS6AE0ECAQ7",
+      "part": 0, "row": 3, "col": 4, "w": 1, "h": 1, "x": 4.3, "y": 3.55, "r": 30, "rx": 4.3, "ry": 4.55
+    },
+    {
+      "id": "01KDSFG46NJSJWW933G5Z9R7XF",
+      "part": 1, "row": 3, "col": 5, "w": 1, "h": 1, "x": 6.7, "y": 3.55, "r": -30, "rx": 7.7, "ry": 4.55
+    },
+    {
+      "id": "01KDSFG46NRTY8XWZ0W0KV9265",
+      "part": 1, "row": 3, "col": 6, "w": 1, "h": 1, "x": 7.7, "y": 3.55, "r": -15, "rx": 7.7, "ry": 4.55
+    }
+  ],
+  "parts": [
+    {
+      "name": "left",
+      "controller": "nice_nano_v2",
+      "wiring": "matrix_diode",
+      "keys": {
+        "01KDSFG46MT7EF8KND08JBAXAD": {
+          "output": "shifter0",
+          "input": "d9"
+        },
+        "01KDSFG46M4MMJJR0YM9GFMNAF": {
+          "output": "shifter0",
+          "input": "d8"
+        },
+        "01KDSFG46NVNY65ZXNBCRK1M5P": {
+          "output": "shifter0",
+          "input": "d7"
+        },
+        "01KDSFG46M6EJ1T9JZFN5AT78G": {
+          "output": "shifter1",
+          "input": "d9"
+        },
+        "01KDSFG46N8KTYQVPCTF1R90KB": {
+          "output": "shifter1",
+          "input": "d8"
+        },
+        "01KDSFG46NGMN3PNSCC145K13G": {
+          "output": "shifter1",
+          "input": "d7"
+        },
+        "01KDSFG46MNB3JCCD44BGWWPND": {
+          "output": "shifter2",
+          "input": "d9"
+        },
+        "01KDSFG46NV152NZ4PMQ30XAQP": {
+          "output": "shifter2",
+          "input": "d8"
+        },
+        "01KDSFG46NFK3Z9TGZPB6C2H9D": {
+          "output": "shifter2",
+          "input": "d7"
+        },
+        "01KDSFG46M186RE59WWMWE0MDP": {
+          "output": "shifter3",
+          "input": "d9"
+        },
+        "01KDSFG46NSNK1SK894Q1AGYGM": {
+          "output": "shifter3",
+          "input": "d8"
+        },
+        "01KDSFG46NECY7ATDN8XT3H3Y6": {
+          "output": "shifter3",
+          "input": "d7"
+        },
+        "01KDSFG46MJW4SZHXQMKVTEGCK": {
+          "output": "shifter4",
+          "input": "d9"
+        },
+        "01KDSFG46NZV8ZCNTPE2KNGZBH": {
+          "output": "shifter4",
+          "input": "d8"
+        },
+        "01KDSFG46NS7AG066JKNQMRFYA": {
+          "output": "shifter4",
+          "input": "d7"
+        },
+        "01KDSFG46N78CXTDS6AE0ECAQ7": {
+          "output": "shifter5",
+          "input": "d9"
+        },
+        "01KDSFG46N4PBHGEQ0VFX62SDH": {
+          "output": "shifter5",
+          "input": "d8"
+        }
+      },
+      "pins": {
+        "d9": "input",
+        "d8": "input",
+        "d7": "input",
+        "p101": "bus",
+        "p102": "bus",
+        "p107": "bus"
+      },
+      "buses": [
+        {
+          "type": "spi",
+          "name": "spi0",
+          "devices": [
+            {
+              "type": "74hc595",
+              "cs": "p101",
+              "ngpios": 8
+            }
+          ],
+          "mosi": "p102",
+          "sck": "p107"
+        },
+        {
+          "type": "spi",
+          "name": "spi1",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi2",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi3",
+          "devices": []
+        },
+        {
+          "type": "i2c",
+          "name": "i2c0",
+          "devices": []
+        },
+        {
+          "type": "i2c",
+          "name": "i2c1",
+          "devices": []
+        }
+      ]
+    },
+    {
+      "name": "right",
+      "controller": "nice_nano_v2",
+      "wiring": "matrix_diode",
+      "keys": {
+        "01KDSFG46M1SB9A7G3K4ZPKF68": {
+          "input": "d9",
+          "output": "shifter4"
+        },
+        "01KDSFG46MQ8X9EQ88MCGTMAKQ": {
+          "input": "d9",
+          "output": "shifter3"
+        },
+        "01KDSFG46M3W5D4THCDCHKE8PD": {
+          "input": "d9",
+          "output": "shifter2"
+        },
+        "01KDSFG46MYRKK03H2PBGH0W1N": {
+          "input": "d9",
+          "output": "shifter1"
+        },
+        "01KDSFG46MBK52QP2EA6ECRG4E": {
+          "input": "d9",
+          "output": "shifter0"
+        },
+        "01KDSFG46NMTWCY2J5FDT0PQJ7": {
+          "input": "d8",
+          "output": "shifter4"
+        },
+        "01KDSFG46NYXDV2PFZGC9YBJZE": {
+          "input": "d8",
+          "output": "shifter3"
+        },
+        "01KDSFG46NDB7FWS6FFY8W3THZ": {
+          "input": "d8",
+          "output": "shifter2"
+        },
+        "01KDSFG46N7JNCT1WHH9B09NFM": {
+          "input": "d8",
+          "output": "shifter1"
+        },
+        "01KDSFG46NNC0KSFMEY5MMHCXX": {
+          "input": "d8",
+          "output": "shifter0"
+        },
+        "01KDSFG46NHRASG700HGJN1SRW": {
+          "input": "d7",
+          "output": "shifter4"
+        },
+        "01KDSFG46N5X21AR1YSA5G438A": {
+          "input": "d7",
+          "output": "shifter3"
+        },
+        "01KDSFG46NV9BRJSPATXD252B9": {
+          "input": "d7",
+          "output": "shifter2"
+        },
+        "01KDSFG46N6Z5ARZV05PRFPTZ9": {
+          "input": "d7",
+          "output": "shifter1"
+        },
+        "01KDSFG46NWRVMP36J0EGW0ND9": {
+          "input": "d7",
+          "output": "shifter0"
+        },
+        "01KDSFG46NJSJWW933G5Z9R7XF": {
+          "input": "d9",
+          "output": "shifter5"
+        },
+        "01KDSFG46NRTY8XWZ0W0KV9265": {
+          "input": "d8",
+          "output": "shifter5"
+        }
+      },
+      "pins": {
+        "d9": "input",
+        "d8": "input",
+        "d7": "input",
+        "p102": "bus",
+        "p107": "bus",
+        "p101": "bus"
+      },
+      "buses": [
+        {
+          "type": "spi",
+          "name": "spi0",
+          "mosi": "p102",
+          "sck": "p107",
+          "devices": [
+            {
+              "type": "74hc595",
+              "cs": "p101",
+              "ngpios": 8
+            }
+          ]
+        },
+        {
+          "type": "spi",
+          "name": "spi1",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi2",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi3",
+          "devices": []
+        },
+        {
+          "type": "i2c",
+          "name": "i2c0",
+          "devices": []
+        },
+        {
+          "type": "i2c",
+          "name": "i2c1",
+          "devices": []
+        }
+      ]
+    }
+  ]
+}

@@ -5,9 +5,9 @@ import {
   createMemo,
   createSignal,
   For,
+  Match,
   Show,
   Switch,
-  Match,
   type Accessor,
   type JSX,
   type VoidComponent,
@@ -28,7 +28,9 @@ import {
   type Point,
 } from "~/lib/geometry";
 import { swpBgClass, swpBorderClass } from "~/lib/swpColors";
+import type { Key, KeyboardPart, SingleKeyWiring, WiringType } from "../typedef";
 import { useWizardContext } from "./context";
+import { controllerInfos } from "./controllerInfo";
 import {
   createDragSelectEventHandlers,
   createPanEventHandlers,
@@ -36,8 +38,6 @@ import {
   type GraphicState,
   type InteractionEventHandlers
 } from "./graphics.events";
-import type { Key, KeyboardPart, SingleKeyWiring, WiringType } from "../typedef";
-import { controllerInfos, type PinInfo } from "./controllerInfo";
 
 export type GraphicsKey = KeyGeometry & {
   index: number,
@@ -57,6 +57,8 @@ type KeyRendererProps = {
   onClick?: ((key: GraphicsKey) => void) | undefined;
 };
 
+const shiftRegisterPinLabels: Record<string, string> = Object.fromEntries(Array.from({ length: 32 }, (_, i) => [`shifter${i}`, `SR${i}`]))
+
 const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
   const keyData = () => props.keyData;
   const partName = () => props.parts[keyData().part]?.name;
@@ -68,16 +70,18 @@ const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
   };
   const pinLabel = (pinId?: string): string => {
     if (!pinId) return "????";
+
+    // special case for shift register pins, if it exists in our labels map
+    if (pinId in shiftRegisterPinLabels) {
+      return shiftRegisterPinLabels[pinId];
+    }
+
     const controllerId = props.parts[keyData().part]?.controller;
     if (!controllerId) return pinId;
-    const controller = controllerInfos[controllerId];
-    if (!controller) return pinId;
+    const info = controllerInfos[controllerId];
+    if (!info) return pinId;
 
-    const isGpio = (pin: PinInfo): pin is Extract<PinInfo, { type: "gpio" }> => pin.type === "gpio";
-    const pin = [...controller.pins.left, ...controller.pins.right]
-      .filter(isGpio)
-      .find((p) => p.id === pinId);
-    return pin?.name ?? pinId;
+    return info.pins[pinId]?.displayName || pinId;
   };
 
   return (<Button

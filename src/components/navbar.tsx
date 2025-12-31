@@ -26,6 +26,7 @@ import { validateKeyboard } from "~/lib/validators";
 import { type KeyboardPart, KeyboardSchema } from "../typedef";
 import { TurnstileCaptcha } from "./captcha/turnstile";
 import { useWizardContext } from "./context";
+import { loadBusesForController } from "./controllerInfo";
 
 export const InfoEditButton: VoidComponent = () => {
   const context = useWizardContext();
@@ -238,7 +239,8 @@ hover:border-accent bg-base-300 hover:bg-base-content/10 transition-colors durat
                       controller: "nice_nano_v2",
                       wiring: "matrix_diode",
                       keys: {},
-                      pins: {}
+                      pins: {},
+                      buses: loadBusesForController("nice_nano_v2"),
                     } satisfies KeyboardPart)));
 
                     context.setKeyboard("layout", produce(keys => {

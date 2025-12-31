@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { loadBusesForController } from "~/components/controllerInfo";
 import { copyWiringBetweenParts } from "../../src/lib/wiringMapping";
-import type { KeyboardPart, Key, SingleKeyWiring } from "../../src/typedef";
+import type { Key, KeyboardPart, SingleKeyWiring } from "../../src/typedef";
 
 type KeyOverrides = Partial<Pick<Key, "x" | "y" | "w" | "h" | "r" | "rx" | "ry">>;
 
@@ -24,6 +25,7 @@ function makePart(name: string, controller: KeyboardPart["controller"], wiring: 
     wiring,
     pins,
     keys,
+    buses: loadBusesForController(controller),
   };
 }
 

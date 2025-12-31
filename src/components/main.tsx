@@ -1,6 +1,7 @@
 import { createSignal, type VoidComponent } from "solid-js";
 import { createStore } from "solid-js/store";
 import type { Keyboard, KeyboardSnapshot } from "../typedef";
+import { loadBusesForController } from "./controllerInfo";
 import { App } from "./app";
 import { type Navigation, WizardContext, type WizardContextType } from "./context";
 
@@ -37,6 +38,7 @@ function rootContextHelper(): WizardContextType {
         wiring: "matrix_diode",
         keys: {},
         pins: {},
+        buses: loadBusesForController("nice_nano_v2"),
       },
       {
         name: "right",
@@ -44,6 +46,7 @@ function rootContextHelper(): WizardContextType {
         wiring: "matrix_diode",
         keys: {},
         pins: {},
+        buses: loadBusesForController("nice_nano_v2"),
       },
     ],
   } satisfies Keyboard);

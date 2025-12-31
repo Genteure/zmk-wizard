@@ -6,12 +6,20 @@ import type {
 } from "~/typedef";
 import { controllerInfos } from "../../components/controllerInfo";
 import { getKeysBoundingBox } from "../geometry";
+import { shield__kconfig_defconfig, shield__kconfig_shield } from "./contents";
+import { createShieldPinctrlFile } from "./shield.pinctrl";
 
 // TODO refactor and cleanup this file?
 // TODO add testing
 
+// special cases for shifter pins in dts mapping
+const shifterDtsMap: Record<string, string> = Object.fromEntries(Array.from({ length: 32 }, (_, i) => [`shifter${i}`, `&shifter ${i}`]));
+
 export function createShieldOverlayFiles(keyboard: Keyboard): VirtualTextFolder {
   const files: VirtualTextFolder = {};
+
+  files['Kconfig.shield'] = shield__kconfig_shield(keyboard);
+  files['Kconfig.defconfig'] = shield__kconfig_defconfig(keyboard);
 
   // Build per-part kscan and local matrix transform data
   const partResults: KscanSinglePartResult[] = keyboard.parts.map((part, idx) => {
@@ -71,6 +79,18 @@ ${mtDts}
     transform = <&matrix_transform0>;
 };
 `;
+
+    // pinctrl for single part
+    const pinctrlContent = createShieldPinctrlFile(keyboard, 0);
+    if (pinctrlContent) {
+      // note: we explicitly use `boards/<name>/<board>.overlay` instead of just `boards/<board>.overlay`
+      // to prevent problems with dongle, we can't treat unibody builds as true single-part keyboards.
+      files[`boards/${keyboard.shield}/${controllerInfos[keyboard.parts[0].controller].board}.overlay`] = pinctrlContent.dts;
+      if (pinctrlContent.defconfig) {
+        files['Kconfig.defconfig'] += pinctrlContent.defconfig;
+      }
+    }
+
   } else {
     // Multi-part: global transform in .dtsi and per-part overlays with offsets
     files[`${keyboard.shield}.dtsi`] = `#include "${keyboard.shield}-layouts.dtsi"
@@ -102,6 +122,16 @@ ${offsetBlock}
     kscan = <&kscan0>;
 };
 `;
+
+      // pinctrl for this part (out of multi-part)
+      const pinctrlContent = createShieldPinctrlFile(keyboard, idx);
+      if (pinctrlContent) {
+        files[`boards/${keyboard.shield}_${part.name}/${controllerInfos[part.controller].board}.overlay`] = pinctrlContent.dts;
+
+        if (pinctrlContent.defconfig) {
+          files['Kconfig.defconfig'] += pinctrlContent.defconfig;
+        }
+      }
     });
   }
 
@@ -179,7 +209,6 @@ const seeeduino_xiao_ble_plus_disable_vbatt = `
 function buildDirectPart(keyboard: Keyboard, part: number): KscanSinglePartResult {
   const thisPart = keyboard.parts[part];
   const pinFlag = (thisPart.wiring === "direct_gnd") ? "(GPIO_ACTIVE_LOW | GPIO_PULL_UP)" : "(GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)";
-  const dtsMap = getControllerDtsMap(thisPart.controller);
   const pinsForPart = getPinsForPart(keyboard, part);
 
   const pins = Object
@@ -198,7 +227,7 @@ function buildDirectPart(keyboard: Keyboard, part: number): KscanSinglePartResul
 
         input-gpios
             = ${pins
-      .map(pin => `<${dtsMap[pin]} ${pinFlag}>`)
+      .map(pin => `<${dtsPinHandle(thisPart.controller, pin)} ${pinFlag}>`)
       .join("\n            , ")}
             ;
     };
@@ -245,8 +274,6 @@ function buildMatrixPart(keyboard: Keyboard, part: number): KscanSinglePartResul
   const inputPinFlag = "(GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)";
   const outputPinFlag = thisPart.wiring !== "matrix_no_diode" ? "GPIO_ACTIVE_HIGH" : "GPIO_OPEN_SOURCE";
 
-  const dtsMap = getControllerDtsMap(thisPart.controller);
-
   const inputIsRow = isInputRowKeyboard(keyboard, part);
   const kscan = matrixKscanOrderKeyboard(keyboard, inputIsRow, part);
 
@@ -258,13 +285,13 @@ function buildMatrixPart(keyboard: Keyboard, part: number): KscanSinglePartResul
 
         col-gpios
             = ${kscan.colPins
-      .map(pin => `<${dtsMap[pin]} ${inputIsRow ? outputPinFlag : inputPinFlag}>`)
+      .map(pin => `<${dtsPinHandle(thisPart.controller, pin)} ${inputIsRow ? outputPinFlag : inputPinFlag}>`)
       .join("\n            , ")}
             ;
 
         row-gpios
             = ${kscan.rowPins
-      .map(pin => `<${dtsMap[pin]} ${inputIsRow ? inputPinFlag : outputPinFlag}>`)
+      .map(pin => `<${dtsPinHandle(thisPart.controller, pin)} ${inputIsRow ? inputPinFlag : outputPinFlag}>`)
       .join("\n            , ")}
             ;
     };
@@ -304,10 +331,15 @@ function buildMatrixPart(keyboard: Keyboard, part: number): KscanSinglePartResul
   };
 }
 
-function getControllerDtsMap(controller: Controller): Record<string, string> {
-  const info = controllerInfos[controller];
-  if (!info) throw new Error(`Unsupported controller: ${controller}`);
-  return info.dtsMap;
+function dtsPinHandle(controller: Controller, pinId: string): string {
+  const pins = controllerInfos[controller].pins;
+  if (pins[pinId]) {
+    return pins[pinId].dtsRef;
+  } else if (shifterDtsMap[pinId]) {
+    return shifterDtsMap[pinId];
+  } else {
+    throw new Error(`Pin ${pinId} not found in controller ${controller} dts map`);
+  }
 }
 
 /**

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { createZMKConfig } from "~/lib/templating";
+import { loadBusesForController } from "~/components/controllerInfo";
 import type { Keyboard, VirtualTextFolder, Controller, WiringType, SingleKeyWiring, PinSelection } from "~/typedef";
 
 import Parser from 'tree-sitter';
@@ -91,6 +92,7 @@ function makeKeyboard(data: LegacyKeyboardData): Keyboard {
     wiring: data.wiringType,
     pins,
     keys: {} as Record<string, SingleKeyWiring>,
+    buses: loadBusesForController(data.controller),
   }));
 
   if (parts.length === 1) {
