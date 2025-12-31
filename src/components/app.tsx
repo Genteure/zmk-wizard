@@ -468,7 +468,7 @@ const ConfigLayout: Component = () => {
         <div class="join">
           <DropdownMenu>
             <DropdownMenu.Trigger class="btn btn-sm btn-soft join-item" disabled={context.nav.selectedKeys.length === 0}>
-              Assign to Part
+              Assign Key to Side
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content class="p-2 bg-base-200 rounded shadow-lg border menu">
