@@ -21,6 +21,9 @@ import ZoomIn from "lucide-solid/icons/zoom-in";
 import ZoomOut from "lucide-solid/icons/zoom-out";
 
 import { Button } from "@kobalte/core/button";
+import { createTimer, makeTimer } from "@solid-primitives/timer";
+import ArrowBigUp from "lucide-solid/icons/arrow-big-up";
+import { produce } from "solid-js/store";
 import {
   getKeysBoundingBox,
   getKeyStyles,
@@ -29,7 +32,7 @@ import {
 } from "~/lib/geometry";
 import { swpBgClass, swpBorderClass } from "~/lib/swpColors";
 import type { Key, KeyboardPart, SingleKeyWiring, WiringType } from "../typedef";
-import { useWizardContext } from "./context";
+import { normalizeKeys, useWizardContext, type WizardContextType } from "./context";
 import { controllerInfos } from "./controllerInfo";
 import {
   createDragSelectEventHandlers,
@@ -167,6 +170,7 @@ export const KeyboardPreview: VoidComponent<{
   onKeySetWiring?: (key: GraphicsKey) => void,
   // Parent controls which edit tool is active when not in Pan mode
   editMode?: Accessor<"select" | "wiring">,
+  moveSelectedKey: "physical" | "logical",
 }> = (props) => {
   const context = useWizardContext();
   const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
@@ -331,6 +335,50 @@ export const KeyboardPreview: VoidComponent<{
     scaleAtOrigin(e.deltaY < 0, originX, originY);
   };
 
+  const onEachKeyClicked = (key: GraphicsKey) => {
+    // check current mode
+    if (props.editMode?.() === "wiring") {
+      props.onKeySetWiring?.(key);
+    } else if (props.editMode?.() === "select") {
+      // toggle selection of this key
+      context.setNav("selectedKeys", produce(draft => {
+        const idx = context.nav.selectedKeys.indexOf(key.key.id);
+        if (idx === -1) {
+          draft.push(key.key.id);
+        } else {
+          draft.splice(idx, 1);
+        }
+      }));
+    }
+  };
+
+  const moveKeys = (callback: (k: Key) => void) => repeatTrigger(() => {
+    context.setKeyboard("layout", produce((layout) => {
+      context.nav.selectedKeys.forEach(id => {
+        const k = layout.find(kk => kk.id === id);
+        if (k) callback(k);
+      });
+    }));
+    normalizeKeys(context);
+  })
+
+  const [moveUpStart, moveUpEnd] = moveKeys((k) => {
+    if (props.moveSelectedKey === "logical") { k.row -= 1; return; }
+    k.y -= 0.25; if (k.ry !== 0) k.ry -= 0.25;
+  });
+  const [moveDownStart, moveDownEnd] = moveKeys((k) => {
+    if (props.moveSelectedKey === "logical") { k.row += 1; return; }
+    k.y += 0.25; if (k.ry !== 0) k.ry += 0.25;
+  });
+  const [moveLeftStart, moveLeftEnd] = moveKeys((k) => {
+    if (props.moveSelectedKey === "logical") { k.col -= 1; return; }
+    k.x -= 0.25; if (k.rx !== 0) k.rx -= 0.25;
+  });
+  const [moveRightStart, moveRightEnd] = moveKeys((k) => {
+    if (props.moveSelectedKey === "logical") { k.col += 1; return; }
+    k.x += 0.25; if (k.rx !== 0) k.rx += 0.25;
+  });
+
   return (
     <div
       ref={setContainerRef}
@@ -404,7 +452,7 @@ export const KeyboardPreview: VoidComponent<{
                 wiring={context.keyboard.parts[gkey.part]?.keys[gkey.key.id]}
                 wiringType={context.keyboard.parts[gkey.part]?.wiring}
                 showWiringPins={(props.editMode?.() === "wiring") && context.nav.activeEditPart === gkey.part}
-                onClick={props.onKeySetWiring}
+                onClick={onEachKeyClicked}
               />
             )}
           </For>
@@ -475,44 +523,157 @@ export const KeyboardPreview: VoidComponent<{
         </Switch>
       </div>
 
-      {/* Control buttons */}
+      {/* Control buttons (bottom right) */}
       <div
-        class="absolute bottom-1 right-1 flex items-center gap-1 pointer-coarse:gap-3 backdrop-blur-sm select-none bg-base-200/60 rounded p-1 border border-primary"
+        class="absolute bottom-1 right-1 select-none flex flex-col items-end gap-1 pointer-coarse:gap-2"
         data-controls
       >
-        <Button
-          aria-label="Toggle Mode"
-          aria-description={`Current mode: ${effectiveIsPan() ? "Pan" : (props.editMode?.() === "wiring" ? "Wiring" : "Select")}. Hold Ctrl to temporarily switch modes.`}
-          class="hover:text-primary cursor-pointer"
-          title={`Toggle Mode (current: ${effectiveIsPan() ? "Pan" : (props.editMode?.() === "wiring" ? "Wiring" : "Select")}, hold Ctrl to temporarily switch)`}
-          onClick={() => setPanMode(!panMode())}
-        >
-          {effectiveIsPan() ? <Move aria-hidden class="w-6 h-6" /> : <Pencil aria-hidden class="w-6 h-6" />}
-        </Button>
-        <Button
-          aria-label="Zoom In"
-          class="hover:text-primary cursor-pointer"
-          title="Zoom In"
-          onClick={() => scaleAtOrigin(true, (containerSize.width || 0) / 2, (containerSize.height || 0) / 2)}
-        >
-          <ZoomIn aria-hidden class="w-6 h-6" />
-        </Button>
-        <Button
-          class="hover:text-primary cursor-pointer"
-          title="Zoom Out"
-          onClick={() => scaleAtOrigin(false, (containerSize.width || 0) / 2, (containerSize.height || 0) / 2)}
-        >
-          <ZoomOut aria-hidden class="w-6 h-6" />
-        </Button>
-        <Button
-          class="hover:text-primary cursor-pointer disabled:text-base-content/20 disabled:cursor-default"
-          title="Reset Zoom"
-          disabled={autoZoom()}
-          onClick={() => setAutoZoom(true)}
-        >
-          <RotateCcw aria-hidden class="w-6 h-6" />
-        </Button>
+        <Show when={context.nav.activeEditPart === null}>
+          {/* Edit buttons for moving the keys */}
+          <div class="flex flex-col items-center gap-1 pointer-coarse:gap-2 rounded ">
+            <div class="flex items-center gap-1 pointer-coarse:gap-2">
+              <Button
+                title="Move selected keys Up"
+                disabled={context.nav.selectedKeys.length === 0}
+                class="rounded-sm text-base-600 bg-base-200/60 hover:text-primary cursor-pointer border border-zinc-600/50 hover:border-primary/30 backdrop-blur-sm disabled:text-base-content/20 disabled:cursor-default"
+
+                onMouseDown={moveUpStart}
+                onMouseUp={moveUpEnd}
+                onMouseLeave={moveUpEnd}
+
+                onTouchStart={moveUpStart}
+                onTouchEnd={moveUpEnd}
+                onTouchCancel={moveUpEnd}
+              >
+                <ArrowBigUp aria-hidden class="w-6 h-6" />
+              </Button>
+            </div>
+            <div class="flex items-center gap-1 pointer-coarse:gap-2">
+              <Button
+                title="Move selected keys Left"
+                disabled={context.nav.selectedKeys.length === 0}
+                class="rounded-sm text-base-600 bg-base-200/60 hover:text-primary cursor-pointer border border-zinc-600/50 hover:border-primary/30 backdrop-blur-sm  disabled:text-base-content/20 disabled:cursor-default"
+
+                onMouseDown={moveLeftStart}
+                onMouseUp={moveLeftEnd}
+                onMouseLeave={moveLeftEnd}
+
+                onTouchStart={moveLeftStart}
+                onTouchEnd={moveLeftEnd}
+                onTouchCancel={moveLeftEnd}
+              >
+                <ArrowBigUp aria-hidden class="w-6 h-6 -rotate-90" />
+              </Button>
+              <Button
+                title="Move selected keys Down"
+                disabled={context.nav.selectedKeys.length === 0}
+                class="rounded-sm text-base-600 bg-base-200/60 hover:text-primary cursor-pointer border border-zinc-600/50 hover:border-primary/30 backdrop-blur-sm  disabled:text-base-content/20 disabled:cursor-default"
+
+                onMouseDown={moveDownStart}
+                onMouseUp={moveDownEnd}
+                onMouseLeave={moveDownEnd}
+
+                onTouchStart={moveDownStart}
+                onTouchEnd={moveDownEnd}
+                onTouchCancel={moveDownEnd}
+              >
+                <ArrowBigUp aria-hidden class="w-6 h-6 rotate-180" />
+              </Button>
+              <Button
+                title="Move selected keys Right"
+                disabled={context.nav.selectedKeys.length === 0}
+                class="rounded-sm text-base-600 bg-base-200/60 hover:text-primary cursor-pointer border border-zinc-600/50 hover:border-primary/30 backdrop-blur-sm  disabled:text-base-content/20 disabled:cursor-default"
+
+                onMouseDown={moveRightStart}
+                onMouseUp={moveRightEnd}
+                onMouseLeave={moveRightEnd}
+
+                onTouchStart={moveRightStart}
+                onTouchEnd={moveRightEnd}
+                onTouchCancel={moveRightEnd}
+              >
+                <ArrowBigUp aria-hidden class="w-6 h-6 rotate-90" />
+              </Button>
+            </div>
+          </div>
+        </Show>
+        <div class="flex items-center gap-1 pointer-coarse:gap-2 rounded">
+          <Button
+            aria-label="Toggle Mode"
+            aria-description={`Current mode: ${effectiveIsPan() ? "Pan" : (props.editMode?.() === "wiring" ? "Wiring" : "Select")}. Hold Ctrl to temporarily switch modes.`}
+            class="rounded-sm text-base-600 bg-base-200/60 hover:text-primary cursor-pointer border border-zinc-600/50 hover:border-primary/30 backdrop-blur-sm"
+            title={`Toggle Mode (current: ${effectiveIsPan() ? "Pan" : (props.editMode?.() === "wiring" ? "Wiring" : "Select")}, hold Ctrl to temporarily switch)`}
+            onClick={() => setPanMode(!panMode())}
+          >
+            {effectiveIsPan() ? <Move aria-hidden class="w-6 h-6" /> : <Pencil aria-hidden class="w-6 h-6" />}
+          </Button>
+          <Button
+            aria-label="Zoom In"
+            class="rounded-sm text-base-600 bg-base-200/60 hover:text-primary cursor-pointer border border-zinc-600/50 hover:border-primary/30 backdrop-blur-sm"
+            title="Zoom In"
+            onClick={() => scaleAtOrigin(true, (containerSize.width || 0) / 2, (containerSize.height || 0) / 2)}
+          >
+            <ZoomIn aria-hidden class="w-6 h-6" />
+          </Button>
+          <Button
+            class="rounded-sm text-base-600 bg-base-200/60 hover:text-primary cursor-pointer border border-zinc-600/50 hover:border-primary/30 backdrop-blur-sm"
+            title="Zoom Out"
+            onClick={() => scaleAtOrigin(false, (containerSize.width || 0) / 2, (containerSize.height || 0) / 2)}
+          >
+            <ZoomOut aria-hidden class="w-6 h-6" />
+          </Button>
+          <Button
+            class="rounded-sm text-base-600 bg-base-200/60 hover:text-primary cursor-pointer border border-zinc-600/50 hover:border-primary/30 backdrop-blur-sm disabled:text-base-content/20 disabled:cursor-default"
+            title="Reset Zoom"
+            disabled={autoZoom()}
+            onClick={() => setAutoZoom(true)}
+          >
+            <RotateCcw aria-hidden class="w-6 h-6" />
+          </Button>
+        </div>
       </div>
     </div >
   );
+}
+
+function repeatTrigger(
+  callback: () => void,
+  delay: number = 500,
+  interval: number = 100
+): [
+    ((e?: Event) => void),
+    ((e?: Event) => void)
+  ] {
+  const [timer, setTimer] = createSignal<number | false>(false);
+  let failsafeCounter = 0;
+  let cancelDelay: VoidFunction | null = null;
+
+  createTimer(() => {
+    if (failsafeCounter++ > 25) {
+      stop();
+      return;
+    }
+    callback();
+  }, timer, setInterval);
+
+  const start = (e?: Event) => {
+    e?.preventDefault();
+
+    callback();
+    failsafeCounter = 0;
+    cancelDelay = makeTimer(() => {
+      callback();
+      setTimer(interval);
+    }, delay, setTimeout);
+  }
+
+  const stop = (e?: Event) => {
+    e?.preventDefault();
+
+    setTimer(false);
+    cancelDelay?.();
+    cancelDelay = null;
+  }
+
+  return [start, stop];
 }

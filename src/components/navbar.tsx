@@ -7,11 +7,11 @@ import { actions } from "astro:actions";
 import { PUBLIC_TURNSTILE_SITEKEY } from "astro:env/client";
 import JSZip from "jszip";
 import ChevronRight from "lucide-solid/icons/chevron-right";
-import CircleQuestionMark from "lucide-solid/icons/circle-question-mark";
 import ExternalLink from "lucide-solid/icons/external-link";
 import FolderArchive from "lucide-solid/icons/folder-archive";
 import FolderGit2 from "lucide-solid/icons/folder-git-2";
 import Keyboard from "lucide-solid/icons/keyboard";
+import Menu from "lucide-solid/icons/menu";
 import OctagonX from "lucide-solid/icons/octagon-x";
 import Package from "lucide-solid/icons/package";
 import PencilLine from "lucide-solid/icons/pencil-line";
@@ -745,8 +745,10 @@ export const HelpButton: VoidComponent = () => {
         </Dialog.Portal>
       </Dialog>
       <DropdownMenu placement="bottom-end">
-        <DropdownMenu.Trigger class="btn btn-circle btn-ghost">
-          <CircleQuestionMark class="w-6 h-6" />
+        <DropdownMenu.Trigger
+          class="btn btn-square btn-ghost md:btn-lg border-2 border-transparent hover:border-primary/70 dark:hover:border-primary bg-base-300 hover:bg-base-content/10"
+        >
+          <Menu class="w-8 h-8" />
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
           <DropdownMenu.Content class="p-2 bg-base-200 rounded shadow-lg border menu">

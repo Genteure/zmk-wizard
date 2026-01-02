@@ -1,4 +1,3 @@
-import { createTimer, makeTimer } from "@solid-primitives/timer";
 import { createEffect, createMemo, createSignal, For, type Accessor, type Component, type VoidComponent } from "solid-js";
 import { produce } from "solid-js/store";
 
@@ -9,7 +8,6 @@ import { Menubar } from "@kobalte/core/menubar";
 import { Popover } from "@kobalte/core/popover";
 import { ulid } from "ulidx";
 
-import ArrowBigUp from "lucide-solid/icons/arrow-big-up";
 import ArrowRight from "lucide-solid/icons/arrow-right";
 import ChevronRight from "lucide-solid/icons/chevron-right";
 import Copy from "lucide-solid/icons/copy";
@@ -24,14 +22,14 @@ import { layouts } from "~/lib/physicalLayouts";
 import { swpBgClass } from "~/lib/swpColors";
 import { copyWiringBetweenParts, type WiringTransform } from "~/lib/wiringMapping";
 import { type Controller, type Key, type WiringType } from "../typedef";
-import { useWizardContext } from "./context";
+import { normalizeKeys, useWizardContext } from "./context";
 import { BusDevicesConfigurator, ControllerPinConfigurator, ShiftRegisterPinConfigurator } from "./controller";
+import { loadBusesForController } from "./controllerInfo";
 import { DataTable } from "./datatable";
 import { GenerateLayoutDialog, ImportDevicetreeDialog, ImportKleJsonDialog, ImportLayoutJsonDialog } from "./dialogs";
 import { KeyboardPreview, type GraphicsKey } from "./graphics";
 import { physicalToLogical } from "./layouthelper";
 import { BuildButton, HelpButton, InfoEditButton } from "./navbar";
-import { loadBusesForController } from "./controllerInfo";
 
 export function ensureKeyIds(keys: Key[]) {
   return keys.map(k => ({ ...k, id: k.id ?? ulid() }));
@@ -191,13 +189,16 @@ export const App: VoidComponent = () => {
           <KeyboardPreview title="Physical Layout"
             keys={physicalLayoutKeys}
             editMode={() => (context.nav.selectedTab.startsWith("part-")) ? "wiring" : "select"}
-            onKeySetWiring={keyWiringSetter} />
+            onKeySetWiring={keyWiringSetter}
+            moveSelectedKey="physical"
+          />
         </div>
         <div class="flex-1">
           <KeyboardPreview title="Logical Layout"
             keys={logicalLayoutKeys}
             editMode={() => (context.nav.selectedTab.startsWith("part-")) ? "wiring" : "select"}
             onKeySetWiring={keyWiringSetter}
+            moveSelectedKey="logical"
           />
         </div>
       </div>
@@ -208,103 +209,6 @@ export const App: VoidComponent = () => {
 
 const ConfigLayout: Component = () => {
   const context = useWizardContext();
-
-  const normalizeKeys = () => {
-    context.setKeyboard("layout", produce(draft => {
-      const minX = Math.min(...draft.map(k => k.x));
-      const minY = Math.min(...draft.map(k => k.y));
-      if (minX !== 0 || minY !== 0) {
-        draft.forEach(k => {
-          k.x -= minX;
-          k.y -= minY;
-          if (k.rx !== 0) k.rx -= minX;
-          if (k.ry !== 0) k.ry -= minY;
-        });
-      }
-
-      const minRow = Math.min(...draft.map(k => k.row));
-      const minCol = Math.min(...draft.map(k => k.col));
-      if (minRow !== 0 || minCol !== 0) {
-        draft.forEach(k => {
-          k.row -= minRow;
-          k.col -= minCol;
-        });
-      }
-
-      // Round everything to 2 decimal places
-      draft.forEach(k => {
-        k.x = Math.round(k.x * 100) / 100;
-        k.y = Math.round(k.y * 100) / 100;
-        k.r = Math.round(k.r * 100) / 100;
-        k.rx = Math.round(k.rx * 100) / 100;
-        k.ry = Math.round(k.ry * 100) / 100;
-      });
-
-      // Sort keys by logical row/col
-      draft.sort((a, b) => (a.row - b.row) || (a.col - b.col));
-    }));
-  };
-
-  function repeatTrigger(
-    callback: () => void,
-    delay: number = 500,
-    interval: number = 100
-  ): [
-      ((e?: Event) => void),
-      ((e?: Event) => void)
-    ] {
-    const [timer, setTimer] = createSignal<number | false>(false);
-    let failsafeCounter = 0;
-    let cancelDelay: VoidFunction | null = null;
-
-    createTimer(() => {
-      if (failsafeCounter++ > 25) {
-        stop();
-        return;
-      }
-      callback();
-    }, timer, setInterval);
-
-    const start = (e?: Event) => {
-      e?.preventDefault();
-
-      callback();
-      failsafeCounter = 0;
-      cancelDelay = makeTimer(() => {
-        callback();
-        setTimer(interval);
-      }, delay, setTimeout);
-    }
-
-    const stop = (e?: Event) => {
-      e?.preventDefault();
-
-      setTimer(false);
-      cancelDelay?.();
-      cancelDelay = null;
-    }
-
-    return [start, stop];
-  }
-
-  const moveKeys = (callback: (k: Key) => void) => repeatTrigger(() => {
-    context.setKeyboard("layout", produce((layout) => {
-      context.nav.selectedKeys.forEach(id => {
-        const k = layout.find(kk => kk.id === id);
-        if (k) callback(k);
-      });
-    }));
-    normalizeKeys();
-  })
-
-  const [physicalUpStart, physicalUpStop] = moveKeys(k => { k.y -= 0.25; if (k.ry !== 0) k.ry -= 0.25; });
-  const [physicalDownStart, physicalDownStop] = moveKeys(k => { k.y += 0.25; if (k.ry !== 0) k.ry += 0.25; });
-  const [physicalLeftStart, physicalLeftStop] = moveKeys(k => { k.x -= 0.25; if (k.rx !== 0) k.rx -= 0.25; });
-  const [physicalRightStart, physicalRightStop] = moveKeys(k => { k.x += 0.25; if (k.rx !== 0) k.rx += 0.25; });
-  const [logicalUpStart, logicalUpStop] = moveKeys(k => k.row -= 1);
-  const [logicalDownStart, logicalDownStop] = moveKeys(k => k.row += 1);
-  const [logicalLeftStart, logicalLeftStop] = moveKeys(k => k.col -= 1);
-  const [logicalRightStart, logicalRightStop] = moveKeys(k => k.col += 1);
 
   return (
     <>
@@ -345,7 +249,7 @@ const ConfigLayout: Component = () => {
                                       context.setNav("selectedKeys", []);
                                       const newKeys = ensureKeyIds(structuredClone(layout.keys));
                                       context.setKeyboard("layout", newKeys);
-                                      normalizeKeys();
+                                      normalizeKeys(context);
 
                                       if (context.keyboard.parts.length > 1) {
                                         // assign half the keys to part 0, half to part 1
@@ -396,7 +300,7 @@ const ConfigLayout: Component = () => {
                               k.r = 0;
                             })
                           }))
-                          normalizeKeys();
+                          normalizeKeys(context);
                         }}
                       ><button>Generate Physical Layout from Logical</button></Menubar.Item>
                       <Menubar.Item
@@ -521,171 +425,6 @@ const ConfigLayout: Component = () => {
           </Button>
         </div>
       </div>
-      <div class="flex flex-row gap-2 items-center flex-wrap justify-center">
-        <div class="border bg-base-200 p-1 rounded-xl">
-          <div class="relative w-32 h-24">
-            <div class="absolute top-1 left-0 pointer-events-none select-none">
-              Physical
-            </div>
-            <div class="absolute top-0 left-8">
-              <div class="relative w-24 h-24">
-                <div class="absolute top-0 left-1/2 -translate-x-1/2">
-                  <Button
-                    class="btn btn-soft btn-square btn-sm"
-                    title="Move selected keys in physical layout Up"
-                    disabled={context.nav.selectedKeys.length === 0}
-
-                    onMouseDown={physicalUpStart}
-                    onMouseUp={physicalUpStop}
-                    onMouseLeave={physicalUpStop}
-
-                    onTouchStart={physicalUpStart}
-                    onTouchEnd={physicalUpStop}
-                    onTouchCancel={physicalUpStop}
-                  >
-                    <ArrowBigUp aria-hidden />
-                  </Button>
-                </div>
-                <div class="absolute top-1/2 right-0 -translate-y-1/2">
-                  <Button
-                    class="btn btn-soft btn-square btn-sm"
-                    title="Move selected keys in physical layout Right"
-                    disabled={context.nav.selectedKeys.length === 0}
-
-                    onMouseDown={physicalRightStart}
-                    onMouseUp={physicalRightStop}
-                    onMouseLeave={physicalRightStop}
-
-                    onTouchStart={physicalRightStart}
-                    onTouchEnd={physicalRightStop}
-                    onTouchCancel={physicalRightStop}
-                  >
-                    <ArrowBigUp class="rotate-90" aria-hidden />
-                  </Button>
-                </div>
-                <div class="absolute bottom-0 left-1/2 -translate-x-1/2">
-                  <Button
-                    class="btn btn-soft btn-square btn-sm"
-                    title="Move selected keys in physical layout Down"
-                    disabled={context.nav.selectedKeys.length === 0}
-
-                    onMouseDown={physicalDownStart}
-                    onMouseUp={physicalDownStop}
-                    onMouseLeave={physicalDownStop}
-
-                    onTouchStart={physicalDownStart}
-                    onTouchEnd={physicalDownStop}
-                    onTouchCancel={physicalDownStop}
-                  >
-                    <ArrowBigUp class="rotate-180" aria-hidden />
-                  </Button>
-                </div>
-                <div class="absolute top-1/2 left-0 -translate-y-1/2">
-                  <Button
-                    class="btn btn-soft btn-square btn-sm"
-                    title="Move selected keys in physical layout Left"
-                    disabled={context.nav.selectedKeys.length === 0}
-
-                    onMouseDown={physicalLeftStart}
-                    onMouseUp={physicalLeftStop}
-                    onMouseLeave={physicalLeftStop}
-
-                    onTouchStart={physicalLeftStart}
-                    onTouchEnd={physicalLeftStop}
-                    onTouchCancel={physicalLeftStop}
-                  >
-                    <ArrowBigUp class="-rotate-90" aria-hidden />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="border bg-base-200 p-1 rounded-xl">
-          <div class="relative w-32 h-24">
-            <div class="absolute top-1 left-0 pointer-events-none select-none">
-              Logical
-            </div>
-            <div class="absolute top-0 left-8">
-              <div class="relative w-24 h-24">
-                <div class="absolute top-0 left-1/2 -translate-x-1/2">
-                  <Button
-                    class="btn btn-soft btn-square btn-sm"
-                    title="Move selected keys in logical layout Up"
-                    disabled={context.nav.selectedKeys.length === 0}
-
-                    onMouseDown={logicalUpStart}
-                    onMouseUp={logicalUpStop}
-                    onMouseLeave={logicalUpStop}
-
-                    onTouchStart={logicalUpStart}
-                    onTouchEnd={logicalUpStop}
-                    onTouchCancel={logicalUpStop}
-                  >
-                    <ArrowBigUp aria-hidden />
-                  </Button>
-                </div>
-                {/* right middle */}
-                <div class="absolute top-1/2 right-0 -translate-y-1/2">
-                  <Button
-                    class="btn btn-soft btn-square btn-sm"
-                    title="Move selected keys in logical layout Right"
-                    disabled={context.nav.selectedKeys.length === 0}
-
-                    onMouseDown={logicalRightStart}
-                    onMouseUp={logicalRightStop}
-                    onMouseLeave={logicalRightStop}
-
-                    onTouchStart={logicalRightStart}
-                    onTouchEnd={logicalRightStop}
-                    onTouchCancel={logicalRightStop}
-                  >
-                    <ArrowBigUp class="rotate-90" aria-hidden />
-                  </Button>
-                </div>
-                {/* bottom center */}
-                <div class="absolute bottom-0 left-1/2 -translate-x-1/2">
-                  <Button
-                    class="btn btn-soft btn-square btn-sm"
-                    title="Move selected keys in logical layout Down"
-                    disabled={context.nav.selectedKeys.length === 0}
-
-                    onMouseDown={logicalDownStart}
-                    onMouseUp={logicalDownStop}
-                    onMouseLeave={logicalDownStop}
-
-                    onTouchStart={logicalDownStart}
-                    onTouchEnd={logicalDownStop}
-                    onTouchCancel={logicalDownStop}
-                  >
-                    <ArrowBigUp class="rotate-180" aria-hidden />
-                  </Button>
-                </div>
-                {/* left middle */}
-                <div class="absolute top-1/2 left-0 -translate-y-1/2">
-                  <Button
-                    class="btn btn-soft btn-square btn-sm"
-                    title="Move selected keys in logical layout Left"
-                    disabled={context.nav.selectedKeys.length === 0}
-
-                    onMouseDown={logicalLeftStart}
-                    onMouseUp={logicalLeftStop}
-                    onMouseLeave={logicalLeftStop}
-
-                    onTouchStart={logicalLeftStart}
-                    onTouchEnd={logicalLeftStop}
-                    onTouchCancel={logicalLeftStop}
-                  >
-                    <ArrowBigUp class="-rotate-90" aria-hidden />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div >
       <div class="min-h-64 rounded border border-base-300">
         <DataTable />
       </div>
