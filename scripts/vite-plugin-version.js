@@ -34,7 +34,7 @@ export default function versionPlugin() {
         branch,
         tag,
         dirty: isDirty,
-        generatedAt: date,
+        buildDate: date,
       };
 
       return `export const version = ${JSON.stringify(obj, null, 2)};\nexport default version;`;

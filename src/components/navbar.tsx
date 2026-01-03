@@ -876,7 +876,7 @@ export const HelpButton: VoidComponent = () => {
 Branch: ${version.branch || ''}${version.dirty ? ' (dirty)' : ''}
 Commit: ${version.commit || '(unknown)'}
 Tag: ${version.tag || '(none)'}
-Generated At: ${version.generatedAt || '(unknown)'}
+Generated At: ${version.buildDate || '(unknown)'}
 `;
                 navigator.clipboard.writeText(text);
               }}

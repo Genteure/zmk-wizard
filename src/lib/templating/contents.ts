@@ -1,4 +1,5 @@
 import { unwrap } from "solid-js/store";
+import { version } from "virtual:version";
 import { controllerInfos } from "~/components/controllerInfo";
 import {
   ControllerSchema,
@@ -346,10 +347,12 @@ User keymap is located at [\`config/${keyboard.shield}.keymap\`](config/${keyboa
 
 <details>
 <summary>
-debug information
+Shield Wizard Debug Information
 </summary>
 
-For the purpose of debugging Shield Wizard for ZMK in case of broken configuration, here is the data used to generate this configuration:
+In case of broken configuration, here is the Shield Wizard internal data used to generate this configuration:
+
+Commit: ${version.commit || '(unknown)'}
 
 \`\`\`json
 ${JSON.stringify(unwrap(keyboard))}

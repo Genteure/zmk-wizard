@@ -922,7 +922,7 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
       <Show when={buses().length > 0} fallback={<div class="text-center text-sm text-base-content/60">No buses available for this controller.</div>}>
         <div class="border border-base-300 rounded-xl bg-base-200/50 p-3">
           <div class="font-semibold text-sm">Add device</div>
-          <div class="text-xs text-base-content/60">Choose target bus and device type.</div>
+          <div class="text-xs text-base-content/75">Choose target bus and device type.</div>
           <div class="mt-2 flex items-center gap-2">
             <select
               class="select select-sm select-bordered"
@@ -975,8 +975,11 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
               Add
             </Button>
           </div>
+          <div class="text-xs text-base-content/75 mt-2">
+            Configuring SPI/I2C devices was not tested thoroughly with all possible configurations and may produce broken builds.
+            Feel free to join the <Link class="link" href="https://zmk.dev/community/discord/invite" target="_blank" rel="noopener noreferrer">ZMK Community Discord</Link> and ping @genteure for help.
+          </div>
         </div>
-
         <For each={buses()}>{(bus, idx) => <BusCard bus={bus} index={idx()} />}</For>
       </Show>
     </Show>

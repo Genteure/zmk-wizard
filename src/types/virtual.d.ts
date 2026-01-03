@@ -5,7 +5,7 @@ declare module 'virtual:version' {
     branch: string;
     tag: string;
     dirty: boolean;
-    generatedAt: string;
+    buildDate: string;
   };
   export default version;
 }
