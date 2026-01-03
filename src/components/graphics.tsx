@@ -336,19 +336,25 @@ export const KeyboardPreview: VoidComponent<{
   };
 
   const onEachKeyClicked = (key: GraphicsKey) => {
-    // check current mode
-    if (props.editMode?.() === "wiring") {
-      props.onKeySetWiring?.(key);
-    } else if (props.editMode?.() === "select") {
-      // toggle selection of this key
-      context.setNav("selectedKeys", produce(draft => {
-        const idx = context.nav.selectedKeys.indexOf(key.key.id);
-        if (idx === -1) {
-          draft.push(key.key.id);
-        } else {
-          draft.splice(idx, 1);
-        }
-      }));
+    switch (activeMode()) {
+      case "pan":
+        // do nothing
+        break;
+      case "select":
+        // toggle selection of this key
+        context.setNav("selectedKeys", produce(draft => {
+          const idx = context.nav.selectedKeys.indexOf(key.key.id);
+          if (idx === -1) {
+            draft.push(key.key.id);
+          } else {
+            draft.splice(idx, 1);
+          }
+        }));
+        break;
+      case "wiring":
+        // set wiring for this key
+        props.onKeySetWiring?.(key);
+        break;
     }
   };
 
