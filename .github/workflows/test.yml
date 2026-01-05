@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  unit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -19,3 +19,29 @@ jobs:
         env:
           CXXFLAGS: "-std=c++20"
       - run: pnpm test
+
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: unit
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "10"
+      - uses: actions/setup-node@v6
+        with:
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+        env:
+          CXXFLAGS: "-std=c++20"
+      - name: Install Playwright Browsers
+        run: pnpm exec playwright install --with-deps
+      - name: Run Playwright tests
+        run: pnpm exec playwright test
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
