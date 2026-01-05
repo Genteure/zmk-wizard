@@ -22,6 +22,7 @@ export const ControllerSchema = z.enum([
   "nice_nano_v2",
   "xiao_ble",
   "xiao_ble_plus",
+  "rpi_pico",
 ]);
 export type Controller = z.infer<typeof ControllerSchema>;
 

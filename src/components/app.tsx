@@ -24,7 +24,7 @@ import { copyWiringBetweenParts, type WiringTransform } from "~/lib/wiringMappin
 import { type Controller, type Key, type WiringType } from "../typedef";
 import { normalizeKeys, useWizardContext } from "./context";
 import { BusDevicesConfigurator, ControllerPinConfigurator, ShiftRegisterPinConfigurator } from "./controller";
-import { loadBusesForController } from "./controllerInfo";
+import { controllerInfos, loadBusesForController } from "./controllerInfo";
 import { DataTable } from "./datatable";
 import { GenerateLayoutDialog, ImportDevicetreeDialog, ImportKleJsonDialog, ImportLayoutJsonDialog } from "./dialogs";
 import { KeyboardPreview, type GraphicsKey } from "./graphics";
@@ -432,12 +432,7 @@ const ConfigLayout: Component = () => {
   )
 }
 
-const controllerLabelMap = {
-  "nice_nano_v2": "nice!nano v2",
-  "xiao_ble": "Seeed XIAO nRF52840",
-  "xiao_ble_plus": "Seeed XIAO nRF52840 Plus",
-}
-const controllerLabel = (id: Controller) => controllerLabelMap[id] ?? id;
+const controllerLabel = (id: Controller) => controllerInfos[id].name;
 const wiringLabelMap = {
   "matrix_diode": "Matrix with Diodes",
   "matrix_no_diode": "Matrix without Diodes",
@@ -596,6 +591,9 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                       <option disabled>└  ...</option>
                       <option value="xiao_ble">Seeed XIAO nRF52840</option>
                       <option value="xiao_ble_plus">Seeed XIAO nRF52840 Plus</option>
+                      <option disabled>──────────</option>
+                      <option disabled>Highly Experimental for Shield Wizard</option>
+                      <option value="rpi_pico">Raspberry Pi Pico (RP2040)</option>
                     </select>
                   </label>
                   <label class="select mt-4">
