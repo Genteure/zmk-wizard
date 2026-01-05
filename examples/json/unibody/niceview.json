@@ -1,0 +1,213 @@
+{
+  "name": "UnibodyNiceview",
+  "shield": "unibody_niceview",
+  "dongle": true,
+  "layout": [
+    {
+      "id": "01KE4XVFY7W6XWV8PFAPVVDARF",
+      "part": 0, "row": 0, "col": 0, "w": 1, "h": 1, "x": 0, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY7Z2FRCFXXC0CQN1V0",
+      "part": 0, "row": 0, "col": 1, "w": 1, "h": 1, "x": 1, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY7H7VJ9FQG07GK7WA9",
+      "part": 0, "row": 0, "col": 2, "w": 1, "h": 1, "x": 2, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY76T444BP8EWJJMP7K",
+      "part": 0, "row": 0, "col": 3, "w": 1, "h": 1, "x": 3, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY71ENA9Q1JAVC1FE25",
+      "part": 0, "row": 1, "col": 0, "w": 1, "h": 1, "x": 0, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY7NV3Q4YW6DFN6MJ7B",
+      "part": 0, "row": 1, "col": 1, "w": 1, "h": 1, "x": 1, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY7J6HMDAA24EJ68W6X",
+      "part": 0, "row": 1, "col": 2, "w": 1, "h": 1, "x": 2, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY71CXGGP2T8XVTEHSP",
+      "part": 0, "row": 1, "col": 3, "w": 1, "h": 1, "x": 3, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY7QRPQK5ZZY8SD1VHB",
+      "part": 0, "row": 2, "col": 0, "w": 1, "h": 1, "x": 0, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY7HX2PHY41CCFPNBV8",
+      "part": 0, "row": 2, "col": 1, "w": 1, "h": 1, "x": 1, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY753QKGTDE4Q1FFQ9C",
+      "part": 0, "row": 2, "col": 2, "w": 1, "h": 1, "x": 2, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY7E2EMADN1Z4KFTS58",
+      "part": 0, "row": 2, "col": 3, "w": 1, "h": 1, "x": 3, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY73MCCTC06X1R2P7DX",
+      "part": 0, "row": 3, "col": 0, "w": 1, "h": 1, "x": 0, "y": 3, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY7BKAYHKD69AV2XNFB",
+      "part": 0, "row": 3, "col": 1, "w": 1, "h": 1, "x": 1, "y": 3, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY7VD2X7JPCEPNV8AG5",
+      "part": 0, "row": 3, "col": 2, "w": 1, "h": 1, "x": 2, "y": 3, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY7TZR70R7HN3ABXE23",
+      "part": 0, "row": 3, "col": 3, "w": 1, "h": 2, "x": 3, "y": 3, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY76804WRFFZBD4WGFS",
+      "part": 0, "row": 4, "col": 0, "w": 2, "h": 1, "x": 0, "y": 4, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE4XVFY79RBMDXNR1SQEGWZP",
+      "part": 0, "row": 4, "col": 2, "w": 1, "h": 1, "x": 2, "y": 4, "r": 0, "rx": 0, "ry": 0
+    }
+  ],
+  "parts": [
+    {
+      "name": "unibody",
+      "controller": "nice_nano_v2",
+      "wiring": "matrix_diode",
+      "pins": {
+        "d2": "input",
+        "d3": "input",
+        "d4": "input",
+        "d5": "input",
+        "d6": "input",
+        "d10": "output",
+        "d16": "output",
+        "d14": "output",
+        "d15": "output",
+        "d20": "bus",
+        "d19": "bus",
+        "d18": "bus"
+      },
+      "keys": {
+        "01KE4XVFY7W6XWV8PFAPVVDARF": {
+          "input": "d2",
+          "output": "d10"
+        },
+        "01KE4XVFY71ENA9Q1JAVC1FE25": {
+          "input": "d3",
+          "output": "d10"
+        },
+        "01KE4XVFY73MCCTC06X1R2P7DX": {
+          "input": "d5",
+          "output": "d10"
+        },
+        "01KE4XVFY76804WRFFZBD4WGFS": {
+          "input": "d6",
+          "output": "d10"
+        },
+        "01KE4XVFY7Z2FRCFXXC0CQN1V0": {
+          "input": "d2",
+          "output": "d16"
+        },
+        "01KE4XVFY7H7VJ9FQG07GK7WA9": {
+          "input": "d2",
+          "output": "d14"
+        },
+        "01KE4XVFY76T444BP8EWJJMP7K": {
+          "input": "d2",
+          "output": "d15"
+        },
+        "01KE4XVFY7NV3Q4YW6DFN6MJ7B": {
+          "input": "d3",
+          "output": "d16"
+        },
+        "01KE4XVFY7J6HMDAA24EJ68W6X": {
+          "input": "d3",
+          "output": "d14"
+        },
+        "01KE4XVFY71CXGGP2T8XVTEHSP": {
+          "input": "d3",
+          "output": "d15"
+        },
+        "01KE4XVFY7HX2PHY41CCFPNBV8": {
+          "input": "d4",
+          "output": "d16"
+        },
+        "01KE4XVFY753QKGTDE4Q1FFQ9C": {
+          "input": "d4",
+          "output": "d14"
+        },
+        "01KE4XVFY7E2EMADN1Z4KFTS58": {
+          "input": "d4",
+          "output": "d15"
+        },
+        "01KE4XVFY7QRPQK5ZZY8SD1VHB": {
+          "input": "d4",
+          "output": "d10"
+        },
+        "01KE4XVFY7BKAYHKD69AV2XNFB": {
+          "input": "d5",
+          "output": "d16"
+        },
+        "01KE4XVFY7VD2X7JPCEPNV8AG5": {
+          "input": "d5",
+          "output": "d14"
+        },
+        "01KE4XVFY7TZR70R7HN3ABXE23": {
+          "input": "d5",
+          "output": "d15"
+        },
+        "01KE4XVFY79RBMDXNR1SQEGWZP": {
+          "input": "d6",
+          "output": "d14"
+        }
+      },
+      "buses": [
+        {
+          "name": "spi0",
+          "devices": [
+            {
+              "type": "niceview",
+              "cs": "d18"
+            }
+          ],
+          "type": "spi",
+          "mosi": "d20",
+          "sck": "d19"
+        },
+        {
+          "name": "spi1",
+          "devices": [],
+          "type": "spi"
+        },
+        {
+          "name": "spi2",
+          "devices": [],
+          "type": "spi"
+        },
+        {
+          "name": "spi3",
+          "devices": [],
+          "type": "spi"
+        },
+        {
+          "name": "i2c0",
+          "devices": [],
+          "type": "i2c"
+        },
+        {
+          "name": "i2c1",
+          "devices": [],
+          "type": "i2c"
+        }
+      ]
+    }
+  ]
+}

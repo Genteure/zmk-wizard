@@ -79,8 +79,8 @@ include:
   - board: ${boardName(firstPart.controller)}
     shield: ${keyboard.shield}${niceView(firstPart)}
 
-# To build with ZMK Studio support, uncomment the following block
-# by removing the leading '#' from each line.
+## To build with ZMK Studio support, uncomment the following block
+## by removing the leading '#' from each line.
 
 #  - board: ${boardName(firstPart.controller)}
 #    shield: ${keyboard.shield}${niceView(firstPart)}
@@ -95,8 +95,8 @@ include:
       // dongle for unibody
       content += `
 
-# See ZMK documentation on how to build and flash the firmware for dongle mode.
-# The "board" for the dongle can be anything ZMK supports.
+## See ZMK documentation on how to build and flash the firmware for dongle mode.
+## The "board" for the dongle can be anything ZMK supports.
 
 #  - board: ${boardName(firstPart.controller)}
 #    shield: ${keyboard.shield}_dongle
@@ -122,8 +122,8 @@ include:
   - board: ${boardName(firstPart.controller)}
     shield: ${keyboard.shield}_${firstPart.name}${niceView(firstPart)}
 
-# To build with ZMK Studio support, uncomment the following block
-# by removing the leading '#' from each line.
+## To build with ZMK Studio support, uncomment the following block
+## by removing the leading '#' from each line.
 
 #  - board: ${boardName(firstPart.controller)}
 #    shield: ${keyboard.shield}_${firstPart.name}${niceView(firstPart)}
@@ -136,8 +136,8 @@ include:
       // dongle for central
       content += `
 
-# See ZMK documentation on how to build and flash the firmware for dongle mode.
-# The "board" for the dongle can be anything ZMK supports.
+## See ZMK documentation on how to build and flash the firmware for dongle mode.
+## The "board" for the dongle can be anything ZMK supports.
 
 #  - board: ${boardName(firstPart.controller)}
 #    shield: ${keyboard.shield}_dongle

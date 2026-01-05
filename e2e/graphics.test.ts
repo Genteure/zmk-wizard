@@ -395,11 +395,11 @@ test.describe('selection', () => {
       const box = await editor.boundingBox();
       if (!box) throw new Error('No bounding box for editor');
 
-      const startX = box.x + 5;
-      const startY = box.y + 5;
+      const startX = box.x + 2;
+      const startY = box.y + 2;
       const centerX = box.x + box.width / 2;
-      const endX = box.x + box.width - 5;
-      const endY = box.y + box.height - 5;
+      const endX = box.x + box.width - 2;
+      const endY = box.y + box.height - 2;
 
       await page.mouse.move(startX, startY);
       await page.mouse.down();

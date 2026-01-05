@@ -25,7 +25,7 @@ export default function versionPlugin() {
       const short = commit ? safeExec('git rev-parse --short=10 HEAD') : '';
       const branch = safeExec('git rev-parse --abbrev-ref HEAD');
       const tag = safeExec('git describe --tags --abbrev=0');
-      const isDirty = !!safeExec('git status --porcelain');
+      const dirty = !!safeExec('git status --porcelain');
       const date = new Date().toISOString();
 
       const obj = {
@@ -33,7 +33,7 @@ export default function versionPlugin() {
         short,
         branch,
         tag,
-        dirty: isDirty,
+        dirty,
         buildDate: date,
       };
 

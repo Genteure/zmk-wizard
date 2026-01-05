@@ -1,0 +1,226 @@
+name: Smoke Test - Single Repository
+
+on:
+  workflow_call:
+    inputs:
+      json-path:
+        type: string
+        description: 'Path to the JSON file for generating the ZMK config.'
+        required: true
+      config_path:
+        type: string
+        default: "config"
+
+jobs:
+  matrix:
+    name: Generate ZMK config and build matrix
+    runs-on: ubuntu-latest
+    outputs:
+      artifact_name: ${{ steps.set_artifact_name.outputs.artifact_name }}
+      build_matrix: ${{ steps.generate_config.outputs.build_matrix }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "10"
+      - uses: actions/setup-node@v6
+        with:
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+        env:
+          CXXFLAGS: "-std=c++20"
+      - id: set_artifact_name
+        name: Sanitize artifact name
+        run: |
+          artifact_name=$(python -c "import re; s=\"${{ inputs['json-path'] }}\"; s=re.sub(r'(?i)\\.json$','',s); s=re.sub(r'[\"/:<>|*?\\r\\n\\\\]','_',s); print('zmk-config-' + s)")
+          echo "artifact_name=${artifact_name}" >> "$GITHUB_OUTPUT"
+      - id: generate_config
+        name: Generate ZMK config files
+        run: |
+          config_workspace="$(mktemp -d)"
+          echo "config_workspace=${config_workspace}" >> "$GITHUB_OUTPUT"
+          pnpm run smoke generate "${{ inputs['json-path'] }}" "${config_workspace}"
+      - name: Upload generated config
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ steps.set_artifact_name.outputs.artifact_name }}
+          path: ${{ steps.generate_config.outputs.config_workspace }}
+          retention-days: 1
+
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: zmkfirmware/zmk-build-arm:stable
+    needs: matrix
+    name: Build
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrix.outputs.build_matrix) }}
+    env:
+      display_name: ""
+      base_dir: ""
+      zephyr_version: ""
+      extra_west_args: ""
+      extra_cmake_args: ""
+      build_dir: ""
+    steps:
+      - name: Download generated config
+        uses: actions/download-artifact@v6
+        with:
+          name: ${{ needs.matrix.outputs.artifact_name }}
+          path: ${{ github.workspace }}
+
+      - name: Create build directory
+        run: |
+          echo "build_dir=$(mktemp -d)" >> $GITHUB_ENV
+
+      - name: Prepare variables
+        shell: sh -x {0}
+        env:
+          board: ${{ matrix.board }}
+          shield: ${{ matrix.shield }}
+          artifact_name: ${{ matrix.artifact-name }}
+          snippet: ${{ matrix.snippet }}
+        run: |
+          if [ -e zephyr/module.yml ]; then
+            export zmk_load_arg=" -DZMK_EXTRA_MODULES='${GITHUB_WORKSPACE}'"
+            new_tmp_dir="${TMPDIR:-/tmp}/zmk-config"
+            mkdir -p "${new_tmp_dir}"
+            echo "base_dir=${new_tmp_dir}" >> $GITHUB_ENV
+          else
+            echo "base_dir=${GITHUB_WORKSPACE}" >> $GITHUB_ENV
+          fi
+
+          if [ -n "${snippet}" ]; then
+            extra_west_args="-S \"${snippet}\""
+          fi
+
+          echo "zephyr_version=${ZEPHYR_VERSION}" >> $GITHUB_ENV
+          echo "extra_west_args=${extra_west_args}" >> $GITHUB_ENV
+          echo "extra_cmake_args=${shield:+-DSHIELD=\"$shield\"}${zmk_load_arg}" >> $GITHUB_ENV
+          echo "display_name=${shield:+$shield - }${board}" >> $GITHUB_ENV
+          echo "artifact_name=${artifact_name:-${shield:+$shield-}${board}-zmk}" >> $GITHUB_ENV
+
+      - name: Copy config files to isolated temporary directory
+        run: |
+          if [ "${{ env.base_dir }}" != "${GITHUB_WORKSPACE}" ]; then
+            mkdir "${{ env.base_dir }}/${{ inputs.config_path }}"
+            cp -R ${{ inputs.config_path }}/* "${{ env.base_dir }}/${{ inputs.config_path }}/"
+          fi
+
+      - name: Cache west modules
+        uses: actions/cache@v4
+        continue-on-error: true
+        env:
+          cache_name: cache-zephyr-${{ env.zephyr_version }}-modules
+        with:
+          path: |
+            ${{ env.base_dir }}/modules/
+            ${{ env.base_dir }}/tools/
+            ${{ env.base_dir }}/zephyr/
+            ${{ env.base_dir }}/bootloader/
+            ${{ env.base_dir }}/zmk/
+          key: ${{ runner.os }}-build-${{ env.cache_name }}-${{ hashFiles('**/west.yml', '**/build.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache_name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: West Init
+        working-directory: ${{ env.base_dir }}
+        run: west init -l "${{ env.base_dir }}/${{ inputs.config_path }}"
+
+      - name: West Update
+        working-directory: ${{ env.base_dir }}
+        run: west update --fetch-opt=--filter=tree:0
+
+      - name: West Zephyr export
+        working-directory: ${{ env.base_dir }}
+        run: west zephyr-export
+
+      - name: West Build (${{ env.display_name }})
+        working-directory: ${{ env.base_dir }}
+        shell: bash -eo pipefail {0}
+        run: |
+          log_file="${{ env.build_dir }}/west-build.log"
+          west build -s zmk/app -d "${{ env.build_dir }}" -b "${{ matrix.board }}" ${{ env.extra_west_args }} -- -DZMK_CONFIG=${{ env.base_dir }}/${{ inputs.config_path }} ${{ env.extra_cmake_args }} ${{ matrix.cmake-args }} 2>&1 | tee "$log_file"
+
+      - name: ${{ env.display_name }} Kconfig file
+        run: |
+          if [ -f "${{ env.build_dir }}/zephyr/.config" ]
+          then
+            grep -v -e "^#" -e "^$" "${{ env.build_dir }}/zephyr/.config" | sort
+          else
+            echo "No Kconfig output"
+          fi
+        if: ${{ !cancelled() }}
+
+      - name: ${{ env.display_name }} Devicetree file
+        run: |
+          if [ -f "${{ env.build_dir }}/zephyr/zephyr.dts" ]
+          then
+            cat "${{ env.build_dir }}/zephyr/zephyr.dts"
+          elif [ -f "${{ env.build_dir }}/zephyr/zephyr.dts.pre" ]
+          then
+            cat -s "${{ env.build_dir }}/zephyr/zephyr.dts.pre"
+          else
+            echo "No Devicetree output"
+          fi
+        if: ${{ !cancelled() }}
+
+      - name: Summarize west build log
+        if: ${{ always() }}
+        env:
+          LOG_FILE: ${{ env.build_dir }}/west-build.log
+        run: |
+          python3 <<'PY'
+          import os
+          import re
+          import sys
+          from pathlib import Path
+
+          log_file = os.environ.get("LOG_FILE")
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+
+          if not log_file:
+            print("LOG_FILE not set")
+            sys.exit(1)
+
+          if not summary_path:
+            print("GITHUB_STEP_SUMMARY not set")
+            sys.exit(1)
+
+          log_path = Path(log_file)
+          if not log_path.exists():
+            with open(summary_path, "a", encoding="utf-8") as fh:
+              fh.write(f"Log file not found at {log_file}\n")
+            sys.exit(1)
+
+          pattern = re.compile(r"(error|warn|fatal)", re.IGNORECASE)
+          skip = re.compile(r"/(fatal|error)\.c\.obj", re.IGNORECASE)
+          ignored_warnings = {
+              "warning: Deprecated symbol KSCAN is enabled.",
+              "warning: Deprecated symbol NRF_STORE_REBOOT_TYPE_GPREGRET is enabled.",
+          }
+
+          matches: list[str] = []
+          with open(log_path, encoding="utf-8", errors="replace") as fh:
+            for idx, line in enumerate(fh, start=1):
+              if skip.search(line):
+                continue
+              if line.strip() in ignored_warnings:
+                continue
+              if pattern.search(line):
+                matches.append(f"{idx}:{line.rstrip()}")
+
+          if not matches:
+            print("No error/warn/fatal lines found.")
+            sys.exit(0)
+
+          with open(summary_path, "a", encoding="utf-8") as fh:
+            fh.write("## Potential Issues Found in Build Log\n\n")
+            fh.write("The following lines were extracted from the build log:\n\n")
+            fh.write("```\n")
+            fh.write("\n".join(matches))
+            fh.write("\n```\n")
+          PY

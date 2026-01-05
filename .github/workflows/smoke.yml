@@ -1,0 +1,38 @@
+name: Smoke Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - smoketest
+
+jobs:
+  smoke:
+    name: List test cases
+    runs-on: ubuntu-latest
+    outputs:
+      json-files: ${{ steps.list-data-files.outputs.json-files }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "10"
+      - uses: actions/setup-node@v6
+        with:
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+        env:
+          CXXFLAGS: "-std=c++20"
+      - id: list-data-files
+        name: List all example JSON files
+        run: pnpm run smoke list
+  for-each-repo:
+    name: Repo
+    needs: smoke
+    strategy:
+      fail-fast: false
+      matrix:
+        json-path: ${{ fromJson(needs.smoke.outputs.json-files) }}
+    uses: ./.github/workflows/smoke-single.yml
+    with:
+      json-path: ${{ matrix.json-path }}

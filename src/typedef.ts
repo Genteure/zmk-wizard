@@ -1,4 +1,4 @@
-import { z } from "astro:schema";
+import { z } from "astro/zod";
 import { isValid as isValidUlid, ulid } from "ulidx";
 import { AnyBusSchema } from "./types/buses";
 export * from "./types/buses";

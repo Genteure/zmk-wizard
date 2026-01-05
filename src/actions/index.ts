@@ -1,6 +1,6 @@
+import { z } from 'astro/zod';
 import { ActionError, defineAction } from 'astro:actions';
 import { TURNSTILE_SECRET } from 'astro:env/server';
-import { z } from 'astro:schema';
 import { createTarGzipStream, type TarFileInput } from 'nanotar';
 import { ulid } from 'ulidx';
 import { createGitRepository } from '~/lib/gitrepo';

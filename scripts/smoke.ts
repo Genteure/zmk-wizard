@@ -1,0 +1,198 @@
+import { promises as fs } from "fs";
+import { createJiti } from "jiti";
+import path from "path";
+import { fileURLToPath } from "url";
+import YAML from "yaml";
+
+import { type Keyboard } from "~/typedef";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(__dirname, "..");
+const fixturesRoot = path.join(repoRoot, "examples", "json");
+
+const jiti = createJiti(import.meta.url, {
+  cache: false,
+  alias: {
+    "~": path.join(repoRoot, "src"),
+    "virtual:version": path.join(__dirname, "virtual-version-shim.ts"),
+  },
+});
+
+// Deferred import so we can attach aliases for virtual modules and paths.
+const { createZMKConfig } = await jiti.import("../src/lib/templating") as typeof import("../src/lib/templating");
+const { validateKeyboard } = await jiti.import("../src/lib/validators") as typeof import("../src/lib/validators");
+const { KeyboardSchema } = await jiti.import("../src/typedef") as typeof import("../src/typedef");
+
+type VirtualTextFolder = ReturnType<typeof createZMKConfig>;
+
+async function main() {
+  const [, , command, ...args] = process.argv;
+
+  switch (command) {
+    case "list":
+      await handleList();
+      return;
+    case "generate":
+      await handleGenerate(args);
+      return;
+    default:
+      printUsage();
+      process.exit(1);
+  }
+}
+
+async function handleList(): Promise<void> {
+  const nested = await walkForJson(fixturesRoot);
+  const files = Array.from(new Set(nested.map(toPosixRelative))).sort();
+
+  const listJson = JSON.stringify(files);
+  console.log(listJson);
+  await writeOutput("json-files", listJson);
+}
+
+async function handleGenerate(args: string[]): Promise<void> {
+  const [fixturePath, destRoot] = args;
+  if (!fixturePath || !destRoot) {
+    console.error("Usage: pnpm run smoke generate <fixture.json> <destDir>");
+    process.exit(1);
+  }
+
+  console.log(`Generating repo for fixture ${fixturePath} into ${destRoot}...`);
+
+  const keyboard = await readKeyboardFixture(fixturePath);
+  const files = createZMKConfig(keyboard);
+  const matrixJson = buildMatrixJson(files);
+
+  console.log(`Generated files:`);
+  for (const relativePath of Object.keys(files).sort()) {
+    console.log(` - ${relativePath}`);
+  }
+
+  await writeVirtualRepo(files, destRoot);
+  console.log(`Wrote files to ${destRoot}`);
+
+  await writeOutput("build_matrix", matrixJson);
+  console.log("Build matrix JSON:");
+  console.log(matrixJson);
+}
+
+function printUsage(): void {
+  console.error(`Usage: pnpm run smoke <command>
+
+Commands:
+  list                             List fixture JSON files
+  generate <fixture.json> <destDir>  Generate repo files into destDir and emit build matrix JSON
+`);
+}
+
+async function readKeyboardFixture(fixturePath: string): Promise<Keyboard> {
+  const absolutePath = path.isAbsolute(fixturePath) ? fixturePath : path.join(fixturesRoot, fixturePath);
+
+  let parsed: unknown;
+  try {
+    const content = await fs.readFile(absolutePath, "utf8");
+    parsed = JSON.parse(content);
+  } catch (error) {
+    console.error(`Failed to read fixture ${fixturePath}:`, error);
+    process.exit(1);
+  }
+
+  const schema = KeyboardSchema.safeParse(parsed);
+  if (!schema.success) {
+    const issues = schema.error.errors.map(issue => `${issue.path.join(".")}: ${issue.message}`).join("\n");
+    console.error(`Invalid keyboard fixture ${fixturePath} (schema):\n${issues}`);
+    process.exit(1);
+  }
+
+  const validationErrors = validateKeyboard(schema.data);
+  if (validationErrors.length > 0) {
+    console.error(`Invalid keyboard fixture ${fixturePath}:\n${validationErrors.join("\n")}`);
+    process.exit(1);
+  }
+
+  return schema.data;
+}
+
+async function walkForJson(dir: string): Promise<string[]> {
+  const found: string[] = [];
+  const stack = [dir];
+
+  while (stack.length) {
+    const current = stack.pop();
+    if (!current) continue;
+
+    const entries = await fs.readdir(current, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(full);
+      } else if (entry.isFile() && entry.name.endsWith(".json")) {
+        found.push(full);
+      }
+    }
+  }
+
+  return found;
+}
+
+async function writeVirtualRepo(files: VirtualTextFolder, destRoot: string): Promise<void> {
+  for (const [relative, content] of Object.entries(files)) {
+    const fullPath = path.join(destRoot, relative);
+    await fs.mkdir(path.dirname(fullPath), { recursive: true });
+    await fs.writeFile(fullPath, content, "utf8");
+  }
+}
+
+async function writeOutput(key: string, value: string): Promise<void> {
+  const outputPath = process.env.GITHUB_OUTPUT;
+  if (!outputPath) return;
+  await fs.appendFile(outputPath, `${key}=${value}\n`);
+}
+
+function buildMatrixJson(files: VirtualTextFolder): string {
+  const buildYaml = files["build.yaml"];
+  if (!buildYaml) {
+    throw new Error("build.yaml not generated by templating");
+  }
+
+  // pre processing the YAML to enable optional builds
+
+  // split into lines and find `---`, do not modify lines before it
+  // for all lines after it, if line starts with `#`, remove one single #
+
+  const lines = buildYaml.split("\n");
+  const documentStartIndex = lines.findIndex(line => line === "---");
+
+  for (let i = documentStartIndex + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.startsWith("#")) {
+      lines[i] = line.slice(1);
+    }
+  }
+
+  const processedYaml = lines.join("\n");
+  const parsed = YAML.parse(processedYaml);
+
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed) || !("include" in parsed)) {
+    throw new Error("build.yaml does not have expected structure");
+  }
+  // remove anything that's building shield settings_reset
+
+  if (Array.isArray(parsed.include)) {
+    parsed.include = parsed.include.filter((entry: any) => {
+      if (typeof entry !== "object" || entry === null) return true;
+      if (!("shield" in entry)) return true;
+      if (typeof entry.shield !== "string") return true;
+      return !(entry.shield as string).includes("settings_reset");
+    });
+  }
+
+  return JSON.stringify(parsed);
+}
+
+function toPosixRelative(p: string): string {
+  const rel = path.relative(fixturesRoot, p);
+  return rel.split(path.sep).join("/");
+}
+
+await main();
