@@ -3,8 +3,7 @@ name: Smoke Test
 on:
   workflow_dispatch:
   push:
-    branches:
-      - smoketest
+  pull_request:
 
 jobs:
   smoke:
