@@ -32,7 +32,7 @@ import {
 } from "~/lib/geometry";
 import { swpBgClass, swpBorderClass } from "~/lib/swpColors";
 import type { Key, KeyboardPart, SingleKeyWiring, WiringType } from "../typedef";
-import { normalizeKeys, useWizardContext, type WizardContextType } from "./context";
+import { normalizeKeys, useWizardContext } from "./context";
 import { controllerInfos } from "./controllerInfo";
 import {
   createDragSelectEventHandlers,

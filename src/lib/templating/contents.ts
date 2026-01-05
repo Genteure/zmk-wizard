@@ -2,7 +2,6 @@ import { unwrap } from "solid-js/store";
 import { version } from "virtual:version";
 import { controllerInfos } from "~/components/controllerInfo";
 import {
-  ControllerSchema,
   type Controller,
   type Keyboard,
   type KeyboardPart
