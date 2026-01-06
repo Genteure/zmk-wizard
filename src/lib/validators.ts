@@ -85,6 +85,24 @@ const Validators: Record<string, ValidatorFunction> = {
 
     return null;
   },
+  rp2040UnibodyOnly: (keyboard: Keyboard) => {
+    const usesRp2040 = keyboard.parts.some((part) => controllerInfos[part.controller]?.soc === "rp2040");
+    if (!usesRp2040) {
+      return null;
+    }
+
+    const errors: string[] = [];
+
+    if (keyboard.parts.length !== 1) {
+      errors.push("RP2040-based controllers only support unibody keyboards; remove additional parts or choose a different controller");
+    }
+
+    if (keyboard.dongle) {
+      errors.push("RP2040-based controllers do not support dongle mode; disable dongle or use a different controller");
+    }
+
+    return errors.length > 0 ? errors : null;
+  },
   busConfiguration: (keyboard: Keyboard) => {
     const errors: string[] = [];
 

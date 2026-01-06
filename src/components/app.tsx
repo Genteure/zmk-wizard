@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For, type Accessor, type Component, type VoidComponent } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show, type Accessor, type Component, type VoidComponent } from "solid-js";
 import { produce } from "solid-js/store";
 
 import { Button } from "@kobalte/core/button";
@@ -15,7 +15,9 @@ import ExternalLink from "lucide-solid/icons/external-link";
 import LucideKeyboard from "lucide-solid/icons/keyboard";
 import Pencil from "lucide-solid/icons/pencil";
 import SquarePen from "lucide-solid/icons/square-pen";
+import TriangleAlert from "lucide-solid/icons/triangle-alert";
 
+import { Link } from "@kobalte/core/link";
 import { Tabs } from "@kobalte/core/tabs";
 import { bboxCenter, getKeysBoundingBox, keyCenter } from "~/lib/geometry";
 import { layouts } from "~/lib/physicalLayouts";
@@ -473,6 +475,9 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
     setWiringDraft(part().wiring);
   });
 
+  const controllerInfoDraft = createMemo(() => controllerInfos[controllerDraft()] ?? null);
+  const isRp2040Draft = createMemo(() => controllerInfoDraft()?.soc === "rp2040");
+
   const saveBoardAndWiring = () => {
     const controllerChanged = part().controller !== controllerDraft();
     const wiringChanged = part().wiring !== wiringDraft();
@@ -492,6 +497,15 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
 
     setBoardDialogOpen(false);
   };
+
+  //  --  -- //
+
+  const showRP2040Error = createMemo(() => {
+    if (!isRp2040Draft()) return false;
+    if (context.keyboard.parts.length > 1) return true;
+    if (context.keyboard.dongle) return true;
+    return false;
+  });
 
   const copyFromPart = (sourceIndex: number, transform: WiringTransform) => {
     const source = context.keyboard.parts[sourceIndex];
@@ -611,8 +625,56 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                       <option value="direct_vcc">Direct to VCC</option>
                     </select>
                   </label>
-
                 </div>
+
+                <Show when={isRp2040Draft()}>
+                  <div class="alert alert-soft mt-3 text-xs">
+                    <div>
+                      <div>
+                        Support for RP2040-based boards in Shield Wizard is experimental.
+                      </div>
+                      <div class="mt-2">
+                        Please report any issues with generated configurations on the&nbsp;
+                        <Link
+                          class="link"
+                          href="https://zmk.dev/community/discord/invite"
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          ZMK Community Discord
+                        </Link> to @genteure or on&nbsp;
+                        <Link
+                          class="link"
+                          href="https://github.com/genteure/zmk-wizard/issues"
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          GitHub Issues
+                        </Link>.
+                      </div>
+                    </div>
+                  </div>
+                </Show>
+                <Show when={showRP2040Error()}>
+                  <div role="alert" class="alert alert-soft alert-warning mt-3">
+                    <TriangleAlert class="w-5 h-5" />
+                    <div class="text-xs">
+                      <div>
+                        Shield Wizard only supports RP2040-based controllers in unibody non-dongle keyboards.
+                      </div>
+                      <div class="my-1">Please set parts to 1 and uncheck "add dongle".</div>
+                      <Button
+                        class="btn btn-warning btn-outline btn-sm"
+                        onClick={() => {
+                          setBoardDialogOpen(false);
+                          context.setNav("dialog", "info", true);
+                        }}
+                      >
+                        Edit Keyboard Info
+                      </Button>
+                    </div>
+                  </div>
+                </Show>
                 <div class="text-sm text-base-content/70 mt-3">
                   Changing the board or wiring type will reset all pin assignments and key wiring for this part.
                 </div>
@@ -620,6 +682,7 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                   <Dialog.CloseButton class="btn btn-ghost btn-sm">Cancel</Dialog.CloseButton>
                   <Button
                     class="btn btn-primary btn-sm"
+                    disabled={showRP2040Error()}
                     onClick={saveBoardAndWiring}
                   >
                     Save

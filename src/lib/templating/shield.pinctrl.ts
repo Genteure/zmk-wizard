@@ -28,9 +28,14 @@ type InternalPinctrlOutput = {
 }
 
 export function createShieldPinctrlFile(keyboard: Keyboard, partIndex: number): PinctrlOutput | null {
-  // Add more in the future as needed
-  return createNrf52840PinctrlFile(keyboard, partIndex);
-  // return createRp2040PinctrlFile(part);
+  const controller = controllerInfos[keyboard.parts[partIndex].controller];
+
+  if (controller?.soc === "nrf52840") {
+    return createNrf52840PinctrlFile(keyboard, partIndex);
+  }
+
+  // Add more SoC-specific pinctrl generators as they become supported.
+  return null;
 }
 
 function createNrf52840PinctrlFile(keyboard: Keyboard, partIndex: number): PinctrlOutput | null {

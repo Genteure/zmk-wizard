@@ -1,4 +1,4 @@
-import type { AnyBus, BusDeviceTypeName, BusName, Controller } from "~/typedef";
+import type { AnyBus, BusDeviceTypeName, BusName, Controller, Soc } from "~/typedef";
 
 export interface VisualGpioPin {
   id: string;
@@ -55,6 +55,7 @@ export interface PinctrlPinChoicesFunc {
 
 export interface ControllerInfo {
   name: string;
+  soc: Soc;
   /**
    * Zephyr board name for build.yaml and pinctrl overlay paths
    */
@@ -122,6 +123,7 @@ function staticPinctrlChoices(pins: string[]) {
 export const controllerInfos: Record<Controller, ControllerInfo> = {
   "nice_nano_v2": {
     name: "nice!nano v2",
+    soc: "nrf52840",
     board: "nice_nano_v2",
     boardKconfig: "BOARD_NICE_NANO_V2",
     docLink: "https://nicekeyboards.com/docs/nice-nano/pinout-schematic",
@@ -203,6 +205,7 @@ export const controllerInfos: Record<Controller, ControllerInfo> = {
 
   "xiao_ble": {
     name: "Seeed Studio XIAO nRF52840",
+    soc: "nrf52840",
     board: "seeeduino_xiao_ble",
     boardKconfig: "BOARD_SEEEDUINO_XIAO_BLE",
     docLink: "https://files.seeedstudio.com/wiki/XIAO-BLE/pinout2.png",
@@ -253,6 +256,7 @@ export const controllerInfos: Record<Controller, ControllerInfo> = {
 
   "xiao_ble_plus": {
     name: "Seeed Studio XIAO nRF52840 Plus",
+    soc: "nrf52840",
     board: "seeeduino_xiao_ble",
     boardKconfig: "BOARD_SEEEDUINO_XIAO_BLE",
     docLink: "https://files.seeedstudio.com/wiki/XIAO-BLE/plus_pinout.png",
@@ -336,6 +340,7 @@ export const controllerInfos: Record<Controller, ControllerInfo> = {
 
   "rpi_pico": {
     name: "Raspberry Pi Pico",
+    soc: "rp2040",
     board: "rpi_pico",
     boardKconfig: "BOARD_RPI_PICO",
     docLink: "https://datasheets.raspberrypi.com/pico/Pico-R3-A4-Pinout.pdf",

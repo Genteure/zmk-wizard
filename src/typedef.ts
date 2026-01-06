@@ -18,6 +18,12 @@ export interface Options {
   padding?: number;
 }
 
+export const SocSchema = z.enum([
+  "nrf52840",
+  "rp2040",
+]);
+export type Soc = z.infer<typeof SocSchema>;
+
 export const ControllerSchema = z.enum([
   "nice_nano_v2",
   "xiao_ble",
