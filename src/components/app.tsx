@@ -20,7 +20,6 @@ import TriangleAlert from "lucide-solid/icons/triangle-alert";
 import { Link } from "@kobalte/core/link";
 import { Tabs } from "@kobalte/core/tabs";
 import { bboxCenter, getKeysBoundingBox, keyCenter } from "~/lib/geometry";
-import { layouts } from "~/lib/physicalLayouts";
 import { swpBgClass } from "~/lib/swpColors";
 import { copyWiringBetweenParts, type WiringTransform } from "~/lib/wiringMapping";
 import { type Controller, type Key, type WiringType } from "../typedef";
@@ -209,6 +208,15 @@ export const App: VoidComponent = () => {
   </div>);
 };
 
+// Lazy-load presets to keep main bundle small
+const [presets, setPresets] = createSignal<typeof import("~/lib/physicalLayouts").layouts>();
+async function loadPresets() {
+  if (presets()) return;
+  const mod = await import("~/lib/physicalLayouts");
+  setPresets(mod.layouts);
+}
+loadPresets();
+
 const ConfigLayout: Component = () => {
   const context = useWizardContext();
 
@@ -239,42 +247,41 @@ const ConfigLayout: Component = () => {
                   </button></Menubar.SubTrigger>
                   <Menubar.Portal>
                     <Menubar.Content class="p-2 bg-base-200 rounded shadow-lg border menu max-h-96 overflow-x-auto flex-nowrap">
-                      <For each={Object.entries(layouts)}>
-                        {([category, layouts]) => (
-                          <Menubar.Group>
-                            <Menubar.GroupLabel>{category}</Menubar.GroupLabel>
-                            <For each={layouts}>
-                              {(layout) => (
-                                <Menubar.Item as="li">
-                                  <button
-                                    onClick={() => {
-                                      context.setNav("selectedKeys", []);
-                                      const newKeys = ensureKeyIds(structuredClone(layout.keys));
-                                      context.setKeyboard("layout", newKeys);
-                                      normalizeKeys(context);
+                      <Show when={presets()} fallback={<div class="px-2 py-1 text-base-content/65">Loading presets…</div>}>
+                        <For each={Object.entries(presets()!)}>
+                          {([category, layouts]) => (
+                            <Menubar.Group>
+                              <Menubar.GroupLabel>{category}</Menubar.GroupLabel>
+                              <For each={layouts}>
+                                {(layout) => (
+                                  <Menubar.Item as="li">
+                                    <button
+                                      onClick={() => {
+                                        context.setNav("selectedKeys", []);
+                                        const newKeys = ensureKeyIds(structuredClone(layout.keys));
+                                        context.setKeyboard("layout", newKeys);
+                                        normalizeKeys(context);
 
-                                      if (context.keyboard.parts.length > 1) {
-                                        // assign half the keys to part 0, half to part 1
-                                        // based on x position
-
-                                        const centerX = bboxCenter(getKeysBoundingBox(context.keyboard.layout)).x;
-                                        context.setKeyboard("layout", produce(keys => {
-                                          keys.forEach(k => {
-                                            const kc = keyCenter(k);
-                                            k.part = (kc.x < centerX) ? 0 : 1;
-                                          })
-                                        }));
-                                      }
-                                    }}
-                                  >
-                                    {layout.name}
-                                  </button>
-                                </Menubar.Item>
-                              )}
-                            </For>
-                          </Menubar.Group>
-                        )}
-                      </For>
+                                        if (context.keyboard.parts.length > 1) {
+                                          const centerX = bboxCenter(getKeysBoundingBox(context.keyboard.layout)).x;
+                                          context.setKeyboard("layout", produce(keys => {
+                                            keys.forEach(k => {
+                                              const kc = keyCenter(k);
+                                              k.part = (kc.x < centerX) ? 0 : 1;
+                                            })
+                                          }));
+                                        }
+                                      }}
+                                    >
+                                      {layout.name}
+                                    </button>
+                                  </Menubar.Item>
+                                )}
+                              </For>
+                            </Menubar.Group>
+                          )}
+                        </For>
+                      </Show>
                     </Menubar.Content>
                   </Menubar.Portal>
                 </Menubar.Sub>
