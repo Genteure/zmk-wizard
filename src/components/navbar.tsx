@@ -21,7 +21,6 @@ import { createEffect, createMemo, createSignal, For, onMount, Show, type VoidCo
 import { produce, unwrap } from "solid-js/store";
 import { version } from "virtual:version";
 import { CommonShieldNames } from "~/lib/shieldNames";
-import { createZMKConfig } from "~/lib/templating";
 import { validateKeyboard } from "~/lib/validators";
 import { type KeyboardPart, KeyboardSchema } from "../typedef";
 import { TurnstileCaptcha } from "./captcha/turnstile";
@@ -290,6 +289,13 @@ hover:border-accent bg-base-300 hover:bg-base-content/10 transition-colors durat
   );
 };
 
+let createZMKConfig: typeof import("~/lib/templating").createZMKConfig | null = null;
+
+(async () => {
+  const { createZMKConfig: importedCreateZMKConfig } = await import("~/lib/templating");
+  createZMKConfig = importedCreateZMKConfig;
+})();
+
 export const BuildButton: VoidComponent = () => {
   // Build and Configuration Validation
   // ==================================
@@ -426,6 +432,10 @@ export const BuildButton: VoidComponent = () => {
     setBuildErrorMessage(null);
 
     try {
+      if (!createZMKConfig) {
+        throw new Error("ZMK config generator not loaded");
+        // TODO store current keyboard in localstorage to enable page reload without losing data
+      }
       const keyboardConfig = createZMKConfig(snapshot.keyboard);
 
       const zip = new JSZip();
