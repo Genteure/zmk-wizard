@@ -120,6 +120,69 @@ function staticPinctrlChoices(pins: string[]) {
 
   return pinctrlPins;
 }
+
+/**
+ * Creates a pinctrl choices function for the RP2040 controller.
+ * @param pins pins exposed by the controller
+ * @returns function that returns pin choices for a given bus
+ */
+function makeRP2040PinctrlChoices(pins: string[]) {
+  /**
+   * All possible pin assignments for RP2040 I2C and SPI buses at chip level.
+   */
+  const allPinsForRp2040 = {
+    i2c: {
+      i2c0: {
+        // sda: 0, 4, 8, 16, 20, 24, 28
+        sda: ["gp0", "gp4", "gp8", "gp12", "gp16", "gp20", "gp24", "gp28"].filter((p) => pins.includes(p)),
+        // sdl: 1, 5, 9, 17, 21, 25, 29
+        scl: ["gp1", "gp5", "gp9", "gp13", "gp17", "gp21", "gp25", "gp29"].filter((p) => pins.includes(p)),
+      },
+      i2c1: {
+        // sda: 2, 6, 10, 14, 18, 22, 26
+        sda: ["gp2", "gp6", "gp10", "gp14", "gp18", "gp22", "gp26"].filter((p) => pins.includes(p)),
+        // sdl: 3, 7, 11, 15, 19, 23, 27
+        scl: ["gp3", "gp7", "gp11", "gp15", "gp19", "gp23", "gp27"].filter((p) => pins.includes(p)),
+      },
+    } satisfies Record<string, PinctrlI2cPinChoices> as Record<string, PinctrlI2cPinChoices>,
+    spi: {
+      spi0: {
+        // RX = MISO
+        // TX = MOSI
+
+        // spi0 rx = 0, 4, 16, 20
+        miso: ["gp0", "gp4", "gp16", "gp20"].filter((p) => pins.includes(p)),
+        // spi0 tx = 3, 7, 19, 23
+        mosi: ["gp3", "gp7", "gp19", "gp23"].filter((p) => pins.includes(p)),
+        // spi0 sck = 2, 6, 18, 22
+        sck: ["gp2", "gp6", "gp18", "gp22"].filter((p) => pins.includes(p)),
+        // spi0 cs = 1, 5, 17, 21 ???
+        // cs: ["gp1", "gp5", "gp17", "gp21"],
+        cs: pins, // allow any pin
+      },
+      spi1: {
+        // rx = 8, 12, 24, 28
+        miso: ["gp8", "gp12", "gp24", "gp28"].filter((p) => pins.includes(p)),
+        // tx = 11, 15, 27
+        mosi: ["gp11", "gp15", "gp27"].filter((p) => pins.includes(p)),
+        // sck = 10, 14, 26
+        sck: ["gp10", "gp14", "gp26"].filter((p) => pins.includes(p)),
+        // cs = 9, 13, 25, 29
+        // cs: ["gp9", "gp13", "gp25", "gp29"],
+        cs: pins, // allow any pin
+      },
+    } satisfies Record<string, PinctrlSpiPinChoices> as Record<string, PinctrlSpiPinChoices>,
+  }
+
+  function rp2040PinctrlChoices(bus: SpiBusInfo): PinctrlSpiPinChoices;
+  function rp2040PinctrlChoices(bus: I2cBusInfo): PinctrlI2cPinChoices;
+  function rp2040PinctrlChoices(bus: BusInfo): PinctrlSpiPinChoices | PinctrlI2cPinChoices {
+    return allPinsForRp2040[bus.type][bus.name];
+  }
+
+  return rp2040PinctrlChoices;
+}
+
 export const controllerInfos: Record<Controller, ControllerInfo> = {
   "nice_nano_v2": {
     name: "nice!nano v2",
@@ -345,32 +408,32 @@ export const controllerInfos: Record<Controller, ControllerInfo> = {
     boardKconfig: "BOARD_RPI_PICO",
     docLink: "https://datasheets.raspberrypi.com/pico/Pico-R3-A4-Pinout.pdf",
     pins: {
-      gp0: { displayName: "GP0", dtsRef: "&pico_header 0", pinctrlRef: "TODO" },
-      gp1: { displayName: "GP1", dtsRef: "&pico_header 1", pinctrlRef: "TODO" },
-      gp2: { displayName: "GP2", dtsRef: "&pico_header 2", pinctrlRef: "TODO" },
-      gp3: { displayName: "GP3", dtsRef: "&pico_header 3", pinctrlRef: "TODO" },
-      gp4: { displayName: "GP4", dtsRef: "&pico_header 4", pinctrlRef: "TODO" },
-      gp5: { displayName: "GP5", dtsRef: "&pico_header 5", pinctrlRef: "TODO" },
-      gp6: { displayName: "GP6", dtsRef: "&pico_header 6", pinctrlRef: "TODO" },
-      gp7: { displayName: "GP7", dtsRef: "&pico_header 7", pinctrlRef: "TODO" },
-      gp8: { displayName: "GP8", dtsRef: "&pico_header 8", pinctrlRef: "TODO" },
-      gp9: { displayName: "GP9", dtsRef: "&pico_header 9", pinctrlRef: "TODO" },
-      gp10: { displayName: "GP10", dtsRef: "&pico_header 10", pinctrlRef: "TODO" },
-      gp11: { displayName: "GP11", dtsRef: "&pico_header 11", pinctrlRef: "TODO" },
-      gp12: { displayName: "GP12", dtsRef: "&pico_header 12", pinctrlRef: "TODO" },
-      gp13: { displayName: "GP13", dtsRef: "&pico_header 13", pinctrlRef: "TODO" },
-      gp14: { displayName: "GP14", dtsRef: "&pico_header 14", pinctrlRef: "TODO" },
-      gp15: { displayName: "GP15", dtsRef: "&pico_header 15", pinctrlRef: "TODO" },
-      gp16: { displayName: "GP16", dtsRef: "&pico_header 16", pinctrlRef: "TODO" },
-      gp17: { displayName: "GP17", dtsRef: "&pico_header 17", pinctrlRef: "TODO" },
-      gp18: { displayName: "GP18", dtsRef: "&pico_header 18", pinctrlRef: "TODO" },
-      gp19: { displayName: "GP19", dtsRef: "&pico_header 19", pinctrlRef: "TODO" },
-      gp20: { displayName: "GP20", dtsRef: "&pico_header 20", pinctrlRef: "TODO" },
-      gp21: { displayName: "GP21", dtsRef: "&pico_header 21", pinctrlRef: "TODO" },
-      gp22: { displayName: "GP22", dtsRef: "&pico_header 22", pinctrlRef: "TODO" },
-      gp26: { displayName: "GP26", dtsRef: "&pico_header 26", pinctrlRef: "TODO" },
-      gp27: { displayName: "GP27", dtsRef: "&pico_header 27", pinctrlRef: "TODO" },
-      gp28: { displayName: "GP28", dtsRef: "&pico_header 28", pinctrlRef: "TODO" },
+      gp0: { displayName: "GP0", dtsRef: "&pico_header 0", pinctrlRef: "0" },
+      gp1: { displayName: "GP1", dtsRef: "&pico_header 1", pinctrlRef: "1" },
+      gp2: { displayName: "GP2", dtsRef: "&pico_header 2", pinctrlRef: "2" },
+      gp3: { displayName: "GP3", dtsRef: "&pico_header 3", pinctrlRef: "3" },
+      gp4: { displayName: "GP4", dtsRef: "&pico_header 4", pinctrlRef: "4" },
+      gp5: { displayName: "GP5", dtsRef: "&pico_header 5", pinctrlRef: "5" },
+      gp6: { displayName: "GP6", dtsRef: "&pico_header 6", pinctrlRef: "6" },
+      gp7: { displayName: "GP7", dtsRef: "&pico_header 7", pinctrlRef: "7" },
+      gp8: { displayName: "GP8", dtsRef: "&pico_header 8", pinctrlRef: "8" },
+      gp9: { displayName: "GP9", dtsRef: "&pico_header 9", pinctrlRef: "9" },
+      gp10: { displayName: "GP10", dtsRef: "&pico_header 10", pinctrlRef: "10" },
+      gp11: { displayName: "GP11", dtsRef: "&pico_header 11", pinctrlRef: "11" },
+      gp12: { displayName: "GP12", dtsRef: "&pico_header 12", pinctrlRef: "12" },
+      gp13: { displayName: "GP13", dtsRef: "&pico_header 13", pinctrlRef: "13" },
+      gp14: { displayName: "GP14", dtsRef: "&pico_header 14", pinctrlRef: "14" },
+      gp15: { displayName: "GP15", dtsRef: "&pico_header 15", pinctrlRef: "15" },
+      gp16: { displayName: "GP16", dtsRef: "&pico_header 16", pinctrlRef: "16" },
+      gp17: { displayName: "GP17", dtsRef: "&pico_header 17", pinctrlRef: "17" },
+      gp18: { displayName: "GP18", dtsRef: "&pico_header 18", pinctrlRef: "18" },
+      gp19: { displayName: "GP19", dtsRef: "&pico_header 19", pinctrlRef: "19" },
+      gp20: { displayName: "GP20", dtsRef: "&pico_header 20", pinctrlRef: "20" },
+      gp21: { displayName: "GP21", dtsRef: "&pico_header 21", pinctrlRef: "21" },
+      gp22: { displayName: "GP22", dtsRef: "&pico_header 22", pinctrlRef: "22" },
+      gp26: { displayName: "GP26", dtsRef: "&pico_header 26", pinctrlRef: "26" },
+      gp27: { displayName: "GP27", dtsRef: "&pico_header 27", pinctrlRef: "27" },
+      gp28: { displayName: "GP28", dtsRef: "&pico_header 28", pinctrlRef: "28" },
     },
     visual: {
       left: [
@@ -418,8 +481,12 @@ export const controllerInfos: Record<Controller, ControllerInfo> = {
         { type: "gpio", id: "gp16" },
       ],
     },
-    pinctrlChoices: staticPinctrlChoices([]), // TODO support pinctrl on rp2040
-    busConflicts: {},
+    pinctrlChoices: makeRP2040PinctrlChoices([
+      "gp0", "gp1", "gp2", "gp3", "gp4", "gp5", "gp6", "gp7", "gp8", "gp9",
+      "gp10", "gp11", "gp12", "gp13", "gp14", "gp15", "gp16", "gp17", "gp18", "gp19",
+      "gp20", "gp21", "gp22", "gp26", "gp27", "gp28",
+    ]),
+    busConflicts: {}, // No bus conflicts for RP2040..?
   },
 };
 
@@ -451,7 +518,12 @@ const defaultBuses: Record<Controller, AnyBus[]> = {
     makeI2cBus("i2c0"),
     makeI2cBus("i2c1"),
   ],
-  "rpi_pico": [], // TODO support buses on rp2040, nothing for now.
+  "rpi_pico": [
+    makeSpiBus("spi0"),
+    makeSpiBus("spi1"),
+    makeI2cBus("i2c0"),
+    makeI2cBus("i2c1"),
+  ],
 };
 
 export function loadBusesForController(type: Controller): AnyBus[] {

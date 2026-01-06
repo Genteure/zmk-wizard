@@ -1,0 +1,120 @@
+{
+  "name": "rp2040pinctrl",
+  "shield": "rp2040pinctrl",
+  "dongle": false,
+  "layout": [
+    {
+      "id": "01KE9Q75PCYYN0RYPJ6Y33R9RX",
+      "part": 0, "row": 0, "col": 0, "w": 1, "h": 1, "x": 0, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE9Q75PCRDHC6227N9NAXXK7",
+      "part": 0, "row": 0, "col": 1, "w": 1, "h": 1, "x": 1, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE9Q75PC4NX5CKQB01Y15W70",
+      "part": 0, "row": 1, "col": 0, "w": 1, "h": 1, "x": 0, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE9Q75PCV56CZP4P5TA1M4NY",
+      "part": 0, "row": 1, "col": 1, "w": 1, "h": 1, "x": 1, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE9Q75PC1VDFQ5RC0T43RNTP",
+      "part": 0, "row": 2, "col": 0, "w": 1, "h": 1, "x": 0, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KE9Q75PC1Z8QMEH8Q9JW5TB3",
+      "part": 0, "row": 2, "col": 1, "w": 1, "h": 1, "x": 1, "y": 2, "r": 0, "rx": 0, "ry": 0
+    }
+  ],
+  "parts": [
+    {
+      "name": "unibody",
+      "controller": "rpi_pico",
+      "wiring": "matrix_diode",
+      "keys": {
+        "01KE9Q75PCYYN0RYPJ6Y33R9RX": {
+          "input": "gp0",
+          "output": "gp28"
+        },
+        "01KE9Q75PC4NX5CKQB01Y15W70": {
+          "input": "gp0",
+          "output": "gp27"
+        },
+        "01KE9Q75PC1VDFQ5RC0T43RNTP": {
+          "input": "gp0",
+          "output": "shifter2"
+        },
+        "01KE9Q75PCRDHC6227N9NAXXK7": {
+          "input": "gp1",
+          "output": "gp28"
+        },
+        "01KE9Q75PCV56CZP4P5TA1M4NY": {
+          "input": "gp1",
+          "output": "gp27"
+        },
+        "01KE9Q75PC1Z8QMEH8Q9JW5TB3": {
+          "input": "gp1",
+          "output": "shifter2"
+        }
+      },
+      "pins": {
+        "gp3": "bus",
+        "gp2": "bus",
+        "gp4": "bus",
+        "gp0": "input",
+        "gp1": "input",
+        "gp28": "output",
+        "gp27": "output",
+        "gp11": "bus",
+        "gp12": "bus",
+        "gp13": "bus"
+      },
+      "buses": [
+        {
+          "type": "spi",
+          "name": "spi0",
+          "devices": [
+            {
+              "type": "74hc595",
+              "cs": "gp4",
+              "ngpios": 8
+            }
+          ],
+          "mosi": "gp3",
+          "sck": "gp2"
+        },
+        {
+          "type": "spi",
+          "name": "spi1",
+          "devices": [
+            {
+              "type": "ws2812",
+              "cs": "",
+              "length": 3
+            }
+          ],
+          "mosi": "gp11"
+        },
+        {
+          "type": "i2c",
+          "name": "i2c0",
+          "devices": [
+            {
+              "type": "ssd1306",
+              "add": 60, "width": 128, "height": 64
+            }
+          ],
+          "sda": "gp12",
+          "scl": "gp13"
+        },
+        {
+          "type": "i2c",
+          "name": "i2c1",
+          "devices": []
+        }
+      ]
+    }
+  ]
+}
