@@ -1,52 +1,59 @@
 # Smoke Test
 
-The smoke test GitHub Action workflow takes internal data `.json` files, turns each into a simulated ZMK user repo, and runs real `west build` jobs to catch regressions.
+This smoke test exercises every example keyboard fixture by generating a ZMK user repository and running real `west build` jobs in GitHub Actions. It is meant to catch regressions in templating and build setup, not to validate runtime behavior.
 
-## Run structure
+TODO: this document is LLM generated, it's mostly correct but needs a bit of human polishing.
 
-The normal "build-user-config" workflow from ZMK reads `build.yaml` in the root of the repository and generates Actions jobs based on that. Here we generate many simulated repositories, each with its own `build.yaml`, and execute the builds in Actions.
+## Fixtures
 
-Terminology for this document:
+- Fixtures live under `examples/json`. Each fixture is a `Keyboard` JSON in the internal format defined in `typedef.ts`.
+- Matrix fan-out uses the relative POSIX paths (e.g. `unibody/rpi_pico_basic.json`).
 
-- **Data file**: A fixture `.json` file containing configuration data in our internal format (`Keyboard` in `typedef.ts`).
-- **Simulated repository**: A directory containing a generated ZMK configuration, simulating a real user repository. See `createZMKConfig` from `src/lib/templating/index.ts`.
-- **Build**: A single build defined in `build.yaml` (e.g. for a specific board + shield + cmake options combination).
+## Helper script: [scripts/smoke.ts](scripts/smoke.ts)
 
-We have multiple data files, each generating a simulated repository. Each simulated repository can declare multiple builds in `build.yaml`.
+- `pnpm run smoke list` finds all fixture JSON files under `examples/json`, prints a sorted JSON array, and writes it to the `json-files` output when running in Actions.
+- `pnpm run smoke generate <fixture.json> <destDir>`
+  - Validates the fixture (`KeyboardSchema` + `validateKeyboard`).
+  - Generates the virtual repo via `createZMKConfig` and writes files into `<destDir>`.
+  - Builds the Actions matrix JSON from the generated `build.yaml` and writes it to the `build_matrix` output. While building the matrix it:
+    - Uncomments any lines after the `---` document separator so the optional sample builds in `build.yaml` are enabled for the smoke test.
+    - Drops any entries whose `shield` contains `settings_reset` (those are not built in CI).
 
-For each build we collect:
+The generated matrix is the exact object consumed by the `build` job in `smoke-single.yml` (typically an `include` array with `board`, optional `shield`, optional `snippet`, optional `cmake-args`, and optional `artifact-name`).
 
-- Build log (`build.log`)
-- Presence of firmware output (uf2)
-- Counts of warnings and errors found in the log
+## GitHub Actions flow
 
-## Implementation
+### [.github/workflows/smoke.yml](.github/workflows/smoke.yml)
 
-- Script commands in [scripts/smoke.ts](scripts/smoke.ts):
-  - `pnpm smoke list [paths...]` discovers fixture JSON files (default `examples/json`). Writes `json-files` to `GITHUB_OUTPUT` when present.
-  - `pnpm smoke build.yaml <fixture.json>` generates the repo in memory, parses `build.yaml`, and writes a matrix JSON string to `GITHUB_OUTPUT` key `build_matrix`.
-  - `pnpm smoke generate <fixture.json> <destDir>` materializes the generated repo into `destDir` (used by the workflow before running west).
-  - `pnpm smoke verify <fixture.json> <matrix-json> <build-dir>` checks `zephyr/build.log` for warnings/errors, verifies at least one firmware artifact exists (uf2/hex/bin/elf), writes a summary to stdout and `GITHUB_STEP_SUMMARY`, and fails on errors or missing artifacts/log.
+- Triggers on `push`, `pull_request`, and `workflow_dispatch`.
+- Job `smoke`: checks out the repo, sets up pnpm/node, installs dependencies, and runs `pnpm run smoke list`. The resulting JSON array is exposed as the `json-files` output.
+- Job `for-each-repo`: matrix fan-out over `json-files`, calling `smoke-single.yml` once per fixture. `fail-fast` is disabled so all fixtures attempt to build.
 
-- Workflow [.github/workflows/smoke.yml](.github/workflows/smoke.yml):
-  - Manual dispatch.
-  - Lists fixtures via `pnpm run smoke list` and fans out to `smoke-single.yml` for each JSON path.
+### [.github/workflows/smoke-single.yml](.github/workflows/smoke-single.yml)
 
-- Workflow [.github/workflows/smoke-single.yml](.github/workflows/smoke-single.yml):
-  - Step `pnpm run smoke build.yaml <json>` emits the matrix for the build job.
-  - Build job runs in `zmkfirmware/zmk-build-arm:stable`, installs pnpm deps, generates the repo into a temp dir with `pnpm run smoke generate ...`, then runs `west build ... | tee build.log` using `-DZMK_CONFIG` and `-DZMK_EXTRA_MODULES` pointing at the generated repo. Finally calls `pnpm run smoke verify ...` to validate logs and artifacts.
-  - If `verify` finds errors or missing artifacts/logs it exits non-zero and fails the job. Warnings are reported but do not fail the job.
+Inputs
 
-## Notes for build command construction
+- `json-path` (required): fixture path relative to `examples/json`.
+- `config_path` (optional): path inside the generated artifact used as the west project root (defaults to `config`).
 
-- `build.yaml` `include` entries supply `board`, optional `shield`, optional `snippet`, and optional `cmake-args`. Build command in the workflow:
-  - `west build -s zmk/app -d <buildDir> -b <board> [-S <snippet>] -- -DZMK_CONFIG=<repo>/config -DZMK_EXTRA_MODULES=<repo> [-DSHIELD=<shield>] <cmake-args>`
-- Workspace prep per repo: `west init -l config`, `west update --fetch-opt=--filter=tree:0`, `west zephyr-export`.
-- Firmware validation in `verify` looks for `zmk.uf2`, `zmk.hex`, `zmk.bin`, or `zephyr.elf` under `<buildDir>/zephyr`.
+Job `matrix` – generate config and matrix
 
-## References
+- Checks out the repo, installs pnpm deps, and creates a temp `config_workspace` directory.
+- Runs `pnpm run smoke generate <json-path> <config_workspace>` to materialize the repo and emit the matrix JSON.
+- Sanitizes `artifact_name` from `json-path` (prefixed with `zmk-config-`) and uploads the generated config as a short-lived artifact (1 day).
+- Outputs: `artifact_name`, `build_matrix`, and `config_workspace`.
 
-- [ZMK build-user-config workflow](https://github.com/zmkfirmware/zmk/blob/v0.3-branch/.github/workflows/build-user-config.yml)
-- [Unified ZMK config template workflow](https://github.com/zmkfirmware/unified-zmk-config-template/blob/main/.github/workflows/build.yml)
-- [Native toolchain setup](https://zmk.dev/docs/development/local-toolchain/setup/native)
-- [Diagnosing build issues](https://zmk.dev/docs/troubleshooting/building-issues#diagnosing-unexpected-build-results)
+Job `build` – run west builds (container: `zmkfirmware/zmk-build-arm:stable`)
+
+- Matrix is `fromJson(build_matrix)` so every `include` entry becomes a build.
+- Downloads the generated config artifact, creates a temp build directory, and prepares env vars:
+  - If `zephyr/module.yml` exists, treat the repo as a Zephyr module: set `-DZMK_EXTRA_MODULES` to the artifact path and move the working base to a fresh temp dir.
+  - Optional `snippet` adds `-S <snippet>` to `west build`. `shield` and extra module path become `-DSHIELD=...` and part of `extra_cmake_args`.
+- Copies the generated config into `base_dir` when needed, caches west modules (keyed by `west.yml`/`build.yaml`), then runs: `west init -l <config_path>`, `west update --fetch-opt=--filter=tree:0`, `west zephyr-export`, and `west build -s zmk/app ...` with the computed args.
+- After each build it prints the sanitized `.config`, the Devicetree file, and appends a log summary that highlights lines containing `error|warn|fatal` (with a small ignore list). Build failures surface directly from the west command.
+
+## Developing or debugging locally
+
+- List fixtures: `pnpm run smoke list`.
+- Generate a repo for inspection: `tmpdir=$(mktemp -d); pnpm run smoke generate examples/json/unibody/rpi_pico_basic.json "$tmpdir"; ls "$tmpdir"`.
+- To mirror CI, run the build inside the `zmkfirmware/zmk-build-arm:stable` container with the same west commands shown above, using `config` as the project root.
