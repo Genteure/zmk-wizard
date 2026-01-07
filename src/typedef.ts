@@ -123,6 +123,9 @@ export const ControllerSchema = z.enum([
   "xiao_ble",
   "xiao_ble_plus",
   "rpi_pico",
+  "xiao_rp2040",
+  "qt_py_rp2040",
+  "sparkfun_pro_micro_rp2040",
 ]);
 export type Controller = z.infer<typeof ControllerSchema>;
 

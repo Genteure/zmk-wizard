@@ -612,9 +612,10 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                       <option disabled>└  ...</option>
                       <option value="xiao_ble">Seeed XIAO nRF52840</option>
                       <option value="xiao_ble_plus">Seeed XIAO nRF52840 Plus</option>
-                      <option disabled>──────────</option>
-                      <option disabled>Highly Experimental for Shield Wizard</option>
                       <option value="rpi_pico">Raspberry Pi Pico (RP2040)</option>
+                      <option value="xiao_rp2040">Seeed XIAO RP2040</option>
+                      <option value="qt_py_rp2040">Adafruit QT Py RP2040</option>
+                      <option value="sparkfun_pro_micro_rp2040">SparkFun Pro Micro RP2040</option>
                     </select>
                   </label>
                   <label class="select mt-4">
@@ -641,7 +642,7 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                         Support for RP2040-based boards in Shield Wizard is experimental.
                       </div>
                       <div class="mt-2">
-                        Please report any issues with generated configurations on the&nbsp;
+                        Please report any issues with generated configurations to @genteure in&nbsp;
                         <Link
                           class="link"
                           href="https://zmk.dev/community/discord/invite"
@@ -649,7 +650,7 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                           rel="noopener"
                         >
                           ZMK Community Discord
-                        </Link> to @genteure or on&nbsp;
+                        </Link> or on&nbsp;
                         <Link
                           class="link"
                           href="https://github.com/genteure/zmk-wizard/issues"
