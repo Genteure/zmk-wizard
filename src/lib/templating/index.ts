@@ -1,4 +1,4 @@
-import { type Keyboard, type VirtualTextFolder } from "../../typedef";
+import type { Keyboard, VirtualTextFolder } from "../../typedef";
 import {
   build_yaml,
   config__json,

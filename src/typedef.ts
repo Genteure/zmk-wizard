@@ -1,7 +1,5 @@
 import { z } from "astro/zod";
 import { isValid as isValidUlid, ulid } from "ulidx";
-import { AnyBusSchema } from "./types/buses";
-export * from "./types/buses";
 
 export interface Point {
   x: number;
@@ -17,6 +15,102 @@ export interface Options {
   keySize?: number;
   padding?: number;
 }
+
+// ----------------
+// Bus device types
+
+// Bus name
+export const BusNameSchema = z.string()
+  .min(1, "Bus name cannot be empty")
+  .max(16, "Bus name cannot be longer than 16 characters")
+  .regex(/^[a-zA-Z0-9_]+$/, "Bus name must contain only letters, numbers, and underscores");
+export type BusName = z.infer<typeof BusNameSchema>;
+
+// Device schemas and types (Zod is source of truth)
+export const BusDeviceTypeSchema = z.enum(["ssd1306", "niceview", "ws2812", "74hc595"]);
+export type BusDeviceTypeName = z.infer<typeof BusDeviceTypeSchema>;
+
+export const BaseBusDeviceSchema = z.object({
+  type: BusDeviceTypeSchema,
+});
+export type BaseBusDevice = z.infer<typeof BaseBusDeviceSchema>;
+
+export const SSD1306DeviceSchema = BaseBusDeviceSchema.extend({
+  type: z.literal("ssd1306"),
+  add: z.number().min(0).max(0x7f).default(0x3c),
+  width: z.number().default(128),
+  height: z.number().default(64),
+});
+export type SSD1306Device = z.infer<typeof SSD1306DeviceSchema>;
+
+export const NiceviewDeviceSchema = BaseBusDeviceSchema.extend({
+  type: z.literal("niceview"),
+  cs: z.string().max(10).optional(),
+});
+export type NiceviewDevice = z.infer<typeof NiceviewDeviceSchema>;
+
+export const WS2812DeviceSchema = BaseBusDeviceSchema.extend({
+  type: z.literal("ws2812"),
+  length: z.number().min(1).max(256).default(3),
+  cs: z.string().max(10).optional(),
+});
+export type WS2812Device = z.infer<typeof WS2812DeviceSchema>;
+
+export const ShiftRegisterDeviceSchema = BaseBusDeviceSchema.extend({
+  type: z.literal("74hc595"),
+  ngpios: z.union([z.literal(8), z.literal(16), z.literal(24), z.literal(32)]).default(8),
+  cs: z.string().max(10).optional(),
+});
+export type ShiftRegisterDevice = z.infer<typeof ShiftRegisterDeviceSchema>;
+
+export const SpiDeviceSchema = z.discriminatedUnion("type", [
+  NiceviewDeviceSchema,
+  WS2812DeviceSchema,
+  ShiftRegisterDeviceSchema,
+]);
+export type SpiDevice = z.infer<typeof SpiDeviceSchema>;
+
+export const I2cDeviceSchema = z.discriminatedUnion("type", [
+  SSD1306DeviceSchema,
+]);
+export type I2cDevice = z.infer<typeof I2cDeviceSchema>;
+
+export const AnyBusDeviceSchema = z.discriminatedUnion("type", [
+  SSD1306DeviceSchema,
+  NiceviewDeviceSchema,
+  WS2812DeviceSchema,
+  ShiftRegisterDeviceSchema,
+]);
+export type AnyBusDevice = z.infer<typeof AnyBusDeviceSchema>;
+
+export const BaseBusSchema = z.object({
+  name: BusNameSchema,
+  devices: z.array(AnyBusDeviceSchema).default([]),
+});
+export type BaseBus = z.infer<typeof BaseBusSchema>;
+
+export const SpiBusSchema = BaseBusSchema.extend({
+  type: z.literal("spi"),
+  mosi: z.string().max(10).optional(),
+  miso: z.string().max(10).optional(),
+  sck: z.string().max(10).optional(),
+  devices: z.array(SpiDeviceSchema).default([]),
+});
+export type SpiBus = z.infer<typeof SpiBusSchema>;
+
+export const I2cBusSchema = BaseBusSchema.extend({
+  type: z.literal("i2c"),
+  sda: z.string().max(10).optional(),
+  scl: z.string().max(10).optional(),
+  devices: z.array(I2cDeviceSchema).default([]),
+});
+export type I2cBus = z.infer<typeof I2cBusSchema>;
+
+export const AnyBusSchema = z.discriminatedUnion("type", [SpiBusSchema, I2cBusSchema]);
+export type AnyBus = z.infer<typeof AnyBusSchema>;
+
+// ----------------
+// Keyboard types
 
 export const SocSchema = z.enum([
   "nrf52840",
@@ -69,34 +163,6 @@ export const KeyboardPartSchema = z.object({
   keys: z.record(z.string(), SingleKeyWiringSchema.optional()), // key id to wiring
 
   buses: z.array(AnyBusSchema).default([]),
-
-  // // TODO need to think about this, should devices stored here or under each bus?
-  // devices: z.array(z.object({
-  //   name: z.string().min(1).max(32),
-  //   cs: z.string().max(10),
-  // })).optional(),
-
-  // devices: z.object({
-  //   display: DisplayDeviceSchema.optional(),
-  //   ledStrip: LEDStripDeviceSchema.optional(),
-  //   shifter: ShiftRegisterDeviceSchema.optional(),
-  // }),
-
-  // Users can attach devices to one or more SPI buses
-  // spi: z.array(z.object({
-  //   name: BusNameSchema,
-  //   enable: z.boolean().default(false),
-  //   mosi: z.string().max(10).optional(),
-  //   miso: z.string().max(10).optional(),
-  //   sck: z.string().max(10).optional(),
-  // })),
-
-  // i2c: z.array(z.object({
-  //   name: BusNameSchema,
-  //   enable: z.boolean().default(false),
-  //   sda: z.string().max(10),
-  //   scl: z.string().max(10),
-  // })),
 });
 export type KeyboardPart = z.infer<typeof KeyboardPartSchema>;
 
@@ -186,3 +252,4 @@ export interface VirtualBinaryFolder {
 export interface VirtualFolder {
   [filePath: string]: string | Uint8Array;
 }
+

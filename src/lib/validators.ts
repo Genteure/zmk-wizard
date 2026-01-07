@@ -1,6 +1,7 @@
 import { busDeviceInfos, controllerInfos } from "~/components/controllerInfo";
-import { ShieldNameSchema, type Keyboard } from "~/typedef";
-import { BusNameSchema, isI2cBus, isSpiBus, type BusDeviceTypeName } from "~/types/buses";
+import type { BusDeviceTypeName } from "~/typedef";
+import { BusNameSchema, ShieldNameSchema, type Keyboard } from "~/typedef";
+import { isI2cBus, isSpiBus } from "~/typehelper";
 import { CommonShieldNames } from "./shieldNames";
 
 type ValidatorResult = string | string[] | null;

@@ -5,7 +5,6 @@ import { Link } from "@kobalte/core/link";
 import { debounce } from "@solid-primitives/scheduled";
 import { actions } from "astro:actions";
 import { PUBLIC_TURNSTILE_SITEKEY } from "astro:env/client";
-import JSZip from "jszip";
 import ChevronRight from "lucide-solid/icons/chevron-right";
 import ExternalLink from "lucide-solid/icons/external-link";
 import FolderArchive from "lucide-solid/icons/folder-archive";
@@ -21,8 +20,7 @@ import { createEffect, createMemo, createSignal, For, onMount, Show, type VoidCo
 import { produce, unwrap } from "solid-js/store";
 import { version } from "virtual:version";
 import { CommonShieldNames } from "~/lib/shieldNames";
-import { validateKeyboard } from "~/lib/validators";
-import { type KeyboardPart, KeyboardSchema } from "../typedef";
+import type { KeyboardPart } from "../typedef";
 import { TurnstileCaptcha } from "./captcha/turnstile";
 import { useWizardContext } from "./context";
 import { loadBusesForController } from "./controllerInfo";
@@ -290,10 +288,20 @@ hover:border-accent bg-base-300 hover:bg-base-content/10 transition-colors durat
 };
 
 let createZMKConfig: typeof import("~/lib/templating").createZMKConfig | null = null;
+let JSZip: typeof import("jszip") | null = null;
+let KeyboardSchema: typeof import("~/typedef").KeyboardSchema | null = null;
+//import { validateKeyboard } from "~/lib/validators";
+let validateKeyboard: typeof import("~/lib/validators").validateKeyboard | null = null;
 
 (async () => {
   const { createZMKConfig: importedCreateZMKConfig } = await import("~/lib/templating");
   createZMKConfig = importedCreateZMKConfig;
+  const { default: importedJSZip } = (await import("jszip"));
+  JSZip = importedJSZip;
+  const { KeyboardSchema: importedKeyboardSchema } = await import("~/typedef");
+  KeyboardSchema = importedKeyboardSchema;
+  const { validateKeyboard: importedValidateKeyboard } = await import("~/lib/validators");
+  validateKeyboard = importedValidateKeyboard;
 })();
 
 export const BuildButton: VoidComponent = () => {
@@ -332,6 +340,11 @@ export const BuildButton: VoidComponent = () => {
     const keyboardClone = structuredClone(unwrap(context.keyboard));
     const errors = new Set<string>();
 
+    if (!KeyboardSchema || !validateKeyboard) {
+      errors.add("Keyboard validation script failed to load.");
+      setValidationErrors(Array.from(errors));
+      return;
+    }
     const schemaResult = KeyboardSchema.safeParse(keyboardClone);
     if (schemaResult.success) {
       validateKeyboard(keyboardClone).forEach(err => errors.add(err));
@@ -435,6 +448,9 @@ export const BuildButton: VoidComponent = () => {
       if (!createZMKConfig) {
         throw new Error("ZMK config generator not loaded");
         // TODO store current keyboard in localstorage to enable page reload without losing data
+      }
+      if (!JSZip) {
+        throw new Error("JSZip not loaded");
       }
       const keyboardConfig = createZMKConfig(snapshot.keyboard);
 
@@ -734,6 +750,10 @@ export const HelpButton: VoidComponent = () => {
                     if (!debugDataTextArea) return;
                     try {
                       const jsonObj = JSON.parse(debugDataTextArea.value);
+                      if (!KeyboardSchema) {
+                        alert('Error: Keyboard schema not loaded');
+                        return;
+                      }
                       const result = KeyboardSchema.parse(jsonObj);
                       context.setKeyboard(result);
                       alert('Debug data applied');

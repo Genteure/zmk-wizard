@@ -1,11 +1,7 @@
 import { unwrap } from "solid-js/store";
 import { version } from "virtual:version";
 import { controllerInfos } from "~/components/controllerInfo";
-import {
-  type Controller,
-  type Keyboard,
-  type KeyboardPart
-} from "~/typedef";
+import type { Controller, Keyboard, KeyboardPart } from "~/typedef";
 
 export const workflows_build_yml = `name: Build ZMK firmware
 on: [push, pull_request, workflow_dispatch]

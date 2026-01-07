@@ -6,8 +6,8 @@ import ExternalLink from "lucide-solid/icons/external-link";
 import TriangleAlert from "lucide-solid/icons/triangle-alert";
 import { createEffect, createMemo, createSignal, For, onCleanup, Show, type Accessor, type Component } from "solid-js";
 import { produce } from "solid-js/store";
-import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, PinSelection, ShiftRegisterDevice, WiringType } from "../typedef";
-import { addDeviceToBus, isI2cBus, isShiftRegisterDevice, isSpiBus, isSpiDevice, isSSD1306, isWS2812 } from "../typedef";
+import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, PinSelection, ShiftRegisterDevice, WiringType } from "~/typedef";
+import { addDeviceToBus, isI2cBus, isShiftRegisterDevice, isSpiBus, isSpiDevice, isSSD1306, isWS2812 } from "~/typehelper";
 import { useWizardContext } from "./context";
 import { busDeviceInfos, controllerInfos, type ControllerInfo, type PinctrlI2cPinChoices, type PinctrlSpiPinChoices, type VisualPin } from "./controllerInfo";
 

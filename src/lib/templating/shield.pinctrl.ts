@@ -1,20 +1,6 @@
-import {
-  busDeviceInfos,
-  controllerInfos,
-  type ControllerInfo
-} from "~/components/controllerInfo";
-import {
-  isI2cBus,
-  isShiftRegisterDevice,
-  isSpiBus,
-  isWS2812,
-  type AnyBus,
-  type I2cBus,
-  type I2cDevice,
-  type Keyboard,
-  type SpiBus,
-  type SpiDevice
-} from "~/typedef";
+import { busDeviceInfos, controllerInfos, type ControllerInfo } from "~/components/controllerInfo";
+import type { AnyBus, I2cBus, I2cDevice, Keyboard, SpiBus, SpiDevice } from "~/typedef";
+import { isI2cBus, isShiftRegisterDevice, isSpiBus, isWS2812 } from "~/typehelper";
 
 export type PinctrlOutput = {
   dts: string;

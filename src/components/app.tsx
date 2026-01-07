@@ -22,7 +22,7 @@ import { Tabs } from "@kobalte/core/tabs";
 import { bboxCenter, getKeysBoundingBox, keyCenter } from "~/lib/geometry";
 import { swpBgClass } from "~/lib/swpColors";
 import { copyWiringBetweenParts, type WiringTransform } from "~/lib/wiringMapping";
-import { type Controller, type Key, type WiringType } from "../typedef";
+import type { Controller, Key, WiringType } from "../typedef";
 import { normalizeKeys, useWizardContext } from "./context";
 import { BusDevicesConfigurator, ControllerPinConfigurator, ShiftRegisterPinConfigurator } from "./controller";
 import { controllerInfos, loadBusesForController } from "./controllerInfo";
