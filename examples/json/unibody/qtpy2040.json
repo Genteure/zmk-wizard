@@ -1,0 +1,161 @@
+{
+  "name": "qtpy2040",
+  "shield": "qtpy2040",
+  "dongle": false,
+  "layout": [
+    {
+      "id": "01KEBPPAQN25Q6AVXSRN5RTCWY",
+      "part": 0, "row": 0, "col": 0, "w": 1, "h": 1, "x": 0, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQNZ1WMYWJ5E4D490DA",
+      "part": 0, "row": 0, "col": 1, "w": 1, "h": 1, "x": 1, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQN4A10H0M840FCZDBS",
+      "part": 0, "row": 0, "col": 2, "w": 1, "h": 1, "x": 2, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQNDPXTDFN2ZN8X5AYD",
+      "part": 0, "row": 1, "col": 0, "w": 1, "h": 1, "x": 0, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQN640AQ9JZ23038Z91",
+      "part": 0, "row": 1, "col": 1, "w": 1, "h": 1, "x": 1, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQN3RBDFRQ445M6BKXR",
+      "part": 0, "row": 1, "col": 2, "w": 1, "h": 1, "x": 2, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQN1V5V2VW5VTBSR4H7",
+      "part": 0, "row": 2, "col": 0, "w": 1, "h": 1, "x": 0, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQNZAW4FGFWCMZ3NJVJ",
+      "part": 0, "row": 2, "col": 1, "w": 1, "h": 1, "x": 1, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQNPJ7GWNPDQZJ10DRE",
+      "part": 0, "row": 2, "col": 2, "w": 1, "h": 1, "x": 2, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQNPGSQZ6T0CD2SST6C",
+      "part": 0, "row": 3, "col": 0, "w": 1, "h": 1, "x": 0, "y": 3, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQN17JCZ8MW2CJXR6Z7",
+      "part": 0, "row": 3, "col": 1, "w": 1, "h": 1, "x": 1, "y": 3, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQNCWDKY54B4E6AC9G0",
+      "part": 0, "row": 3, "col": 2, "w": 1, "h": 1, "x": 2, "y": 3, "r": 0, "rx": 0, "ry": 0
+    }
+  ],
+  "parts": [
+    {
+      "name": "unibody",
+      "controller": "qt_py_rp2040",
+      "wiring": "matrix_diode",
+      "keys": {
+        "01KEBPPAQN25Q6AVXSRN5RTCWY": {
+          "input": "d1",
+          "output": "d9"
+        },
+        "01KEBPPAQNDPXTDFN2ZN8X5AYD": {
+          "input": "d1",
+          "output": "d8"
+        },
+        "01KEBPPAQN1V5V2VW5VTBSR4H7": {
+          "input": "d1",
+          "output": "d7"
+        },
+        "01KEBPPAQNPGSQZ6T0CD2SST6C": {
+          "input": "d1",
+          "output": "d6"
+        },
+        "01KEBPPAQNZ1WMYWJ5E4D490DA": {
+          "input": "d4",
+          "output": "d9"
+        },
+        "01KEBPPAQN640AQ9JZ23038Z91": {
+          "input": "d4",
+          "output": "d8"
+        },
+        "01KEBPPAQNZAW4FGFWCMZ3NJVJ": {
+          "input": "d4",
+          "output": "d7"
+        },
+        "01KEBPPAQN17JCZ8MW2CJXR6Z7": {
+          "input": "d4",
+          "output": "d6"
+        },
+        "01KEBPPAQN4A10H0M840FCZDBS": {
+          "input": "d5",
+          "output": "d9"
+        },
+        "01KEBPPAQN3RBDFRQ445M6BKXR": {
+          "input": "d5",
+          "output": "d8"
+        },
+        "01KEBPPAQNPJ7GWNPDQZJ10DRE": {
+          "input": "d5",
+          "output": "d7"
+        },
+        "01KEBPPAQNCWDKY54B4E6AC9G0": {
+          "input": "d5",
+          "output": "d6"
+        }
+      },
+      "pins": {
+        "d10": "bus",
+        "d2": "bus",
+        "d3": "bus",
+        "d0": "bus",
+        "d1": "input",
+        "d4": "input",
+        "d5": "input",
+        "d9": "output",
+        "d8": "output",
+        "d7": "output",
+        "d6": "output"
+      },
+      "buses": [
+        {
+          "type": "spi",
+          "name": "spi0",
+          "devices": [
+            {
+              "type": "ws2812",
+              "cs": "",
+              "length": 12
+            }
+          ],
+          "mosi": "d10"
+        },
+        {
+          "type": "spi",
+          "name": "spi1",
+          "devices": [
+            {
+              "type": "niceview",
+              "cs": "d0"
+            }
+          ],
+          "mosi": "d2",
+          "sck": "d3"
+        },
+        {
+          "type": "i2c",
+          "name": "i2c0",
+          "devices": []
+        },
+        {
+          "type": "i2c",
+          "name": "i2c1",
+          "devices": []
+        }
+      ]
+    }
+  ]
+}

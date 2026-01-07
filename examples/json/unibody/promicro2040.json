@@ -1,0 +1,153 @@
+{
+  "name": "promicro2040",
+  "shield": "promicro2040",
+  "dongle": false,
+  "layout": [
+    {
+      "id": "01KEBPPAQN25Q6AVXSRN5RTCWY",
+      "part": 0, "row": 0, "col": 0, "w": 1, "h": 1, "x": 0, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQNZ1WMYWJ5E4D490DA",
+      "part": 0, "row": 0, "col": 1, "w": 1, "h": 1, "x": 1, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQN4A10H0M840FCZDBS",
+      "part": 0, "row": 0, "col": 2, "w": 1, "h": 1, "x": 2, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQNDPXTDFN2ZN8X5AYD",
+      "part": 0, "row": 1, "col": 0, "w": 1, "h": 1, "x": 0, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQN640AQ9JZ23038Z91",
+      "part": 0, "row": 1, "col": 1, "w": 1, "h": 1, "x": 1, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQN3RBDFRQ445M6BKXR",
+      "part": 0, "row": 1, "col": 2, "w": 1, "h": 1, "x": 2, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQN1V5V2VW5VTBSR4H7",
+      "part": 0, "row": 2, "col": 0, "w": 1, "h": 1, "x": 0, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQNZAW4FGFWCMZ3NJVJ",
+      "part": 0, "row": 2, "col": 1, "w": 1, "h": 1, "x": 1, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQNPJ7GWNPDQZJ10DRE",
+      "part": 0, "row": 2, "col": 2, "w": 1, "h": 1, "x": 2, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQNPGSQZ6T0CD2SST6C",
+      "part": 0, "row": 3, "col": 0, "w": 1, "h": 1, "x": 0, "y": 3, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQN17JCZ8MW2CJXR6Z7",
+      "part": 0, "row": 3, "col": 1, "w": 1, "h": 1, "x": 1, "y": 3, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEBPPAQNCWDKY54B4E6AC9G0",
+      "part": 0, "row": 3, "col": 2, "w": 1, "h": 1, "x": 2, "y": 3, "r": 0, "rx": 0, "ry": 0
+    }
+  ],
+  "parts": [
+    {
+      "name": "unibody",
+      "controller": "sparkfun_pro_micro_rp2040",
+      "wiring": "matrix_diode",
+      "keys": {
+        "01KEBPPAQNPGSQZ6T0CD2SST6C": {
+          "input": "gp16",
+          "output": "d9"
+        },
+        "01KEBPPAQN17JCZ8MW2CJXR6Z7": {
+          "input": "gp16",
+          "output": "d8"
+        },
+        "01KEBPPAQNCWDKY54B4E6AC9G0": {
+          "input": "gp16",
+          "output": "shifter7"
+        },
+        "01KEBPPAQN1V5V2VW5VTBSR4H7": {
+          "output": "d9",
+          "input": "d14"
+        },
+        "01KEBPPAQNZAW4FGFWCMZ3NJVJ": {
+          "output": "d8",
+          "input": "d14"
+        },
+        "01KEBPPAQN25Q6AVXSRN5RTCWY": {
+          "output": "d9",
+          "input": "d7"
+        },
+        "01KEBPPAQNDPXTDFN2ZN8X5AYD": {
+          "output": "d9",
+          "input": "d18"
+        },
+        "01KEBPPAQNZ1WMYWJ5E4D490DA": {
+          "output": "d8",
+          "input": "d7"
+        },
+        "01KEBPPAQN640AQ9JZ23038Z91": {
+          "output": "d8",
+          "input": "d18"
+        },
+        "01KEBPPAQN4A10H0M840FCZDBS": {
+          "output": "shifter7",
+          "input": "d7"
+        },
+        "01KEBPPAQN3RBDFRQ445M6BKXR": {
+          "output": "shifter7",
+          "input": "d18"
+        },
+        "01KEBPPAQNPJ7GWNPDQZJ10DRE": {
+          "output": "shifter7",
+          "input": "d14"
+        }
+      },
+      "pins": {
+        "gp16": "input",
+        "d9": "output",
+        "d8": "output",
+        "d16": "bus",
+        "d15": "bus",
+        "d10": "bus",
+        "d14": "input",
+        "d18": "input",
+        "d7": "input"
+      },
+      "buses": [
+        {
+          "type": "spi",
+          "name": "spi0",
+          "devices": [
+            {
+              "type": "74hc595",
+              "cs": "d10",
+              "ngpios": 8
+            }
+          ],
+          "mosi": "d16",
+          "sck": "d15"
+        },
+        {
+          "type": "spi",
+          "name": "spi1",
+          "devices": []
+        },
+        {
+          "type": "i2c",
+          "name": "i2c0",
+          "devices": []
+        },
+        {
+          "type": "i2c",
+          "name": "i2c1",
+          "devices": []
+        }
+      ]
+    }
+  ]
+}
