@@ -1,8 +1,6 @@
 # Smoke Test
 
-This smoke test exercises every example keyboard fixture by generating a ZMK user repository and running real `west build` jobs in GitHub Actions. It is meant to catch regressions in templating and build setup, not to validate runtime behavior.
-
-TODO: this document is LLM generated, it's mostly correct but needs a bit of human polishing.
+This smoke test exercises every example keyboard fixture by generating a ZMK user repository and running real `west build` jobs in GitHub Actions. It is meant to catch regressions in templating and build setup, not to fully validate runtime behavior.
 
 ## Fixtures
 
@@ -14,10 +12,11 @@ TODO: this document is LLM generated, it's mostly correct but needs a bit of hum
 - `pnpm run smoke list` finds all fixture JSON files under `examples/json`, prints a sorted JSON array, and writes it to the `json-files` output when running in Actions.
 - `pnpm run smoke generate <fixture.json> <destDir>`
   - Validates the fixture (`KeyboardSchema` + `validateKeyboard`).
-  - Generates the virtual repo via `createZMKConfig` and writes files into `<destDir>`.
+    This catches issues like missing required fields or invalid pin assignments before attempting to generate files. It provides distintion between schema validation errors (possible when schema was updated) and templating errors.
+  - Generates the ZMK configuration via `createZMKConfig` and writes files into `<destDir>`.
   - Builds the Actions matrix JSON from the generated `build.yaml` and writes it to the `build_matrix` output. While building the matrix it:
     - Uncomments any lines after the `---` document separator so the optional sample builds in `build.yaml` are enabled for the smoke test.
-    - Drops any entries whose `shield` contains `settings_reset` (those are not built in CI).
+    - Drops any entries whose `shield` contains `settings_reset`. Settings reset firmware are exactly the same across all builds, if they fail it's a problem with ZMK itself.
 
 The generated matrix is the exact object consumed by the `build` job in `smoke-single.yml` (typically an `include` array with `board`, optional `shield`, optional `snippet`, optional `cmake-args`, and optional `artifact-name`).
 
@@ -34,26 +33,21 @@ The generated matrix is the exact object consumed by the `build` job in `smoke-s
 Inputs
 
 - `json-path` (required): fixture path relative to `examples/json`.
-- `config_path` (optional): path inside the generated artifact used as the west project root (defaults to `config`).
+- `config_path` (should not be set, defaults to `config`): hardcoded path just to make GitHub Actions linter happy.
 
 Job `matrix` – generate config and matrix
 
 - Checks out the repo, installs pnpm deps, and creates a temp `config_workspace` directory.
 - Runs `pnpm run smoke generate <json-path> <config_workspace>` to materialize the repo and emit the matrix JSON.
 - Sanitizes `artifact_name` from `json-path` (prefixed with `zmk-config-`) and uploads the generated config as a short-lived artifact (1 day).
+- Build matrix is eqiuivalent to reading from `build.yaml` in the standard `build-user-config.yml` workflow.
 - Outputs: `artifact_name`, `build_matrix`, and `config_workspace`.
 
 Job `build` – run west builds (container: `zmkfirmware/zmk-build-arm:stable`)
 
-- Matrix is `fromJson(build_matrix)` so every `include` entry becomes a build.
-- Downloads the generated config artifact, creates a temp build directory, and prepares env vars:
-  - If `zephyr/module.yml` exists, treat the repo as a Zephyr module: set `-DZMK_EXTRA_MODULES` to the artifact path and move the working base to a fresh temp dir.
-  - Optional `snippet` adds `-S <snippet>` to `west build`. `shield` and extra module path become `-DSHIELD=...` and part of `extra_cmake_args`.
-- Copies the generated config into `base_dir` when needed, caches west modules (keyed by `west.yml`/`build.yaml`), then runs: `west init -l <config_path>`, `west update --fetch-opt=--filter=tree:0`, `west zephyr-export`, and `west build -s zmk/app ...` with the computed args.
-- After each build it prints the sanitized `.config`, the Devicetree file, and appends a log summary that highlights lines containing `error|warn|fatal` (with a small ignore list). Build failures surface directly from the west command.
+This largely matches the upstream ZMK reusable workflow [build-user-config.yml](https://github.com/zmkfirmware/zmk/blob/v0.3/.github/workflows/build-user-config.yml) with a few smoke-test tweaks.
 
-## Developing or debugging locally
-
-- List fixtures: `pnpm run smoke list`.
-- Generate a repo for inspection: `tmpdir=$(mktemp -d); pnpm run smoke generate examples/json/unibody/rpi_pico_basic.json "$tmpdir"; ls "$tmpdir"`.
-- To mirror CI, run the build inside the `zmkfirmware/zmk-build-arm:stable` container with the same west commands shown above, using `config` as the project root.
+- Instead of checking out the current repository, we download the generated config artifact into the same location (`${GITHUB_WORKSPACE}`).
+- Run the same build steps as upstream.
+  - With the output of `west build` being `tee`d into a log file.
+- Instead of uploading firmware artifacts, we create a filtered log summary (lines matching `error|warn|fatal`) to make potential issues easier to find.
