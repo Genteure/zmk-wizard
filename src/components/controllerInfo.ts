@@ -97,6 +97,10 @@ export interface ControllerPinMetadata {
    * Devicetree pinctrl node reference for the pin
    */
   pinctrlRef: string;
+  /**
+   * Alternate names for the pin
+   */
+  aka?: string[] | undefined;
 }
 
 function staticPinctrlChoices(pins: string[]) {
@@ -195,25 +199,25 @@ const controllerInfoNiceNanoV2: ControllerInfo = {
   boardKconfig: "BOARD_NICE_NANO_V2",
   docLink: "https://nicekeyboards.com/docs/nice-nano/pinout-schematic",
   pins: {
-    d1: { displayName: "D1", dtsRef: "&pro_micro 1", pinctrlRef: "0, 6" },
-    d0: { displayName: "D0", dtsRef: "&pro_micro 0", pinctrlRef: "0, 8" },
-    d2: { displayName: "D2", dtsRef: "&pro_micro 2", pinctrlRef: "0, 17" },
-    d3: { displayName: "D3", dtsRef: "&pro_micro 3", pinctrlRef: "0, 20" },
-    d4: { displayName: "D4", dtsRef: "&pro_micro 4", pinctrlRef: "0, 22" },
-    d5: { displayName: "D5", dtsRef: "&pro_micro 5", pinctrlRef: "0, 24" },
-    d6: { displayName: "D6", dtsRef: "&pro_micro 6", pinctrlRef: "1, 0" },
-    d7: { displayName: "D7", dtsRef: "&pro_micro 7", pinctrlRef: "0, 11" },
-    d8: { displayName: "D8", dtsRef: "&pro_micro 8", pinctrlRef: "1, 4" },
-    d9: { displayName: "D9", dtsRef: "&pro_micro 9", pinctrlRef: "1, 6" },
+    d1: { displayName: "D1", aka: ["P0.06"], dtsRef: "&pro_micro 1", pinctrlRef: "0, 6" },
+    d0: { displayName: "D0", aka: ["P0.08"], dtsRef: "&pro_micro 0", pinctrlRef: "0, 8" },
+    d2: { displayName: "D2", aka: ["P0.17"], dtsRef: "&pro_micro 2", pinctrlRef: "0, 17" },
+    d3: { displayName: "D3", aka: ["P0.20"], dtsRef: "&pro_micro 3", pinctrlRef: "0, 20" },
+    d4: { displayName: "D4", aka: ["P0.22"], dtsRef: "&pro_micro 4", pinctrlRef: "0, 22" },
+    d5: { displayName: "D5", aka: ["P0.24"], dtsRef: "&pro_micro 5", pinctrlRef: "0, 24" },
+    d6: { displayName: "D6", aka: ["P1.00"], dtsRef: "&pro_micro 6", pinctrlRef: "1, 0" },
+    d7: { displayName: "D7", aka: ["P0.11"], dtsRef: "&pro_micro 7", pinctrlRef: "0, 11" },
+    d8: { displayName: "D8", aka: ["P1.04"], dtsRef: "&pro_micro 8", pinctrlRef: "1, 4" },
+    d9: { displayName: "D9", aka: ["P1.06"], dtsRef: "&pro_micro 9", pinctrlRef: "1, 6" },
 
-    d21: { displayName: "D21", dtsRef: "&pro_micro 21", pinctrlRef: "0, 31" },
-    d20: { displayName: "D20", dtsRef: "&pro_micro 20", pinctrlRef: "0, 29" },
-    d19: { displayName: "D19", dtsRef: "&pro_micro 19", pinctrlRef: "0, 2" },
-    d18: { displayName: "D18", dtsRef: "&pro_micro 18", pinctrlRef: "1, 15" },
-    d15: { displayName: "D15", dtsRef: "&pro_micro 15", pinctrlRef: "1, 13" },
-    d14: { displayName: "D14", dtsRef: "&pro_micro 14", pinctrlRef: "1, 11" },
-    d16: { displayName: "D16", dtsRef: "&pro_micro 16", pinctrlRef: "0, 10" },
-    d10: { displayName: "D10", dtsRef: "&pro_micro 10", pinctrlRef: "0, 9" },
+    d21: { displayName: "D21", aka: ["P0.31"], dtsRef: "&pro_micro 21", pinctrlRef: "0, 31" },
+    d20: { displayName: "D20", aka: ["P0.29"], dtsRef: "&pro_micro 20", pinctrlRef: "0, 29" },
+    d19: { displayName: "D19", aka: ["P0.02"], dtsRef: "&pro_micro 19", pinctrlRef: "0, 2" },
+    d18: { displayName: "D18", aka: ["P1.15"], dtsRef: "&pro_micro 18", pinctrlRef: "1, 15" },
+    d15: { displayName: "D15", aka: ["P1.13"], dtsRef: "&pro_micro 15", pinctrlRef: "1, 13" },
+    d14: { displayName: "D14", aka: ["P1.11"], dtsRef: "&pro_micro 14", pinctrlRef: "1, 11" },
+    d16: { displayName: "D16", aka: ["P0.10"], dtsRef: "&pro_micro 16", pinctrlRef: "0, 10" },
+    d10: { displayName: "D10", aka: ["P0.09"], dtsRef: "&pro_micro 10", pinctrlRef: "0, 9" },
 
     p101: { displayName: "P1.01", dtsRef: "&gpio1 1", pinctrlRef: "1, 1" },
     p102: { displayName: "P1.02", dtsRef: "&gpio1 2", pinctrlRef: "1, 2" },
@@ -272,17 +276,17 @@ const controllerInfoXiaoBle: ControllerInfo = {
   boardKconfig: "BOARD_SEEEDUINO_XIAO_BLE",
   docLink: "https://files.seeedstudio.com/wiki/XIAO-BLE/pinout2.png",
   pins: {
-    d0: { displayName: "D0", dtsRef: "&xiao_d 0", pinctrlRef: "0, 2" },
-    d1: { displayName: "D1", dtsRef: "&xiao_d 1", pinctrlRef: "0, 3" },
-    d2: { displayName: "D2", dtsRef: "&xiao_d 2", pinctrlRef: "0, 28" },
-    d3: { displayName: "D3", dtsRef: "&xiao_d 3", pinctrlRef: "0, 29" },
-    d4: { displayName: "D4", dtsRef: "&xiao_d 4", pinctrlRef: "0, 4" },
-    d5: { displayName: "D5", dtsRef: "&xiao_d 5", pinctrlRef: "0, 5" },
-    d6: { displayName: "D6", dtsRef: "&xiao_d 6", pinctrlRef: "1, 11" },
-    d7: { displayName: "D7", dtsRef: "&xiao_d 7", pinctrlRef: "1, 12" },
-    d8: { displayName: "D8", dtsRef: "&xiao_d 8", pinctrlRef: "1, 13" },
-    d9: { displayName: "D9", dtsRef: "&xiao_d 9", pinctrlRef: "1, 14" },
-    d10: { displayName: "D10", dtsRef: "&xiao_d 10", pinctrlRef: "1, 15" },
+    d0: { displayName: "D0", aka: ["P0.02"], dtsRef: "&xiao_d 0", pinctrlRef: "0, 2" },
+    d1: { displayName: "D1", aka: ["P0.03"], dtsRef: "&xiao_d 1", pinctrlRef: "0, 3" },
+    d2: { displayName: "D2", aka: ["P0.28"], dtsRef: "&xiao_d 2", pinctrlRef: "0, 28" },
+    d3: { displayName: "D3", aka: ["P0.29"], dtsRef: "&xiao_d 3", pinctrlRef: "0, 29" },
+    d4: { displayName: "D4", aka: ["P0.04"], dtsRef: "&xiao_d 4", pinctrlRef: "0, 4" },
+    d5: { displayName: "D5", aka: ["P0.05"], dtsRef: "&xiao_d 5", pinctrlRef: "0, 5" },
+    d6: { displayName: "D6", aka: ["P1.11"], dtsRef: "&xiao_d 6", pinctrlRef: "1, 11" },
+    d7: { displayName: "D7", aka: ["P1.12"], dtsRef: "&xiao_d 7", pinctrlRef: "1, 12" },
+    d8: { displayName: "D8", aka: ["P1.13"], dtsRef: "&xiao_d 8", pinctrlRef: "1, 13" },
+    d9: { displayName: "D9", aka: ["P1.14"], dtsRef: "&xiao_d 9", pinctrlRef: "1, 14" },
+    d10: { displayName: "D10", aka: ["P1.15"], dtsRef: "&xiao_d 10", pinctrlRef: "1, 15" },
   },
   visual: {
     left: [
@@ -320,17 +324,17 @@ const controllerInfoXiaoBlePlus: ControllerInfo = {
   pins: {
     ...controllerInfoXiaoBle.pins,
 
-    d11: { displayName: "D11", dtsRef: "&gpio0 15", pinctrlRef: "0, 15" },
-    d12: { displayName: "D12", dtsRef: "&gpio0 19", pinctrlRef: "0, 19" },
-    d13: { displayName: "D13", dtsRef: "&gpio1 1", pinctrlRef: "1, 1" },
-    d14: { displayName: "D14", dtsRef: "&gpio0 9", pinctrlRef: "0, 9" },
-    d15: { displayName: "D15", dtsRef: "&gpio0 10", pinctrlRef: "0, 10" },
+    d11: { displayName: "D11", aka: ["P0.15"], dtsRef: "&gpio0 15", pinctrlRef: "0, 15" },
+    d12: { displayName: "D12", aka: ["P0.19"], dtsRef: "&gpio0 19", pinctrlRef: "0, 19" },
+    d13: { displayName: "D13", aka: ["P1.01"], dtsRef: "&gpio1 1", pinctrlRef: "1, 1" },
+    d14: { displayName: "D14", aka: ["P0.09"], dtsRef: "&gpio0 9", pinctrlRef: "0, 9" },
+    d15: { displayName: "D15", aka: ["P0.10"], dtsRef: "&gpio0 10", pinctrlRef: "0, 10" },
 
-    d16: { displayName: "D16", dtsRef: "&gpio0 31", pinctrlRef: "0, 31" },
+    d16: { displayName: "D16", aka: ["P0.31"], dtsRef: "&gpio0 31", pinctrlRef: "0, 31" }, // TODO remove support for D16
 
-    d17: { displayName: "D17", dtsRef: "&gpio1 3", pinctrlRef: "1, 3" },
-    d18: { displayName: "D18", dtsRef: "&gpio1 5", pinctrlRef: "1, 5" },
-    d19: { displayName: "D19", dtsRef: "&gpio1 7", pinctrlRef: "1, 7" },
+    d17: { displayName: "D17", aka: ["P1.03"], dtsRef: "&gpio1 3", pinctrlRef: "1, 3" },
+    d18: { displayName: "D18", aka: ["P1.05"], dtsRef: "&gpio1 5", pinctrlRef: "1, 5" },
+    d19: { displayName: "D19", aka: ["P1.07"], dtsRef: "&gpio1 7", pinctrlRef: "1, 7" },
   },
   visual: {
     left: [
@@ -355,7 +359,7 @@ const controllerInfoXiaoBlePlus: ControllerInfo = {
       { type: "gpio", id: "d13" },
       { type: "gpio", id: "d14" },
       { type: "gpio", id: "d15" },
-      { type: "gpio", id: "d16" },
+      { type: "gpio", id: "d16" }, // TODO disable D16
     ],
   },
   pinctrlChoices: staticPinctrlChoices([
@@ -463,17 +467,17 @@ const controllerInfoXiaoRp2040: ControllerInfo = {
   boardKconfig: "BOARD_SEEEDUINO_XIAO_RP2040",
   docLink: "https://files.seeedstudio.com/wiki/XIAO-RP2040/img/xinpin.jpg",
   pins: {
-    d0: { displayName: "D0", dtsRef: "&xiao_d 0", pinctrlRef: "26" },
-    d1: { displayName: "D1", dtsRef: "&xiao_d 1", pinctrlRef: "27" },
-    d2: { displayName: "D2", dtsRef: "&xiao_d 2", pinctrlRef: "28" },
-    d3: { displayName: "D3", dtsRef: "&xiao_d 3", pinctrlRef: "29" },
-    d4: { displayName: "D4", dtsRef: "&xiao_d 4", pinctrlRef: "6" },
-    d5: { displayName: "D5", dtsRef: "&xiao_d 5", pinctrlRef: "7" },
-    d6: { displayName: "D6", dtsRef: "&xiao_d 6", pinctrlRef: "0" },
-    d7: { displayName: "D7", dtsRef: "&xiao_d 7", pinctrlRef: "1" },
-    d8: { displayName: "D8", dtsRef: "&xiao_d 8", pinctrlRef: "2" },
-    d9: { displayName: "D9", dtsRef: "&xiao_d 9", pinctrlRef: "4" },
-    d10: { displayName: "D10", dtsRef: "&xiao_d 10", pinctrlRef: "3" },
+    d0: { displayName: "D0", aka: ["P26"], dtsRef: "&xiao_d 0", pinctrlRef: "26" },
+    d1: { displayName: "D1", aka: ["P27"], dtsRef: "&xiao_d 1", pinctrlRef: "27" },
+    d2: { displayName: "D2", aka: ["P28"], dtsRef: "&xiao_d 2", pinctrlRef: "28" },
+    d3: { displayName: "D3", aka: ["P29"], dtsRef: "&xiao_d 3", pinctrlRef: "29" },
+    d4: { displayName: "D4", aka: ["P6"], dtsRef: "&xiao_d 4", pinctrlRef: "6" },
+    d5: { displayName: "D5", aka: ["P7"], dtsRef: "&xiao_d 5", pinctrlRef: "7" },
+    d6: { displayName: "D6", aka: ["P0"], dtsRef: "&xiao_d 6", pinctrlRef: "0" },
+    d7: { displayName: "D7", aka: ["P1"], dtsRef: "&xiao_d 7", pinctrlRef: "1" },
+    d8: { displayName: "D8", aka: ["P2"], dtsRef: "&xiao_d 8", pinctrlRef: "2" },
+    d9: { displayName: "D9", aka: ["P4"], dtsRef: "&xiao_d 9", pinctrlRef: "4" },
+    d10: { displayName: "D10", aka: ["P3"], dtsRef: "&xiao_d 10", pinctrlRef: "3" },
   },
   visual: controllerInfoXiaoBle.visual,
   pinctrlChoices: makeRP2040PinctrlChoices({
@@ -501,20 +505,20 @@ const controllerInfoQtPyRp2040: ControllerInfo = {
   boardKconfig: "BOARD_ADAFRUIT_QT_PY_RP2040",
   docLink: "https://learn.adafruit.com/adafruit-qt-py-2040/pinouts",
   pins: {
-    d0: { displayName: "D0", dtsRef: "&xiao_d 0", pinctrlRef: "29" },
-    d1: { displayName: "D1", dtsRef: "&xiao_d 1", pinctrlRef: "28" },
-    d2: { displayName: "D2", dtsRef: "&xiao_d 2", pinctrlRef: "27" },
-    d3: { displayName: "D3", dtsRef: "&xiao_d 3", pinctrlRef: "26" },
-    d4: { displayName: "D4", dtsRef: "&xiao_d 4", pinctrlRef: "24" },
-    d5: { displayName: "D5", dtsRef: "&xiao_d 5", pinctrlRef: "25" },
-    d6: { displayName: "D6", dtsRef: "&xiao_d 6", pinctrlRef: "20" },
-    d7: { displayName: "D7", dtsRef: "&xiao_d 7", pinctrlRef: "5" },
-    d8: { displayName: "D8", dtsRef: "&xiao_d 8", pinctrlRef: "6" },
-    d9: { displayName: "D9", dtsRef: "&xiao_d 9", pinctrlRef: "4" },
-    d10: { displayName: "D10", dtsRef: "&xiao_d 10", pinctrlRef: "3" },
+    d0: { displayName: "D0", aka: ["GPIO29", "A0"], dtsRef: "&xiao_d 0", pinctrlRef: "29" },
+    d1: { displayName: "D1", aka: ["GPIO28", "A1"], dtsRef: "&xiao_d 1", pinctrlRef: "28" },
+    d2: { displayName: "D2", aka: ["GPIO27", "A2"], dtsRef: "&xiao_d 2", pinctrlRef: "27" },
+    d3: { displayName: "D3", aka: ["GPIO26", "A3"], dtsRef: "&xiao_d 3", pinctrlRef: "26" },
+    d4: { displayName: "D4", aka: ["GPIO24", "SDA"], dtsRef: "&xiao_d 4", pinctrlRef: "24" },
+    d5: { displayName: "D5", aka: ["GPIO25", "SCL"], dtsRef: "&xiao_d 5", pinctrlRef: "25" },
+    d6: { displayName: "D6", aka: ["GPIO20", "TX"], dtsRef: "&xiao_d 6", pinctrlRef: "20" },
+    d7: { displayName: "D7", aka: ["GPIO5", "RX"], dtsRef: "&xiao_d 7", pinctrlRef: "5" },
+    d8: { displayName: "D8", aka: ["GPIO6", "SCK"], dtsRef: "&xiao_d 8", pinctrlRef: "6" },
+    d9: { displayName: "D9", aka: ["GPIO4", "MISO"], dtsRef: "&xiao_d 9", pinctrlRef: "4" },
+    d10: { displayName: "D10", aka: ["GPIO3", "MOSI"], dtsRef: "&xiao_d 10", pinctrlRef: "3" },
 
-    gp22: { displayName: "GP22", dtsRef: "&gpio0 22", pinctrlRef: "22" },
-    gp23: { displayName: "GP23", dtsRef: "&gpio0 23", pinctrlRef: "23" },
+    gp22: { displayName: "GP22", aka: ["SDA1"], dtsRef: "&gpio0 22", pinctrlRef: "22" },
+    gp23: { displayName: "GP23", aka: ["SCL1"], dtsRef: "&gpio0 23", pinctrlRef: "23" },
   },
   visual: {
     left: [
@@ -560,37 +564,37 @@ const controllerInfoSparkfunProMicroRp2040: ControllerInfo = {
 
     // TODO add "aka" alias names for pins for UI
     // TX in sparkfun's graphics
-    d1: { displayName: "D1", dtsRef: "&pro_micro 1", pinctrlRef: "0" }, // RP2040 GPIO0 at pro_micro pin 1
+    d1: { displayName: "D1", aka: ["GPIO0", "TX"], dtsRef: "&pro_micro 1", pinctrlRef: "0" }, // RP2040 GPIO0 at pro_micro pin 1
     // RX
-    d0: { displayName: "D0", dtsRef: "&pro_micro 0", pinctrlRef: "1" }, // RP2040 GPIO1 at pro_micro pin 0
+    d0: { displayName: "D0", aka: ["GPIO1", "RX"], dtsRef: "&pro_micro 0", pinctrlRef: "1" }, // RP2040 GPIO1 at pro_micro pin 0
 
     // 2 - 9 in sparkfun's graphics
-    d2: { displayName: "D2", dtsRef: "&pro_micro 2", pinctrlRef: "2" },
-    d3: { displayName: "D3", dtsRef: "&pro_micro 3", pinctrlRef: "3" },
-    d4: { displayName: "D4", dtsRef: "&pro_micro 4", pinctrlRef: "4" },
-    d5: { displayName: "D5", dtsRef: "&pro_micro 5", pinctrlRef: "5" },
-    d6: { displayName: "D6", dtsRef: "&pro_micro 6", pinctrlRef: "6" },
-    d7: { displayName: "D7", dtsRef: "&pro_micro 7", pinctrlRef: "7" },
-    d8: { displayName: "D8", dtsRef: "&pro_micro 8", pinctrlRef: "8" },
-    d9: { displayName: "D9", dtsRef: "&pro_micro 9", pinctrlRef: "9" },
+    d2: { displayName: "D2", aka: ["GPIO2"], dtsRef: "&pro_micro 2", pinctrlRef: "2" },
+    d3: { displayName: "D3", aka: ["GPIO3"], dtsRef: "&pro_micro 3", pinctrlRef: "3" },
+    d4: { displayName: "D4", aka: ["GPIO4"], dtsRef: "&pro_micro 4", pinctrlRef: "4" },
+    d5: { displayName: "D5", aka: ["GPIO5"], dtsRef: "&pro_micro 5", pinctrlRef: "5" },
+    d6: { displayName: "D6", aka: ["GPIO6"], dtsRef: "&pro_micro 6", pinctrlRef: "6" },
+    d7: { displayName: "D7", aka: ["GPIO7"], dtsRef: "&pro_micro 7", pinctrlRef: "7" },
+    d8: { displayName: "D8", aka: ["GPIO8"], dtsRef: "&pro_micro 8", pinctrlRef: "8" },
+    d9: { displayName: "D9", aka: ["GPIO9"], dtsRef: "&pro_micro 9", pinctrlRef: "9" },
 
     // pro micro right
 
     // A3 - A0 in pinout graphics
-    d21: { displayName: "D21", dtsRef: "&pro_micro 21", pinctrlRef: "29" },
-    d20: { displayName: "D20", dtsRef: "&pro_micro 20", pinctrlRef: "28" },
-    d19: { displayName: "D19", dtsRef: "&pro_micro 19", pinctrlRef: "27" },
-    d18: { displayName: "D18", dtsRef: "&pro_micro 18", pinctrlRef: "26" },
+    d21: { displayName: "D21", aka: ["GPIO29", "A3"], dtsRef: "&pro_micro 21", pinctrlRef: "29" },
+    d20: { displayName: "D20", aka: ["GPIO28", "A2"], dtsRef: "&pro_micro 20", pinctrlRef: "28" },
+    d19: { displayName: "D19", aka: ["GPIO27", "A1"], dtsRef: "&pro_micro 19", pinctrlRef: "27" },
+    d18: { displayName: "D18", aka: ["GPIO26", "A0"], dtsRef: "&pro_micro 18", pinctrlRef: "26" },
 
     // SCK, CI, CO, 21 in pinout graphics
-    d15: { displayName: "D15", dtsRef: "&pro_micro 15", pinctrlRef: "22" },
-    d14: { displayName: "D14", dtsRef: "&pro_micro 14", pinctrlRef: "20" },
-    d16: { displayName: "D16", dtsRef: "&pro_micro 16", pinctrlRef: "23" },
-    d10: { displayName: "D10", dtsRef: "&pro_micro 10", pinctrlRef: "21" },
+    d15: { displayName: "D15", aka: ["GPIO22", "SCK"], dtsRef: "&pro_micro 15", pinctrlRef: "22" },
+    d14: { displayName: "D14", aka: ["GPIO20", "CI"], dtsRef: "&pro_micro 14", pinctrlRef: "20" },
+    d16: { displayName: "D16", aka: ["GPIO23", "CO"], dtsRef: "&pro_micro 16", pinctrlRef: "23" },
+    d10: { displayName: "D10", aka: ["GPIO21"], dtsRef: "&pro_micro 10", pinctrlRef: "21" },
 
     // extra i2c connectors on bottom
-    gp16: { displayName: "GP16", dtsRef: "&gpio0 16", pinctrlRef: "16" },
-    gp17: { displayName: "GP17", dtsRef: "&gpio0 17", pinctrlRef: "17" },
+    gp16: { displayName: "GP16", aka: ["SDA"], dtsRef: "&gpio0 16", pinctrlRef: "16" },
+    gp17: { displayName: "GP17", aka: ["SCL"], dtsRef: "&gpio0 17", pinctrlRef: "17" },
   },
   visual: {
     left: [

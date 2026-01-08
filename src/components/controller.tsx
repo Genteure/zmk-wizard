@@ -25,14 +25,13 @@ const ControllerPin: Component<{
   const [releaseOpen, setReleaseOpen] = createSignal(false);
 
   const pinLabel = createMemo(() => {
-    switch (props.pin.type) {
-      case 'ui':
-        return props.pin.text || '';
-      case 'gpio':
-        return props.controllerInfo.pins[props.pin.id]?.displayName ?? props.pin.id;
-      default:
-        return '';
-    };
+    if (props.pin.type !== 'gpio') return props.pin.text || '';
+    return props.controllerInfo.pins[props.pin.id]?.displayName ?? props.pin.id;
+  });
+
+  const pinAka = createMemo(() => {
+    if (props.pin.type !== 'gpio') return [];
+    return props.controllerInfo.pins[props.pin.id]?.aka || [];
   });
 
   return (
@@ -43,17 +42,17 @@ const ControllerPin: Component<{
       }}>
 
       <Popover open={open()} onOpenChange={setOpen} placement={props.left ? "left" : "right"} gutter={8}>
-        <Popover.Anchor>
+        <Popover.Anchor class="flex justify-center items-center">
           <Button disabled={props.pin.type !== 'gpio'} as={props.pin.type === 'gpio' ? undefined : "div"}
             class="w-14 font-bold rounded border select-none shrink-0 flex justify-center items-center"
             title={props.usage === 'bus' ? `Pin ${pinLabel()} is used for bus communication` : undefined}
             classList={{
               "cursor-pointer text-base-content/50 border-dashed": props.pin.type === "gpio" && props.usage === 'none',
               "cursor-not-allowed bg-blue-500/10 text-blue-600 border-blue-500": props.usage === "bus",
-              "border-transparent": props.pin.type === "ui" && props.pin.ui === 'empty',
-              "border-transparent text-pink-500/80": props.pin.type === "ui" && props.pin.ui === "power",
-              "border-transparent text-slate-500/80": props.pin.type === "ui" && props.pin.ui === "gnd",
-              "border-transparent text-cyan-500/80": props.pin.type === "ui" && props.pin.ui === "rst",
+              "border-transparent": props.pin.type === "ui",
+              "text-pink-500/80": props.pin.type === "ui" && props.pin.ui === "power",
+              "text-slate-500/80": props.pin.type === "ui" && props.pin.ui === "gnd",
+              "text-cyan-500/80": props.pin.type === "ui" && props.pin.ui === "rst",
               "cursor-pointer bg-red-500/10 text-red-500 border-red-500": props.usage === "output",
               "cursor-pointer bg-emerald-500/10 text-emerald-500 border-emerald-500": props.usage === "input",
               "underline": props.current,
@@ -109,6 +108,12 @@ const ControllerPin: Component<{
                 Output
               </Button>
             </Show>
+            <Show when={pinAka().length}>
+              <div class="text-xs">
+                <span class="font-bold">{pinLabel()}</span> is also known as <span class="font-bold">{pinAka().join(", ")}</span> on this board.
+              </div>
+            </Show>
+
             <Show when={props.wiringType === 'matrix_diode'}>
               <div class="flex items-center justify-center text-xs gap-1">
                 <div class="flex flex-col items-center">
@@ -130,18 +135,18 @@ const ControllerPin: Component<{
                 </div>
               </div>
             </Show>
-            <Show when={props.wiringType === 'matrix_diode' || props.wiringType === 'matrix_no_diode'}>
+            {/* <Show when={props.wiringType === 'matrix_diode' || props.wiringType === 'matrix_no_diode'}>
               <div class="text-xs/snug text-base-content/75">
                 Controller will toggle output pins and read signals from input pins.
               </div>
-            </Show>
+            </Show> */}
           </Popover.Content>
         </Popover.Portal>
       </Popover>
 
       <Show when={props.pin.type === 'gpio'}>
         <Popover open={releaseOpen()} onOpenChange={setReleaseOpen} placement={props.left ? "right" : "left"} gutter={8}>
-          <Popover.Anchor>
+          <Popover.Anchor class="flex justify-center items-center">
             <Button
               class="text-red-500/50 hover:text-red-500 hover:bg-red-500/20 cursor-pointer rounded-full p-1 transition-colors ui-disabled:bg-transparent ui-disabled:text-transparent ui-disabled:pointer-events-none"
               disabled={props.usage === 'none' || props.usage === 'bus'}
