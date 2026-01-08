@@ -181,6 +181,7 @@ function dongleOverlayKeyboard(keyboard: Keyboard): string {
   }
 }
 
+// TODO remove support for using D16 on XIAO nRF52840 Plus
 const seeeduino_xiao_ble_plus_disable_vbatt = `
 /*
  * D16/P0.31 on Seeeduino XIAO nRF52840 Plus is the the same pin as AIN7,

@@ -609,12 +609,13 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                       <option disabled>├  Supermini NRF52840</option>
                       <option disabled>├  PROMICRO NRF52840</option>
                       <option disabled>├  52840nano</option>
-                      <option disabled>└  ...</option>
+                      <option disabled>└  ... and others</option>
                       <option value="xiao_ble">Seeed XIAO nRF52840</option>
                       <option value="xiao_ble_plus">Seeed XIAO nRF52840 Plus</option>
                       <option value="rpi_pico">Raspberry Pi Pico (RP2040)</option>
                       <option value="xiao_rp2040">Seeed XIAO RP2040</option>
                       <option value="qt_py_rp2040">Adafruit QT Py RP2040</option>
+                      <option value="kb2040">Adafruit KB2040 (RP2040)</option>
                       <option value="sparkfun_pro_micro_rp2040">SparkFun Pro Micro RP2040</option>
                     </select>
                   </label>

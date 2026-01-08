@@ -4,7 +4,7 @@ import { Popover } from "@kobalte/core/popover";
 import CircleX from "lucide-solid/icons/circle-x";
 import ExternalLink from "lucide-solid/icons/external-link";
 import TriangleAlert from "lucide-solid/icons/triangle-alert";
-import { createEffect, createMemo, createSignal, For, onCleanup, Show, type Accessor, type Component } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Match, onCleanup, Show, Switch, type Accessor, type Component } from "solid-js";
 import { produce } from "solid-js/store";
 import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, PinSelection, ShiftRegisterDevice, WiringType } from "~/typedef";
 import { addDeviceToBus, isI2cBus, isShiftRegisterDevice, isSpiBus, isSpiDevice, isSSD1306, isWS2812 } from "~/typehelper";
@@ -312,16 +312,25 @@ export const ControllerPinConfigurator: Component<{
           </span>
         </Link>
       </div>
-      <Show when={props.controllerId === "xiao_ble_plus"}>
-        <div class="mx-auto max-w-md mt-4 p-2 text-sm text-center text-base-content/75">
-          <TriangleAlert class="w-6 h-6 inline-block mr-1 text-warning" />
-          Pin <span class="font-bold">D16</span> / <span class="font-bold">P0.31</span> is connected
-          to <span class="font-bold">BAT+</span> via a 1MΩ resistor as part of the battery voltage divider circuit.
-          If you use <span class="font-bold">D16</span> in your kscan, voltage divider and battery level reading will
-          be disabled. With voltage divider disabled, you <span class="font-bold">MUST NOT connect a battery</span> to the controller
-          or you risk over-voltage and burning out the pins!
-        </div>
-      </Show>
+      <Switch>
+        <Match when={props.controllerId === "xiao_ble_plus"}>
+          <div class="mx-auto max-w-md mt-4 p-2 text-sm text-center text-base-content/75">
+            <TriangleAlert class="w-6 h-6 inline-block mr-1 text-warning" />
+            Pin <span class="font-bold">D16</span> / <span class="font-bold">P0.31</span> is connected
+            to <span class="font-bold">BAT+</span> via 1MΩ resistor as part of the voltage divider.
+            Do not connect <span class="font-bold">D16</span>! It's not useable for anything else!
+          </div>
+        </Match>
+        <Match when={props.controllerId === "kb2040"}>
+          <div class="mx-auto max-w-md mt-4 p-2 text-sm text-center text-base-content/75">
+            <TriangleAlert class="w-6 h-6 inline-block mr-1 text-warning" />
+            Adafruit labels top left pins
+            as <span class="font-bold">D0</span> (for <span class="underline">GPIO0</span>), <span class="font-bold">D1</span> (for <span class="underline">GPIO1</span>).
+            In ZMK, for consistency with other "pro micro" shaped boards, we refer to them
+            as <span class="font-bold">D1</span> (for <span class="underline">GPIO0</span>) and <span class="font-bold">D0</span> (for <span class="underline">GPIO1</span>).
+          </div>
+        </Match>
+      </Switch>
     </div>
   </div>;
 }

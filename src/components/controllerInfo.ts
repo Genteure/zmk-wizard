@@ -270,7 +270,7 @@ const controllerInfoNiceNanoV2: ControllerInfo = {
 };
 
 const controllerInfoXiaoBle: ControllerInfo = {
-  name: "Seeed Studio XIAO nRF52840",
+  name: "Seeed XIAO nRF52840",
   soc: "nrf52840",
   board: "seeeduino_xiao_ble",
   boardKconfig: "BOARD_SEEEDUINO_XIAO_BLE",
@@ -316,7 +316,7 @@ const controllerInfoXiaoBle: ControllerInfo = {
 };
 
 const controllerInfoXiaoBlePlus: ControllerInfo = {
-  name: "Seeed Studio XIAO nRF52840 Plus",
+  name: "Seeed XIAO nRF52840 Plus",
   soc: "nrf52840",
   board: "seeeduino_xiao_ble",
   boardKconfig: "BOARD_SEEEDUINO_XIAO_BLE",
@@ -330,7 +330,8 @@ const controllerInfoXiaoBlePlus: ControllerInfo = {
     d14: { displayName: "D14", aka: ["P0.09"], dtsRef: "&gpio0 9", pinctrlRef: "0, 9" },
     d15: { displayName: "D15", aka: ["P0.10"], dtsRef: "&gpio0 10", pinctrlRef: "0, 10" },
 
-    d16: { displayName: "D16", aka: ["P0.31"], dtsRef: "&gpio0 31", pinctrlRef: "0, 31" }, // TODO remove support for D16
+    // TODO remove support for D16
+    // d16: { displayName: "D16", aka: ["P0.31"], dtsRef: "&gpio0 31", pinctrlRef: "0, 31" },
 
     d17: { displayName: "D17", aka: ["P1.03"], dtsRef: "&gpio1 3", pinctrlRef: "1, 3" },
     d18: { displayName: "D18", aka: ["P1.05"], dtsRef: "&gpio1 5", pinctrlRef: "1, 5" },
@@ -359,7 +360,8 @@ const controllerInfoXiaoBlePlus: ControllerInfo = {
       { type: "gpio", id: "d13" },
       { type: "gpio", id: "d14" },
       { type: "gpio", id: "d15" },
-      { type: "gpio", id: "d16" }, // TODO disable D16
+      // { type: "gpio", id: "d16" },
+      { type: "ui", ui: "rst", text: "D16" },
     ],
   },
   pinctrlChoices: staticPinctrlChoices([
@@ -461,7 +463,7 @@ const controllerInfoRpiPico: ControllerInfo = {
 };
 
 const controllerInfoXiaoRp2040: ControllerInfo = {
-  name: "Seeed Studio XIAO RP2040",
+  name: "Seeed XIAO RP2040",
   soc: "rp2040",
   board: "seeeduino_xiao_rp2040",
   boardKconfig: "BOARD_SEEEDUINO_XIAO_RP2040",
@@ -551,6 +553,102 @@ const controllerInfoQtPyRp2040: ControllerInfo = {
     "gp23": "gp23",
   }),
   busConflicts: {}, // No bus conflicts for RP2040..?
+};
+
+const controllerInfoKB2040: ControllerInfo = {
+  name: "Adafruit KB2040",
+  soc: "rp2040",
+  board: "adafruit_kb2040",
+  boardKconfig: "BOARD_ADAFRUIT_KB2040",
+  docLink: "https://learn.adafruit.com/adafruit-kb2040/pinouts",
+  pins: {
+    d1: { displayName: "D1", aka: ["GPIO0"], dtsRef: "&pro_micro 1", pinctrlRef: "0" },
+    d0: { displayName: "D0", aka: ["GPIO1"], dtsRef: "&pro_micro 0", pinctrlRef: "1" },
+    d2: { displayName: "D2", aka: ["GPIO2"], dtsRef: "&pro_micro 2", pinctrlRef: "2" },
+    d3: { displayName: "D3", aka: ["GPIO3"], dtsRef: "&pro_micro 3", pinctrlRef: "3" },
+    d4: { displayName: "D4", aka: ["GPIO4"], dtsRef: "&pro_micro 4", pinctrlRef: "4" },
+    d5: { displayName: "D5", aka: ["GPIO5"], dtsRef: "&pro_micro 5", pinctrlRef: "5" },
+    d6: { displayName: "D6", aka: ["GPIO6"], dtsRef: "&pro_micro 6", pinctrlRef: "6" },
+    d7: { displayName: "D7", aka: ["GPIO7"], dtsRef: "&pro_micro 7", pinctrlRef: "7" },
+    d8: { displayName: "D8", aka: ["GPIO8"], dtsRef: "&pro_micro 8", pinctrlRef: "8" },
+    d9: { displayName: "D9", aka: ["GPIO9"], dtsRef: "&pro_micro 9", pinctrlRef: "9" },
+
+    d21: { displayName: "D21", aka: ["GPIO29", "A3"], dtsRef: "&pro_micro 21", pinctrlRef: "29" },
+    d20: { displayName: "D20", aka: ["GPIO28", "A2"], dtsRef: "&pro_micro 20", pinctrlRef: "28" },
+    d19: { displayName: "D19", aka: ["GPIO27", "A1"], dtsRef: "&pro_micro 19", pinctrlRef: "27" },
+    d18: { displayName: "D18", aka: ["GPIO26", "A0"], dtsRef: "&pro_micro 18", pinctrlRef: "26" },
+
+    d15: { displayName: "D15", aka: ["GPIO18", "SCK"], dtsRef: "&pro_micro 15", pinctrlRef: "18" },
+    d14: { displayName: "D14", aka: ["GPIO20", "MISO"], dtsRef: "&pro_micro 14", pinctrlRef: "20" },
+    d16: { displayName: "D16", aka: ["GPIO19", "MOSI"], dtsRef: "&pro_micro 16", pinctrlRef: "19" },
+    d10: { displayName: "D10", aka: ["GPIO10"], dtsRef: "&pro_micro 10", pinctrlRef: "10" },
+
+    gp12: { displayName: "GP12", aka: ["SDA"], dtsRef: "&gpio0 12", pinctrlRef: "12" },
+    gp13: { displayName: "GP13", aka: ["SCL"], dtsRef: "&gpio0 13", pinctrlRef: "13" },
+  },
+  visual: {
+    left: [
+      { type: "ui", ui: "rst", text: "D+" },
+      { type: "gpio", id: "d1" },
+      { type: "gpio", id: "d0" },
+      { type: "ui", ui: "gnd", text: "GND" },
+      { type: "ui", ui: "gnd", text: "GND" },
+      { type: "gpio", id: "d2" },
+      { type: "gpio", id: "d3" },
+      { type: "gpio", id: "d4" },
+      { type: "gpio", id: "d5" },
+      { type: "gpio", id: "d6" },
+      { type: "gpio", id: "d7" },
+      { type: "gpio", id: "d8" },
+      { type: "gpio", id: "d9" },
+      { type: "ui", ui: "empty", text: "" },
+      { type: "gpio", id: "gp12" },
+    ],
+    right: [
+      { type: "ui", ui: "rst", text: "D-" },
+      { type: "ui", ui: "power", text: "VBUS" },
+      { type: "ui", ui: "gnd", text: "GND" },
+      { type: "ui", ui: "rst", text: "RST" },
+      { type: "ui", ui: "power", text: "3.3V" },
+      { type: "gpio", id: "d21" },
+      { type: "gpio", id: "d20" },
+      { type: "gpio", id: "d19" },
+      { type: "gpio", id: "d18" },
+      { type: "gpio", id: "d15" },
+      { type: "gpio", id: "d14" },
+      { type: "gpio", id: "d16" },
+      { type: "gpio", id: "d10" },
+      { type: "ui", ui: "empty", text: "" },
+      { type: "gpio", id: "gp13" },
+    ],
+  },
+  pinctrlChoices: makeRP2040PinctrlChoices({
+    // native pins: controller pins
+    "gp0": "d1",
+    "gp1": "d0",
+    "gp2": "d2",
+    "gp3": "d3",
+    "gp4": "d4",
+    "gp5": "d5",
+    "gp6": "d6",
+    "gp7": "d7",
+    "gp8": "d8",
+    "gp9": "d9",
+
+    "gp29": "d21",
+    "gp28": "d20",
+    "gp27": "d19",
+    "gp26": "d18",
+
+    "gp18": "d15",
+    "gp20": "d14",
+    "gp19": "d16",
+    "gp10": "d10",
+
+    "gp12": "gp12",
+    "gp13": "gp13",
+  }),
+  busConflicts: {}, // No bus conflicts for RP2040
 };
 
 const controllerInfoSparkfunProMicroRp2040: ControllerInfo = {
@@ -666,8 +764,13 @@ export const controllerInfos: Record<Controller, ControllerInfo> = {
   "rpi_pico": controllerInfoRpiPico,
   "xiao_rp2040": controllerInfoXiaoRp2040,
   "qt_py_rp2040": controllerInfoQtPyRp2040,
+  "kb2040": controllerInfoKB2040,
   "sparkfun_pro_micro_rp2040": controllerInfoSparkfunProMicroRp2040,
 };
+
+// TODO enforce SCK on SPI 0 to 2 on nRF52840 due to hardware limitations
+// See https://github.com/zephyrproject-rtos/zephyr/issues/57147#issuecomment-1540113856
+// TODO allow setting SCK to unexposed pins to work around this limitation
 
 // TODO before calling createZMKConfig in templating,
 // validate the buses passed in actually exist for the controller
