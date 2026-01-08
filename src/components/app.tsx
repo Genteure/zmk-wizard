@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, For, Show, type Accessor, type Component, type VoidComponent } from "solid-js";
-import { produce } from "solid-js/store";
+import { produce, unwrap } from "solid-js/store";
 
 import { Button } from "@kobalte/core/button";
 import { Dialog } from "@kobalte/core/dialog";
@@ -27,9 +27,9 @@ import { normalizeKeys, useWizardContext } from "./context";
 import { BusDevicesConfigurator, ControllerPinConfigurator, ShiftRegisterPinConfigurator } from "./controller";
 import { controllerInfos, loadBusesForController } from "./controllerInfo";
 import { DataTable } from "./datatable";
-import { GenerateLayoutDialog, ImportDevicetreeDialog, ImportKleJsonDialog, ImportLayoutJsonDialog } from "./dialogs";
+import { ExportTextboxDialog, GenerateLayoutDialog, ImportDevicetreeDialog, ImportKleJsonDialog, ImportLayoutJsonDialog } from "./dialogs";
 import { KeyboardPreview, type GraphicsKey } from "./graphics";
-import { physicalToLogical } from "./layouthelper";
+import { physicalToLogical, toKLE } from "./layouthelper";
 import { BuildButton, HelpButton, InfoEditButton } from "./navbar";
 
 export function ensureKeyIds(keys: Key[]) {
@@ -226,6 +226,7 @@ const ConfigLayout: Component = () => {
       <ImportDevicetreeDialog />
       <ImportLayoutJsonDialog />
       <ImportKleJsonDialog />
+      <ExportTextboxDialog />
 
       <div class="flex flex-row gap-2 items-center flex-wrap justify-center">
 
@@ -338,9 +339,32 @@ const ConfigLayout: Component = () => {
                   onSelect={() => context.setNav("dialog", "importKleJson", true)}
                 ><button>Import KLE JSON</button></Menubar.Item>
                 <Menubar.Separator class="my-1" />
-                <Menubar.Item disabled as="li" class="menu-disabled"><button>Export ZMK Physical Layout DTS (TODO)</button></Menubar.Item>
-                <Menubar.Item disabled as="li" class="menu-disabled"><button>Export Layout JSON (TODO)</button></Menubar.Item>
-                <Menubar.Item disabled as="li" class="menu-disabled"><button>Export KLE JSON (TODO)</button></Menubar.Item>
+                <Menubar.Item
+                  as="li"
+                  onSelect={async () => {
+                    const { physicalLayoutKeyboard } = await import("~/lib/templating");
+                    const dts = physicalLayoutKeyboard(unwrap(context.keyboard));
+                    // dialog will open if content is set and close on null
+                    context.setNav("dialog", "exportTextboxContent", dts);
+                  }}
+                ><button>Export ZMK Physical Layout DTS</button></Menubar.Item>
+                <Menubar.Item
+                  as="li"
+                  onSelect={async () => {
+                    const { config__json } = await import("~/lib/templating");
+                    const json = config__json(unwrap(context.keyboard));
+                    // dialog will open if content is set and close on null
+                    context.setNav("dialog", "exportTextboxContent", json);
+                  }}
+                ><button>Export Layout JSON</button></Menubar.Item>
+                <Menubar.Item
+                  as="li"
+                  onSelect={() => {
+                    const kle = toKLE(unwrap(context.keyboard.layout));
+                    // dialog will open if content is set and close on null
+                    context.setNav("dialog", "exportTextboxContent", kle);
+                  }}
+                ><button>Export KLE JSON</button></Menubar.Item>
                 <Menubar.Separator class="my-1" />
                 <Menubar.Item as="li"
                 // onSelect={() => window.open('https://nickcoutsos.github.io/keymap-layout-tools/', '_blank', 'noopener')}

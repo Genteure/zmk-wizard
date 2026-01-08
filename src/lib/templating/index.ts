@@ -9,6 +9,8 @@ import {
   zephyr_module_yml,
 } from "./contents";
 import { createShieldOverlayFiles } from "./shield";
+export { physicalLayoutKeyboard } from "./shield";
+export { config__json } from "./contents";
 
 export function createZMKConfig(keyboard: Keyboard): VirtualTextFolder {
   if (keyboard.shield === 'throwerror') {

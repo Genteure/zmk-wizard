@@ -7,6 +7,7 @@ import { ulid } from "ulidx";
 import type { Key } from "../typedef";
 import { useWizardContext } from "./context";
 import { parseKLE, parseLayoutJson, parsePhysicalLayoutDts } from "./layouthelper";
+import { createTimer } from "@solid-primitives/timer";
 
 export const GenerateLayoutDialog: VoidComponent = () => {
   const context = useWizardContext();
@@ -271,6 +272,69 @@ export const ImportKleJsonDialog: VoidComponent = () => {
               >
                 Import
               </Button>
+            </div>
+          </Dialog.Description>
+        </Dialog.Content>
+      </div>
+    </Dialog.Portal>
+  </Dialog>)
+}
+
+export const ExportTextboxDialog: VoidComponent = () => {
+  const context = useWizardContext();
+
+  const [copied, setCopied] = createSignal(false);
+  const content = () => context.nav.dialog.exportTextboxContent ?? "";
+
+  const copyToClipboard = async () => {
+    const text = content();
+    if (!text) return;
+
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        createTimer(() => setCopied(false), 1200, setTimeout);
+      } catch (err) {
+        console.error("Failed to copy layout", err);
+        setCopied(false);
+      }
+      return;
+    }
+
+    console.warn("Clipboard API unavailable; unable to copy layout automatically.");
+  };
+
+  return (<Dialog
+    open={!!context.nav.dialog.exportTextboxContent}
+    onOpenChange={v => {
+      if (!v) context.setNav("dialog", "exportTextboxContent", null);
+    }}
+  >
+    <Dialog.Portal>
+      <Dialog.Overlay class="dialog--overlay" />
+      <div class="dialog--positioner">
+        <Dialog.Content class="dialog--content max-w-4xl">
+          <div class="dialog--header">
+            <Dialog.Title class="dialog--title">
+              Export Layout
+            </Dialog.Title>
+            <div class="flex items-center gap-2">
+              <Button class="btn btn-primary btn-sm" disabled={!content()} onClick={copyToClipboard}>
+                {copied() ? "Copied" : "Copy"}
+              </Button>
+              <Dialog.CloseButton class="btn btn-sm btn-circle btn-ghost cursor-pointer">
+                <X class="w-6 h-6" />
+              </Dialog.CloseButton>
+            </div>
+          </div>
+          <Dialog.Description>
+            <div class="flex flex-col gap-3">
+              <textarea
+                class="textarea w-full h-80 font-mono text-xs"
+                readOnly
+                value={content()}
+              />
             </div>
           </Dialog.Description>
         </Dialog.Content>

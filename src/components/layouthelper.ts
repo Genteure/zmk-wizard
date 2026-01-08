@@ -2,6 +2,7 @@ import { ulid } from "ulidx";
 import { keyCenter, type Point } from "~/lib/geometry";
 import type { Key } from "../typedef";
 import { Serial } from "./kle-serial";
+import { Keyboard as KLEKeyboard, Key as KLEKey } from "./kle-serial";
 
 export function physicalToLogical(keys: Key[], ignoreOrder: boolean): void {
   if (keys.length === 0) return;
@@ -264,4 +265,24 @@ export function parseKLE(json: string): Key[] | null {
   } catch (e) {
     return null;
   }
+}
+
+export function toKLE(keys: Key[]): string {
+  if (!keys.length) return "[]";
+
+  const kle = new KLEKeyboard();
+
+  keys.forEach(k => {
+    const key = new KLEKey();
+    key.width = k.w;
+    key.height = k.h;
+    key.x = k.x;
+    key.y = k.y;
+    key.rotation_angle = k.r;
+    key.rotation_x = k.rx;
+    key.rotation_y = k.ry;
+    kle.keys.push(key);
+  });
+
+  return JSON.stringify(Serial.serialize(kle));
 }

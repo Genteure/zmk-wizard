@@ -410,7 +410,7 @@ export function matrixKscanOrderKeyboard(keyboard: Keyboard, inputIsRow: boolean
   };
 }
 
-function physicalLayoutKeyboard(keyboard: Keyboard): string {
+export function physicalLayoutKeyboard(keyboard: Keyboard): string {
   function num(n: number, pad: number): string {
     let text = Math.round(n * 100).toString();
     if (text.startsWith("-")) {

@@ -18,7 +18,8 @@ function rootContextHelper(): WizardContextType {
       generateLayout: false,
       importDevicetree: false,
       importLayoutJson: false,
-      importKleJson: false
+      importKleJson: false,
+      exportTextboxContent: null,
     },
     selectedTab: "layout",
     activeEditPart: null,

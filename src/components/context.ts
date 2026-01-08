@@ -10,6 +10,7 @@ export interface Navigation {
     importDevicetree: boolean;
     importLayoutJson: boolean;
     importKleJson: boolean;
+    exportTextboxContent: string | null;
   };
   repoLink: string;
   selectedTab: string;
