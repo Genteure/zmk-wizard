@@ -337,7 +337,7 @@ const ConfigLayout: Component = () => {
                 <Menubar.Item
                   as="li"
                   onSelect={() => context.setNav("dialog", "importKleJson", true)}
-                ><button>Import KLE JSON</button></Menubar.Item>
+                ><button>Import KLE/VIA/VIAL JSON</button></Menubar.Item>
                 <Menubar.Separator class="my-1" />
                 <Menubar.Item
                   as="li"

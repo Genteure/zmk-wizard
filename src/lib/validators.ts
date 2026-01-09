@@ -41,15 +41,33 @@ const Validators: Record<string, ValidatorFunction> = {
 
     return null;
   },
-  keyCount: (keyboard: Keyboard) => {
+  keyCountAndLogicalLayout: (keyboard: Keyboard) => {
     const keyCount = keyboard.layout.length;
     if (keyCount === 0) {
       return "Keyboard must have at least one key";
     }
     if (keyCount > 256) {
-      return "Keyboard cannot have more than 256 keys";
+      return "Do you really have more than 256 keys?";
     }
-    return null;
+
+    // check for valid logical layout
+    // 1. all keys must have unique rows and cols
+    // 2. key must be sorted by row then col
+
+    const posToKeyIndex: Record<string, number[]> = {};
+    // for (const key of keyboard.layout) {
+    keyboard.layout.forEach((key, i) => {
+      const posKey = `${key.row},${key.col}`;
+      (posToKeyIndex[posKey] = posToKeyIndex[posKey] || []).push(i);
+    })
+
+    const errors = Object.entries(posToKeyIndex)
+      .filter(([_, indices]) => indices.length > 1)
+      .map(([pos, indices]) => {
+        return `Multiple keys (${indices.join(", ")}) share the same logical position at row ${pos.split(",")[0]}, col ${pos.split(",")[1]}`;
+      });
+
+    return errors.length > 0 ? errors : null;
   },
   splitParts: (keyboard: Keyboard) => {
     // 1 to 5 parts allowed, ignore dongle

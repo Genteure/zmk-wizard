@@ -227,38 +227,77 @@ export function parseLayoutJson(json: string): Key[] | null {
 export function parseKLE(json: string): Key[] | null {
   try {
     const root = JSON.parse(json);
-    if (!Array.isArray(root) || root.length === 0) return null;
 
-    const parsed = Serial.deserialize(root);
+    const kle = ((): any[] | null => {
+      if (Array.isArray(root)) {
+        if (root.length === 0) return null;
+        // raw KLE array
+        return root;
+      }
+
+      if (typeof root === 'object' && root !== null
+        && 'layouts' in root && typeof root.layouts === 'object' && root.layouts !== null
+        && 'keymap' in root.layouts && Array.isArray(root.layouts.keymap) && root.layouts.keymap.length > 0) {
+        // VIA/VIAL format
+        return root.layouts.keymap;
+      }
+
+      return null;
+    })();
+
+
+    if (!kle) return null;
+    const parsed = Serial.deserialize(kle);
 
     if (!parsed || !parsed.keys || parsed.keys.length === 0) {
       return null;
     }
 
-    const keys = parsed.keys.map(k => ({
-      id: ulid(),
-      part: 0,
-      row: 0,
-      col: 0,
-      w: k.width,
-      h: k.height,
-      x: k.x,
-      y: k.y,
-      r: k.rotation_angle,
-      rx: k.rotation_x,
-      ry: k.rotation_y,
-    }));
+    // Build keys, attempt best-effort row/col parsing from label text
+    const keys = parsed.keys.map(k => {
+      let row = -1;
+      let col = -1;
 
-    physicalToLogical(keys, false);
+      // Try to find a label like "r,c" or "r/c" or "r x c"
+      const sepRegex = /\s*(-?\d+)\s*[,/x]\s*(-?\d+)\s*$/i;
+      const labelCandidate = (k.labels || []).find(l => typeof l === 'string' && l.trim().length > 0);
+      if (labelCandidate) {
+        const m = labelCandidate.trim().match(sepRegex);
+        if (m) {
+          row = parseInt(m[1], 10);
+          col = parseInt(m[2], 10);
+        }
+      }
 
-    // total height of the entire layout = max y - min y
+      return {
+        id: ulid(),
+        part: 0,
+        row,
+        col,
+        w: k.width,
+        h: k.height,
+        x: k.x,
+        y: k.y,
+        r: k.rotation_angle,
+        rx: k.rotation_x,
+        ry: k.rotation_y,
+      } as Key;
+    });
+
+    // If any rows/cols are missing, infer from physical positions
+    if (keys.some(k => k.row < 0 || k.col < 0)) {
+      physicalToLogical(keys, false);
+    } else {
+      // sort by row/col to ensure ordering
+      keys.sort((a, b) => (a.row - b.row) || (a.col - b.col));
+    }
+
+    // Sanity check: too many rows vs physical height -> allow reordering
     const totalHeightPhysical = Math.max(...keys.map(k => k.y + k.h)) - Math.min(...keys.map(k => k.y));
     const totalRows = Math.max(...keys.map(k => k.row)) + 1;
-
-    // if we have wayy too many rows compared to physical height, likely the row/col info is garbage
     if (totalRows > (totalHeightPhysical * 2)) {
-      console.log("too many rows compared to physical height, rerunning physicalToLogical");
-      physicalToLogical(keys, true); // allow reordering
+      // Likely garbage; recompute allowing reordering
+      physicalToLogical(keys, true);
     }
 
     return keys;
@@ -281,6 +320,7 @@ export function toKLE(keys: Key[]): string {
     key.rotation_angle = k.r;
     key.rotation_x = k.rx;
     key.rotation_y = k.ry;
+    key.labels[0] = k.row + "," + k.col;
     kle.keys.push(key);
   });
 
