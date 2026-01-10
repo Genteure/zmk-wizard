@@ -57,6 +57,18 @@
       "name": "unibody",
       "controller": "qt_py_rp2040",
       "wiring": "matrix_diode",
+      "pins": {
+        "d10": "bus",
+        "d1": "input",
+        "d4": "input",
+        "d5": "input",
+        "d9": "output",
+        "d8": "output",
+        "d7": "output",
+        "d6": "output",
+        "d3": "bus",
+        "d2": "bus"
+      },
       "keys": {
         "01KEBPPAQN25Q6AVXSRN5RTCWY": {
           "input": "d1",
@@ -107,53 +119,39 @@
           "output": "d6"
         }
       },
-      "pins": {
-        "d10": "bus",
-        "d2": "bus",
-        "d3": "bus",
-        "d0": "bus",
-        "d1": "input",
-        "d4": "input",
-        "d5": "input",
-        "d9": "output",
-        "d8": "output",
-        "d7": "output",
-        "d6": "output"
-      },
       "buses": [
         {
-          "type": "spi",
           "name": "spi0",
           "devices": [
             {
               "type": "ws2812",
-              "cs": "",
-              "length": 12
+              "length": 12, "cs": ""
             }
           ],
+          "type": "spi",
           "mosi": "d10"
         },
         {
-          "type": "spi",
           "name": "spi1",
+          "devices": [],
+          "type": "spi"
+        },
+        {
+          "name": "i2c0",
+          "devices": [],
+          "type": "i2c"
+        },
+        {
+          "name": "i2c1",
           "devices": [
             {
-              "type": "niceview",
-              "cs": "d0"
+              "type": "ssd1306",
+              "add": 60, "width": 128, "height": 64
             }
           ],
-          "mosi": "d2",
-          "sck": "d3"
-        },
-        {
           "type": "i2c",
-          "name": "i2c0",
-          "devices": []
-        },
-        {
-          "type": "i2c",
-          "name": "i2c1",
-          "devices": []
+          "sda": "d3",
+          "scl": "d2"
         }
       ]
     }
