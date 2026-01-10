@@ -686,8 +686,6 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
       return Boolean(pinsUsage()[pinId]);
     };
 
-    const filteredPins = (list: string[], current?: string) => list.filter((p) => !isPinBusy(p, current));
-
     return (
       <div
         class="border border-base-300 rounded-xl bg-base-200/50 p-3 flex flex-col gap-3 transition-opacity select-none"
@@ -753,7 +751,11 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
                       onChange={(e) => setBusPin(cardProps.index, "sda", e.currentTarget.value || undefined)}
                     >
                       <option value="">None</option>
-                      <For each={filteredPins(i2cPinChoices()!.sda, i2cBus()!.sda)}>{(pin) => <option value={pin}>{pinLabelForPinId(pin)}</option>}</For>
+                      <For each={i2cPinChoices()!.sda}>{(pin) => (
+                        <option value={pin} disabled={isPinBusy(pin, i2cBus()!.sda)}>
+                          {pinLabelForPinId(pin) + (isPinBusy(pin, i2cBus()!.sda) ? " (in use)" : "")}
+                        </option>
+                      )}</For>
                     </select>
                   </label>
                   <label class="flex flex-col gap-1 text-sm">
@@ -764,7 +766,11 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
                       onChange={(e) => setBusPin(cardProps.index, "scl", e.currentTarget.value || undefined)}
                     >
                       <option value="">None</option>
-                      <For each={filteredPins(i2cPinChoices()!.scl, i2cBus()!.scl)}>{(pin) => <option value={pin}>{pinLabelForPinId(pin)}</option>}</For>
+                      <For each={i2cPinChoices()!.scl}>{(pin) => (
+                        <option value={pin} disabled={isPinBusy(pin, i2cBus()!.scl)}>
+                          {pinLabelForPinId(pin) + (isPinBusy(pin, i2cBus()!.scl) ? " (in use)" : "")}
+                        </option>
+                      )}</For>
                     </select>
                   </label>
                 </>
@@ -780,7 +786,11 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
                       onChange={(e) => setBusPin(cardProps.index, "mosi", e.currentTarget.value || undefined)}
                     >
                       <option value="">None</option>
-                      <For each={filteredPins(spiPinChoices()!.mosi, spiBus()!.mosi)}>{(pin) => <option value={pin}>{pinLabelForPinId(pin)}</option>}</For>
+                      <For each={spiPinChoices()!.mosi}>{(pin) => (
+                        <option value={pin} disabled={isPinBusy(pin, spiBus()!.mosi)}>
+                          {pinLabelForPinId(pin) + (isPinBusy(pin, spiBus()!.mosi) ? " (in use)" : "")}
+                        </option>
+                      )}</For>
                     </select>
                   </label>
                   <label class="flex flex-col gap-1 text-sm">
@@ -791,7 +801,11 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
                       onChange={(e) => setBusPin(cardProps.index, "miso", e.currentTarget.value || undefined)}
                     >
                       <option value="">None</option>
-                      <For each={filteredPins(spiPinChoices()!.miso, spiBus()!.miso)}>{(pin) => <option value={pin}>{pinLabelForPinId(pin)}</option>}</For>
+                      <For each={spiPinChoices()!.miso}>{(pin) => (
+                        <option value={pin} disabled={isPinBusy(pin, spiBus()!.miso)}>
+                          {pinLabelForPinId(pin) + (isPinBusy(pin, spiBus()!.miso) ? " (in use)" : "")}
+                        </option>
+                      )}</For>
                     </select>
                   </label>
                   <label class="flex flex-col gap-1 text-sm">
@@ -802,7 +816,11 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
                       onChange={(e) => setBusPin(cardProps.index, "sck", e.currentTarget.value || undefined)}
                     >
                       <option value="">None</option>
-                      <For each={filteredPins(spiPinChoices()!.sck, spiBus()!.sck)}>{(pin) => <option value={pin}>{pinLabelForPinId(pin)}</option>}</For>
+                      <For each={spiPinChoices()!.sck}>{(pin) => (
+                        <option value={pin} disabled={isPinBusy(pin, spiBus()!.sck)}>
+                          {pinLabelForPinId(pin) + (isPinBusy(pin, spiBus()!.sck) ? " (in use)" : "")}
+                        </option>
+                      )}</For>
                     </select>
                   </label>
                 </>
@@ -896,7 +914,11 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
                             onChange={(e) => setDeviceField(cardProps.index, devIdx(), "cs", e.currentTarget.value)}
                           >
                             <option value="">None</option>
-                            <For each={filteredPins(spiChoices.cs, spiDevice.cs)}>{(pin) => <option value={pin}>{pinLabelForPinId(pin)}</option>}</For>
+                            <For each={spiChoices.cs}>{(pin) => (
+                              <option value={pin} disabled={isPinBusy(pin, spiDevice.cs)}>
+                                {pinLabelForPinId(pin) + (isPinBusy(pin, spiDevice.cs) ? " (in use)" : "")}
+                              </option>
+                            )}</For>
                           </select>
                         </label>
                       );
