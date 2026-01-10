@@ -101,11 +101,32 @@ export const App: VoidComponent = () => {
       class="p-2 bg-base-200 flex gap-2 items-center justify-between"
     >
       <div class="flex items-center gap-1 md:gap-2">
-        <div
-          class="w-10 h-10 md:w-12 md:h-12 shrink-0 rounded border-fuchsia-500 border flex justify-center items-center select-none"
-        >
-          icon?
-        </div>
+        <Popover>
+          <Popover.Trigger>
+            <div
+              class="w-10 h-10 md:w-12 md:h-12 shrink-0 rounded border-fuchsia-500 border flex justify-center items-center select-none cursor-pointer"
+            >
+              icon?
+            </div>
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content class="popover--content w-60 p-3 flex flex-col gap-2">
+              <div class="text-sm/relaxed">
+                Send your ideas and feedback to <Link
+                  href="https://github.com/Genteure/zmk-wizard"
+                  class="link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >https://github.com/Genteure/zmk-wizard</Link> or @genteure in <Link
+                  href="https://zmk.dev/community/discord/invite"
+                  class="link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >ZMK Community Discord</Link>.
+              </div>
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover>
 
         <InfoEditButton />
         <BuildButton />

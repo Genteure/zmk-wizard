@@ -688,8 +688,6 @@ const controllerInfoSparkfunProMicroRp2040: ControllerInfo = {
   docLink: "https://cdn.sparkfun.com/assets/e/2/7/6/b/ProMicroRP2040_Graphical_Datasheet.pdf",
   pins: {
     // pro micro left
-
-    // TODO add "aka" alias names for pins for UI
     // TX in sparkfun's graphics
     d1: { displayName: "D1", aka: ["GPIO0", "TX"], dtsRef: "&pro_micro 1", pinctrlRef: "0" }, // RP2040 GPIO0 at pro_micro pin 1
     // RX
@@ -706,7 +704,6 @@ const controllerInfoSparkfunProMicroRp2040: ControllerInfo = {
     d9: { displayName: "D9", aka: ["GPIO9"], dtsRef: "&pro_micro 9", pinctrlRef: "9" },
 
     // pro micro right
-
     // A3 - A0 in pinout graphics
     d21: { displayName: "D21", aka: ["GPIO29", "A3"], dtsRef: "&pro_micro 21", pinctrlRef: "29" },
     d20: { displayName: "D20", aka: ["GPIO28", "A2"], dtsRef: "&pro_micro 20", pinctrlRef: "28" },
@@ -797,7 +794,7 @@ export const controllerInfos: Record<Controller, ControllerInfo> = {
   "sparkfun_pro_micro_rp2040": controllerInfoSparkfunProMicroRp2040,
 };
 
-// TODO enforce SCK on SPI 0 to 2 on nRF52840 due to hardware limitations
+// Require SCK on SPI 0 to 2 on nRF52840 due to hardware limitations
 // See https://github.com/zephyrproject-rtos/zephyr/issues/57147#issuecomment-1540113856
 // TODO allow setting SCK to unexposed pins to work around this limitation
 

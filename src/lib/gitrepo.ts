@@ -158,7 +158,7 @@ export async function createGitRepository(files: VirtualFolder): Promise<Virtual
   const { hash: commitHash, content: commitContent } = await createGitCommit(
     rootTreeHash,
     author,
-    "Initial commit"
+    "Initial commit from Shield Wizard for ZMK"
   );
   allObjects.set(commitHash, commitContent);
 

@@ -35,14 +35,18 @@ export const server = {
         });
         const verifyJson = await verifyRes.json() as { success: boolean;[key: string]: any };
         if (!verifyJson.success) {
+          const msg = "Captcha validation failed: " + (verifyJson["error-codes"]?.join(", ") || "unknown error");
+          console.log(msg);
           throw new ActionError({
             code: "UNAUTHORIZED",
             // TODO check best practices for error messages
             // Probably not a good idea to return raw error codes?
-            message: "Captcha validation failed: " + (verifyJson["error-codes"]?.join(", ") || "unknown error"),
+            message: msg,
           });
         }
       }
+
+      console.log("Building repository for keyboard:", input.keyboard.name);
 
       const keyboardConfig = createZMKConfig(input.keyboard);
       const gitRepo = await createGitRepository(keyboardConfig);
@@ -59,6 +63,7 @@ export const server = {
 
       const kv = getRepoKV(context.locals);
       const repoId = ulid();
+      console.log("Storing repository in KV with id:", repoId);
       await kv.setData(repoId, tarStream);
 
       return {

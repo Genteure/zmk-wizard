@@ -654,70 +654,6 @@ export const BuildButton: VoidComponent = () => {
   );
 }
 
-export const ImportExportButtons: VoidComponent = () => {
-  return (<div class="join join-vertical md:join-horizontal">
-    <DropdownMenu placement="bottom-start">
-      <DropdownMenu.Trigger class="join-item btn btn-xs md:btn-sm">
-        Import
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content class="p-2 bg-base-200 rounded shadow-lg border menu">
-          <DropdownMenu.Sub
-            overlap
-            gutter={4}
-            shift={-8}
-          >
-            <DropdownMenu.SubTrigger as="li">
-              <button>
-                <Keyboard class="inline-block w-5 h-5" />
-                Layout
-                <div class="ml-auto pl-6">
-                  <ChevronRight class="w-5 h-5" />
-                </div>
-              </button>
-            </DropdownMenu.SubTrigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.SubContent class="p-2 bg-base-200 rounded shadow-lg border menu">
-                <DropdownMenu.Item as="li"
-                  onSelect={() => alert('TODO')}
-                >
-                  <button>
-                    Keymap Layout Helper JSON
-                  </button>
-                </DropdownMenu.Item>
-              </DropdownMenu.SubContent>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Sub>
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu>
-
-    <DropdownMenu placement="bottom-start">
-      <DropdownMenu.Trigger class="join-item btn btn-xs md:btn-sm">
-        Export
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content class="p-2 bg-base-200 rounded shadow-lg border menu">
-          <DropdownMenu.Item as="li"
-            onSelect={() => alert('TODO')}
-          >
-            <button>
-              Keymap Layout Helper JSON
-            </button>
-          </DropdownMenu.Item>
-          <DropdownMenu.Item as="li"
-            onSelect={() => alert('TODO')}
-          >
-            <button>
-              Internal Debug Data
-            </button>
-          </DropdownMenu.Item>
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu>
-  </div>);
-}
-
 export const HelpButton: VoidComponent = () => {
   const context = useWizardContext();
   let debugDataTextArea: HTMLTextAreaElement | undefined;
@@ -944,6 +880,7 @@ Generated At: ${version.buildDate || '(unknown)'}
             <DropdownMenu.Separator class="m-1" />
 
             <DropdownMenu.Item as="li"
+              class="menu-disabled"
               onSelect={() => { console.log("TODO") }}
             >
               <button>
