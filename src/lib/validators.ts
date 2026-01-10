@@ -1,4 +1,4 @@
-import { busDeviceInfos, controllerInfos } from "~/components/controllerInfo";
+import { busDeviceInfos, controllerInfos, busPinRequirements } from "~/components/controllerInfo";
 import type { BusDeviceTypeName } from "~/typedef";
 import { BusNameSchema, ShieldNameSchema, type Keyboard } from "~/typedef";
 import { isI2cBus, isSpiBus } from "~/typehelper";
@@ -185,6 +185,17 @@ const Validators: Record<string, ValidatorFunction> = {
           seenDeviceTypes.add(type);
         }
 
+        // TODO this typing is annoying and pointless
+        // Determine allowed pins from pinctrl choices for this bus
+        const controllerChoices = controllerInfo?.pinctrlChoices;
+        const pinChoices = controllerChoices
+          ? (bus.type === "i2c"
+            ? controllerChoices({ type: "i2c", name: bus.name })
+            : controllerChoices({ type: "spi", name: bus.name }))
+          : undefined;
+        // Determine hardware-required signals via busPinRequirements
+        const requiredBySoc = busPinRequirements(part.controller, bus.name);
+
         if (isI2cBus(bus)) {
           for (const device of devices) {
             if (device.type !== "ssd1306") {
@@ -192,13 +203,27 @@ const Validators: Record<string, ValidatorFunction> = {
             }
           }
 
+          // Data-driven required signals from SoC requirements
           if (devices.length > 0) {
-            const hasSda = validatePin(bus.sda, `bus "${bus.name}" SDA`, true);
-            const hasScl = validatePin(bus.scl, `bus "${bus.name}" SCL`, true);
-
-            if (hasSda && hasScl && bus.sda === bus.scl) {
-              errors.push(`Bus "${bus.name}" in part "${part.name}" must use different pins for SDA and SCL`);
+            for (const sig of requiredBySoc) {
+              const value = (bus as unknown as Record<string, string | undefined>)[sig];
+              validatePin(value, `bus "${bus.name}" ${sig.toUpperCase()}`, true);
             }
+          }
+
+          // Membership checks: selected pins must be within allowed sets
+          if (pinChoices && "sda" in pinChoices) {
+            if (bus.sda && !pinChoices.sda.includes(bus.sda)) {
+              errors.push(`Pin "${bus.sda}" for bus "${bus.name}" SDA in part "${part.name}" is not allowed on controller "${part.controller}"`);
+            }
+            if (bus.scl && !pinChoices.scl.includes(bus.scl)) {
+              errors.push(`Pin "${bus.scl}" for bus "${bus.name}" SCL in part "${part.name}" is not allowed on controller "${part.controller}"`);
+            }
+          }
+
+          // SDA/SCL must be distinct when both set
+          if (bus.sda && bus.scl && bus.sda === bus.scl) {
+            errors.push(`Bus "${bus.name}" in part "${part.name}" must use different pins for SDA and SCL`);
           }
         } else if (isSpiBus(bus)) {
           const exclusiveDevices = devices.filter((d) => busDeviceInfos[d.type as BusDeviceTypeName]?.exclusive);
@@ -224,6 +249,11 @@ const Validators: Record<string, ValidatorFunction> = {
             }
           }
 
+          // Include SoC-level required signals from busPinRequirements
+          for (const sig of requiredBySoc) {
+            if (sig !== "cs") requiredSignals.add(sig);
+          }
+
           if (devices.length > 0) {
             for (const sig of requiredSignals) {
               const value = (bus as unknown as Record<string, string | undefined>)[sig];
@@ -231,10 +261,17 @@ const Validators: Record<string, ValidatorFunction> = {
             }
           }
 
+          // Validate selected pins and membership within allowed sets
           (["mosi", "miso", "sck"] as const).forEach((sig) => {
             const value = bus[sig];
             if (value) {
               validatePin(value, `bus "${bus.name}" ${sig.toUpperCase()}`);
+              if (pinChoices && "mosi" in pinChoices) {
+                const allowed = (pinChoices as unknown as Record<typeof sig, string[]>)[sig];
+                if (allowed && !allowed.includes(value)) {
+                  errors.push(`Pin "${value}" for bus "${bus.name}" ${sig.toUpperCase()} in part "${part.name}" is not allowed on controller "${part.controller}"`);
+                }
+              }
             }
           });
 
@@ -251,6 +288,13 @@ const Validators: Record<string, ValidatorFunction> = {
 
             if (cs) {
               validatePin(cs, `bus "${bus.name}" CS for device ${device.type}`, Boolean(needsCs));
+              // Membership check for CS against allowed CS pins
+              if (pinChoices && "cs" in pinChoices) {
+                const allowedCs = (pinChoices as unknown as { cs: string[] }).cs;
+                if (allowedCs && !allowedCs.includes(cs)) {
+                  errors.push(`Pin "${cs}" for bus "${bus.name}" CS in part "${part.name}" is not allowed on controller "${part.controller}"`);
+                }
+              }
               if (csUsage.has(cs)) {
                 csUsage.set(cs, `${csUsage.get(cs)} and device ${device.type}`);
                 errors.push(`Multiple devices on bus "${bus.name}" in part "${part.name}" share CS pin "${cs}"`);

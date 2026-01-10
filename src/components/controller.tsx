@@ -9,7 +9,7 @@ import { produce } from "solid-js/store";
 import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, PinSelection, ShiftRegisterDevice, WiringType } from "~/typedef";
 import { addDeviceToBus, isI2cBus, isShiftRegisterDevice, isSpiBus, isSpiDevice, isSSD1306, isWS2812 } from "~/typehelper";
 import { useWizardContext } from "./context";
-import { busDeviceInfos, controllerInfos, type ControllerInfo, type PinctrlI2cPinChoices, type PinctrlSpiPinChoices, type VisualPin } from "./controllerInfo";
+import { busDeviceInfos, controllerInfos, busPinRequirements, type ControllerInfo, type PinctrlI2cPinChoices, type PinctrlSpiPinChoices, type VisualPin } from "./controllerInfo";
 
 const ControllerPin: Component<{
   pin: VisualPin,
@@ -661,11 +661,15 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
     });
     const requiredPins = createMemo(() => {
       const set = new Set<string>();
+      // Device level requirements
       for (const d of cardProps.bus.devices || []) {
         const info = busDeviceInfos[d.type as BusDeviceTypeName];
         if (!info?.needs) continue;
         for (const k of Object.keys(info.needs)) set.add(k);
       }
+      // SoC-level hardware requirements
+      const req = busPinRequirements(part().controller, cardProps.bus.name);
+      for (const k of req) set.add(k);
       return set;
     });
     const i2cBus = createMemo(() => isI2cBus(cardProps.bus) ? cardProps.bus : null);
@@ -723,6 +727,17 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
           </div>
         </Show>
         <Show when={isActive()}>
+          {/* Show hardware-required signals (SoC-level) when present */}
+          <Show when={busPinRequirements(part().controller, cardProps.bus.name).length > 0}>
+            <div class="text-xs text-base-content/70">
+              This bus requires
+              <span class="ml-2">
+                {busPinRequirements(part().controller, cardProps.bus.name).map((need) => (
+                  <span class="badge badge-ghost badge-sm mr-1">{need.toUpperCase()}</span>
+                ))}
+              </span>
+            </div>
+          </Show>
           <Show when={(cardProps.bus.devices || []).some((d) => busDeviceInfos[d.type as BusDeviceTypeName]?.exclusive) && (cardProps.bus.devices || []).length > 1}>
             <div class="text-xs text-red-600 font-semibold">This bus contains an exclusive device and cannot share with other devices.</div>
           </Show>
@@ -820,7 +835,7 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
                   </div>
                   <Show when={Object.keys(busDeviceInfos[device.type as BusDeviceTypeName]?.needs || {}).length > 0}>
                     <div class="text-xs text-base-content/70">
-                      Requires
+                      Device requires
                       <span class="ml-2">
                         {Object.keys(busDeviceInfos[device.type as BusDeviceTypeName]?.needs || {}).map((need) => (
                           <span class="badge badge-ghost badge-sm mr-1">{need.toUpperCase()}</span>

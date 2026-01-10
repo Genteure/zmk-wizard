@@ -103,7 +103,7 @@ export interface ControllerPinMetadata {
   aka?: string[] | undefined;
 }
 
-function staticPinctrlChoices(pins: string[]) {
+function makeNrf52840PinctrlChoices(pins: string[]) {
   function pinctrlPins(bus: SpiBusInfo): PinctrlSpiPinChoices;
   function pinctrlPins(bus: I2cBusInfo): PinctrlI2cPinChoices;
   function pinctrlPins(bus: BusInfo): PinctrlSpiPinChoices | PinctrlI2cPinChoices {
@@ -114,6 +114,14 @@ function staticPinctrlChoices(pins: string[]) {
       } satisfies PinctrlI2cPinChoices;
     }
 
+    if (bus.name !== "spi3") {
+      return {
+        mosi: pins,
+        miso: pins,
+        sck: pins,
+        cs: pins,
+      } satisfies PinctrlSpiPinChoices;
+    }
     return {
       mosi: pins,
       miso: pins,
@@ -183,6 +191,27 @@ function makeRP2040PinctrlChoices(availablePins: Record<string, string>) {
   }
 
   return rp2040PinctrlChoices;
+}
+
+const busPinRequirementMap = {
+  nrf52840: {
+    i2c0: ["sda", "scl"],
+    i2c1: ["sda", "scl"],
+    spi0: ["sck"],
+    spi1: ["sck"],
+    spi2: ["sck"],
+    spi3: [],
+  } as Record<BusName, string[]>,
+  rp2040: {
+    i2c0: ["sda", "scl"],
+    i2c1: ["sda", "scl"],
+    spi0: [], // TODO verify
+    spi1: [],
+  } as Record<BusName, string[]>,
+} as const;
+export function busPinRequirements(controller: Controller, bus: BusName): string[] {
+  const soc = controllerInfos[controller].soc;
+  return busPinRequirementMap[soc][bus] || [];
 }
 
 const nrf52840BusConflicts: Record<BusName, BusName[]> = {
@@ -261,7 +290,7 @@ const controllerInfoNiceNanoV2: ControllerInfo = {
       { type: "gpio", id: "p107" },
     ],
   },
-  pinctrlChoices: staticPinctrlChoices([
+  pinctrlChoices: makeNrf52840PinctrlChoices([
     "d1", "d0", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9",
     "d21", "d20", "d19", "d18", "d15", "d14", "d16", "d10",
     "p101", "p102", "p107",
@@ -308,7 +337,7 @@ const controllerInfoXiaoBle: ControllerInfo = {
       { type: "gpio", id: "d7" },
     ],
   },
-  pinctrlChoices: staticPinctrlChoices([
+  pinctrlChoices: makeNrf52840PinctrlChoices([
     "d0", "d1", "d2", "d3", "d4", "d5", "d6",
     "d10", "d9", "d8", "d7",
   ]),
@@ -364,7 +393,7 @@ const controllerInfoXiaoBlePlus: ControllerInfo = {
       { type: "ui", ui: "rst", text: "D16" },
     ],
   },
-  pinctrlChoices: staticPinctrlChoices([
+  pinctrlChoices: makeNrf52840PinctrlChoices([
     "d0", "d1", "d2", "d3", "d4", "d5", "d6",
     "d19", "d18", "d17",
     "d10", "d9", "d8", "d7",
