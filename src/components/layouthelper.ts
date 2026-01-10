@@ -109,20 +109,25 @@ export function physicalToLogical(keys: Key[], ignoreOrder: boolean): void {
   keys.sort((a, b) => (a.row - b.row) || (a.col - b.col));
 }
 
-const dtsRegex = /&key_physical_attrs\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*/g;
 export function parsePhysicalLayoutDts(dts: string): Key[] | null {
+  const layoutRegex = /\{[^\}]*?compatible *?= *?\"zmk,physical-layout\";.+?\}/s;
+  const keyRegex = /&key_physical_attrs\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*/g;
   const keys: Key[] = [];
   let match;
 
   if (!dts.includes('zmk,physical-layout')) {
     return null;
   }
+  // Prefer extracting the physical layout block first, then falling back
+  // to scanning the entire DTS if no keys are found in the block.
+  const layoutMatch = layoutRegex.exec(dts);
+  const searchTarget = layoutMatch ? layoutMatch[0] : dts;
 
-  while ((match = dtsRegex.exec(dts)) !== null) {
+  keyRegex.lastIndex = 0;
+  while ((match = keyRegex.exec(searchTarget)) !== null) {
     const [w, h, x, y, r, rx, ry] = match.slice(1).map(Number);
     keys.push({
       id: ulid(),
-      // w, h, x, y, r, rx, ry,
       w: w / 100,
       h: h / 100,
       x: x / 100,
@@ -134,6 +139,27 @@ export function parsePhysicalLayoutDts(dts: string): Key[] | null {
       row: 0,
       col: 0,
     });
+  }
+
+  // If we searched a matched block but found no keys, fallback to scanning full DTS
+  if (keys.length === 0 && searchTarget !== dts) {
+    keyRegex.lastIndex = 0;
+    while ((match = keyRegex.exec(dts)) !== null) {
+      const [w, h, x, y, r, rx, ry] = match.slice(1).map(Number);
+      keys.push({
+        id: ulid(),
+        w: w / 100,
+        h: h / 100,
+        x: x / 100,
+        y: y / 100,
+        r: r / 100,
+        rx: rx / 100,
+        ry: ry / 100,
+        part: 0,
+        row: 0,
+        col: 0,
+      });
+    }
   }
 
   if (keys.length === 0) {
