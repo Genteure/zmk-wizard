@@ -10,7 +10,7 @@ import cloudflare from '@astrojs/cloudflare';
 // https://astro.build/config
 export default defineConfig({
   adapter: cloudflare({
-    imageService: 'compile'
+    imageService: 'passthrough',
   }),
 
   integrations: [solidJs()],
