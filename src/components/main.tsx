@@ -1,5 +1,5 @@
 import { createSignal, type VoidComponent } from "solid-js";
-import { createStore } from "solid-js/store";
+import { createStore, unwrap } from "solid-js/store";
 import type { Keyboard, KeyboardSnapshot } from "../typedef";
 import { loadBusesForController } from "./controllerInfo";
 import { App } from "./app";
@@ -7,6 +7,12 @@ import { type Navigation, WizardContext, type WizardContextType } from "./contex
 
 export const Main: VoidComponent = () => {
   const context: WizardContextType = rootContextHelper();
+
+  if (import.meta.env.DEV) {
+    (window as any).wizardContext = context;
+    (window as any).solidJsUnwrap = unwrap
+  }
+
   return <WizardContext.Provider value={context}><App /></WizardContext.Provider>;
 }
 

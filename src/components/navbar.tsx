@@ -9,7 +9,6 @@ import ChevronRight from "lucide-solid/icons/chevron-right";
 import ExternalLink from "lucide-solid/icons/external-link";
 import FolderArchive from "lucide-solid/icons/folder-archive";
 import FolderGit2 from "lucide-solid/icons/folder-git-2";
-import Keyboard from "lucide-solid/icons/keyboard";
 import Menu from "lucide-solid/icons/menu";
 import OctagonX from "lucide-solid/icons/octagon-x";
 import Package from "lucide-solid/icons/package";
@@ -605,19 +604,28 @@ export const BuildButton: VoidComponent = () => {
                         Public repository is recommended.
                       </div>
 
+                      <div class="text-center font-bold">
+                        <Link
+                          href="/next-steps"
+                          target="_blank"
+                          class="link"
+                        >
+                          What to do next?
+                        </Link>
+                      </div>
+
                       <div class="text-center">
                         <div class="mb-2 text-xs/snug text-center text-base-content/70">
                           If you want to make changes to your keyboard
                         </div>
-                        <button
+                        <Button
                           class="btn btn-soft btn-sm"
                           onClick={resetBuildState}
                           disabled={isBuilding()}
                         >
                           Try Again
-                        </button>
+                        </Button>
                       </div>
-
                     </div>
                   </Show>
 

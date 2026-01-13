@@ -1,0 +1,47 @@
+---
+const { frontmatter } = Astro.props;
+import "../styles/global.css";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      {
+        frontmatter.title
+          ? frontmatter.title + " | Shield Wizard for ZMK"
+          : "Shield Wizard for ZMK"
+      }
+    </title>
+    {
+      frontmatter.description ? (
+        <meta name="description" content={frontmatter.description} />
+      ) : null
+    }
+  </head>
+  <body class="antialiased">
+    <div class="min-h-screen max-w-3xl mx-auto">
+      <header class="flex items-center justify-between py-4">
+        <a href="/" class="text-lg font-semibold">Shield Wizard for ZMK</a>
+        <div>
+          <a
+            href="https://github.com/Genteure/zmk-wizard"
+            target="_blank"
+            rel="noopener"
+            class="link">GitHub</a
+          >
+        </div>
+      </header>
+      <main class="px-4 sm:px-6 lg:px-8 py-12">
+        <article
+          class="prose prose-sm lg:prose-base dark:prose-invert max-w-none [&_img]:mx-auto"
+        >
+          <h1>{frontmatter.title}</h1>
+          <slot />
+        </article>
+      </main>
+    </div>
+  </body>
+</html>

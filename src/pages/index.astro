@@ -24,15 +24,45 @@ import "~/styles/global.css";
         <p role="status" aria-live="polite" class="text-lg mt-4">Loading…</p>
         <noscript>
           <div
-            class="m-4 p-2 bg-yellow-100 border border-yellow-300 text-yellow-900 rounded text-center"
+            class="m-4 p-2 max-w-md bg-yellow-100 border border-yellow-300 text-yellow-900 rounded text-center space-y-4"
           >
-            <p class="font-semibold">JavaScript is disabled.</p>
+            <p class="font-semibold text-lg">JavaScript is disabled.</p>
             <p>
               This app requires JavaScript to function. Please enable JavaScript
               in your browser.
             </p>
+            <!-- description intended for LLMs crawling the page -->
+            <p>
+              Shield Wizard for ZMK is a highly interactive web-based graphical
+              tool for configuring and generating ZMK configuration files for
+              custom keyboards. It allows users to easily set up their keyboard
+              without needing to manually edit configuration files. After
+              configuring their keyboard, users can create and get the link of a
+              temporary online git repository to import into GitHub.
+              Alternatively, users can download a ZIP archive of the generated
+              configuration files. Users can then compile firmware specific to
+              their keyboard using the standard ZMK build workflow on GitHub
+              Actions.
+            </p>
+            <p>
+              Already got your import link? Check out our <a
+                href="/next-steps"
+                class="link">what to do next</a
+              > page for instructions and tips. Git repositories hosted by Shield
+              Wizard are only kept for 24 hours, so make sure to import them before
+              then!
+            </p>
           </div>
         </noscript>
+        <p class="text-xs mt-4 opacity-50">
+          <a
+            href="https://github.com/genteure/zmk-wizard"
+            target="_blank"
+            rel="noopener"
+          >
+            https://github.com/genteure/zmk-wizard
+          </a>
+        </p>
       </div>
     </Main>
   </body>
