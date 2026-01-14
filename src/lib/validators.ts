@@ -366,6 +366,60 @@ const Validators: Record<string, ValidatorFunction> = {
 
     return errors.length > 0 ? errors : null;
   },
+  encoderConfiguration: (keyboard: Keyboard) => {
+    const errors: string[] = [];
+
+    keyboard.parts.forEach((part) => {
+      const controllerInfo = controllerInfos[part.controller];
+      const validPins = controllerInfo ? new Set(Object.keys(controllerInfo.pins || {})) : null;
+
+      const encoderPinUsage = new Map<string, string>();
+      const recordEncoderPin = (pinId: string, label: string) => {
+        const prev = encoderPinUsage.get(pinId);
+        if (prev && prev !== label) {
+          errors.push(`Pin "${pinId}" in part "${part.name}" is used for ${prev} and ${label}; choose distinct pins.`);
+        } else {
+          encoderPinUsage.set(pinId, label);
+        }
+      };
+
+      const validatePin = (pinId: string | undefined, label: string) => {
+        if (!pinId) {
+          errors.push(`${label} in part "${part.name}" is not set`);
+          return;
+        }
+
+        if (validPins && !validPins.has(pinId)) {
+          errors.push(`Pin "${pinId}" for ${label} in part "${part.name}" does not exist on controller "${part.controller}"`);
+        }
+
+        const mode = part.pins?.[pinId];
+        if (mode && mode !== "encoder") {
+          errors.push(`Pin "${pinId}" for ${label} in part "${part.name}" is marked as "${mode}" instead of "encoder"`);
+        }
+
+        recordEncoderPin(pinId, label);
+      };
+
+      (part.encoders || []).forEach((enc, idx) => {
+        const baseLabel = `encoder ${idx + 1}`;
+        validatePin(enc.pinA, `${baseLabel} A`);
+        validatePin(enc.pinB, `${baseLabel} B`);
+
+        if (enc.pinS) {
+          // validatePin(enc.pinS, `${baseLabel} button`);
+          // data structure exists but Shield Wizard does not support configuring it yet
+          errors.push(`Push button pin for ${baseLabel} in part "${part.name}" cannot be set here; it must be wired into the key matrix.`);
+        }
+
+        if (enc.pinA && enc.pinB && enc.pinA === enc.pinB) {
+          errors.push(`Encoder ${idx + 1} in part "${part.name}" must use different pins for A and B`);
+        }
+      });
+    });
+
+    return errors.length > 0 ? errors : null;
+  },
   keyHaveValidWiring: (keyboard: Keyboard) => {
     // Validate each key based on its owning part's wiring type and pin modes
     const visitedKeyIds = new Set<string>();

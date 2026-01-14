@@ -1,0 +1,265 @@
+{
+  "name": "multiencoder",
+  "shield": "multiencoder",
+  "dongle": true,
+  "layout": [
+    {
+      "id": "01KEYHDTBMCM9DVHF47P9NM9FE",
+      "part": 0, "row": 0, "col": 0, "w": 1, "h": 1, "x": 0, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEYHDTBM3S82VRQWCFZF43R8",
+      "part": 0, "row": 0, "col": 1, "w": 1, "h": 1, "x": 1, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEYHDTBM41M1HW4VJ3AAPR8X",
+      "part": 1, "row": 0, "col": 2, "w": 1, "h": 1, "x": 2, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEYHDTBMTY2FW1PP2PYJ1F4G",
+      "part": 1, "row": 0, "col": 3, "w": 1, "h": 1, "x": 3, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEYHDTBM4AVSZ82VG8KSYS62",
+      "part": 0, "row": 1, "col": 0, "w": 1, "h": 1, "x": 0, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEYHDTBMXG9NPJ5RN67MG23D",
+      "part": 2, "row": 1, "col": 1, "w": 1, "h": 1, "x": 1, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEYHDTBMW3Y737Y2W69D4B37",
+      "part": 2, "row": 1, "col": 2, "w": 1, "h": 1, "x": 2, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEYHDTBMAD2WK0GR0QD7V9F9",
+      "part": 2, "row": 1, "col": 3, "w": 1, "h": 2, "x": 3, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEYHDTBMY7W2KAJKSJC8VV6H",
+      "part": 0, "row": 2, "col": 0, "w": 1, "h": 1, "x": 0, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEYHDTBMR33M9FQA6FQA4Q60",
+      "part": 2, "row": 2, "col": 1, "w": 1, "h": 1, "x": 1, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KEYHDTBMS3YKJXY50N5YGT55",
+      "part": 2, "row": 2, "col": 2, "w": 1, "h": 1, "x": 2, "y": 2, "r": 0, "rx": 0, "ry": 0
+    }
+  ],
+  "parts": [
+    {
+      "name": "left",
+      "controller": "nice_nano_v2",
+      "wiring": "direct_gnd",
+      "keys": {
+        "01KEYHDTBMCM9DVHF47P9NM9FE": {
+          "input": "d1"
+        },
+        "01KEYHDTBM4AVSZ82VG8KSYS62": {
+          "input": "d0"
+        },
+        "01KEYHDTBM3S82VRQWCFZF43R8": {
+          "input": "d2"
+        },
+        "01KEYHDTBMY7W2KAJKSJC8VV6H": {
+          "input": "d3"
+        }
+      },
+      "encoders": [
+        {
+          "pinA": "d4",
+          "pinB": "d5"
+        },
+        {
+          "pinA": "d6",
+          "pinB": "d7"
+        },
+        {
+          "pinA": "d8",
+          "pinB": "d9"
+        }
+      ],
+      "pins": {
+        "d1": "input",
+        "d0": "input",
+        "d2": "input",
+        "d3": "input",
+        "d4": "encoder",
+        "d5": "encoder",
+        "d6": "encoder",
+        "d7": "encoder",
+        "d8": "encoder",
+        "d9": "encoder"
+      },
+      "buses": [
+        {
+          "type": "spi",
+          "name": "spi0",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi1",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi2",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi3",
+          "devices": []
+        },
+        {
+          "type": "i2c",
+          "name": "i2c0",
+          "devices": []
+        },
+        {
+          "type": "i2c",
+          "name": "i2c1",
+          "devices": []
+        }
+      ]
+    },
+    {
+      "name": "right",
+      "controller": "xiao_ble",
+      "wiring": "matrix_diode",
+      "keys": {
+        "01KEYHDTBM41M1HW4VJ3AAPR8X": {
+          "input": "d0",
+          "output": "d1"
+        },
+        "01KEYHDTBMTY2FW1PP2PYJ1F4G": {
+          "input": "d0",
+          "output": "d2"
+        }
+      },
+      "encoders": [
+        {
+          "pinA": "d6",
+          "pinB": "d7"
+        }
+      ],
+      "pins": {
+        "d0": "input",
+        "d1": "output",
+        "d2": "output",
+        "d6": "encoder",
+        "d7": "encoder"
+      },
+      "buses": [
+        {
+          "type": "spi",
+          "name": "spi0",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi1",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi2",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi3",
+          "devices": []
+        },
+        {
+          "type": "i2c",
+          "name": "i2c0",
+          "devices": []
+        },
+        {
+          "type": "i2c",
+          "name": "i2c1",
+          "devices": []
+        }
+      ]
+    },
+    {
+      "name": "third",
+      "controller": "xiao_ble_plus",
+      "wiring": "direct_gnd",
+      "keys": {
+        "01KEYHDTBMXG9NPJ5RN67MG23D": {
+          "input": "d0"
+        },
+        "01KEYHDTBMR33M9FQA6FQA4Q60": {
+          "input": "d1"
+        },
+        "01KEYHDTBMW3Y737Y2W69D4B37": {
+          "input": "d2"
+        },
+        "01KEYHDTBMS3YKJXY50N5YGT55": {
+          "input": "d3"
+        },
+        "01KEYHDTBMAD2WK0GR0QD7V9F9": {
+          "input": "d4"
+        }
+      },
+      "encoders": [
+        {
+          "pinA": "d5",
+          "pinB": "d6"
+        },
+        {
+          "pinA": "d18",
+          "pinB": "d19"
+        }
+      ],
+      "pins": {
+        "d0": "input",
+        "d1": "input",
+        "d2": "input",
+        "d3": "input",
+        "d4": "input",
+        "d5": "encoder",
+        "d6": "encoder",
+        "d18": "encoder",
+        "d19": "encoder"
+      },
+      "buses": [
+        {
+          "type": "spi",
+          "name": "spi0",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi1",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi2",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi3",
+          "devices": []
+        },
+        {
+          "type": "i2c",
+          "name": "i2c0",
+          "devices": []
+        },
+        {
+          "type": "i2c",
+          "name": "i2c1",
+          "devices": []
+        }
+      ]
+    }
+  ]
+}

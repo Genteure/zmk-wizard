@@ -24,7 +24,7 @@ import { swpBgClass } from "~/lib/swpColors";
 import { copyWiringBetweenParts, type WiringTransform } from "~/lib/wiringMapping";
 import type { Controller, Key, WiringType } from "../typedef";
 import { normalizeKeys, useWizardContext } from "./context";
-import { BusDevicesConfigurator, ControllerPinConfigurator, ShiftRegisterPinConfigurator } from "./controller";
+import { BusDevicesConfigurator, ControllerPinConfigurator, EncoderConfigurator, ShiftRegisterPinConfigurator } from "./controller";
 import { controllerInfos, loadBusesForController } from "./controllerInfo";
 import { DataTable } from "./datatable";
 import { ExportTextboxDialog, GenerateLayoutDialog, ImportDevicetreeDialog, ImportKleJsonDialog, ImportLayoutJsonDialog } from "./dialogs";
@@ -488,8 +488,8 @@ const ConfigLayout: Component = () => {
 
 const controllerLabel = (id: Controller) => controllerInfos[id].name;
 const wiringLabelMap = {
-  "matrix_diode": "Matrix with Diodes",
-  "matrix_no_diode": "Matrix without Diodes",
+  "matrix_diode": "Matrix with diodes",
+  "matrix_no_diode": "Matrix without diodes",
   "direct_gnd": "Direct to GND",
   "direct_vcc": "Direct to VCC",
 };
@@ -544,6 +544,7 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
       if (controllerChanged || wiringChanged) {
         p.pins = {};
         p.keys = {};
+        p.encoders = [];
       }
     }));
 
@@ -570,11 +571,11 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
     }
 
     const result = copyWiringBetweenParts({
-      layout: context.keyboard.layout,
+      layout: unwrap(context.keyboard.layout),
       sourcePartIndex: sourceIndex,
       targetPartIndex: targetIndex,
-      sourcePart: source,
-      targetPart: target,
+      sourcePart: unwrap(source),
+      targetPart: unwrap(target),
       transform,
     });
 
@@ -584,6 +585,16 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
       p.pins = result.pins;
       p.buses = result.buses;
       p.keys = result.keys;
+
+      const encoders = structuredClone(unwrap(source.encoders) || []);
+      p.encoders = encoders;
+
+      for (const enc of encoders) {
+        p.pins = p.pins || {};
+        if (enc.pinA) p.pins[enc.pinA] = "encoder";
+        if (enc.pinB) p.pins[enc.pinB] = "encoder";
+        if (enc.pinS) p.pins[enc.pinS] = "encoder";
+      }
     }));
   };
 
@@ -671,11 +682,11 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                       value={wiringDraft()}
                       onChange={e => setWiringDraft(e.currentTarget.value as WiringType)}
                     >
-                      <option value="matrix_diode">Matrix with Diodes</option>
+                      <option value="matrix_diode">Matrix with diodes</option>
                       <option value="direct_gnd">Direct to GND</option>
                       <option disabled>──────────</option>
                       <option disabled>Uncommon Wiring Types</option>
-                      <option value="matrix_no_diode">Matrix without Diodes</option>
+                      <option value="matrix_no_diode">Matrix without diodes</option>
                       <option value="direct_vcc">Direct to VCC</option>
                     </select>
                   </label>
@@ -810,6 +821,10 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
 
       <div class="w-full p-2">
         <ShiftRegisterPinConfigurator partIndex={props.partIndex} />
+      </div>
+
+      <div class="w-full p-2">
+        <EncoderConfigurator partIndex={props.partIndex} />
       </div>
 
       <div class="w-full p-2">

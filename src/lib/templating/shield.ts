@@ -65,35 +65,8 @@ export function createShieldOverlayFiles(keyboard: Keyboard): VirtualTextFolder 
 
   const mtDts = makeMatrixTransform(globalMte);
 
-  if (keyboard.parts.length === 1) {
-    // Single-part fast path: emit overlay with kscan and transform
-    files[`${keyboard.shield}.overlay`] = `#include "${keyboard.shield}-layouts.dtsi"
-#include <dt-bindings/zmk/matrix_transform.h>
-
-${partResults[0].kscanDts}
-
-${mtDts}
-
-&physical_layout_${keyboard.shield} {
-    kscan = <&kscan0>;
-    transform = <&matrix_transform0>;
-};
-`;
-
-    // pinctrl for single part
-    const pinctrlContent = createShieldPinctrlFile(keyboard, 0);
-    if (pinctrlContent) {
-      // note: we explicitly use `boards/<name>/<board>.overlay` instead of just `boards/<board>.overlay`
-      // to prevent problems with dongle, we can't treat unibody builds as true single-part keyboards.
-      files[`boards/${keyboard.shield}/${controllerInfos[keyboard.parts[0].controller].board}.overlay`] = pinctrlContent.dts;
-      if (pinctrlContent.defconfig) {
-        files['Kconfig.defconfig'] += pinctrlContent.defconfig;
-      }
-    }
-
-  } else {
-    // Multi-part: global transform in .dtsi and per-part overlays with offsets
-    files[`${keyboard.shield}.dtsi`] = `#include "${keyboard.shield}-layouts.dtsi"
+  // global transform in .dtsi and per-part overlays with offsets
+  files[`${keyboard.shield}.dtsi`] = `#include "${keyboard.shield}-layouts.dtsi"
 #include <dt-bindings/zmk/matrix_transform.h>
 
 ${mtDts}
@@ -101,39 +74,43 @@ ${mtDts}
 &physical_layout_${keyboard.shield} {
     transform = <&matrix_transform0>;
 };
-`;
 
-    keyboard.parts.forEach((part, idx) => {
-      const res = partResults[idx];
-      const { rowOffset, colOffset } = perPartOffsets[idx];
-      const offsetBlock = (useRowOffset && rowOffset !== 0) || (!useRowOffset && colOffset !== 0)
-        ? `
+${encoderDtsi(keyboard)}
+`.replace(/\n{3,}/g, "\n\n");
+
+  keyboard.parts.forEach((part, idx) => {
+    const res = partResults[idx];
+    const { rowOffset, colOffset } = perPartOffsets[idx];
+    const offsetBlock = (useRowOffset && rowOffset !== 0) || (!useRowOffset && colOffset !== 0)
+      ? `
 &matrix_transform0 {
     ${useRowOffset ? `row-offset = <${rowOffset}>;` : `col-offset = <${colOffset}>;`}
 };
 `
-        : "";
+      : "";
 
-      files[`${keyboard.shield}_${part.name}.overlay`] = `#include "${keyboard.shield}.dtsi"
+    // Use just the keyboard shield name for unibody, multi-part uses part name suffix
+    const overlayFileName = keyboard.parts.length === 1 ? keyboard.shield : `${keyboard.shield}_${part.name}`;
+    files[`${overlayFileName}.overlay`] = `#include "${keyboard.shield}.dtsi"
 
 ${res.kscanDts}
 ${offsetBlock}
 &physical_layout_${keyboard.shield} {
     kscan = <&kscan0>;
 };
-`;
+${encoderOverlay(keyboard, idx)}
+`.replace(/\n{3,}/g, "\n\n");
 
-      // pinctrl for this part (out of multi-part)
-      const pinctrlContent = createShieldPinctrlFile(keyboard, idx);
-      if (pinctrlContent) {
-        files[`boards/${keyboard.shield}_${part.name}/${controllerInfos[part.controller].board}.overlay`] = pinctrlContent.dts;
+    // pinctrl for this part (out of multi-part)
+    const pinctrlContent = createShieldPinctrlFile(keyboard, idx);
+    if (pinctrlContent) {
+      files[`boards/${overlayFileName}/${controllerInfos[part.controller].board}.overlay`] = pinctrlContent.dts;
 
-        if (pinctrlContent.defconfig) {
-          files['Kconfig.defconfig'] += pinctrlContent.defconfig;
-        }
+      if (pinctrlContent.defconfig) {
+        files['Kconfig.defconfig'] += pinctrlContent.defconfig;
       }
-    });
-  }
+    }
+  });
 
   files[`${keyboard.shield}-layouts.dtsi`] = physicalLayoutKeyboard(keyboard);
   if (keyboard.dongle) {
@@ -143,42 +120,134 @@ ${offsetBlock}
   return files;
 }
 
-function dongleOverlayKeyboard(keyboard: Keyboard): string {
-  if (keyboard.parts.length > 1) {
-    return `#include "${keyboard.shield}.dtsi"
-
-/ {
-    kscan_dongle: kscan_dongle {
-        compatible = "zmk,kscan-mock";
-        columns = <0>;
-        rows = <0>;
-        events = <0>;
-    };
-};
-
-&physical_layout_${keyboard.shield} {
-    kscan = <&kscan_dongle>;
-};
-`;
-  } else {
-    return `#include "${keyboard.shield}.overlay"
-
-/delete-node/ &kscan0;
-
-/ {
-    kscan_dongle: kscan_dongle {
-        compatible = "zmk,kscan-mock";
-        columns = <0>;
-        rows = <0>;
-        events = <0>;
-    };
-};
-
-&physical_layout_${keyboard.shield} {
-    kscan = <&kscan_dongle>;
-};
-`;
+/**
+ * Create encoder devicetree for the shared dtsi file.
+ * To be included in all overlays.
+ * @param keyboard The keyboard
+ */
+function encoderDtsi(keyboard: Keyboard): string {
+  if (keyboard.parts.every(part => part.encoders.length === 0)) {
+    return "";
   }
+
+  /**
+   * devicetree snippets
+   */
+  const dts: string[] = [];
+  /**
+   * encoder node labels
+   */
+  const names: string[] = [];
+
+  keyboard.parts.forEach((part, partIndex) => {
+    part.encoders.forEach((enc, encIndex) => {
+      const encoderLabel = (keyboard.parts.length > 1)
+        ? `encoder_${part.name}${encIndex}`
+        : `encoder${encIndex}`;
+
+      names.push(`&${encoderLabel}`);
+      dts.push(`${encoderLabel}: ${encoderLabel} {
+    compatible = "alps,ec11";
+    steps = <80>;
+    status = "disabled";
+};`);
+    });
+  });
+
+  return `
+// Encoders for all parts of the keyboard.
+// If the encoder(s) are not behaving as expected,
+// update steps and triggers-per-rotation to match your hardware.
+// All pin assignments are done in the part overlays.
+
+/ {
+${dts.join("\n").split("\n").map(line => "    " + line).join("\n")}
+
+    sensors: sensors {
+        compatible = "zmk,keymap-sensors";
+        sensors = <${names.join(" ")}>;
+        triggers-per-rotation = <20>;
+    };
+};
+`;
+}
+
+/**
+ * Create encoder overlay for a specific part.
+ * For encoders on current part, enable them and assign pins.
+ * For other parts, assign placeholder pins.
+ * @param keyboard The keyboard
+ * @param partIndex The part index
+ */
+function encoderOverlay(keyboard: Keyboard, partIndex: number): string {
+  const otherPartHasEncoders = keyboard.parts.some((part, idx) => idx !== partIndex && part.encoders.length > 0);
+  const part = partIndex < 0 ? null : keyboard.parts[partIndex];
+  let dts = "";
+  if (part) {
+    part.encoders.forEach((enc, encIndex) => {
+      const encoderLabel = (keyboard.parts.length > 1)
+        ? `encoder_${part.name}${encIndex}`
+        : `encoder${encIndex}`;
+
+      dts += `&${encoderLabel} {
+    a-gpios = <${dtsPinHandle(part.controller, enc.pinA!)} GPIO_ACTIVE_HIGH>;
+    b-gpios = <${dtsPinHandle(part.controller, enc.pinB!)} GPIO_ACTIVE_HIGH>;
+    status = "okay";
+};
+`;
+    })
+  }
+
+  if (otherPartHasEncoders) {
+    // assign dummy pins to other part's encoders
+    let dummyPin: string;
+    if (part) {
+      const info = controllerInfos[part.controller];
+      dummyPin = info.pins[Object.keys(info.pins)[0]].dtsRef;
+    } else {
+      dummyPin = "&gpio0 0"; // TODO this only works for nRF-based controllers
+    }
+
+    dts += `
+// Assigning dummy pins to other part's encoders
+// just to satisfy the devicetree requirements.
+// No code will be compiled for these disabled encoders.
+`;
+    keyboard.parts.forEach((otherPart, idx) => {
+      if (idx === partIndex) return;
+      otherPart.encoders.forEach((_, encIndex) => {
+        const encoderLabel = (keyboard.parts.length > 1)
+          ? `encoder_${otherPart.name}${encIndex}`
+          : `encoder${encIndex}`;
+
+        dts += `&${encoderLabel} {
+    a-gpios = <${dummyPin} GPIO_ACTIVE_HIGH>;
+    b-gpios = <${dummyPin} GPIO_ACTIVE_HIGH>;
+};
+`;
+      });
+    });
+  }
+  return dts;
+}
+
+function dongleOverlayKeyboard(keyboard: Keyboard): string {
+  return `#include "${keyboard.shield}.dtsi"
+
+/ {
+    kscan_dongle: kscan_dongle {
+        compatible = "zmk,kscan-mock";
+        columns = <0>;
+        rows = <0>;
+        events = <0>;
+    };
+};
+
+&physical_layout_${keyboard.shield} {
+    kscan = <&kscan_dongle>;
+};
+${encoderOverlay(keyboard, -1)}
+`;
 }
 
 // TODO remove support for using D16 on XIAO nRF52840 Plus

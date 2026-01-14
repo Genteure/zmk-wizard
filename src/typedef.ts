@@ -16,6 +16,12 @@ export interface Options {
   padding?: number;
 }
 
+/**
+ * Pin identifier, e.g. d0, d1, p101, gp12, etc.
+ */
+export const PinIdSchema = z.string().max(10);
+export type PinId = z.infer<typeof PinIdSchema>;
+
 // ----------------
 // Bus device types
 
@@ -45,21 +51,21 @@ export type SSD1306Device = z.infer<typeof SSD1306DeviceSchema>;
 
 export const NiceviewDeviceSchema = BaseBusDeviceSchema.extend({
   type: z.literal("niceview"),
-  cs: z.string().max(10).optional(),
+  cs: PinIdSchema.optional(),
 });
 export type NiceviewDevice = z.infer<typeof NiceviewDeviceSchema>;
 
 export const WS2812DeviceSchema = BaseBusDeviceSchema.extend({
   type: z.literal("ws2812"),
   length: z.number().min(1).max(256).default(3),
-  cs: z.string().max(10).optional(),
+  cs: PinIdSchema.optional(),
 });
 export type WS2812Device = z.infer<typeof WS2812DeviceSchema>;
 
 export const ShiftRegisterDeviceSchema = BaseBusDeviceSchema.extend({
   type: z.literal("74hc595"),
   ngpios: z.union([z.literal(8), z.literal(16), z.literal(24), z.literal(32)]).default(8),
-  cs: z.string().max(10).optional(),
+  cs: PinIdSchema.optional(),
 });
 export type ShiftRegisterDevice = z.infer<typeof ShiftRegisterDeviceSchema>;
 
@@ -91,17 +97,17 @@ export type BaseBus = z.infer<typeof BaseBusSchema>;
 
 export const SpiBusSchema = BaseBusSchema.extend({
   type: z.literal("spi"),
-  mosi: z.string().max(10).optional(),
-  miso: z.string().max(10).optional(),
-  sck: z.string().max(10).optional(),
+  mosi: PinIdSchema.optional(),
+  miso: PinIdSchema.optional(),
+  sck: PinIdSchema.optional(),
   devices: z.array(SpiDeviceSchema).default([]),
 });
 export type SpiBus = z.infer<typeof SpiBusSchema>;
 
 export const I2cBusSchema = BaseBusSchema.extend({
   type: z.literal("i2c"),
-  sda: z.string().max(10).optional(),
-  scl: z.string().max(10).optional(),
+  sda: PinIdSchema.optional(),
+  scl: PinIdSchema.optional(),
   devices: z.array(I2cDeviceSchema).default([]),
 });
 export type I2cBus = z.infer<typeof I2cBusSchema>;
@@ -138,17 +144,29 @@ export const WiringTypeSchema = z.enum([
 ]);
 export type WiringType = z.infer<typeof WiringTypeSchema>;
 
-export const PinModeSchema = z.enum(["input", "output", "bus"]);
+export const PinModeSchema = z.enum(["input", "output", "bus", "encoder"]);
 export type PinMode = z.infer<typeof PinModeSchema>;
 
-export const PinSelectionSchema = z.record(PinModeSchema.optional());
+export const PinSelectionSchema = z.record(PinIdSchema, PinModeSchema.optional());
 export type PinSelection = z.infer<typeof PinSelectionSchema>;
 
 export const SingleKeyWiringSchema = z.object({
-  input: z.string().max(10).optional(),
-  output: z.string().max(10).optional(),
+  input: PinIdSchema.optional(),
+  output: PinIdSchema.optional(),
 });
 export type SingleKeyWiring = z.infer<typeof SingleKeyWiringSchema>;
+
+export const EncoderSchema = z.object({
+  pinA: PinIdSchema.optional(),
+  pinB: PinIdSchema.optional(),
+  /**
+   * Optional pin for button press functionality, in case
+   * the push button is wired as direct pin in a matrix keyboard.
+   */
+  pinS: PinIdSchema.optional(),
+  // TODO configure steps?
+});
+export type Encoder = z.infer<typeof EncoderSchema>;
 
 export const KeyboardPartSchema = z.object({
   name: z.string()
@@ -165,7 +183,7 @@ export const KeyboardPartSchema = z.object({
    * Key wiring
    */
   keys: z.record(z.string(), SingleKeyWiringSchema.optional()), // key id to wiring
-
+  encoders: z.array(EncoderSchema).default([]),
   buses: z.array(AnyBusSchema).default([]),
 });
 export type KeyboardPart = z.infer<typeof KeyboardPartSchema>;
@@ -256,4 +274,3 @@ export interface VirtualBinaryFolder {
 export interface VirtualFolder {
   [filePath: string]: string | Uint8Array;
 }
-

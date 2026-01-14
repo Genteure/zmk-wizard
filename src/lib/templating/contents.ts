@@ -279,6 +279,20 @@ export function config__keymap(keyboard: Keyboard): string {
     return `${whitespace}&kp ${indexToAlphabet(index)}`;
   }).join('');
 
+  const encoderCount = keyboard.parts.reduce((sum, part) => sum + part.encoders.length, 0);
+
+  let sensorBindings = '';
+  if (encoderCount > 0) {
+    // &inc_dec_kp A B &inc_dec_kp C D ...
+    sensorBindings = '\n            sensor-bindings = <';
+    sensorBindings += Array.from({ length: encoderCount }).map((_, idx) => {
+      const keyA = indexToAlphabet(idx * 2);
+      const keyB = indexToAlphabet(idx * 2 + 1);
+      return `&inc_dec_kp ${keyA} ${keyB}`;
+    }).join(' ');
+    sensorBindings += '>;';
+  }
+
   return `#include <behaviors.dtsi>
 #include <dt-bindings/zmk/keys.h>
 
@@ -289,7 +303,7 @@ export function config__keymap(keyboard: Keyboard): string {
         default_layer {
             display-name = "Base";
             bindings = <${defaultLayer}
-            >;
+            >;${sensorBindings}
         };
     };
 };

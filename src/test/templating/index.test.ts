@@ -92,6 +92,7 @@ function makeKeyboard(data: LegacyKeyboardData): Keyboard {
     wiring: data.wiringType,
     pins,
     keys: {} as Record<string, SingleKeyWiring>,
+    encoders: [],
     buses: loadBusesForController(data.controller),
   }));
 
@@ -153,6 +154,7 @@ describe("unibody", () => {
       "boards/shields/unittest/Kconfig.defconfig",
       "boards/shields/unittest/Kconfig.shield",
       "boards/shields/unittest/unittest-layouts.dtsi",
+      "boards/shields/unittest/unittest.dtsi",
       "boards/shields/unittest/unittest.overlay",
       "build.yaml",
       "config/unittest.conf",
@@ -177,6 +179,7 @@ describe("unibody", () => {
       "boards/shields/unittest/Kconfig.defconfig",
       "boards/shields/unittest/Kconfig.shield",
       "boards/shields/unittest/unittest-layouts.dtsi",
+      "boards/shields/unittest/unittest.dtsi",
       "boards/shields/unittest/unittest.overlay",
       "boards/shields/unittest/unittest_dongle.overlay",
       "build.yaml",

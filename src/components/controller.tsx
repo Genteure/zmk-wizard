@@ -6,16 +6,16 @@ import ExternalLink from "lucide-solid/icons/external-link";
 import TriangleAlert from "lucide-solid/icons/triangle-alert";
 import { createEffect, createMemo, createSignal, For, Match, onCleanup, Show, Switch, type Accessor, type Component } from "solid-js";
 import { produce } from "solid-js/store";
-import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, PinSelection, ShiftRegisterDevice, WiringType } from "~/typedef";
+import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, PinMode, PinSelection, ShiftRegisterDevice, WiringType } from "~/typedef";
 import { addDeviceToBus, isI2cBus, isShiftRegisterDevice, isSpiBus, isSpiDevice, isSSD1306, isWS2812 } from "~/typehelper";
 import { useWizardContext } from "./context";
-import { busDeviceInfos, controllerInfos, busPinRequirements, type ControllerInfo, type PinctrlI2cPinChoices, type PinctrlSpiPinChoices, type VisualPin } from "./controllerInfo";
+import { busDeviceInfos, busPinRequirements, controllerInfos, type ControllerInfo, type PinctrlI2cPinChoices, type PinctrlSpiPinChoices, type VisualPin } from "./controllerInfo";
 
 const ControllerPin: Component<{
   pin: VisualPin,
   controllerInfo: ControllerInfo,
   left: boolean,
-  usage?: 'input' | 'output' | 'bus' | 'none',
+  usage?: PinMode,
   current?: boolean,
   setPinUsage?: (usage: 'input' | 'output' | 'none') => void,
   activateCurrentPin?: () => void,
@@ -45,10 +45,17 @@ const ControllerPin: Component<{
         <Popover.Anchor class="flex justify-center items-center">
           <Button disabled={props.pin.type !== 'gpio'} as={props.pin.type === 'gpio' ? undefined : "div"}
             class="w-14 font-bold rounded border select-none shrink-0 flex justify-center items-center"
-            title={props.usage === 'bus' ? `Pin ${pinLabel()} is used for bus communication` : undefined}
+            title={(() => {
+              switch (props.usage) {
+                case 'bus': return `${pinLabel()} is used for bus communication`;
+                case 'encoder': return `${pinLabel()} is used by an encoder`;
+                default: return undefined;
+              }
+            })()}
             classList={{
-              "cursor-pointer text-base-content/50 border-dashed": props.pin.type === "gpio" && props.usage === 'none',
-              "cursor-not-allowed bg-blue-500/10 text-blue-600 border-blue-500": props.usage === "bus",
+              "cursor-pointer text-base-content/50 border-dashed": props.pin.type === "gpio" && !props.usage, // usage is none
+              "border-dotted cursor-not-allowed bg-blue-500/10 text-blue-600 border-blue-500": props.usage === "bus",
+              "border-dotted cursor-not-allowed bg-cyan-500/10 text-cyan-600 border-cyan-500": props.usage === "encoder",
               "border-transparent": props.pin.type === "ui",
               "text-pink-500/80": props.pin.type === "ui" && props.pin.ui === "power",
               "text-slate-500/80": props.pin.type === "ui" && props.pin.ui === "gnd",
@@ -61,13 +68,12 @@ const ControllerPin: Component<{
             }}
 
             onClick={() => {
-              if (props.pin.type === 'gpio') {
-                if (props.usage === 'bus') return;
-                if (props.usage === 'none') {
-                  setOpen(true)
-                } else {
-                  props.activateCurrentPin?.();
-                }
+              if (props.pin.type !== 'gpio') return;
+              if (!props.usage) {
+                // currently not used, open popover to select usage
+                setOpen(true)
+              } else if (props.usage === 'input' || props.usage === 'output') {
+                props.activateCurrentPin?.();
               }
             }}
           >
@@ -149,8 +155,10 @@ const ControllerPin: Component<{
           <Popover.Anchor class="flex justify-center items-center">
             <Button
               class="text-red-500/50 hover:text-red-500 hover:bg-red-500/20 cursor-pointer rounded-full p-1 transition-colors ui-disabled:bg-transparent ui-disabled:text-transparent ui-disabled:pointer-events-none"
-              disabled={props.usage === 'none' || props.usage === 'bus'}
+              disabled={props.usage !== 'input' && props.usage !== 'output'}
               onClick={e => {
+                // Release pin button clicked
+                // Release a pin from keyboard keys (input/output)
                 if (props.pin.type === 'gpio') {
                   if (e.shiftKey) {
                     props.setPinUsage?.('none');
@@ -250,7 +258,7 @@ export const ControllerPinConfigurator: Component<{
             <For each={info().visual.left}>
               {(pin) => {
                 const usage = (() => pin.type === 'gpio'
-                  ? (keyboardPins()[pin.id] ?? 'none')
+                  ? (keyboardPins()[pin.id])
                   : undefined);
 
                 return <ControllerPin
@@ -274,7 +282,7 @@ export const ControllerPinConfigurator: Component<{
             <For each={info().visual.right}>
               {(pin) => {
                 const usage = (() => pin.type === 'gpio'
-                  ? (keyboardPins()[pin.id] ?? 'none')
+                  ? (keyboardPins()[pin.id])
                   : undefined);
 
                 return <ControllerPin
@@ -296,12 +304,12 @@ export const ControllerPinConfigurator: Component<{
           </div>
         </div>
       </div>
-      <div class="m-2 text-center">
+      <div class="m-2 flex justify-center">
         <Link
           href={info().docLink}
           target="_blank"
           rel="noopener noreferrer"
-          class="link flex flex-col"
+          class="link flex flex-col items-center"
         >
           <span>
             Pinout Reference
@@ -317,8 +325,8 @@ export const ControllerPinConfigurator: Component<{
           <div class="mx-auto max-w-md mt-4 p-2 text-sm text-center text-base-content/75">
             <TriangleAlert class="w-6 h-6 inline-block mr-1 text-warning" />
             Pin <span class="font-bold">D16</span> / <span class="font-bold">P0.31</span> is connected
-            to <span class="font-bold">BAT+</span> via 1MΩ resistor as part of the voltage divider.
-            Do not connect <span class="font-bold">D16</span>! It's not useable for anything else!
+            to <span class="font-bold">BAT+</span> via 1MΩ resistor as part of the battery voltage divider.
+            Do not connect <span class="font-bold">D16</span>! It can not be used for anything else!
           </div>
         </Match>
         <Match when={props.controllerId === "kb2040"}>
@@ -434,6 +442,178 @@ export const ShiftRegisterPinConfigurator: Component<{ partIndex: Accessor<numbe
       }}
     </Show>
   </div>;
+};
+
+export const EncoderConfigurator: Component<{ partIndex: Accessor<number> }> = (props) => {
+  const context = useWizardContext();
+  const part = createMemo(() => context.keyboard.parts[props.partIndex()]);
+
+  const controllerInfo = createMemo(() => controllerInfos[part().controller] || null);
+  const availablePins = createMemo(() => Object.keys(controllerInfo()?.pins || {}));
+  const pinLabelForPinId = (pinId: string): string => controllerInfo()?.pins?.[pinId]?.displayName || pinId;
+
+  const isPinBusy = (pinId: string, current?: string) => {
+    if (!pinId) return false;
+    if (current && pinId === current) return false;
+    return Boolean(part().pins?.[pinId]);
+  };
+
+  const addEncoder = () => {
+    context.setKeyboard("parts", props.partIndex(), produce((p) => {
+      p.encoders = p.encoders || [];
+      p.encoders.push({ pinA: undefined, pinB: undefined, pinS: undefined });
+    }));
+  };
+
+  const setEncoderPin = (encoderIndex: number, key: "pinA" | "pinB" | "pinS", value?: string) => {
+    context.setKeyboard("parts", props.partIndex(), produce((p) => {
+      p.encoders = p.encoders || [];
+      const enc = p.encoders[encoderIndex];
+      if (!enc) return;
+
+      const prev = enc[key];
+      if (prev && prev !== value && p.pins?.[prev] === "encoder") {
+        const stillUsed = p.encoders.some((other, idx) => idx !== encoderIndex && (other.pinA === prev || other.pinB === prev || other.pinS === prev));
+        if (!stillUsed) {
+          delete p.pins[prev];
+        }
+      }
+
+      enc[key] = value || undefined;
+
+      if (value) {
+        p.pins = p.pins || {};
+        p.pins[value] = "encoder";
+      }
+    }));
+  };
+
+  const removeEncoder = (encoderIndex: number) => {
+    const pinsRemoved: string[] = [];
+    context.setKeyboard("parts", props.partIndex(), produce((p) => {
+      if (!p.encoders) return;
+      const removed = p.encoders.splice(encoderIndex, 1)?.[0];
+      if (!removed) return;
+
+      const pinsToClear = [removed.pinA, removed.pinB, removed.pinS].filter(Boolean) as string[];
+      pinsToClear.forEach((pinId) => {
+        const stillUsed = p.encoders.some((enc) => enc.pinA === pinId || enc.pinB === pinId || enc.pinS === pinId);
+        if (!stillUsed && p.pins?.[pinId] === "encoder") {
+          delete p.pins[pinId];
+        }
+      });
+
+      pinsRemoved.push(...pinsToClear);
+    }));
+
+    if (pinsRemoved.some((pin) => context.nav.activeWiringPin === pin)) {
+      context.setNav("activeWiringPin", null);
+    }
+  };
+
+  return (
+    <div class="border border-base-300 rounded-xl bg-base-200/60 p-4">
+      <div class="flex items-center justify-between gap-2">
+        <div>
+          <div class="font-semibold">Encoders (EC11)</div>
+          <div class="text-xs text-base-content/70">
+            Shield Wizard only supports configuring rotation pins here,
+            push button must be wired into the key matrix.
+            Shield Wizard does not support configuring ZMK composite kscan.
+          </div>
+        </div>
+        <Button class="btn btn-sm btn-soft" onClick={addEncoder}>Add encoder</Button>
+      </div>
+
+      <Show when={part().encoders.length} fallback={<div class="mt-2 text-sm text-base-content/60">No encoders.</div>}>
+        <div class="mt-3 flex flex-col gap-2">
+          <For each={part().encoders}>{(encoder, idx) => (
+            <div class="border border-base-300 rounded-lg bg-base-100 p-3 flex flex-col gap-3">
+              <div class="flex items-center justify-between cursor-default">
+                <div>
+                  <div class="font-semibold text-sm">Encoder {idx()}</div>
+                  <div class="text-xs mt-px font-mono text-base-content/70">{(context.keyboard.parts.length > 1 ? "encoder_" + part().name : "encoder") + idx()}</div>
+                </div>
+                <Button class="btn btn-ghost btn-xs text-red-500" onClick={() => removeEncoder(idx())}>Remove</Button>
+              </div>
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div class="flex flex-col gap-2 sm:flex-1">
+                  <label class="flex flex-col gap-1 text-sm">
+                    <span class="text-xs uppercase text-base-content/70">Pin A<span class="text-red-500 ml-1" title="Required" aria-label="Required">*</span></span>
+                    <select
+                      class="select select-bordered select-sm w-full"
+                      value={encoder.pinA || ""}
+                      onChange={(e) => setEncoderPin(idx(), "pinA", e.currentTarget.value || undefined)}
+                    >
+                      <option value="">None</option>
+                      <For each={availablePins()}>{(pin) => (
+                        <option value={pin} disabled={isPinBusy(pin, encoder.pinA)}>
+                          {pinLabelForPinId(pin) + (isPinBusy(pin, encoder.pinA) ? " (in use)" : "")}
+                        </option>
+                      )}</For>
+                    </select>
+                  </label>
+                  <label class="flex flex-col gap-1 text-sm">
+                    <span class="text-xs uppercase text-base-content/70">Pin C</span>
+                    <select class="select select-bordered select-sm w-full" value="" disabled>
+                      <option value="">GND</option>
+                    </select>
+                  </label>
+                  <label class="flex flex-col gap-1 text-sm">
+                    <span class="text-xs uppercase text-base-content/70">Pin B<span class="text-red-500 ml-1" title="Required" aria-label="Required">*</span></span>
+                    <select
+                      class="select select-bordered select-sm w-full"
+                      value={encoder.pinB || ""}
+                      onChange={(e) => setEncoderPin(idx(), "pinB", e.currentTarget.value || undefined)}
+                    >
+                      <option value="">None</option>
+                      <For each={availablePins()}>{(pin) => (
+                        <option value={pin} disabled={isPinBusy(pin, encoder.pinB)}>
+                          {pinLabelForPinId(pin) + (isPinBusy(pin, encoder.pinB) ? " (in use)" : "")}
+                        </option>
+                      )}</For>
+                    </select>
+                  </label>
+                </div>
+                <div class="flex flex-col gap-2 sm:flex-1">
+                  <label class="flex flex-col gap-1 text-sm">
+                    <span class="text-xs uppercase text-base-content/70">Pin S1</span>
+                    <select
+                      class="select select-bordered select-sm w-full"
+                      value=""
+                      disabled
+                    >
+                      {/*
+                        This in current state will not work since even we do custom composite kscan
+                        for encoder push pins, the key will not be in the key layout thus missing in
+                        matrix transform and physical layout. We need to actually support composite
+                        kscan from the start to do custom encoder push buttons here.
+                        TODO Add cmposite kscan support
+                        value={encoder.pinS || ""}
+                        onChange={(e) => setEncoderPin(idx(), "pinS", e.currentTarget.value || undefined)}
+                      */}
+                      <option value="">Part of matrix</option>
+                      {/* <For each={availablePins()}>{(pin) => (
+                        <option value={pin} disabled={isPinBusy(pin, encoder.pinS)}>
+                          {pinLabelForPinId(pin) + (isPinBusy(pin, encoder.pinS) ? " (in use)" : "")}
+                        </option>
+                      )}</For> */}
+                    </select>
+                  </label>
+                  <label class="flex flex-col gap-1 text-sm">
+                    <span class="text-xs uppercase text-base-content/70">Pin S2</span>
+                    <select class="select select-bordered select-sm w-full" value="" disabled>
+                      <option value="">{encoder.pinS ? "GND" : "Part of matrix"}</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}</For>
+        </div>
+      </Show>
+    </div>
+  );
 };
 
 export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> = (props) => {
