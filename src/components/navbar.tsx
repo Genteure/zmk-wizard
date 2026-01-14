@@ -164,8 +164,8 @@ hover:border-accent bg-base-300 hover:bg-base-content/10 transition-colors durat
               Shield Wizard for ZMK v0.3
             </Dialog.Title>
             <Dialog.Description as="div">
-              <div class="mb-2 text-center text-sm select-none">
-                An experimental tool for making ZMK shields
+              <div class="mb-2 text-center text-sm select-none text-base-content/70">
+                Create ZMK shield for your custom keyboard without writing code
               </div>
               <fieldset class="fieldset p-4 rounded-lg bg-base-300 max-w-sm mx-auto">
                 <legend class="fieldset-legend select-none">Keyboard Information</legend>
@@ -267,7 +267,7 @@ hover:border-accent bg-base-300 hover:bg-base-content/10 transition-colors durat
                       onChange={e => context.setKeyboard('dongle', e.currentTarget.checked)}
                       class="checkbox"
                     />
-                    <span class="select-none">Add a key-less Dongle shield</span>
+                    <span class="select-none">Add an optional dongle shield</span>
                   </label>
                 </div>
               </fieldset>
@@ -278,6 +278,16 @@ hover:border-accent bg-base-300 hover:bg-base-content/10 transition-colors durat
                 >
                   Continue to Editor
                 </Dialog.CloseButton>
+              </div>
+              <div class="mt-6">
+                <div class="text-xs text-base-content/50 select-none items-center justify-center flex gap-1">
+                  <Link
+                    href="https://github.com/genteure/zmk-wizard"
+                    target="_blank"
+                    rel="noopener"
+                    class="link"
+                  >https://github.com/genteure/zmk-wizard</Link>
+                </div>
               </div>
             </Dialog.Description>
           </Dialog.Content>
@@ -894,6 +904,15 @@ Generated At: ${version.buildDate || '(unknown)'}
             >
               <button>
                 Run Tutorial (TODO)
+              </button>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item as="li"
+              onSelect={() => {
+                window.open('/next-steps', '_blank', 'noopener');
+              }}
+            >
+              <button>
+                What to do after this?
               </button>
             </DropdownMenu.Item>
             <DropdownMenu.Item as="li"

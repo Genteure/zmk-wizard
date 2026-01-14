@@ -1208,7 +1208,8 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
           </div>
           <div class="text-xs text-base-content/75 mt-2">
             Configuring SPI/I2C devices was not tested thoroughly with all possible configurations and may produce broken builds.
-            Feel free to join the <Link class="link" href="https://zmk.dev/community/discord/invite" target="_blank" rel="noopener noreferrer">ZMK Community Discord</Link> and ping @genteure for help.
+            Please join the <Link class="link" href="https://zmk.dev/community/discord/invite" target="_blank" rel="noopener noreferrer">ZMK Community Discord</Link> for help
+            and send feedback to @genteure.
           </div>
         </div>
         <For each={buses()}>{(bus, idx) => <BusCard bus={bus} index={idx()} />}</For>

@@ -346,10 +346,7 @@ export function readme_md(keyboard: Keyboard): string {
 
 Download compiled firmware from the Actions tab. <https://zmk.dev/docs/user-setup#installing-the-firmware>
 
-Trigger the initial build by going to the **Actions** tab, select **Build ZMK firmware** workflow on the left, and clicking the **Run workflow** button.
-All subsequent builds will be triggered automatically whenever a change is pushed to the repository.
-
-Edit your keymap <https://zmk.dev/docs/keymaps>, or use <https://nickcoutsos.github.io/keymap-editor/> to edit it visually.
+Edit your keymap <https://zmk.dev/docs/keymaps>.
 User keymap is located at [\`config/${keyboard.shield}.keymap\`](config/${keyboard.shield}.keymap).
 
 -----

@@ -74,3 +74,9 @@ Things you may want to change:
 - Shield Wizard GitHub repository: <https://github.com/Genteure/zmk-wizard>
 - ZMK Studio: <https://zmk.studio/>
 - Keymap Editor: <https://nickcoutsos.github.io/keymap-editor/>
+
+-----
+
+Please star the [Shield Wizard repository](https://github.com/Genteure/zmk-wizard) if you find it useful, and star the [ZMK repository](https://github.com/zmkfirmware/zmk) as well!
+
+-----
