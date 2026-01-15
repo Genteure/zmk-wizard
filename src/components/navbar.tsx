@@ -10,7 +10,6 @@ import ExternalLink from "lucide-solid/icons/external-link";
 import FolderArchive from "lucide-solid/icons/folder-archive";
 import FolderGit2 from "lucide-solid/icons/folder-git-2";
 import Menu from "lucide-solid/icons/menu";
-import OctagonX from "lucide-solid/icons/octagon-x";
 import Package from "lucide-solid/icons/package";
 import PencilLine from "lucide-solid/icons/pencil-line";
 import SunMoon from "lucide-solid/icons/sun-moon";
@@ -19,6 +18,8 @@ import { createEffect, createMemo, createSignal, For, onMount, Show, type VoidCo
 import { produce, unwrap } from "solid-js/store";
 import { version } from "virtual:version";
 import { CommonShieldNames } from "~/lib/shieldNames";
+import { swpBgClass } from "~/lib/swpColors";
+import type { ValidationError } from "~/lib/validators";
 import type { KeyboardPart } from "../typedef";
 import { TurnstileCaptcha } from "./captcha/turnstile";
 import { useWizardContext } from "./context";
@@ -338,7 +339,7 @@ export const BuildButton: VoidComponent = () => {
   const [captchaToken, setCaptchaToken] = createSignal<string | null>(null);
 
   // validation errors, will block build if non-empty
-  const [validationErrors, setValidationErrors] = createSignal<string[]>([]);
+  const [validationErrors, setValidationErrors] = createSignal<ValidationError[]>([]);
   // error message to show above the captcha / download section
   const [BuildErrorMessage, setBuildErrorMessage] = createSignal<string | null>(null);
   // is building state, mostly for disabling buttons
@@ -348,25 +349,24 @@ export const BuildButton: VoidComponent = () => {
 
   const validateKeyboardAndSetSnapshot = (): void => {
     const keyboardClone = structuredClone(unwrap(context.keyboard));
-    const errors = new Set<string>();
 
     if (!KeyboardSchema || !validateKeyboard) {
-      errors.add("Keyboard validation script failed to load.");
-      setValidationErrors(Array.from(errors));
+      setValidationErrors([{ part: null, message: "Keyboard validation script failed to load." }]);
       return;
     }
+
+    let collected: ValidationError[];
     const schemaResult = KeyboardSchema.safeParse(keyboardClone);
     if (schemaResult.success) {
-      validateKeyboard(keyboardClone).forEach(err => errors.add(err));
+      collected = validateKeyboard(keyboardClone);
     } else {
-      schemaResult.error.issues.forEach(issue => errors.add(issue.message));
+      collected = schemaResult.error.issues.map(issue => ({ part: null, message: issue.message }));
     }
 
-    const errorList = Array.from(errors);
-    setValidationErrors(errorList);
+    setValidationErrors(collected);
     setBuildErrorMessage(null);
 
-    if (errorList.length === 0) {
+    if (collected.length === 0) {
       context.setSnapshot({
         time: new Date(),
         keyboard: keyboardClone,
@@ -375,6 +375,25 @@ export const BuildButton: VoidComponent = () => {
       context.setSnapshot(null);
     }
   };
+
+  const groupedValidationEntries = createMemo(() => {
+    const map = new Map<number | null, string[]>();
+    for (const e of validationErrors()) {
+      const key = e.part ?? null;
+      const list = map.get(key) ?? [];
+      list.push(e.message);
+      map.set(key, list);
+    }
+    // Order: keyboard-level (null) first, then numeric part index ascending
+    const entries = Array.from(map.entries());
+    entries.sort((a, b) => {
+      if (a[0] === null && b[0] !== null) return -1;
+      if (a[0] !== null && b[0] === null) return 1;
+      if (a[0] === null && b[0] === null) return 0;
+      return (Number(a[0]) - Number(b[0]));
+    });
+    return entries;
+  });
 
   createEffect(() => {
     // on element mount or repoLink change, update the input value
@@ -512,20 +531,39 @@ export const BuildButton: VoidComponent = () => {
               <div class="space-y-4">
                 <Show when={validationErrors().length == 0}
                   fallback={<div>
-                    <div class="font-semibold text-lg text-center flex items-center justify-center gap-2">
-                      <OctagonX class="w-6 h-6 inline-block text-error" aria-hidden />
+                    <div class="font-semibold text-error text-lg text-center flex items-center justify-center gap-2">
                       Problems found
-                      <OctagonX class="w-6 h-6 inline-block text-error" aria-hidden />
                     </div>
                     <div class="my-4 flex items-center justify-center">
-                      <ul class="list-disc pl-5 text-sm space-y-1 text-error">
-                        {validationErrors().slice(0, 10).map((msg) => (
-                          <li>{msg}</li>
-                        ))}
-                        <Show when={validationErrors().length > 10}>
-                          <li class="list-none italic text-error/80">... and {validationErrors().length - 10} more.</li>
-                        </Show>
-                      </ul>
+                      <div class="w-full max-w-md">
+                        <div class="max-h-56 overflow-auto px-2">
+                          <For each={groupedValidationEntries()}>
+                            {(entry) => {
+                              const part = entry[0];
+                              const msgs = entry[1];
+                              return (
+                                <div class="mb-4">
+                                  <div class="flex items-center justify-center gap-2 mb-2">
+                                    <span
+                                      class="inline-block w-3 h-3 rounded-full"
+                                      classList={{
+                                        [swpBgClass(Number(part))]: part !== null,
+                                        'hidden': part === null,
+                                      }}
+                                      aria-hidden />
+                                    <div class="font-semibold text-sm text-center">
+                                      {part === null ? "General" : (context.keyboard.parts?.[Number(part)]?.name ?? `Part ${Number(part) + 1}`)}
+                                    </div>
+                                  </div>
+                                  <ul class="list-disc pl-5 text-sm space-y-1 marker:text-error">
+                                    <For each={msgs}>{(m) => <li>{m}</li>}</For>
+                                  </ul>
+                                </div>
+                              )
+                            }}
+                          </For>
+                        </div>
+                      </div>
                     </div>
                     <div class="text-center">
                       Please fix the listed issues then try again.

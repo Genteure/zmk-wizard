@@ -106,7 +106,11 @@ async function readKeyboardFixture(fixturePath: string): Promise<Keyboard> {
 
   const validationErrors = validateKeyboard(schema.data);
   if (validationErrors.length > 0) {
-    console.error(`Invalid keyboard fixture ${fixturePath}:\n${validationErrors.join("\n")}`);
+    const pretty = validationErrors.map(err => err && typeof err === "object" && "message" in err
+      ? (err.part !== null ? `[part ${err.part}] ${err.message}` : err.message)
+      : String(err)
+    );
+    console.error(`Invalid keyboard fixture ${fixturePath}:\n${pretty.join("\n")}`);
     process.exit(1);
   }
 

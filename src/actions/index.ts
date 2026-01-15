@@ -6,6 +6,7 @@ import { ulid } from 'ulidx';
 import { createGitRepository } from '~/lib/gitrepo';
 import { getRepoKV } from '~/lib/kv';
 import { createZMKConfig } from '~/lib/templating';
+import { validateKeyboard } from '~/lib/validators';
 import { KeyboardSchema } from '~/typedef';
 
 export const server = {
@@ -44,6 +45,14 @@ export const server = {
             message: msg,
           });
         }
+      }
+
+      const errors = validateKeyboard(input.keyboard);
+      if (errors.length > 0) {
+        throw new ActionError({
+          code: "BAD_REQUEST",
+          message: "Keyboard validation failed, invalid keyboard configuration",
+        });
       }
 
       console.log("Building repository for keyboard:", input.keyboard.name);
