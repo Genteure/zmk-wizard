@@ -264,6 +264,26 @@ endif
   return content;
 }
 
+export function config__conf(keyboard: Keyboard): string {
+  let conf = '# User Configuration for ${keyboard.name}\n\n';
+
+  // // if any screen
+  // const screens = ["ssd1306", "niceview"];
+  // if (keyboard.parts.some(part => part.buses.some(bus => bus.devices.some(device => screens.includes(device.type))))) {
+  //   conf += `CONFIG_ZMK_DISPLAY=y\n`; // TODO split into conf for each part
+  // }
+
+  // if any encoder
+  if (keyboard.parts.some(part => part.encoders.length > 0)) {
+    conf += `CONFIG_EC11=y
+CONFIG_EC11_TRIGGER_GLOBAL_THREAD=y
+`;
+  }
+
+  // TODO more
+
+  return conf;
+}
 export function config__keymap(keyboard: Keyboard): string {
   // TODO format keymap according to the layout
   const indexToAlphabet = (index: number): string => {

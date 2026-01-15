@@ -23,7 +23,7 @@ import type { ValidationError } from "~/lib/validators";
 import type { KeyboardPart } from "../typedef";
 import { TurnstileCaptcha } from "./captcha/turnstile";
 import { useWizardContext } from "./context";
-import { loadBusesForController } from "./controllerInfo";
+import { busDeviceInfos, controllerInfos, loadBusesForController } from "./controllerInfo";
 
 export const InfoEditButton: VoidComponent = () => {
   const context = useWizardContext();
@@ -345,6 +345,19 @@ export const BuildButton: VoidComponent = () => {
   // is building state, mostly for disabling buttons
   const [isBuilding, setIsBuilding] = createSignal(false);
 
+  // Summary screen local state
+  const [showSummary, setShowSummary] = createSignal(false);
+  const [summaryData, setSummaryData] = createSignal<{
+    name: string;
+    parts: {
+      board: string;
+      shield: string;
+      keys: number;
+      encoders: number;
+      devices: { type: string, bus: string }[];
+    }[]
+  } | null>(null);
+
   // const canBuild = createMemo(() => validationErrors().length === 0 && Boolean(context.snapshot()));
 
   const validateKeyboardAndSetSnapshot = (): void => {
@@ -371,8 +384,44 @@ export const BuildButton: VoidComponent = () => {
         time: new Date(),
         keyboard: keyboardClone,
       });
+
+      {
+        // build summary UI data
+        const parts = keyboardClone.parts.map((p, idx) => {
+          const keys = keyboardClone.layout.filter((k) => k.part === idx).length;
+          const encoders = p.encoders.length;
+          const devices = p.buses.flatMap(bus => bus.devices.map(d => ({ type: d.type, bus: bus.name })));
+          return {
+            board: p.controller as string,
+            shield: keyboardClone.parts.length > 1
+              ? `${keyboardClone.shield}_${p.name}`
+              : keyboardClone.shield,
+            keys,
+            encoders,
+            devices,
+          };
+        });
+
+        if (keyboardClone.dongle) {
+          parts.push({
+            board: "",
+            shield: `${keyboardClone.shield}_dongle`,
+            keys: 0,
+            encoders: 0,
+            devices: [],
+          });
+        }
+
+        setSummaryData({
+          name: keyboardClone.name,
+          parts,
+        });
+        setShowSummary(true);
+      }
     } else {
       context.setSnapshot(null);
+      setSummaryData(null);
+      setShowSummary(false);
     }
   };
 
@@ -463,6 +512,8 @@ export const BuildButton: VoidComponent = () => {
     context.setNav("repoLink", "");
     context.setSnapshot(null);
     setCaptchaToken(null);
+    setSummaryData(null);
+    setShowSummary(false);
     validateKeyboardAndSetSnapshot();
   };
 
@@ -577,130 +628,187 @@ export const BuildButton: VoidComponent = () => {
                     </div>
                   </Show>
 
-                  <Show
-                    when={context.nav.repoLink}
-                    fallback={
-                      <div class="my-8">
-                        <div class="flex flex-col justify-center items-center">
-                          <div style={{ width: "300px", height: "65px", position: "relative" }}>
-                            <span class="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center rounded-sm bg-base-300 text-base-content/80" style="z-index:0;">
-                              Loading Captcha...
-                            </span>
+                  <Show when={showSummary()}>
+                    <div class="mt-6">
+                      <div class="text-center mb-3 font-semibold text-xl">
+                        {summaryData()?.name}
+                      </div>
+                      <div class="max-h-56 overflow-auto px-2 max-w-sm mx-auto">
+                        <For each={summaryData()?.parts ?? []}>{(p) => (
+                          <div
+                            class="p-3 mb-2 bg-base-100 rounded-lg shadow-sm border border-base-300"
+                          >
+                            <div>
+                              <span class="text-sm">Shield:&nbsp;</span>
+                              <span class="font-semibold font-mono">
+                                {p.shield}
+                              </span>
+                            </div>
+                            <div class="text-sm text-base-content/70">
+                              With {controllerInfos[p.board as keyof typeof controllerInfos]?.name || "any controller"}
+                            </div>
                             <div
-                              class="absolute left-0 right-0 top-0 bottom-0" style="z-index:1;"
+                              class="flex flex-col items-end justify-end text-sm mt-2"
                             >
-                              <TurnstileCaptcha
-                                sitekey={PUBLIC_TURNSTILE_SITEKEY}
-                                onSuccess={(token) => {
-                                  setCaptchaToken(token);
-                                }}
-                                onExpire={() => {
-                                  setCaptchaToken(null);
-                                }}
-                              />
+                              <div class="text-sm text-base-content/70">
+                                {p.keys} Key{p.keys !== 1 ? 's' : ''}, {p.encoders} Encoder{p.encoders !== 1 ? 's' : ''}
+                              </div>
+                            </div>
+                            <div
+                              class="text-sm text-base-content mt-1"
+                            >
+                              <For each={p.devices}>{(d, i) => (
+                                <>
+                                  <span>
+                                    {busDeviceInfos[d.type as keyof typeof busDeviceInfos]?.name || d.type}
+                                  </span>
+                                  <span class="text-base-content/50">
+                                    &nbsp;on&nbsp;
+                                  </span>
+                                  <span class="font-mono">
+                                    {d.bus}
+                                  </span>
+                                  {i() < (p.devices.length - 1)
+                                    ? <span class="text-base-content/50">,&nbsp;</span>
+                                    : null}
+                                </>
+                              )}</For>
                             </div>
                           </div>
-
-                          <button
-                            class="btn btn-primary mt-2"
-                            onClick={submitToServer}
-                            disabled={!captchaToken() || isBuilding()}
-                          >
-                            Create Import Link
-                          </button>
-                        </div>
-                        <div class="text-center mt-4 text-sm">
-                          Repository link expires after 24 hours. <br />
-                          Creating hosted repository is captcha protected to prevent abuse.
-                        </div>
+                        )}</For>
                       </div>
-                    }
-                  >
-                    <div class="mt-8 space-y-3">
-                      <div class="text-center">
-                        <div class="join">
-                          <div>
-                            <label class="input join-item">
-                              <FolderGit2 class="inline" />
-                              <input
-                                readonly
-                                ref={setRepoLinkInput}
-                                onFocus={e => {
-                                  const input = e.currentTarget;
-                                  if (input) {
-                                    input.setSelectionRange(0, input.value.length);
-                                  }
-                                }}
-                              />
-                            </label>
-                          </div>
-                          <button
-                            class="btn btn-primary join-item"
-                            onClick={() => {
-                              navigator.clipboard.writeText(context.nav.repoLink);
-                            }}
-                          >Copy</button>
-                        </div>
-                      </div>
-
-                      <div class="text-center text-sm">
-                        Import at <Link href="https://github.com/new/import" class="link" target="_blank" rel="noopener noreferrer">
-                          https://github.com/new/import
-                        </Link><br /><br />
-                        Suggested repository name: <span class="font-semibold text-nowrap">zmk-config-{context.keyboard.shield}</span>
-                        <br />
-                        Leave credentials empty.
-                        Public repository is recommended.
-                      </div>
-
-                      <div class="text-center font-bold">
-                        <Link
-                          href="/next-steps"
-                          target="_blank"
-                          class="link"
-                        >
-                          What to do next?
-                        </Link>
-                      </div>
-
-                      <div class="text-center">
-                        <div class="mb-2 text-xs/snug text-center text-base-content/70">
-                          If you want to make changes to your keyboard
-                        </div>
-                        <Button
-                          class="btn btn-soft btn-sm"
-                          onClick={resetBuildState}
-                          disabled={isBuilding()}
-                        >
-                          Try Again
-                        </Button>
+                      <div class="mt-4 flex items-center justify-center">
+                        <Button class="btn btn-primary" onClick={() => setShowSummary(false)} disabled={isBuilding() || !context.snapshot()}>Confirm</Button>
                       </div>
                     </div>
                   </Show>
 
-                  <div class="divider"></div>
-                  <div class="my-4 text-center">
-                    <div class="text-sm">
-                      As an alternative, download the configuration.<br />
-                      You can push it to your GitHub repository using git client of your choice.
-                    </div>
-                    <Show when={context.nav.repoLink}>
-                      <div class="mt-2 text-xs/snug text-center text-base-content/70">
-                        Keyboard snapshot taken at {context.snapshot()?.time.toLocaleString() ?? "unknown"}.<br />
-                        Downloading will produce the same content as the linked repository.<br />
-                        Click "Try Again" to use latest config if you made changes after creating the repository.
+                  <Show when={!showSummary()}>
+                    <Show
+                      when={context.nav.repoLink}
+                      fallback={
+                        <div class="my-8">
+                          <div class="flex flex-col justify-center items-center">
+                            <div style={{ width: "300px", height: "65px", position: "relative" }}>
+                              <span class="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center rounded-sm bg-base-300 text-base-content/80" style="z-index:0;">
+                                Loading Captcha...
+                              </span>
+                              <div
+                                class="absolute left-0 right-0 top-0 bottom-0" style="z-index:1;"
+                              >
+                                <TurnstileCaptcha
+                                  sitekey={PUBLIC_TURNSTILE_SITEKEY}
+                                  onSuccess={(token) => {
+                                    setCaptchaToken(token);
+                                  }}
+                                  onExpire={() => {
+                                    setCaptchaToken(null);
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            <button
+                              class="btn btn-primary mt-2"
+                              onClick={submitToServer}
+                              disabled={!captchaToken() || isBuilding()}
+                            >
+                              Create Import Link
+                            </button>
+                          </div>
+                          <div class="text-center mt-4 text-sm">
+                            Repository link expires after 24 hours. <br />
+                            Creating hosted repository is captcha protected to prevent abuse.
+                          </div>
+                        </div>
+                      }
+                    >
+                      <div class="mt-8 space-y-3">
+                        <div class="text-center">
+                          <div class="join">
+                            <div>
+                              <label class="input join-item">
+                                <FolderGit2 class="inline" />
+                                <input
+                                  readonly
+                                  ref={setRepoLinkInput}
+                                  onFocus={e => {
+                                    const input = e.currentTarget;
+                                    if (input) {
+                                      input.setSelectionRange(0, input.value.length);
+                                    }
+                                  }}
+                                />
+                              </label>
+                            </div>
+                            <button
+                              class="btn btn-primary join-item"
+                              onClick={() => {
+                                navigator.clipboard.writeText(context.nav.repoLink);
+                              }}
+                            >Copy</button>
+                          </div>
+                        </div>
+
+                        <div class="text-center text-sm">
+                          Import at <Link href="https://github.com/new/import" class="link" target="_blank" rel="noopener noreferrer">
+                            https://github.com/new/import
+                          </Link><br /><br />
+                          Suggested repository name: <span class="font-semibold text-nowrap">zmk-config-{context.keyboard.shield}</span>
+                          <br />
+                          Leave credentials empty.
+                          Public repository is recommended.
+                        </div>
+
+                        <div class="text-center font-bold">
+                          <Link
+                            href="/next-steps"
+                            target="_blank"
+                            class="link"
+                          >
+                            What to do next?
+                          </Link>
+                        </div>
+
+                        <div class="text-center">
+                          <div class="mb-2 text-xs/snug text-center text-base-content/70">
+                            If you want to make changes to your keyboard
+                          </div>
+                          <Button
+                            class="btn btn-soft btn-sm"
+                            onClick={resetBuildState}
+                            disabled={isBuilding()}
+                          >
+                            Try Again
+                          </Button>
+                        </div>
                       </div>
                     </Show>
-                    <button
-                      class="btn btn-primary mt-2"
-                      onClick={downloadZip}
-                      disabled={isBuilding()}
-                    >
-                      <FolderArchive class="inline" />
-                      Download
-                    </button>
 
-                  </div>
+                    <div class="divider"></div>
+                    <div class="my-4 text-center">
+                      <div class="text-sm">
+                        As an alternative, download the configuration.<br />
+                        You can push it to your GitHub repository using git client of your choice.
+                      </div>
+                      <Show when={context.nav.repoLink}>
+                        <div class="mt-2 text-xs/snug text-center text-base-content/70">
+                          Keyboard snapshot taken at {context.snapshot()?.time.toLocaleString() ?? "unknown"}.<br />
+                          Downloading will produce the same content as the linked repository.<br />
+                          Click "Try Again" to use latest config if you made changes after creating the repository.
+                        </div>
+                      </Show>
+                      <button
+                        class="btn btn-primary mt-2"
+                        onClick={downloadZip}
+                        disabled={isBuilding()}
+                      >
+                        <FolderArchive class="inline" />
+                        Download
+                      </button>
+
+                    </div>
+                  </Show>
                 </Show>
               </div>
             </Dialog.Description>

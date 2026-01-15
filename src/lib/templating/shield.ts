@@ -139,8 +139,8 @@ function encoderDtsi(keyboard: Keyboard): string {
    */
   const names: string[] = [];
 
-  keyboard.parts.forEach((part, partIndex) => {
-    part.encoders.forEach((enc, encIndex) => {
+  keyboard.parts.forEach((part, _partIndex) => {
+    part.encoders.forEach((_enc, encIndex) => {
       const encoderLabel = (keyboard.parts.length > 1)
         ? `encoder_${part.name}${encIndex}`
         : `encoder${encIndex}`;

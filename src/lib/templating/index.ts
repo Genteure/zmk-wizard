@@ -1,6 +1,7 @@
 import type { Keyboard, VirtualTextFolder } from "../../typedef";
 import {
   build_yaml,
+  config__conf,
   config__json,
   config__keymap,
   config_west_yml,
@@ -9,8 +10,8 @@ import {
   zephyr_module_yml,
 } from "./contents";
 import { createShieldOverlayFiles } from "./shield";
-export { physicalLayoutKeyboard } from "./shield";
 export { config__json } from "./contents";
+export { physicalLayoutKeyboard } from "./shield";
 
 export function createZMKConfig(keyboard: Keyboard): VirtualTextFolder {
   if (keyboard.shield === 'throwerror') {
@@ -19,13 +20,13 @@ export function createZMKConfig(keyboard: Keyboard): VirtualTextFolder {
 
   const files: VirtualTextFolder = {};
 
-  const shieldPath = `boards/shields/${keyboard.shield}`;
-
   files['.github/workflows/build.yml'] = workflows_build_yml;
   files['config/west.yml'] = config_west_yml;
   files['zephyr/module.yml'] = zephyr_module_yml(keyboard);
   files['build.yaml'] = build_yaml(keyboard);
   files['README.md'] = readme_md(keyboard);
+
+  const shieldPath = `boards/shields/${keyboard.shield}`;
 
   addXiaoBlePlusExtraFiles(files, shieldPath, keyboard);
 
@@ -34,7 +35,7 @@ export function createZMKConfig(keyboard: Keyboard): VirtualTextFolder {
     files[`${shieldPath}/${filePath}`] = content;
   }
 
-  files[`config/${keyboard.shield}.conf`] = `\n`;
+  files[`config/${keyboard.shield}.conf`] = config__conf(keyboard);
   files[`config/${keyboard.shield}.keymap`] = config__keymap(keyboard);
   files[`config/${keyboard.shield}.json`] = config__json(keyboard);
 
