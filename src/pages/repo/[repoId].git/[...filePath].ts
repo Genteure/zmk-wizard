@@ -46,7 +46,13 @@ export const GET: APIRoute = async (context) => {
   }
 
   // fast path for known files before reading the tar
-  if (!(filePath === 'info/refs' || filePath === 'HEAD' || filePath === 'refs/heads/main')) {
+  const knownFiles = [
+    'info/refs',
+    'HEAD',
+    'refs/heads/main',
+    '.shield-wizard.json',
+  ];
+  if (!knownFiles.includes(filePath)) {
     const pathFragments = filePath.split('/');
     if (pathFragments.length !== 3
       || pathFragments[0] !== 'objects'

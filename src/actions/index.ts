@@ -59,6 +59,9 @@ export const server = {
 
       const keyboardConfig = createZMKConfig(input.keyboard);
       const gitRepo = await createGitRepository(keyboardConfig);
+
+      gitRepo[".shield-wizard.json"] = new TextEncoder().encode(JSON.stringify(input.keyboard) + "\n");
+
       const tarStream = createTarGzipStream(
         Object
           .entries(gitRepo)
