@@ -8,6 +8,26 @@ import { controllerInfos } from "../../components/controllerInfo";
 import { getKeysBoundingBox } from "../geometry";
 import { shield__kconfig_defconfig, shield__kconfig_shield } from "./contents";
 import { createShieldPinctrlFile } from "./shield.pinctrl";
+import {
+  centralToPeripheralInputOverlay,
+  collectInputDevices,
+  inputDevicesDtsi,
+  inputDevicesOverlay,
+  type PointingDeviceInfo,
+} from "./shield.pointing";
+import {
+  boardOverlayPath,
+  centralToPeripheralSnippetName,
+  centralToPeripheralSnippetRoot,
+  dongleOverlayPath,
+  kconfigDefconfigPath,
+  kconfigShieldPath,
+  partOverlayPath,
+  shieldDtsiFilename,
+  shieldDtsiPath,
+  shieldLayoutsFilename,
+  shieldLayoutsPath,
+} from "./utils";
 
 // TODO refactor and cleanup this file?
 // TODO add testing
@@ -18,8 +38,10 @@ const shifterDtsMap: Record<string, string> = Object.fromEntries(Array.from({ le
 export function createShieldOverlayFiles(keyboard: Keyboard): VirtualTextFolder {
   const files: VirtualTextFolder = {};
 
-  files['Kconfig.shield'] = shield__kconfig_shield(keyboard);
-  files['Kconfig.defconfig'] = shield__kconfig_defconfig(keyboard);
+  const inputDevices = collectInputDevices(keyboard);
+
+  files[kconfigShieldPath(keyboard.shield)] = shield__kconfig_shield(keyboard);
+  files[kconfigDefconfigPath(keyboard.shield)] = shield__kconfig_defconfig(keyboard);
 
   // Build per-part kscan and local matrix transform data
   const partResults: KscanSinglePartResult[] = keyboard.parts.map((part, idx) => {
@@ -64,9 +86,10 @@ export function createShieldOverlayFiles(keyboard: Keyboard): VirtualTextFolder 
   });
 
   const mtDts = makeMatrixTransform(globalMte);
+  const inputDtsi = inputDevicesDtsi(inputDevices);
 
   // global transform in .dtsi and per-part overlays with offsets
-  files[`${keyboard.shield}.dtsi`] = `#include "${keyboard.shield}-layouts.dtsi"
+  files[shieldDtsiPath(keyboard.shield)] = `#include "${shieldLayoutsFilename(keyboard.shield)}"
 #include <dt-bindings/zmk/matrix_transform.h>
 
 ${mtDts}
@@ -76,6 +99,7 @@ ${mtDts}
 };
 
 ${encoderDtsi(keyboard)}
+${inputDtsi}
 `.replace(/\n{3,}/g, "\n\n");
 
   keyboard.parts.forEach((part, idx) => {
@@ -90,31 +114,48 @@ ${encoderDtsi(keyboard)}
       : "";
 
     // Use just the keyboard shield name for unibody, multi-part uses part name suffix
-    const overlayFileName = keyboard.parts.length === 1 ? keyboard.shield : `${keyboard.shield}_${part.name}`;
-    files[`${overlayFileName}.overlay`] = `#include "${keyboard.shield}.dtsi"
+    files[(partOverlayPath(keyboard, idx))] = `#include "${shieldDtsiFilename(keyboard.shield)}"
 
 ${res.kscanDts}
 ${offsetBlock}
 &physical_layout_${keyboard.shield} {
     kscan = <&kscan0>;
 };
+${inputDevicesOverlay(idx, inputDevices)}
 ${encoderOverlay(keyboard, idx)}
 `.replace(/\n{3,}/g, "\n\n");
 
     // pinctrl for this part (out of multi-part)
     const pinctrlContent = createShieldPinctrlFile(keyboard, idx);
     if (pinctrlContent) {
-      files[`boards/${overlayFileName}/${controllerInfos[part.controller].board}.overlay`] = pinctrlContent.dts;
+      files[boardOverlayPath(keyboard, controllerInfos[part.controller].board, idx)] = pinctrlContent.dts;
 
       if (pinctrlContent.defconfig) {
-        files['Kconfig.defconfig'] += pinctrlContent.defconfig;
+        files[kconfigDefconfigPath(keyboard.shield)] += pinctrlContent.defconfig;
       }
     }
   });
 
-  files[`${keyboard.shield}-layouts.dtsi`] = physicalLayoutKeyboard(keyboard);
+  files[shieldLayoutsPath(keyboard.shield)] = physicalLayoutKeyboard(keyboard);
   if (keyboard.dongle) {
-    files[`${keyboard.shield}_dongle.overlay`] = dongleOverlayKeyboard(keyboard);
+    files[dongleOverlayPath(keyboard.shield)] = dongleOverlayKeyboard(keyboard, inputDevices);
+
+    const snippetName = centralToPeripheralSnippetName(keyboard);
+    const snippetRoot = centralToPeripheralSnippetRoot(keyboard);
+
+    files[`${snippetRoot}/snippet.yml`] = `name: ${snippetName}
+append:
+  EXTRA_CONF_FILE: ${snippetName}.conf
+  EXTRA_DTC_OVERLAY_FILE: ${snippetName}.overlay
+`;
+
+    files[`${snippetRoot}/${snippetName}.conf`] = `CONFIG_ZMK_SPLIT=y
+CONFIG_ZMK_SPLIT_ROLE_CENTRAL=n
+`;
+
+    // TODO add input device changes in devicetree
+    files[`${snippetRoot}/${snippetName}.overlay`] = centralToPeripheralInputOverlay(keyboard, inputDevices);
+
   }
 
   return files;
@@ -231,8 +272,8 @@ function encoderOverlay(keyboard: Keyboard, partIndex: number): string {
   return dts;
 }
 
-function dongleOverlayKeyboard(keyboard: Keyboard): string {
-  return `#include "${keyboard.shield}.dtsi"
+function dongleOverlayKeyboard(keyboard: Keyboard, inputDevices: PointingDeviceInfo[]): string {
+  return `#include "${shieldDtsiFilename(keyboard.shield)}"
 
 / {
     kscan_dongle: kscan_dongle {
@@ -246,6 +287,7 @@ function dongleOverlayKeyboard(keyboard: Keyboard): string {
 &physical_layout_${keyboard.shield} {
     kscan = <&kscan_dongle>;
 };
+${inputDevicesOverlay(-1, inputDevices)}
 ${encoderOverlay(keyboard, -1)}
 `;
 }

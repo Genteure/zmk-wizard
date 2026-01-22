@@ -23,6 +23,12 @@ export const server = {
         });
       }
 
+      // add 3 sec delay if running locally in dev mode
+      if (import.meta.env.DEV) {
+        console.log("Dev mode: adding delay to simulate captcha verification");
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+
       if (TURNSTILE_SECRET) {
         // Validate with Cloudflare Turnstile API
         const verifyRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {

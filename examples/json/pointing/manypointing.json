@@ -1,0 +1,445 @@
+{
+  "name": "ManyPointing",
+  "shield": "manypointing",
+  "dongle": true,
+  "layout": [
+    {
+      "id": "01KFK515WPM9Z7AGV7F25KN984",
+      "part": 0, "row": 0, "col": 0, "w": 1, "h": 1, "x": 0, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFK515WP40SEV0VS4AK3H6QW",
+      "part": 0, "row": 0, "col": 1, "w": 1, "h": 1, "x": 1, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFK515WP71QD7JHK52HKG7PA",
+      "part": 1, "row": 0, "col": 2, "w": 1, "h": 1, "x": 2, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFK515WPYHS962BNKY7W2SCP",
+      "part": 1, "row": 0, "col": 3, "w": 1, "h": 1, "x": 3, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFK515WPB1E2MDYPPDRN4W23",
+      "part": 2, "row": 0, "col": 4, "w": 1, "h": 1, "x": 4, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFK515WP0PBD19DHBJ8C5B1S",
+      "part": 2, "row": 0, "col": 5, "w": 1, "h": 1, "x": 5, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFK515WPQGC2DJZM4QX87W06",
+      "part": 2, "row": 0, "col": 6, "w": 1, "h": 1, "x": 6, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFK515WPV1JXTCGF3R8ZFC32",
+      "part": 2, "row": 0, "col": 7, "w": 1, "h": 2, "x": 7, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFK515WP94S4Y2WS068SHKD9",
+      "part": 0, "row": 1, "col": 0, "w": 1, "h": 1, "x": 0, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFK515WP77BPGGD0TG4MWFBE",
+      "part": 0, "row": 1, "col": 1, "w": 1, "h": 1, "x": 1, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFK515WPYDJG1XHCY0QA6PMQ",
+      "part": 1, "row": 1, "col": 2, "w": 1, "h": 1, "x": 2, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFK515WPZQTEWRQ3VZDHKPW1",
+      "part": 1, "row": 1, "col": 3, "w": 1, "h": 2, "x": 3, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFK515WPVTWXH5M7TMRW8A54",
+      "part": 2, "row": 1, "col": 4, "w": 2, "h": 1, "x": 4, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFK515WPHJPF4MWP9RDGK7BA",
+      "part": 2, "row": 1, "col": 6, "w": 1, "h": 1, "x": 6, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFK515WP002P25K8477VBC1Q",
+      "part": 0, "row": 2, "col": 0, "w": 1, "h": 1, "x": 0, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFK515WPQEJEW9F7GJJA1RFW",
+      "part": 0, "row": 2, "col": 1, "w": 1, "h": 1, "x": 1, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFK515WPNAPDPG0E1FYNWWHB",
+      "part": 1, "row": 2, "col": 2, "w": 1, "h": 1, "x": 2, "y": 2, "r": 0, "rx": 0, "ry": 0
+    }
+  ],
+  "parts": [
+    {
+      "name": "left",
+      "controller": "nice_nano_v2",
+      "wiring": "matrix_diode",
+      "keys": {
+        "01KFK515WPM9Z7AGV7F25KN984": {
+          "input": "d1",
+          "output": "d2"
+        },
+        "01KFK515WP40SEV0VS4AK3H6QW": {
+          "input": "d0",
+          "output": "d2"
+        },
+        "01KFK515WP94S4Y2WS068SHKD9": {
+          "input": "d1",
+          "output": "d3"
+        },
+        "01KFK515WP77BPGGD0TG4MWFBE": {
+          "input": "d0",
+          "output": "d3"
+        },
+        "01KFK515WP002P25K8477VBC1Q": {
+          "input": "d1",
+          "output": "d4"
+        },
+        "01KFK515WPQEJEW9F7GJJA1RFW": {
+          "input": "d0",
+          "output": "d4"
+        }
+      },
+      "encoders": [
+        {
+          "pinA": "d8",
+          "pinB": "d9"
+        }
+      ],
+      "pins": {
+        "d0": "input",
+        "d2": "output",
+        "d3": "output",
+        "d4": "output",
+        "d1": "input",
+        "d10": "bus",
+        "d16": "bus",
+        "d14": "bus",
+        "d15": "bus",
+        "d18": "bus",
+        "d5": "bus",
+        "d6": "bus",
+        "d7": "bus",
+        "d8": "encoder",
+        "d9": "encoder"
+      },
+      "buses": [
+        {
+          "type": "spi",
+          "name": "spi0",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi1",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi2",
+          "devices": [
+            {
+              "rotate90": false,
+              "invertx": false,
+              "inverty": false,
+              "sleep": true,
+              "noSecondaryTap": true,
+              "noTaps": true,
+              "sensitivity": "2x",
+              "type": "pinnacle_spi",
+              "dr": "d18",
+              "cs": "d15"
+            }
+          ],
+          "mosi": "d10",
+          "miso": "d16",
+          "sck": "d14"
+        },
+        {
+          "type": "spi",
+          "name": "spi3",
+          "devices": []
+        },
+        {
+          "type": "i2c",
+          "name": "i2c0",
+          "devices": [
+            {
+              "rotate90": true,
+              "invertx": true,
+              "inverty": true,
+              "sleep": true,
+              "noSecondaryTap": true,
+              "noTaps": true,
+              "sensitivity": "2x",
+              "type": "pinnacle_i2c",
+              "add": 42, "dr": "d7"
+            }
+          ],
+          "sda": "d5",
+          "scl": "d6"
+        },
+        {
+          "type": "i2c",
+          "name": "i2c1",
+          "devices": []
+        }
+      ]
+    },
+    {
+      "name": "right",
+      "controller": "nice_nano_v2",
+      "wiring": "direct_gnd",
+      "keys": {
+        "01KFK515WP71QD7JHK52HKG7PA": {
+          "input": "d21"
+        },
+        "01KFK515WPYHS962BNKY7W2SCP": {
+          "input": "d20"
+        },
+        "01KFK515WPYDJG1XHCY0QA6PMQ": {
+          "input": "d19"
+        },
+        "01KFK515WPNAPDPG0E1FYNWWHB": {
+          "input": "d18"
+        },
+        "01KFK515WPZQTEWRQ3VZDHKPW1": {
+          "input": "d15"
+        }
+      },
+      "encoders": [
+        {
+          "pinA": "d1",
+          "pinB": "d0"
+        },
+        {
+          "pinA": "d2",
+          "pinB": "d3"
+        }
+      ],
+      "pins": {
+        "d21": "input",
+        "d20": "input",
+        "d19": "input",
+        "d18": "input",
+        "d15": "input",
+        "d14": "bus",
+        "d16": "bus",
+        "d10": "bus",
+        "d9": "bus",
+        "d8": "bus",
+        "d7": "bus",
+        "d6": "bus",
+        "d5": "bus",
+        "d1": "encoder",
+        "d0": "encoder",
+        "d2": "encoder",
+        "d3": "encoder"
+      },
+      "buses": [
+        {
+          "type": "spi",
+          "name": "spi0",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi1",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi2",
+          "devices": [
+            {
+              "rotate90": false,
+              "invertx": false,
+              "inverty": false,
+              "sleep": true,
+              "noSecondaryTap": true,
+              "noTaps": true,
+              "sensitivity": "2x",
+              "type": "pinnacle_spi",
+              "cs": "d9",
+              "dr": "d8"
+            },
+            {
+              "rotate90": false,
+              "invertx": false,
+              "inverty": false,
+              "sleep": true,
+              "noSecondaryTap": true,
+              "noTaps": true,
+              "sensitivity": "2x",
+              "type": "pinnacle_spi",
+              "cs": "d7",
+              "dr": "d6"
+            },
+            {
+              "type": "niceview",
+              "cs": "d5"
+            }
+          ],
+          "mosi": "d14",
+          "miso": "d16",
+          "sck": "d10"
+        },
+        {
+          "type": "spi",
+          "name": "spi3",
+          "devices": []
+        },
+        {
+          "type": "i2c",
+          "name": "i2c0",
+          "devices": []
+        },
+        {
+          "type": "i2c",
+          "name": "i2c1",
+          "devices": []
+        }
+      ]
+    },
+    {
+      "name": "third",
+      "controller": "nice_nano_v2",
+      "wiring": "matrix_diode",
+      "keys": {
+        "01KFK515WP0PBD19DHBJ8C5B1S": {
+          "input": "d1",
+          "output": "d3"
+        },
+        "01KFK515WPB1E2MDYPPDRN4W23": {
+          "input": "d1",
+          "output": "d2"
+        },
+        "01KFK515WPVTWXH5M7TMRW8A54": {
+          "input": "d1",
+          "output": "d4"
+        },
+        "01KFK515WPV1JXTCGF3R8ZFC32": {
+          "input": "d0",
+          "output": "d3"
+        },
+        "01KFK515WPQGC2DJZM4QX87W06": {
+          "input": "d0",
+          "output": "d2"
+        },
+        "01KFK515WPHJPF4MWP9RDGK7BA": {
+          "input": "d0",
+          "output": "d4"
+        }
+      },
+      "encoders": [
+        {
+          "pinA": "d5",
+          "pinB": "d6"
+        }
+      ],
+      "pins": {
+        "d1": "input",
+        "d0": "input",
+        "d2": "output",
+        "d3": "output",
+        "d4": "output",
+        "d10": "bus",
+        "d16": "bus",
+        "d14": "bus",
+        "d15": "bus",
+        "d18": "bus",
+        "d19": "bus",
+        "d20": "bus",
+        "d21": "bus",
+        "d9": "bus",
+        "d8": "bus",
+        "d7": "bus",
+        "d5": "encoder",
+        "d6": "encoder"
+      },
+      "buses": [
+        {
+          "type": "spi",
+          "name": "spi0",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi1",
+          "devices": [
+            {
+              "type": "pmw3610",
+              "cpi": 1200, "swapxy": true,
+              "invertx": false,
+              "inverty": false,
+              "cs": "d15",
+              "irq": "d18"
+            },
+            {
+              "rotate90": false,
+              "invertx": false,
+              "inverty": false,
+              "sleep": true,
+              "noSecondaryTap": true,
+              "noTaps": true,
+              "sensitivity": "2x",
+              "type": "pinnacle_spi",
+              "cs": "d19",
+              "dr": "d20"
+            }
+          ],
+          "mosi": "d10",
+          "miso": "d16",
+          "sck": "d14"
+        },
+        {
+          "type": "spi",
+          "name": "spi2",
+          "devices": []
+        },
+        {
+          "type": "spi",
+          "name": "spi3",
+          "devices": [
+            {
+              "type": "ws2812",
+              "length": 12
+            }
+          ],
+          "mosi": "d21"
+        },
+        {
+          "type": "i2c",
+          "name": "i2c0",
+          "devices": [
+            {
+              "rotate90": false,
+              "invertx": false,
+              "inverty": false,
+              "sleep": true,
+              "noSecondaryTap": true,
+              "noTaps": true,
+              "sensitivity": "2x",
+              "type": "pinnacle_i2c",
+              "add": 42, "dr": "d7"
+            },
+            {
+              "type": "ssd1306",
+              "add": 60, "width": 128, "height": 64
+            }
+          ],
+          "sda": "d9",
+          "scl": "d8"
+        },
+        {
+          "type": "i2c",
+          "name": "i2c1",
+          "devices": []
+        }
+      ]
+    }
+  ]
+}

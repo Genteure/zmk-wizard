@@ -1,0 +1,343 @@
+{
+  "name": "Packed2040",
+  "shield": "packed2040",
+  "dongle": false,
+  "layout": [
+    {
+      "id": "01KFJW6537KYWMNMXMJEZE2KDY",
+      "part": 0, "row": 0, "col": 0, "w": 1, "h": 1, "x": 0, "y": 0.95, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW653717Z1TTYAFXA8RZ0J",
+      "part": 0, "row": 0, "col": 1, "w": 1, "h": 1, "x": 1, "y": 0.32, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW653795SNRTQXPTVXYDYY",
+      "part": 0, "row": 0, "col": 2, "w": 1, "h": 1, "x": 2, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6537K69MA0WA0KX2DVGW",
+      "part": 0, "row": 0, "col": 3, "w": 1, "h": 1, "x": 3, "y": 0.28, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6537GRMY1WVTPK1YN8K8",
+      "part": 0, "row": 0, "col": 4, "w": 1, "h": 1, "x": 4, "y": 0.42, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6538ZV5J13EZ80C3367M",
+      "part": 0, "row": 0, "col": 5, "w": 1, "h": 1, "x": 7, "y": 0.42, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6538FGYEZYB3W83GMN9B",
+      "part": 0, "row": 0, "col": 6, "w": 1, "h": 1, "x": 8, "y": 0.28, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6538RZZPRD8PBZPCXC1J",
+      "part": 0, "row": 0, "col": 7, "w": 1, "h": 1, "x": 9, "y": 0, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6538XTGNHHVQGP5JM4QT",
+      "part": 0, "row": 0, "col": 8, "w": 1, "h": 1, "x": 10, "y": 0.32, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6538SYSN63DAX4CFJ4TH",
+      "part": 0, "row": 0, "col": 9, "w": 1, "h": 1, "x": 11, "y": 0.95, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW65381VCWN19AZWENCBSS",
+      "part": 0, "row": 1, "col": 0, "w": 1, "h": 1, "x": 0, "y": 1.95, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6538BBM6KDJ4Z7DTDNV0",
+      "part": 0, "row": 1, "col": 1, "w": 1, "h": 1, "x": 1, "y": 1.32, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6538989M8N18R8RVCPYS",
+      "part": 0, "row": 1, "col": 2, "w": 1, "h": 1, "x": 2, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6538H3SJTN9RXNT5E9KT",
+      "part": 0, "row": 1, "col": 3, "w": 1, "h": 1, "x": 3, "y": 1.29, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6538K17N7FSEJSX1K0Y1",
+      "part": 0, "row": 1, "col": 4, "w": 1, "h": 1, "x": 4, "y": 1.42, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6538KYJMHWB3RPN38QYE",
+      "part": 0, "row": 1, "col": 5, "w": 1, "h": 1, "x": 7, "y": 1.42, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6538SYSPYHRPQ6EA92BW",
+      "part": 0, "row": 1, "col": 6, "w": 1, "h": 1, "x": 8, "y": 1.29, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW65383NT17Q6PC6V0QH5N",
+      "part": 0, "row": 1, "col": 7, "w": 1, "h": 1, "x": 9, "y": 1, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6538TK10K7R7FFEYY5DN",
+      "part": 0, "row": 1, "col": 8, "w": 1, "h": 1, "x": 10, "y": 1.32, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6538K7N1C6F2WPW89RM5",
+      "part": 0, "row": 1, "col": 9, "w": 1, "h": 1, "x": 11, "y": 1.95, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW653804E0MP55DMSYEKMF",
+      "part": 0, "row": 2, "col": 0, "w": 1, "h": 1, "x": 0, "y": 2.95, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6538D45Y74K2KW1R73WQ",
+      "part": 0, "row": 2, "col": 1, "w": 1, "h": 1, "x": 1, "y": 2.31, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6538P3VZHD8FTJTZF9N5",
+      "part": 0, "row": 2, "col": 2, "w": 1, "h": 1, "x": 2, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW65387FEZS90RJA9DFD2C",
+      "part": 0, "row": 2, "col": 3, "w": 1, "h": 1, "x": 3, "y": 2.29, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6538GCQKKVV7X9YHGN33",
+      "part": 0, "row": 2, "col": 4, "w": 1, "h": 1, "x": 4, "y": 2.42, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW65387M5J9SMVZADC4AT1",
+      "part": 0, "row": 2, "col": 5, "w": 1, "h": 1, "x": 7, "y": 2.42, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6539SG7X9S2BMQV0W2X8",
+      "part": 0, "row": 2, "col": 6, "w": 1, "h": 1, "x": 8, "y": 2.29, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW65392KH201CHV1W4GFG2",
+      "part": 0, "row": 2, "col": 7, "w": 1, "h": 1, "x": 9, "y": 2, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW65395K8JBRK7Q649V6NY",
+      "part": 0, "row": 2, "col": 8, "w": 1, "h": 1, "x": 10, "y": 2.31, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW6539M88D56QKYFRZFPJH",
+      "part": 0, "row": 2, "col": 9, "w": 1, "h": 1, "x": 11, "y": 2.95, "r": 0, "rx": 0, "ry": 0
+    },
+    {
+      "id": "01KFJW65390214TTGVRMV3NN1G",
+      "part": 0, "row": 3, "col": 3, "w": 1, "h": 1, "x": 3.3, "y": 3.55, "r": 15, "rx": 4.3, "ry": 4.55
+    },
+    {
+      "id": "01KFJW6539B48JWP8KP76PK56B",
+      "part": 0, "row": 3, "col": 4, "w": 1, "h": 1, "x": 4.3, "y": 3.55, "r": 30, "rx": 4.3, "ry": 4.55
+    },
+    {
+      "id": "01KFJW6539BVBP2RMER7Y8TSR6",
+      "part": 0, "row": 3, "col": 5, "w": 1, "h": 1, "x": 6.7, "y": 3.55, "r": -30, "rx": 7.7, "ry": 4.55
+    },
+    {
+      "id": "01KFJW653980DZ6S728PDFVGZ6",
+      "part": 0, "row": 3, "col": 6, "w": 1, "h": 1, "x": 7.7, "y": 3.55, "r": -15, "rx": 7.7, "ry": 4.55
+    }
+  ],
+  "parts": [
+    {
+      "name": "unibody",
+      "controller": "qt_py_rp2040",
+      "wiring": "matrix_diode",
+      "pins": {
+        "d10": "bus",
+        "d8": "bus",
+        "d9": "bus",
+        "d2": "bus",
+        "d1": "bus",
+        "d3": "bus",
+        "d0": "bus",
+        "d4": "bus",
+        "d5": "input",
+        "d6": "input",
+        "d7": "input"
+      },
+      "keys": {
+        "01KFJW6537KYWMNMXMJEZE2KDY": {
+          "input": "d5",
+          "output": "shifter0"
+        },
+        "01KFJW653717Z1TTYAFXA8RZ0J": {
+          "input": "d5",
+          "output": "shifter1"
+        },
+        "01KFJW653795SNRTQXPTVXYDYY": {
+          "input": "d5",
+          "output": "shifter2"
+        },
+        "01KFJW6537K69MA0WA0KX2DVGW": {
+          "input": "d5",
+          "output": "shifter3"
+        },
+        "01KFJW6537GRMY1WVTPK1YN8K8": {
+          "input": "d5",
+          "output": "shifter4"
+        },
+        "01KFJW6538ZV5J13EZ80C3367M": {
+          "input": "d5",
+          "output": "shifter5"
+        },
+        "01KFJW6538FGYEZYB3W83GMN9B": {
+          "input": "d5",
+          "output": "shifter6"
+        },
+        "01KFJW6538RZZPRD8PBZPCXC1J": {
+          "input": "d5",
+          "output": "shifter7"
+        },
+        "01KFJW6538XTGNHHVQGP5JM4QT": {
+          "input": "d5",
+          "output": "shifter8"
+        },
+        "01KFJW6538SYSN63DAX4CFJ4TH": {
+          "input": "d5",
+          "output": "shifter9"
+        },
+        "01KFJW65390214TTGVRMV3NN1G": {
+          "input": "d5",
+          "output": "shifter10"
+        },
+        "01KFJW653980DZ6S728PDFVGZ6": {
+          "input": "d5",
+          "output": "shifter11"
+        },
+        "01KFJW65381VCWN19AZWENCBSS": {
+          "input": "d6",
+          "output": "shifter0"
+        },
+        "01KFJW6538BBM6KDJ4Z7DTDNV0": {
+          "input": "d6",
+          "output": "shifter1"
+        },
+        "01KFJW6538989M8N18R8RVCPYS": {
+          "input": "d6",
+          "output": "shifter2"
+        },
+        "01KFJW6538H3SJTN9RXNT5E9KT": {
+          "input": "d6",
+          "output": "shifter3"
+        },
+        "01KFJW6538K17N7FSEJSX1K0Y1": {
+          "input": "d6",
+          "output": "shifter4"
+        },
+        "01KFJW6538KYJMHWB3RPN38QYE": {
+          "input": "d6",
+          "output": "shifter5"
+        },
+        "01KFJW6538SYSPYHRPQ6EA92BW": {
+          "input": "d6",
+          "output": "shifter6"
+        },
+        "01KFJW65383NT17Q6PC6V0QH5N": {
+          "input": "d6",
+          "output": "shifter7"
+        },
+        "01KFJW6538TK10K7R7FFEYY5DN": {
+          "input": "d6",
+          "output": "shifter8"
+        },
+        "01KFJW6538K7N1C6F2WPW89RM5": {
+          "input": "d6",
+          "output": "shifter9"
+        },
+        "01KFJW653804E0MP55DMSYEKMF": {
+          "input": "d7",
+          "output": "shifter0"
+        },
+        "01KFJW6538D45Y74K2KW1R73WQ": {
+          "input": "d7",
+          "output": "shifter1"
+        },
+        "01KFJW6538P3VZHD8FTJTZF9N5": {
+          "input": "d7",
+          "output": "shifter2"
+        },
+        "01KFJW65387FEZS90RJA9DFD2C": {
+          "input": "d7",
+          "output": "shifter3"
+        },
+        "01KFJW6538GCQKKVV7X9YHGN33": {
+          "input": "d7",
+          "output": "shifter4"
+        },
+        "01KFJW65387M5J9SMVZADC4AT1": {
+          "input": "d7",
+          "output": "shifter5"
+        },
+        "01KFJW6539SG7X9S2BMQV0W2X8": {
+          "input": "d7",
+          "output": "shifter6"
+        },
+        "01KFJW65392KH201CHV1W4GFG2": {
+          "input": "d7",
+          "output": "shifter7"
+        },
+        "01KFJW65395K8JBRK7Q649V6NY": {
+          "input": "d7",
+          "output": "shifter8"
+        },
+        "01KFJW6539M88D56QKYFRZFPJH": {
+          "input": "d7",
+          "output": "shifter9"
+        },
+        "01KFJW6539BVBP2RMER7Y8TSR6": {
+          "input": "d7",
+          "output": "shifter10"
+        },
+        "01KFJW6539B48JWP8KP76PK56B": {
+          "input": "d6",
+          "output": "shifter10"
+        }
+      },
+      "encoders": [],
+      "buses": [
+        {
+          "name": "spi0",
+          "devices": [
+            {
+              "type": "74hc595",
+              "ngpios": 16, "cs": "d9"
+            }
+          ],
+          "type": "spi",
+          "mosi": "d10",
+          "sck": "d8"
+        },
+        {
+          "name": "spi1",
+          "devices": [
+            {
+              "type": "pmw3610",
+              "cs": "d0",
+              "irq": "d4",
+              "cpi": 600, "swapxy": false,
+              "invertx": false,
+              "inverty": false
+            }
+          ],
+          "type": "spi",
+          "mosi": "d2",
+          "miso": "d1",
+          "sck": "d3"
+        },
+        {
+          "name": "i2c0",
+          "devices": [],
+          "type": "i2c"
+        },
+        {
+          "name": "i2c1",
+          "devices": [],
+          "type": "i2c"
+        }
+      ]
+    }
+  ]
+}

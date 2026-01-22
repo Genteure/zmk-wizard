@@ -3,15 +3,18 @@ import { Link } from "@kobalte/core/link";
 import { Popover } from "@kobalte/core/popover";
 import CircleX from "lucide-solid/icons/circle-x";
 import ExternalLink from "lucide-solid/icons/external-link";
+import Info from "lucide-solid/icons/info";
 import TriangleAlert from "lucide-solid/icons/triangle-alert";
-import { createEffect, createMemo, createSignal, For, Match, onCleanup, Show, Switch, type Accessor, type Component } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Match, onCleanup, Show, Switch, type Accessor, type VoidComponent } from "solid-js";
 import { produce } from "solid-js/store";
-import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, PinMode, PinSelection, ShiftRegisterDevice, WiringType } from "~/typedef";
-import { addDeviceToBus, isI2cBus, isShiftRegisterDevice, isSpiBus, isSpiDevice, isSSD1306, isWS2812 } from "~/typehelper";
+import { Dynamic } from "solid-js/web";
+import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, I2cBus, PinMode, PinSelection, ShiftRegisterDevice, SpiBus, WiringType } from "~/typedef";
+import { AnyBusDeviceSchema } from "~/typedef";
+import { addDeviceToBus, isI2cBus, isSpiBus } from "~/typehelper";
 import { useWizardContext } from "./context";
-import { busDeviceInfos, busPinRequirements, controllerInfos, type ControllerInfo, type PinctrlI2cPinChoices, type PinctrlSpiPinChoices, type VisualPin } from "./controllerInfo";
+import { busDeviceMetadata, busDeviceTypes, controllerInfos, deviceClassRules, getBusDeviceMetadata, pinPropKeysForDevice, requiredBusPinsForDevice, socBusData, type AllDeviceDataTypes, type AllWidgetTypes, type BusDeviceClass, type ControllerInfo, type DevicePropDefinition, type PinctrlI2cPinChoices, type PinctrlSpiPinChoices, type VisualPin } from "./controllerInfo";
 
-const ControllerPin: Component<{
+const ControllerPin: VoidComponent<{
   pin: VisualPin,
   controllerInfo: ControllerInfo,
   left: boolean,
@@ -200,7 +203,7 @@ const ControllerPin: Component<{
   );
 };
 
-export const ControllerPinConfigurator: Component<{
+export const ControllerPinConfigurator: VoidComponent<{
   partIndex: Accessor<number>,
   controllerId: keyof typeof controllerInfos,
 }> = (props) => {
@@ -343,23 +346,12 @@ export const ControllerPinConfigurator: Component<{
   </div>;
 }
 
-const spiDeviceTypes: BusDeviceTypeName[] = ["niceview", "ws2812", "74hc595"];
-const i2cDeviceTypes: BusDeviceTypeName[] = ["ssd1306"];
-
 function defaultDevice(type: BusDeviceTypeName): AnyBusDevice {
-  switch (type) {
-    case "ssd1306":
-      return { type, add: 0x3c, width: 128, height: 64 };
-    case "niceview":
-      return { type, cs: "" };
-    case "ws2812":
-      return { type, cs: "", length: 3 };
-    case "74hc595":
-      return { type, cs: "", ngpios: 8 };
-  }
+  const defaults = busDeviceMetadata[type]?.defaults ?? {};
+  return AnyBusDeviceSchema.parse({ type, ...defaults });
 }
 
-export const ShiftRegisterPinConfigurator: Component<{ partIndex: Accessor<number> }> = (props) => {
+export const ShiftRegisterPinConfigurator: VoidComponent<{ partIndex: Accessor<number> }> = (props) => {
   const context = useWizardContext();
   const part = createMemo(() => context.keyboard.parts[props.partIndex()]);
 
@@ -444,7 +436,7 @@ export const ShiftRegisterPinConfigurator: Component<{ partIndex: Accessor<numbe
   </div>;
 };
 
-export const EncoderConfigurator: Component<{ partIndex: Accessor<number> }> = (props) => {
+export const EncoderConfigurator: VoidComponent<{ partIndex: Accessor<number> }> = (props) => {
   const context = useWizardContext();
   const part = createMemo(() => context.keyboard.parts[props.partIndex()]);
 
@@ -531,7 +523,7 @@ export const EncoderConfigurator: Component<{ partIndex: Accessor<number> }> = (
             <div class="border border-base-300 rounded-lg bg-base-100 p-3 flex flex-col gap-3">
               <div class="flex items-center justify-between cursor-default">
                 <div>
-                  <div class="font-semibold text-sm">Encoder {idx()}</div>
+                  <div class="font-semibold">Encoder {idx()}</div>
                   <div class="text-xs mt-px font-mono text-base-content/70">{(context.keyboard.parts.length > 1 ? "encoder_" + part().name : "encoder") + idx()}</div>
                 </div>
                 <Button class="btn btn-ghost btn-xs text-red-500" onClick={() => removeEncoder(idx())}>Remove</Button>
@@ -616,13 +608,347 @@ export const EncoderConfigurator: Component<{ partIndex: Accessor<number> }> = (
   );
 };
 
-export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> = (props) => {
+type DevicePropFieldProps = {
+  label: string;
+  required: boolean;
+  desc?: string | undefined;
+  value: AllDeviceDataTypes;
+  propKey: string;
+  propDef: DevicePropDefinition<AllDeviceDataTypes | undefined>;
+  onChange: (value: AllDeviceDataTypes | undefined) => void;
+  pins?: readonly string[] | undefined;
+  isPinBusy?: (pin: string, current?: string) => boolean;
+  pinLabelForPinId: (pinId: string) => string;
+};
+
+const devicePropWidgetRenderers: Record<AllWidgetTypes, VoidComponent<DevicePropFieldProps>> = {
+  pin: (props) => (
+    <label class="flex flex-col gap-1">
+      <span class="text-sm uppercase text-base-content/75">
+        {props.label}{props.required ? <span class="text-red-500 ml-1" title="Required">*</span> : null}
+      </span>
+      <select
+        class="select select-bordered select-sm"
+        value={(props.value as string) || ""}
+        onChange={(e) => props.onChange(e.currentTarget.value)}
+      >
+        <option value="">{props.required ? "Select pin" : "None"}</option>
+        <For each={props.pins}>{(pin) => (
+          <option value={pin} disabled={props.isPinBusy?.(pin, props.value as string | undefined)}>
+            {props.pinLabelForPinId(pin) + (props.isPinBusy?.(pin, props.value as string | undefined) ? " (in use)" : "")}
+          </option>
+        )}</For>
+      </select>
+      <Show when={props.desc}>
+        <span class="text-xs/tight text-base-content/60">{props.desc}</span>
+      </Show>
+    </label>
+  ),
+  checkbox: (props) => (
+    <label class="flex flex-col gap-1">
+      <span class="text-sm uppercase text-base-content/75">{props.label}</span>
+      <div class="flex items-center gap-2">
+        <input
+          type="checkbox"
+          class="toggle toggle-sm"
+          checked={Boolean(props.value)}
+          onChange={(e) => props.onChange(e.currentTarget.checked)}
+        />
+      </div>
+      <Show when={props.desc}>
+        <span class="text-xs/tight text-base-content/60">{props.desc}</span>
+      </Show>
+    </label>
+  ),
+  numberOptions: (props) => (
+    <label class="flex flex-col gap-1">
+      <span class="text-sm uppercase text-base-content/75">{props.label}</span>
+      <select
+        class="select select-bordered select-sm"
+        value={(props.value as number | undefined) ?? ""}
+        onChange={(e) => props.onChange(Number(e.currentTarget.value))}
+      >
+        <For each={(props.propDef.options as number[] | undefined)}>{(opt) => <option value={opt}>{opt}</option>}</For>
+      </select>
+      <Show when={props.desc}>
+        <span class="text-xs/tight text-base-content/60">{props.desc}</span>
+      </Show>
+    </label>
+  ),
+  stringOptions: (props) => (
+    <label class="flex flex-col gap-1">
+      <span class="text-sm uppercase text-base-content/75">{props.label}</span>
+      <select
+        class="select select-bordered select-sm"
+        value={(props.value as string | undefined) ?? ""}
+        onChange={(e) => props.onChange(e.currentTarget.value)}
+      >
+        <For each={(props.propDef.options as string[] | undefined)}>{(opt) => <option value={opt}>{opt}</option>}</For>
+      </select>
+      <Show when={props.desc}>
+        <span class="text-xs/tight text-base-content/60">{props.desc}</span>
+      </Show>
+    </label>
+  ),
+  dec: (props) => (
+    <label class="flex flex-col gap-1">
+      <span class="text-sm uppercase text-base-content/75">{props.label}</span>
+      <input
+        class="input input-bordered input-sm"
+        type="number"
+        min={props.propDef.min}
+        max={props.propDef.max}
+        value={(props.value as number | undefined) ?? ""}
+        onInput={(e) => {
+          const raw = e.currentTarget.value;
+          const parsed = raw === "" ? NaN : Number(raw);
+          props.onChange(Number.isNaN(parsed) ? undefined : parsed);
+        }}
+      />
+      <Show when={props.desc}>
+        <span class="text-xs/tight text-base-content/60">{props.desc}</span>
+      </Show>
+    </label>
+  ),
+  hex: (props) => {
+    const formatHex = (value: number | undefined) => value === undefined ? "" : value.toString(16);
+
+    const [inputValue, setInputValue] = createSignal(formatHex(props.value as number | undefined));
+    const [lastValid, setLastValid] = createSignal(formatHex(props.value as number | undefined));
+
+    createEffect(() => {
+      const formatted = formatHex(props.value as number | undefined);
+      setLastValid(formatted);
+      setInputValue(formatted);
+    });
+
+    const parseHex = (raw: string) => {
+      const trimmed = raw.trim();
+      if (trimmed === "") return { kind: "empty" } as const;
+      const normalized = trimmed.toLowerCase().startsWith("0x") ? trimmed.slice(2) : trimmed;
+      if (normalized === "") return { kind: "empty" } as const;
+      if (!/^[0-9a-fA-F]+$/.test(normalized)) return { kind: "invalid" } as const;
+      const parsed = parseInt(normalized, 16);
+      if (Number.isNaN(parsed)) return { kind: "invalid" } as const;
+      if (typeof props.propDef.min === "number" && parsed < props.propDef.min) return { kind: "invalid" } as const;
+      if (typeof props.propDef.max === "number" && parsed > props.propDef.max) return { kind: "invalid" } as const;
+      return { kind: "value", value: parsed } as const;
+    };
+
+    return (
+      <label class="flex flex-col gap-1">
+        <span class="text-sm uppercase text-base-content/75">{props.label}</span>
+        <div
+          class="input input-bordered input-sm font-mono"
+        >
+          <span>0x</span>
+          <input
+            type="text"
+            inputmode="text"
+            pattern="^(0x)?[0-9a-fA-F]*$"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            value={inputValue()}
+            onInput={(e) => {
+              const raw = e.currentTarget.value;
+              setInputValue(raw);
+              const result = parseHex(raw);
+              if (result.kind === "value") {
+                const formatted = formatHex(result.value);
+                setLastValid(formatted);
+                props.onChange(result.value);
+              } else if (result.kind === "empty") {
+                setLastValid("");
+                props.onChange(undefined);
+              }
+            }}
+            onBlur={() => {
+              const result = parseHex(inputValue());
+              if (result.kind === "invalid") {
+                setInputValue(lastValid());
+                return;
+              }
+              if (result.kind === "value") {
+                const formatted = formatHex(result.value);
+                setLastValid(formatted);
+                setInputValue(formatted);
+                return;
+              }
+              setInputValue("");
+            }}
+          />
+        </div>
+        <Show when={props.desc}>
+          <span class="text-xs/tight text-base-content/60">{props.desc}</span>
+        </Show>
+      </label>
+    );
+  },
+};
+
+const AddDevicePanel: VoidComponent<{
+  buses: Accessor<AnyBus[]>;
+  controllerInfo: Accessor<ControllerInfo | null>;
+  disabledByConflictBuses: Accessor<Set<BusName>>;
+  conflictingActiveFor: (busName: BusName) => BusName[];
+  busHasExclusive: (bus: AnyBus) => boolean;
+  hasDeviceType: (type: BusDeviceTypeName) => boolean;
+  addDevice: (busIdx: number, type: BusDeviceTypeName) => void;
+}> = (panelProps) => {
+  const [busPickerType, setBusPickerType] = createSignal<BusDeviceTypeName | null>(null);
+
+  const deviceOptionsForController = createMemo(() => {
+    return busDeviceTypes.filter((type: BusDeviceTypeName) => {
+      const meta = getBusDeviceMetadata(type);
+      return panelProps.buses().some((bus) => bus.type === meta.bus);
+    });
+  });
+
+  const busesForType = (type: BusDeviceTypeName) => {
+    const meta = getBusDeviceMetadata(type);
+    return panelProps.buses().filter((bus) => bus.type === meta.bus);
+  };
+
+  const busEligible = (type: BusDeviceTypeName, bus: AnyBus) => {
+    const meta = getBusDeviceMetadata(type);
+    if (meta.bus !== bus.type) return false;
+    if (panelProps.disabledByConflictBuses().has(bus.name)) return false;
+    if (panelProps.busHasExclusive(bus)) return false;
+    if ((bus.devices || []).length > 0 && meta.exclusive) return false;
+    return true;
+  };
+
+  // const busDisabledReason = (type: BusDeviceTypeName, bus: AnyBus) => {
+  //   const blockers = panelProps.conflictingActiveFor(bus.name);
+  //   if (panelProps.disabledByConflictBuses().has(bus.name)) {
+  //     return `Conflicts with active bus${blockers.length > 1 ? "es" : ""} ${blockers.join(", ")}`;
+  //   }
+  //   if (panelProps.busHasExclusive(bus)) return "Bus has an exclusive device";
+  //   const meta = getBusDeviceMetadata(type);
+  //   if (meta.exclusive && (bus.devices || []).length > 0) return "Exclusive device cannot share bus";
+  //   return "";
+  // };
+
+  const classLimitReachedForType = (type: BusDeviceTypeName) => {
+    const countDevicesOfClassInPart = (deviceClass: BusDeviceClass) => {
+      let count = 0;
+      for (const bus of panelProps.buses()) {
+        for (const d of bus.devices || []) {
+          const m = getBusDeviceMetadata(d.type);
+          if (m?.class === deviceClass) count++;
+        }
+      }
+      return count;
+    };
+
+    const meta = getBusDeviceMetadata(type);
+    const rule = meta ? deviceClassRules[meta.class as keyof typeof deviceClassRules] : undefined;
+    if (!rule || typeof rule.maxPerPart !== "number") return false;
+    return countDevicesOfClassInPart(meta.class) >= rule.maxPerPart;
+  };
+
+  const deviceDisabledReason = (type: BusDeviceTypeName): string => {
+    const meta = getBusDeviceMetadata(type);
+    if (classLimitReachedForType(type)) {
+      switch (meta.class) {
+        case "display": return "Only one display per part";
+        case "led_strip": return "Only one LED device per part";
+        case "shift_register": return "Only one shift register per part";
+        default: return "Class limit reached";
+      }
+    }
+    const buses = busesForType(type);
+    if (buses.length === 0) return "No compatible buses on this controller";
+    if (buses.every((bus) => !busEligible(type, bus))) return "No available buses";
+    return "";
+  };
+
+  const deviceButtonDisabled = (type: BusDeviceTypeName) => {
+    // Special case: nice!view needs BLE which is not available on rp2040
+    // If we ever needs a second check here, move to data driven approach
+    // Do not add more hardcoded exceptions here!
+    if (type === 'niceview' && panelProps.controllerInfo()?.soc === 'rp2040') return true;
+
+    if (classLimitReachedForType(type)) return true;
+    const buses = busesForType(type);
+    if (buses.length === 0) return true;
+    return buses.every((bus) => !busEligible(type, bus));
+  };
+
+  return (
+    <div class="border border-base-300 rounded-xl bg-base-200/50 p-3">
+      <div class="font-semibold text-sm">Add device</div>
+      {/* <div class="text-xs text-base-content/75">Choose a device, then select a bus.</div> */}
+      <div class="mt-2 flex flex-wrap gap-2">
+        <For each={deviceOptionsForController()}>{(type) => {
+          const disabled = createMemo(() => deviceButtonDisabled(type));
+          const setOpen = (next: boolean) => setBusPickerType(next ? type : null);
+
+          return (
+            <Popover open={busPickerType() === type} onOpenChange={(next) => !disabled() && setOpen(next)} placement="bottom-start" gutter={6}>
+              <Popover.Anchor>
+                <Button
+                  class="btn btn-sm btn-soft"
+                  disabled={disabled()}
+                  title={disabled() ? deviceDisabledReason(type) : undefined}
+                  onClick={() => {
+                    if (disabled()) return;
+                    setOpen(!(busPickerType() === type));
+                  }}
+                >
+                  {(getBusDeviceMetadata(type))?.shortName || type}
+                </Button>
+              </Popover.Anchor>
+              <Popover.Portal>
+                <Popover.Content class="popover--content w-64 max-w-sm p-3 flex flex-col gap-2" aria-label={`Add ${(getBusDeviceMetadata(type))?.fullName || type}`}>
+                  <div class="text-sm text-center font-semibold">Add {(getBusDeviceMetadata(type))?.fullName || type}</div>
+                  <div class="flex flex-wrap gap-2">
+                    <For each={busesForType(type)}>{(bus) => {
+                      const enabled = () => busEligible(type, bus);
+                      return (
+                        <Button
+                          class="btn btn-soft w-full"
+                          disabled={!enabled()}
+                          // title={enabled() ? undefined : busDisabledReason(type, bus)}
+                          onClick={() => {
+                            if (!enabled()) return;
+                            panelProps.addDevice(panelProps.buses().findIndex((b) => b.name === bus.name), type);
+                            setOpen(false);
+                          }}
+                        >
+                          {bus.name}
+                        </Button>
+                      );
+                    }}</For>
+                  </div>
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover>
+          );
+        }}</For>
+      </div>
+
+      <div class="text-xs text-base-content/75 mt-2">
+        Configuring SPI/I2C devices was not tested thoroughly with all possible configurations and may produce broken builds.
+        Please join the <Link class="link" href="https://zmk.dev/community/discord/invite" target="_blank" rel="noopener noreferrer">ZMK Community Discord</Link> for help
+        and send feedback to @genteure.
+      </div>
+    </div>
+  );
+};
+
+export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number> }> = (props) => {
   const context = useWizardContext();
   const part = createMemo(() => context.keyboard.parts[props.partIndex()]);
   const buses = (() => part().buses);
 
-  const controllerInfo = createMemo(() => controllerInfos[part().controller] || null);
-  const pinLabelForPinId = (pinId: string): string => controllerInfo()?.pins?.[pinId]?.displayName || pinId;
+  const controllerInfo = createMemo(() => controllerInfos[part().controller]);
+  const socBusMetadata = createMemo(() => socBusData[controllerInfo().soc]);
+  const busTooltip = () => socBusMetadata().tooltip;
+
+  const pinLabelForPinId = (pinId: string): string => controllerInfo().pins[pinId]?.displayName || pinId;
 
   const hasDeviceType = (type: BusDeviceTypeName) => {
     return buses().some((bus) => (bus.devices || []).some((d) => d.type === type));
@@ -634,74 +960,50 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
   const disabledByConflictBuses = createMemo(() => {
     const conflicts: Set<BusName> = new Set();
     for (const bus of activeBuses()) {
-      const conflictList = controllerInfo()?.busConflicts[bus.name] || [];
+      const conflictList = socBusMetadata().conflicts[bus.name] || [];
       for (const conflictBusName of conflictList) conflicts.add(conflictBusName);
     }
     return conflicts;
   });
 
   const conflictingActiveFor = (busName: BusName) => activeBuses()
-    .filter((bus) => (controllerInfo()?.busConflicts[bus.name] || []).includes(busName))
+    .filter((bus) => (socBusMetadata().conflicts[bus.name] || []).includes(busName))
     .map((bus) => bus.name);
 
-  const [selectedBusIndex, setSelectedBusIndex] = createSignal<number>(0);
-  const selectedBus = createMemo(() => buses()[selectedBusIndex()] || null);
-  createEffect(() => {
-    const list = buses();
-    if (list.length === 0) {
-      setSelectedBusIndex(-1);
-      return;
+  const busHasExclusive = (b: AnyBus) => (b.devices || []).some((d) => getBusDeviceMetadata(d.type).exclusive);
+
+  type BusPinKey = "sda" | "scl" | "mosi" | "miso" | "sck";
+  type SkipUsage = { busIndex: number; key: BusPinKey };
+
+  const isPinUsedInPart = (partState: { buses?: AnyBus[]; pins?: PinSelection }, pinId: string, skip: SkipUsage[] = []) => {
+    // pin used for non-bus purpose on this part
+    const usage = partState.pins?.[pinId];
+    if (usage && usage !== "bus") return true;
+
+    const shouldSkip = (idx: number, key: BusPinKey) => skip.some((s) => s.busIndex === idx && s.key === key);
+
+    for (const [idx, bus] of (partState.buses || []).entries()) {
+      if (isI2cBus(bus)) {
+        if (!shouldSkip(idx, "sda") && bus.sda === pinId) return true;
+        if (!shouldSkip(idx, "scl") && bus.scl === pinId) return true;
+      } else if (isSpiBus(bus)) {
+        if (!shouldSkip(idx, "mosi") && bus.mosi === pinId) return true;
+        if (!shouldSkip(idx, "miso") && bus.miso === pinId) return true;
+        if (!shouldSkip(idx, "sck") && bus.sck === pinId) return true;
+      }
+
+      for (const device of bus.devices || []) {
+        for (const propKey of pinPropKeysForDevice(device.type)) {
+          const propPin = (device as Record<string, string | undefined>)[propKey];
+          if (propPin === pinId) return true;
+        }
+      }
     }
 
-    const disabled = disabledByConflictBuses();
-    const firstAvailable = list.findIndex((bus) => !disabled.has(bus.name));
-    if (firstAvailable === -1) {
-      setSelectedBusIndex(-1);
-      return;
-    }
-
-    const idx = selectedBusIndex();
-    const current = list[idx];
-    if (idx < 0 || idx >= list.length || (current && disabled.has(current.name))) {
-      setSelectedBusIndex(firstAvailable);
-    }
-  });
-
-  const deviceOptionsForBus = (bus: AnyBus | null) => {
-    if (!bus) return [] as BusDeviceTypeName[];
-    return bus.type === "i2c" ? i2cDeviceTypes : spiDeviceTypes;
+    return false;
   };
 
-  const availableDeviceOptions = createMemo(() => {
-    const bus = selectedBus();
-    const options = deviceOptionsForBus(bus);
-    if (!bus) return [] as BusDeviceTypeName[];
-
-    const busHasExclusive = (b: AnyBus) => (b.devices || []).some((d) => busDeviceInfos[d.type as BusDeviceTypeName]?.exclusive);
-
-    // If the bus already contains an exclusive device, no other devices may be added
-    if (busHasExclusive(bus)) return [] as BusDeviceTypeName[];
-
-    return options.filter((opt) => {
-      if (hasDeviceType(opt)) return false;
-      // If the option itself is exclusive and bus already has devices, don't allow adding it
-      if ((bus.devices || []).length > 0 && busDeviceInfos[opt]?.exclusive) return false;
-      return true;
-    });
-  });
-
-  const [newDeviceType, setNewDeviceType] = createSignal<BusDeviceTypeName | null>(null);
-  createEffect(() => {
-    const available = availableDeviceOptions();
-    if (available.length === 0) {
-      setNewDeviceType(null);
-      return;
-    }
-    if (!newDeviceType() || !available.includes(newDeviceType() as BusDeviceTypeName)) {
-      setNewDeviceType(available[0]);
-    }
-  });
-
+  // TODO validate what is this doing
   const clearBusPins = (bus: AnyBus, partPins?: PinSelection) => {
     const unset = (pinId?: string) => {
       if (!pinId) return;
@@ -726,20 +1028,28 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
       if (!bus) return;
 
       if (isI2cBus(bus) && (key === "sda" || key === "scl")) {
-        const prev = key === "sda" ? bus.sda : bus.scl;
+        // const prev = key === "sda" ? bus.sda : bus.scl;
+        const prev = bus[key];
         if (prev && prev !== value && part.pins?.[prev] === "bus") {
-          delete part.pins[prev];
+          const stillUsed = isPinUsedInPart(part, prev, [{ busIndex, key }]);
+          if (!stillUsed) {
+            delete part.pins[prev];
+          }
         }
-        if (key === "sda") bus.sda = value || undefined;
-        if (key === "scl") bus.scl = value || undefined;
+        bus[key] = value;
       } else if (isSpiBus(bus) && (key === "mosi" || key === "miso" || key === "sck")) {
-        const prev = key === "mosi" ? bus.mosi : key === "miso" ? bus.miso : bus.sck;
+        // const prev = key === "mosi" ? bus.mosi : key === "miso" ? bus.miso : bus.sck;
+        const prev = bus[key];
         if (prev && prev !== value && part.pins?.[prev] === "bus") {
-          delete part.pins[prev];
+          const stillUsed = isPinUsedInPart(part, prev, [{ busIndex, key }]);
+          if (!stillUsed) {
+            delete part.pins[prev];
+          }
         }
-        if (key === "mosi") bus.mosi = value || undefined;
-        if (key === "miso") bus.miso = value || undefined;
-        if (key === "sck") bus.sck = value || undefined;
+        bus[key] = value;
+      } else {
+        // invalid key for bus type
+        return;
       }
 
       if (value) {
@@ -748,6 +1058,7 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
       }
 
       if (!bus.devices || bus.devices.length === 0) {
+        // TOOO validate what this call is doing
         clearBusPins(bus, part.pins);
       }
     }));
@@ -759,28 +1070,33 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
       if (!bus) return;
       const device = bus.devices?.[deviceIndex];
       if (!device) return;
+      const meta = getBusDeviceMetadata(device.type);
+      if (!meta) return;
+      const prop = meta.props[key as keyof typeof meta.props] as DevicePropDefinition<unknown> | undefined;
+      if (!prop) return;
+      const deviceRecord = device as Record<string, unknown>;
 
-      if (key === "cs" && isSpiDevice(device)) {
-        const prev = device.cs;
-        if (prev && prev !== value && part.pins?.[prev] === "bus") {
+      if (prop.widget === "pin") {
+        const prev = deviceRecord[key] as string | undefined;
+        const next = typeof value === "string" && value.length > 0 ? value : undefined;
+        if (prev && prev !== next && part.pins?.[prev] === "bus") {
           delete part.pins[prev];
         }
-        if (typeof value === "string" && value.length > 0) {
+        deviceRecord[key] = next;
+        if (next) {
           part.pins = part.pins || {};
-          part.pins[value] = "bus";
+          part.pins[next] = "bus";
         }
-        device.cs = typeof value === "string" ? value : device.cs;
         return;
       }
 
-      if (isSSD1306(device)) {
-        if (key === "add" && typeof value === "number") device.add = value;
-        if (key === "width" && typeof value === "number") device.width = value;
-        if (key === "height" && typeof value === "number") device.height = value;
-      } else if (isWS2812(device)) {
-        if (key === "length" && typeof value === "number") device.length = value;
-      } else if (isShiftRegisterDevice(device)) {
-        if (key === "ngpios" && typeof value === "number") device.ngpios = value as ShiftRegisterDevice["ngpios"];
+      if (prop.widget === "checkbox") {
+        deviceRecord[key] = Boolean(value);
+        return;
+      }
+
+      if (typeof value === "number" && !Number.isNaN(value)) {
+        deviceRecord[key] = value;
       }
     }));
   };
@@ -790,9 +1106,14 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
       const bus = part.buses?.[busIndex];
       if (!bus) return;
       const removed = bus.devices?.splice(deviceIndex, 1)?.[0];
-
-      if (removed && isSpiDevice(removed) && removed.cs && part.pins?.[removed.cs] === "bus") {
-        delete part.pins[removed.cs];
+      if (removed) {
+        const pinProps = pinPropKeysForDevice(removed.type);
+        pinProps.forEach((propKey) => {
+          const pinId = (removed as Record<string, string | undefined>)[propKey];
+          if (pinId && part.pins?.[pinId] === "bus") {
+            delete part.pins[pinId];
+          }
+        });
       }
       if (!bus.devices || bus.devices.length === 0) {
         clearBusPins(bus, part.pins);
@@ -801,69 +1122,89 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
   };
 
   const addDevice = (busIndex: number, type: BusDeviceTypeName) => {
-    const bus = buses()[busIndex];
-    if (!bus) return;
-    if (hasDeviceType(type)) return;
-    const device = defaultDevice(type);
-    // Prevent exclusivity conflicts
-    const busHasExclusive = (b: AnyBus) => (b.devices || []).some((d) => busDeviceInfos[d.type as BusDeviceTypeName]?.exclusive);
-    if (busHasExclusive(bus)) return;
-    if ((bus.devices || []).length > 0 && busDeviceInfos[type]?.exclusive) return;
-    if (isI2cBus(bus) && device.type !== "ssd1306") return;
-    if (isSpiBus(bus) && device.type === "ssd1306") return;
     context.setKeyboard("parts", props.partIndex(), produce((part) => {
-      const target = part.buses?.[busIndex];
-      if (!target) return;
-      if (isI2cBus(target) && device.type === "ssd1306") {
-        addDeviceToBus(target, structuredClone(device));
-      } else if (isSpiBus(target) && device.type !== "ssd1306") {
-        addDeviceToBus(target, structuredClone(device));
+      const targetBus = part.buses?.[busIndex];
+      if (!targetBus) return;
+
+      const meta = getBusDeviceMetadata(type);
+      if (meta.bus !== targetBus.type) return;
+
+      // Enforce per-part class limits (e.g., only one display/LED/shift register)
+      const rule = deviceClassRules[meta.class];
+      if (typeof rule.maxPerPart === "number") {
+        let count = 0;
+        for (const b of part.buses) {
+          for (const d of b.devices) {
+            const m = getBusDeviceMetadata(d.type);
+            if (m?.class === meta.class) count++;
+          }
+        }
+        if (count >= rule.maxPerPart) return;
       }
+
+      if (busHasExclusive(targetBus)) return;
+
+      if (targetBus.devices.length > 0 && meta.exclusive) return;
+
+      const device = defaultDevice(type);
+      addDeviceToBus(targetBus, structuredClone(device));
     }));
   };
 
-  const BusCard: Component<{ bus: AnyBus; index: number }> = (cardProps) => {
-    const pinChoices = createMemo(() => {
-      const info = controllerInfo();
-      if (!info) return undefined;
-      if (isI2cBus(cardProps.bus)) {
-        return info.pinctrlChoices({ type: "i2c", name: cardProps.bus.name });
+  const BusCard: VoidComponent<{ bus: AnyBus; index: number }> = (cardProps) => {
+    const busForPinAccess = createMemo(() => cardProps.bus as Partial<I2cBus> & Partial<SpiBus>);
+
+    const pinChoices = createMemo(() => controllerInfo()?.pinctrlChoices(cardProps.bus.name) ?? null);
+    const pinChoicesForPinAccess = () => pinChoices() as (Partial<PinctrlI2cPinChoices> & Partial<PinctrlSpiPinChoices>) | null;
+
+    const pinChoicesHas = (type: 'i2c' | 'spi', signal: keyof PinctrlI2cPinChoices | keyof PinctrlSpiPinChoices) => {
+      const choices = pinChoices();
+      if (type === 'i2c') {
+        if (choices?.type !== 'i2c') return false;
+        return !!((choices as PinctrlI2cPinChoices)[signal as keyof PinctrlI2cPinChoices]);
+      } else {
+        if (choices?.type !== 'spi') return false;
+        return !!((choices as PinctrlSpiPinChoices)[signal as keyof PinctrlSpiPinChoices]);
       }
-      return info.pinctrlChoices({ type: "spi", name: cardProps.bus.name });
-    });
-    const i2cPinChoices = createMemo<PinctrlI2cPinChoices | null>(() => {
-      const choices = pinChoices();
-      return isI2cBus(cardProps.bus) && choices && "sda" in choices ? choices : null;
-    });
-    const spiPinChoices = createMemo<PinctrlSpiPinChoices | null>(() => {
-      const choices = pinChoices();
-      return isSpiBus(cardProps.bus) && choices && "mosi" in choices ? choices : null;
-    });
+    };
+
+    const requiredBySoc = createMemo(() => socBusMetadata().pinRequirements[cardProps.bus.name] || []);
     const requiredPins = createMemo(() => {
       const set = new Set<string>();
       // Device level requirements
       for (const d of cardProps.bus.devices || []) {
-        const info = busDeviceInfos[d.type as BusDeviceTypeName];
-        if (!info?.needs) continue;
-        for (const k of Object.keys(info.needs)) set.add(k);
+        requiredBusPinsForDevice(d.type).forEach((pin) => set.add(pin));
       }
       // SoC-level hardware requirements
-      const req = busPinRequirements(part().controller, cardProps.bus.name);
-      for (const k of req) set.add(k);
+      for (const k of requiredBySoc()) set.add(k);
       return set;
     });
-    const i2cBus = createMemo(() => isI2cBus(cardProps.bus) ? cardProps.bus : null);
-    const spiBus = createMemo(() => isSpiBus(cardProps.bus) ? cardProps.bus : null);
+
     const isActive = createMemo(() => (cardProps.bus.devices.length || 0) > 0);
     const isConflicted = createMemo(() => disabledByConflictBuses().has(cardProps.bus.name));
     const conflictedWith = createMemo(() => conflictingActiveFor(cardProps.bus.name));
 
-    const pinsUsage = (() => part().pins);
-
     const isPinBusy = (pinId: string, current?: string) => {
       if (!pinId) return false;
       if (current && pinId === current) return false;
-      return Boolean(pinsUsage()[pinId]);
+      return isPinUsedInPart(part(), pinId);
+    };
+
+    const isBusPinBusy = (pinId: string, signal: BusPinKey) => {
+      if (!pinId) return false;
+
+      const skip: SkipUsage[] = [{ busIndex: cardProps.index, key: signal }];
+      if (isSpiBus(cardProps.bus) && (signal === "mosi" || signal === "miso")) {
+        const counterpart = signal === "mosi" ? "miso" : "mosi";
+        if (cardProps.bus[counterpart] === pinId) {
+          skip.push({ busIndex: cardProps.index, key: counterpart });
+        }
+      }
+
+      const current = busForPinAccess()[signal];
+      if (current && pinId === current) return false;
+
+      return isPinUsedInPart(part(), pinId, skip);
     };
 
     return (
@@ -885,7 +1226,7 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
             >
               {cardProps.bus.type.toUpperCase()}
             </span>
-            <span class="font-semibold">{cardProps.bus.name}</span>
+            <span class="font-semibold text-lg">{cardProps.bus.name}</span>
           </div>
           <div class="flex items-center gap-2 text-xs text-base-content/60">
             <Show when={!isConflicted()} fallback={
@@ -899,247 +1240,143 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
             </Show>
           </div>
         </div>
+
         <Show when={isConflicted()}>
           <div class="text-xs font-semibold">
             Unavailable due to conflicts with {conflictedWith().join(", ")}.
           </div>
         </Show>
+
         <Show when={isActive()}>
           {/* Show hardware-required signals (SoC-level) when present */}
-          <Show when={busPinRequirements(part().controller, cardProps.bus.name).length > 0}>
+          <Show when={requiredBySoc().length > 0}>
             <div class="text-xs text-base-content/70">
               This bus requires
               <span class="ml-2">
-                {busPinRequirements(part().controller, cardProps.bus.name).map((need) => (
+                {requiredBySoc().map((need) => (
                   <span class="badge badge-ghost badge-sm mr-1">{need.toUpperCase()}</span>
                 ))}
               </span>
             </div>
           </Show>
-          <Show when={(cardProps.bus.devices || []).some((d) => busDeviceInfos[d.type as BusDeviceTypeName]?.exclusive) && (cardProps.bus.devices || []).length > 1}>
-            <div class="text-xs text-red-600 font-semibold">This bus contains an exclusive device and cannot share with other devices.</div>
-          </Show>
+
           <Show when={pinChoices()} fallback={<div class="text-xs text-base-content/60">Pin selections unavailable for this controller.</div>}>
             <div class="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
-              <Show when={Boolean(i2cBus() && i2cPinChoices())}>
-                <>
-                  <label class="flex flex-col gap-1 text-sm">
-                    <span class="text-xs uppercase text-base-content/70">SDA{requiredPins().has('sda') && <span class="text-red-500 ml-1" title="Required" aria-label="Required">*</span>}</span>
-                    <select
-                      class="select select-bordered select-sm"
-                      value={i2cBus()?.sda || ""}
-                      onChange={(e) => setBusPin(cardProps.index, "sda", e.currentTarget.value || undefined)}
-                    >
-                      <option value="">None</option>
-                      <For each={i2cPinChoices()!.sda}>{(pin) => (
-                        <option value={pin} disabled={isPinBusy(pin, i2cBus()!.sda)}>
-                          {pinLabelForPinId(pin) + (isPinBusy(pin, i2cBus()!.sda) ? " (in use)" : "")}
-                        </option>
-                      )}</For>
-                    </select>
-                  </label>
-                  <label class="flex flex-col gap-1 text-sm">
-                    <span class="text-xs uppercase text-base-content/70">SCL{requiredPins().has('scl') && <span class="text-red-500 ml-1" title="Required" aria-label="Required">*</span>}</span>
-                    <select
-                      class="select select-bordered select-sm"
-                      value={i2cBus()?.scl || ""}
-                      onChange={(e) => setBusPin(cardProps.index, "scl", e.currentTarget.value || undefined)}
-                    >
-                      <option value="">None</option>
-                      <For each={i2cPinChoices()!.scl}>{(pin) => (
-                        <option value={pin} disabled={isPinBusy(pin, i2cBus()!.scl)}>
-                          {pinLabelForPinId(pin) + (isPinBusy(pin, i2cBus()!.scl) ? " (in use)" : "")}
-                        </option>
-                      )}</For>
-                    </select>
-                  </label>
-                </>
-              </Show>
-
-              <Show when={Boolean(spiBus() && spiPinChoices())}>
-                <>
-                  <label class="flex flex-col gap-1 text-sm">
-                    <span class="text-xs uppercase text-base-content/70">MOSI{requiredPins().has('mosi') && <span class="text-red-500 ml-1" title="Required" aria-label="Required">*</span>}</span>
-                    <select
-                      class="select select-bordered select-sm"
-                      value={spiBus()?.mosi || ""}
-                      onChange={(e) => setBusPin(cardProps.index, "mosi", e.currentTarget.value || undefined)}
-                    >
-                      <option value="">None</option>
-                      <For each={spiPinChoices()!.mosi}>{(pin) => (
-                        <option value={pin} disabled={isPinBusy(pin, spiBus()!.mosi)}>
-                          {pinLabelForPinId(pin) + (isPinBusy(pin, spiBus()!.mosi) ? " (in use)" : "")}
-                        </option>
-                      )}</For>
-                    </select>
-                  </label>
-                  <label class="flex flex-col gap-1 text-sm">
-                    <span class="text-xs uppercase text-base-content/70">MISO{requiredPins().has('miso') && <span class="text-red-500 ml-1" title="Required" aria-label="Required">*</span>}</span>
-                    <select
-                      class="select select-bordered select-sm"
-                      value={spiBus()?.miso || ""}
-                      onChange={(e) => setBusPin(cardProps.index, "miso", e.currentTarget.value || undefined)}
-                    >
-                      <option value="">None</option>
-                      <For each={spiPinChoices()!.miso}>{(pin) => (
-                        <option value={pin} disabled={isPinBusy(pin, spiBus()!.miso)}>
-                          {pinLabelForPinId(pin) + (isPinBusy(pin, spiBus()!.miso) ? " (in use)" : "")}
-                        </option>
-                      )}</For>
-                    </select>
-                  </label>
-                  <label class="flex flex-col gap-1 text-sm">
-                    <span class="text-xs uppercase text-base-content/70">SCK{requiredPins().has('sck') && <span class="text-red-500 ml-1" title="Required" aria-label="Required">*</span>}</span>
-                    <select
-                      class="select select-bordered select-sm"
-                      value={spiBus()?.sck || ""}
-                      onChange={(e) => setBusPin(cardProps.index, "sck", e.currentTarget.value || undefined)}
-                    >
-                      <option value="">None</option>
-                      <For each={spiPinChoices()!.sck}>{(pin) => (
-                        <option value={pin} disabled={isPinBusy(pin, spiBus()!.sck)}>
-                          {pinLabelForPinId(pin) + (isPinBusy(pin, spiBus()!.sck) ? " (in use)" : "")}
-                        </option>
-                      )}</For>
-                    </select>
-                  </label>
-                </>
-              </Show>
+              <For each={[
+                ['i2c', 'sda'],
+                ['i2c', 'scl'],
+                ['spi', 'mosi'],
+                ['spi', 'miso'],
+                ['spi', 'sck'],
+              ] as const}>
+                {([type, signal]) => (
+                  <Show when={pinChoicesHas(type, signal)}>
+                    <label class="flex flex-col gap-1">
+                      <span class="text-sm uppercase text-base-content/75">{signal}{
+                        requiredPins().has(signal)
+                        && <span class="text-red-500 ml-1" title="Required" aria-label="Required">*</span>
+                      }</span>
+                      <select
+                        class="select select-bordered select-sm"
+                        value={busForPinAccess()[signal] || ""}
+                        onChange={(e) => setBusPin(cardProps.index, signal, e.currentTarget.value)}
+                      >
+                        <option value="">None</option>
+                        <For each={pinChoicesForPinAccess()?.[signal]}>{(pin) => (
+                          <option value={pin} disabled={isBusPinBusy(pin, signal as BusPinKey)}>
+                            {pinLabelForPinId(pin) + (isBusPinBusy(pin, signal as BusPinKey) ? " (in use)" : "")}
+                          </option>
+                        )}</For>
+                      </select>
+                    </label>
+                  </Show>
+                )}
+              </For>
             </div>
           </Show>
 
           <div class="space-y-2">
             <For each={cardProps.bus.devices}>
-              {(device, devIdx) => (
-                <div class="border border-base-300 rounded-lg bg-base-100 p-3">
-                  <div class="flex items-center justify-between gap-2">
-                    <div class="font-semibold text-sm">
-                      {busDeviceInfos[device.type as BusDeviceTypeName]?.name || device.type}
-                      <Show when={busDeviceInfos[device.type as BusDeviceTypeName]?.exclusive}>
-                        <span
-                          class="ml-2 badge badge-xs badge-ghost"
-                          title="Exclusive device: cannot share bus with other devices">
-                          Exclusive
+              {(device, devIdx) => {
+                const deviceData = createMemo(() => {
+                  const meta = getBusDeviceMetadata(device.type);
+                  const requires = [
+                    ...requiredBusPinsForDevice(device.type),
+                    ...Object.entries(meta.props)
+                      .filter(([, prop]) => prop.widget === "pin" && !prop.optional)
+                      .map(([key, prop]) => prop.name || key),
+                  ];
+
+                  return {
+                    meta,
+                    requires,
+                    propEntries: Object.entries(meta.props),
+                  };
+                });
+
+                return (
+                  <div class="border border-base-300 rounded-lg bg-base-100 p-3">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="font-semibold">
+                        {deviceData().meta.fullName}
+                        <Show when={deviceData().meta.exclusive}>
+                          <span
+                            class="ml-2 badge badge-xs badge-ghost"
+                            title="Exclusive device: cannot share bus with other devices">
+                            Exclusive
+                          </span>
+                        </Show>
+                      </div>
+                      <Button
+                        class="btn btn-ghost btn-xs text-red-500"
+                        onClick={() => removeDevice(cardProps.index, devIdx())}
+                        title="Remove device"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                    <Show when={deviceData().requires.length}>
+                      <div class="text-xs text-base-content/70">
+                        Device requires
+                        <span class="ml-2">
+                          <For each={deviceData().requires}>{(need) => (
+                            <span class="badge badge-ghost badge-sm mr-1 uppercase">{need}</span>
+                          )}</For>
                         </span>
-                      </Show>
+                      </div>
+                    </Show>
+                    <Show when={deviceData().meta.module}>
+                      <div class="text-xs text-base-content/70 mt-1">
+                        External device driver from <Link class="link" target="_blank" rel="noopener" href={`https://github.com/${deviceData().meta.module?.remote}/${deviceData().meta.module?.repo}/tree/${deviceData().meta.module?.rev}`}>{`https://github.com/${deviceData().meta.module?.remote}/${deviceData().meta.module?.repo}`}</Link>
+                      </div>
+                    </Show>
+
+                    <div class="divider my-1"></div>
+                    <div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 mt-2 text-sm">
+                      <For each={deviceData().propEntries}>
+                        {([propKey, propDef]) => (
+                          <Dynamic
+                            component={devicePropWidgetRenderers[propDef.widget]}
+                            label={propDef.name || propKey}
+                            required={!propDef.optional}
+                            desc={propDef.desc}
+                            value={(device as Record<string, AllDeviceDataTypes>)[propKey]}
+                            propKey={propKey}
+                            propDef={propDef}
+                            // TODO figure out this pins situation
+                            pins={(propDef.widget === "pin"
+                              ? Object.keys(controllerInfo().pins)
+                              : undefined)}
+                            isPinBusy={isPinBusy}
+                            pinLabelForPinId={pinLabelForPinId}
+                            onChange={(val) => setDeviceField(cardProps.index, devIdx(), propKey, val)}
+                          />
+                        )}
+                      </For>
                     </div>
-                    <Button
-                      class="btn btn-ghost btn-xs text-red-500"
-                      onClick={() => removeDevice(cardProps.index, devIdx())}
-                      title="Remove device"
-                    >
-                      Remove
-                    </Button>
                   </div>
-                  <Show when={Object.keys(busDeviceInfos[device.type as BusDeviceTypeName]?.needs || {}).length > 0}>
-                    <div class="text-xs text-base-content/70">
-                      Device requires
-                      <span class="ml-2">
-                        {Object.keys(busDeviceInfos[device.type as BusDeviceTypeName]?.needs || {}).map((need) => (
-                          <span class="badge badge-ghost badge-sm mr-1">{need.toUpperCase()}</span>
-                        ))}
-                      </span>
-                    </div>
-                  </Show>
-                  <div class="grid gap-2 sm:grid-cols-2 md:grid-cols-3 mt-2 text-sm">
-                    {(() => {
-                      const ssdDevice = isSSD1306(device) ? device : null;
-                      if (!ssdDevice) return null;
-                      return (
-                        <>
-                          <label class="flex flex-col gap-1">
-                            <span class="text-xs uppercase text-base-content/70">Address</span>
-                            <input
-                              class="input input-bordered input-sm"
-                              type="number"
-                              min={0}
-                              max={0x7f}
-                              value={ssdDevice.add}
-                              onInput={(e) => setDeviceField(cardProps.index, devIdx(), "add", Number(e.currentTarget.value))} />
-                          </label>
-                          <label class="flex flex-col gap-1">
-                            <span class="text-xs uppercase text-base-content/70">Width</span>
-                            <input
-                              class="input input-bordered input-sm"
-                              type="number"
-                              min={1}
-                              value={ssdDevice.width}
-                              onInput={(e) => setDeviceField(cardProps.index, devIdx(), "width", Number(e.currentTarget.value))} />
-                          </label>
-                          <label class="flex flex-col gap-1">
-                            <span class="text-xs uppercase text-base-content/70">Height</span>
-                            <input
-                              class="input input-bordered input-sm"
-                              type="number"
-                              min={1}
-                              value={ssdDevice.height}
-                              onInput={(e) => setDeviceField(cardProps.index, devIdx(), "height", Number(e.currentTarget.value))} />
-                          </label>
-                        </>
-                      );
-                    })()}
-
-                    {(() => {
-                      const spiChoices = spiPinChoices();
-                      const spiDevice = isSpiDevice(device) && device.type !== "ws2812" ? device : null;
-                      if (!spiDevice || !spiChoices) return null;
-                      const needsCs = (busDeviceInfos[spiDevice.type as BusDeviceTypeName]?.needs || {}).cs;
-                      return (
-                        <label class="flex flex-col gap-1">
-                          <span class="text-xs uppercase text-base-content/70">CS{needsCs ? <span class="text-red-500 ml-1" title="Required">*</span> : null}</span>
-                          <select
-                            class="select select-bordered select-sm"
-                            disabled={!isActive()}
-                            value={spiDevice.cs || ""}
-                            onChange={(e) => setDeviceField(cardProps.index, devIdx(), "cs", e.currentTarget.value)}
-                          >
-                            <option value="">None</option>
-                            <For each={spiChoices.cs}>{(pin) => (
-                              <option value={pin} disabled={isPinBusy(pin, spiDevice.cs)}>
-                                {pinLabelForPinId(pin) + (isPinBusy(pin, spiDevice.cs) ? " (in use)" : "")}
-                              </option>
-                            )}</For>
-                          </select>
-                        </label>
-                      );
-                    })()}
-
-                    {(() => {
-                      const wsDevice = isWS2812(device) ? device : null;
-                      if (!wsDevice) return null;
-                      return (
-                        <label class="flex flex-col gap-1">
-                          <span class="text-xs uppercase text-base-content/70">LED Count</span>
-                          <input
-                            class="input input-bordered input-sm"
-                            type="number"
-                            min={1}
-                            max={256}
-                            value={wsDevice.length}
-                            onInput={(e) => setDeviceField(cardProps.index, devIdx(), "length", Number(e.currentTarget.value))} />
-                        </label>
-                      );
-                    })()}
-
-                    {(() => {
-                      const shifter = isShiftRegisterDevice(device) ? device : null;
-                      if (!shifter) return null;
-                      return (
-                        <label class="flex flex-col gap-1">
-                          <span class="text-xs uppercase text-base-content/70">Outputs</span>
-                          <select
-                            class="select select-bordered select-sm"
-                            value={shifter.ngpios}
-                            onChange={(e) => setDeviceField(cardProps.index, devIdx(), "ngpios", Number(e.currentTarget.value))}
-                          >
-                            <For each={[8, 16, 24, 32] as const}>{(n) => <option value={n}>{n}</option>}</For>
-                          </select>
-                        </label>
-                      );
-                    })()}
-                  </div>
-                </div>
-              )}
+                );
+              }}
             </For>
           </div>
 
@@ -1151,67 +1388,25 @@ export const BusDevicesConfigurator: Component<{ partIndex: Accessor<number> }> 
   return <div class="flex flex-col gap-3">
     <Show when={controllerInfo()} fallback={<div class="text-center text-sm text-base-content/60">Select a controller to configure buses.</div>}>
       <Show when={buses().length > 0} fallback={<div class="text-center text-sm text-base-content/60">No buses available for this controller.</div>}>
-        <div class="border border-base-300 rounded-xl bg-base-200/50 p-3">
-          <div class="font-semibold text-sm">Add device</div>
-          <div class="text-xs text-base-content/75">Choose target bus and device type.</div>
-          <div class="mt-2 flex items-center gap-2">
-            <select
-              class="select select-sm select-bordered"
-              disabled={selectedBusIndex() === -1}
-              value={selectedBusIndex()}
-              onChange={(e) => setSelectedBusIndex(Number(e.currentTarget.value))}
-            >
-              <For each={buses()}>{(bus, idx) => {
-                const disabled = () => disabledByConflictBuses().has(bus.name);
-                const reason = () => {
-                  const blockers = conflictingActiveFor(bus.name);
-                  return disabled()
-                    ? `Conflicts with active bus${blockers.length > 1 ? "es" : ""} ${blockers.join(", ")}`
-                    : "";
-                };
-                return (
-                  <option
-                    value={idx()}
-                    disabled={disabled()}
-                    title={reason() || undefined}
-                    class={disabled() ? "opacity-50" : undefined}
-                  >
-                    {bus.name} ({bus.type.toUpperCase()}){disabled() ? " (conflicts)" : ""}
-                  </option>
-                );
-              }}
-              </For>
-            </select>
-            <select
-              class="select select-sm select-bordered"
-              disabled={!selectedBus() || availableDeviceOptions().length === 0}
-              value={newDeviceType() || ""}
-              onChange={(e) => setNewDeviceType(e.currentTarget.value as BusDeviceTypeName)}
-            >
-              <option value="" disabled>Select device</option>
-              <For each={availableDeviceOptions()}>{(opt) => (
-                <option value={opt}>{busDeviceInfos[opt]?.name || opt}</option>
-              )}</For>
-            </select>
-            <Button
-              class="btn btn-sm btn-soft"
-              disabled={!selectedBus() || !newDeviceType() || availableDeviceOptions().length === 0}
-              onClick={() => {
-                const busIdx = selectedBusIndex();
-                const type = newDeviceType();
-                if (busIdx < 0 || type === null) return;
-                addDevice(busIdx, type);
-              }}
-            >
-              Add
-            </Button>
+        <AddDevicePanel
+          buses={buses}
+          controllerInfo={controllerInfo}
+          disabledByConflictBuses={disabledByConflictBuses}
+          conflictingActiveFor={conflictingActiveFor}
+          busHasExclusive={busHasExclusive}
+          hasDeviceType={hasDeviceType}
+          addDevice={addDevice}
+        />
+
+        <Show when={busTooltip()}>
+          <div class="border border-base-300 rounded-xl bg-base-200/50 p-3 flex items-center justify-between gap-3">
+            <Info class="w-8 h-8 text-info" />
+            <div class="text-sm text-base-content/70">
+              {busTooltip()}
+            </div>
           </div>
-          <div class="text-xs text-base-content/75 mt-2">
-            Configuring SPI/I2C devices was not tested thoroughly with all possible configurations and may produce broken builds.
-            Please join the <Link class="link" href="https://zmk.dev/community/discord/invite" target="_blank" rel="noopener noreferrer">ZMK Community Discord</Link> for help
-            and send feedback to @genteure.
-          </div>
-        </div>
+        </Show>
+
         <For each={buses()}>{(bus, idx) => <BusCard bus={bus} index={idx()} />}</For>
       </Show>
     </Show>

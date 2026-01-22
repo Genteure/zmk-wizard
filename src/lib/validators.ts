@@ -1,4 +1,4 @@
-import { busDeviceInfos, controllerInfos, busPinRequirements } from "~/components/controllerInfo";
+import { controllerInfos, deviceClassRules, getBusDeviceMetadata, requiredBusPinsForDevice, socBusData, type PinctrlI2cPinChoices, type PinctrlSpiPinChoices } from "~/components/controllerInfo";
 import type { BusDeviceTypeName } from "~/typedef";
 import { BusNameSchema, ShieldNameSchema, type Keyboard } from "~/typedef";
 import { isI2cBus, isSpiBus } from "~/typehelper";
@@ -96,7 +96,7 @@ const Validators: Record<string, ValidatorFunction> = {
         }
       }
       // do not allow "dongle" because it's a reserved word
-      if (part.name === "dongle") {
+      if (part.name === "dongle" && keyboard.dongle) {
         nameErrors.push(`Part ${i + 1} name cannot be "dongle" as it is reserved for the auto generated dongle part`);
       }
     }
@@ -124,30 +124,65 @@ const Validators: Record<string, ValidatorFunction> = {
 
     return errors.length > 0 ? errors : null;
   },
+  /**
+   * Validate bus and device configuration for each part
+   * - Ensure bus names are valid and unique within part
+   * - Ensure device types are valid for the bus type
+   * - Ensure required bus pins are set and valid (pin use set to "bus", no dual use)
+   * - Ensure no pin conflicts between buses and devices
+   * - Ensure no conflicting buses are used simultaneously
+   * - Ensure no duplicate exclusive devices
+   */
   busConfiguration: (keyboard: Keyboard) => {
     const errors: ValidationError[] = [];
 
     keyboard.parts.forEach((part, partIndex) => {
       const controllerInfo = controllerInfos[part.controller];
-      const validPins = controllerInfo ? new Set(Object.keys(controllerInfo.pins || {})) : null;
+      if (!controllerInfo) {
+        errors.push({ part: partIndex, message: `Unknown controller "${part.controller}"` });
+        return;
+      }
 
-      const busPinUsage = new Map<string, string>();
-      const seenBusNames = new Set<string>();
-      const seenDeviceTypes = new Set<BusDeviceTypeName>();
+      const validPins = new Set(Object.keys(controllerInfo.pins))
 
-      const recordPinUsage = (pinId: string, label: string) => {
-        const prev = busPinUsage.get(pinId);
-        if (prev && prev !== label) {
-          errors.push({ part: partIndex, message: `Pin "${pinId}" is used for ${prev} and ${label}; choose distinct pins.` });
-        } else {
-          busPinUsage.set(pinId, label);
-        }
+      type PinUsage = {
+        label: string;
+        busType?: "i2c" | "spi";
+        busName?: string;
+        signal?: string;
       };
 
-      const validatePin = (pinId: string | undefined, label: string, required = false) => {
+      const busPinUsage = new Map<string, PinUsage[]>();
+      const seenBusNames = new Set<string>();
+      const classCounts: Record<string, number> = {};
+
+      const canSharePinUsage = (a: PinUsage, b: PinUsage) => {
+        if (a.busType === "spi" && b.busType === "spi" && a.busName === b.busName) {
+          const signals = new Set([a.signal, b.signal]);
+          if (signals.has("mosi") && signals.has("miso")) return true;
+        }
+
+        return a.label === b.label;
+      };
+
+      const recordPinUsage = (pinId: string, usage: PinUsage) => {
+        const prevList = busPinUsage.get(pinId) || [];
+        const conflict = prevList.find((prev) => !canSharePinUsage(prev, usage));
+
+        if (conflict) {
+          errors.push({ part: partIndex, message: `Pin "${pinId}" is used for ${conflict.label} and ${usage.label}; choose distinct pins.` });
+          return;
+        }
+
+        busPinUsage.set(pinId, [...prevList, usage]);
+      };
+
+      const validatePin = (pinId: string | undefined, label: string, required = false, usage: Partial<PinUsage> = {}) => {
         if (!pinId) {
           if (required) {
-            errors.push({ part: partIndex, message: `${label} is not set` });
+            // upper case first char
+            const labelText = label ? (label.charAt(0).toUpperCase() + label.slice(1)) : label;
+            errors.push({ part: partIndex, message: `${labelText} is not set` });
           }
           return false;
         }
@@ -161,7 +196,7 @@ const Validators: Record<string, ValidatorFunction> = {
           errors.push({ part: partIndex, message: `Pin "${pinId}" for ${label} is marked as "${mode}" instead of "bus"` });
         }
 
-        recordPinUsage(pinId, label);
+        recordPinUsage(pinId, { label, ...usage });
         return true;
       };
 
@@ -180,75 +215,106 @@ const Validators: Record<string, ValidatorFunction> = {
         const devices = bus.devices || [];
 
         for (const device of devices) {
-          const type = device.type as BusDeviceTypeName;
-          if (seenDeviceTypes.has(type)) {
-            errors.push({ part: partIndex, message: `Multiple "${type}" devices; only one is supported per part` });
+          const meta = getBusDeviceMetadata(device.type);
+          if (!meta) {
+            errors.push({ part: partIndex, message: `Unknown device type "${device.type}" on bus "${bus.name}"` });
+            continue;
           }
-          seenDeviceTypes.add(type);
+          if (meta.bus !== bus.type) {
+            errors.push({ part: partIndex, message: `Device type "${device.type}" is not allowed on ${bus.type.toUpperCase()} bus "${bus.name}"` });
+          }
+        }
+
+        for (const device of devices) {
+          const meta = getBusDeviceMetadata(device.type);
+          const rule = deviceClassRules[meta.class];
+          const current = classCounts[meta.class] ?? 0;
+          if (typeof rule.maxPerPart === "number" && current >= rule.maxPerPart) {
+            errors.push({ part: partIndex, message: `Too many ${meta.class.replace("_", " ")} devices; only ${rule.maxPerPart} per part is supported` });
+          }
+          classCounts[meta.class] = current + 1;
         }
 
         // TODO this typing is annoying and pointless
         // Determine allowed pins from pinctrl choices for this bus
-        const controllerChoices = controllerInfo?.pinctrlChoices;
-        const pinChoices = controllerChoices
-          ? (bus.type === "i2c"
-            ? controllerChoices({ type: "i2c", name: bus.name })
-            : controllerChoices({ type: "spi", name: bus.name }))
-          : undefined;
-        // Determine hardware-required signals via busPinRequirements
-        const requiredBySoc = busPinRequirements(part.controller, bus.name);
+        const pinChoices = controllerInfo.pinctrlChoices(bus.name);
+        if (!pinChoices) {
+          errors.push({ part: partIndex, message: `Controller "${part.controller}" does not have bus "${bus.name}"` });
+          continue;
+        }
+        // Determine hardware-required signals via SoC bus data
+        const requiredBySoc = socBusData[controllerInfos[part.controller].soc].pinRequirements[bus.name] || [];
+
+        const validateDevicePinProps = (pinChoicesForBus: PinctrlI2cPinChoices | PinctrlSpiPinChoices | null) => {
+          for (const [idx, device] of devices.entries()) {
+            const meta = getBusDeviceMetadata(device.type);
+            if (!meta) continue;
+
+            Object.entries(meta.props).forEach(([propKey, propDef]) => {
+              if (propDef.widget !== "pin") return;
+              const pinId = (device as Record<string, string | undefined>)[propKey];
+              const required = !propDef.optional;
+              const label = propDef.name || propKey.toUpperCase();
+
+              if (!pinId) {
+                if (required) {
+                  errors.push({ part: partIndex, message: `Device "${device.type}" on bus "${bus.name}" requires ${label}` });
+                }
+                return;
+              }
+
+              validatePin(pinId, `bus "${bus.name}" ${label} for device ${device.type}`, required);
+            });
+          }
+        };
 
         if (isI2cBus(bus)) {
-          for (const device of devices) {
-            if (device.type !== "ssd1306") {
-              errors.push({ part: partIndex, message: `Device type "${device.type}" is not allowed on I2C bus "${bus.name}"` });
-            }
+          if (pinChoices.type !== 'i2c') {
+            errors.push({ part: partIndex, message: `Controller "${part.controller}" does not have I2C bus "${bus.name}"` });
+            continue;
           }
 
-          // Data-driven required signals from SoC requirements
+          const requiredSignals = new Set<string>();
+          devices.forEach((d) => requiredBusPinsForDevice(d.type).forEach((sig) => requiredSignals.add(sig)));
+          requiredBySoc.forEach((sig) => requiredSignals.add(sig));
+
           if (devices.length > 0) {
-            for (const sig of requiredBySoc) {
+            for (const sig of requiredSignals) {
               const value = (bus as unknown as Record<string, string | undefined>)[sig];
-              validatePin(value, `bus "${bus.name}" ${sig.toUpperCase()}`, true);
+              validatePin(value, `bus "${bus.name}" ${sig.toUpperCase()}`, true, { busType: bus.type, busName: bus.name, signal: sig });
             }
           }
 
           // Membership checks: selected pins must be within allowed sets
-          if (pinChoices && "sda" in pinChoices) {
-            if (bus.sda && !pinChoices.sda.includes(bus.sda)) {
-              errors.push({ part: partIndex, message: `Pin "${bus.sda}" for bus "${bus.name}" SDA is not allowed on controller "${part.controller}"` });
-            }
-            if (bus.scl && !pinChoices.scl.includes(bus.scl)) {
-              errors.push({ part: partIndex, message: `Pin "${bus.scl}" for bus "${bus.name}" SCL is not allowed on controller "${part.controller}"` });
-            }
+          if (bus.sda && !pinChoices.sda.includes(bus.sda)) {
+            errors.push({ part: partIndex, message: `Pin "${bus.sda}" for bus "${bus.name}" SDA is not allowed on controller "${part.controller}"` });
+          }
+          if (bus.scl && !pinChoices.scl.includes(bus.scl)) {
+            errors.push({ part: partIndex, message: `Pin "${bus.scl}" for bus "${bus.name}" SCL is not allowed on controller "${part.controller}"` });
           }
 
           // SDA/SCL must be distinct when both set
           if (bus.sda && bus.scl && bus.sda === bus.scl) {
             errors.push({ part: partIndex, message: `Bus "${bus.name}" must use different pins for SDA and SCL` });
           }
+
+          validateDevicePinProps(pinChoices);
         } else if (isSpiBus(bus)) {
-          const exclusiveDevices = devices.filter((d) => busDeviceInfos[d.type as BusDeviceTypeName]?.exclusive);
+          if (pinChoices.type !== 'spi') {
+            errors.push({ part: partIndex, message: `Controller "${part.controller}" does not have SPI bus "${bus.name}"` });
+            continue;
+          }
+
+          const exclusiveDevices = devices.filter((d) => getBusDeviceMetadata(d.type)?.exclusive);
           if (exclusiveDevices.length > 0 && devices.length > 1) {
             errors.push({ part: partIndex, message: `Bus "${bus.name}" contains exclusive device "${exclusiveDevices[0]?.type}" and cannot share the bus with other devices` });
           }
 
-          for (const device of devices) {
-            if (device.type === "ssd1306") {
-              errors.push({ part: partIndex, message: `Device type "${device.type}" is not allowed on SPI bus "${bus.name}"` });
-            }
-          }
-
           const requiredSignals = new Set<string>();
           for (const device of devices) {
-            const info = busDeviceInfos[device.type as BusDeviceTypeName];
-            if (!info?.needs) continue;
-            for (const [signal, needed] of Object.entries(info.needs)) {
-              if (!needed) continue;
-              if (signal !== "cs") {
-                requiredSignals.add(signal);
-              }
-            }
+            requiredBusPinsForDevice(device.type)
+              .filter((signal) => signal !== "cs")
+              .forEach((signal) => requiredSignals.add(signal));
           }
 
           // Include SoC-level required signals from busPinRequirements
@@ -259,7 +325,7 @@ const Validators: Record<string, ValidatorFunction> = {
           if (devices.length > 0) {
             for (const sig of requiredSignals) {
               const value = (bus as unknown as Record<string, string | undefined>)[sig];
-              validatePin(value, `bus "${bus.name}" ${sig.toUpperCase()}`, true);
+              validatePin(value, `bus "${bus.name}" ${sig.toUpperCase()}`, true, { busType: bus.type, busName: bus.name, signal: sig });
             }
           }
 
@@ -267,58 +333,32 @@ const Validators: Record<string, ValidatorFunction> = {
           (["mosi", "miso", "sck"] as const).forEach((sig) => {
             const value = bus[sig];
             if (value) {
-              validatePin(value, `bus "${bus.name}" ${sig.toUpperCase()}`);
-              if (pinChoices && "mosi" in pinChoices) {
-                const allowed = (pinChoices as unknown as Record<typeof sig, string[]>)[sig];
-                if (allowed && !allowed.includes(value)) {
-                  errors.push({ part: partIndex, message: `Pin "${value}" for bus "${bus.name}" ${sig.toUpperCase()} is not allowed on controller "${part.controller}"` });
-                }
+              validatePin(value, `bus "${bus.name}" ${sig.toUpperCase()}`, false, { busType: bus.type, busName: bus.name, signal: sig });
+              if (!pinChoices[sig].includes(value)) {
+                errors.push({ part: partIndex, message: `Pin "${value}" for bus "${bus.name}" ${sig.toUpperCase()} is not allowed on controller "${part.controller}"` });
               }
             }
           });
 
-          const csUsage = new Map<string, string>();
-          devices.forEach((device, idx) => {
-            const info = busDeviceInfos[device.type as BusDeviceTypeName];
-            const needsCs = info?.needs?.cs;
-            const cs = (device as Record<string, string | undefined>).cs;
-
-            if (needsCs && !cs) {
-              errors.push({ part: partIndex, message: `Device "${device.type}" on bus "${bus.name}" requires a CS pin` });
-              return;
-            }
-
-            if (cs) {
-              validatePin(cs, `bus "${bus.name}" CS for device ${device.type}`, Boolean(needsCs));
-              // Membership check for CS against allowed CS pins
-              if (pinChoices && "cs" in pinChoices) {
-                const allowedCs = (pinChoices as unknown as { cs: string[] }).cs;
-                if (allowedCs && !allowedCs.includes(cs)) {
-                  errors.push({ part: partIndex, message: `Pin "${cs}" for bus "${bus.name}" CS is not allowed on controller "${part.controller}"` });
-                }
-              }
-              if (csUsage.has(cs)) {
-                csUsage.set(cs, `${csUsage.get(cs)} and device ${device.type}`);
-                errors.push({ part: partIndex, message: `Multiple devices on bus "${bus.name}" share CS pin "${cs}"` });
-              } else {
-                csUsage.set(cs, `device ${device.type} #${idx}`);
-              }
-            }
-          });
+          validateDevicePinProps(pinChoices);
 
           const definedBusPins = [
-            { label: "MOSI", value: bus.mosi },
-            { label: "MISO", value: bus.miso },
-            { label: "SCK", value: bus.sck },
+            { label: "MOSI", signal: "mosi", value: bus.mosi },
+            { label: "MISO", signal: "miso", value: bus.miso },
+            { label: "SCK", signal: "sck", value: bus.sck },
           ].filter((entry) => Boolean(entry.value));
 
-          const seenWithinBus = new Map<string, string>();
+          const seenWithinBus = new Map<string, { label: string; signal: string }>();
           for (const entry of definedBusPins) {
             const pinId = entry.value as string;
-            if (seenWithinBus.has(pinId)) {
-              errors.push({ part: partIndex, message: `Bus "${bus.name}" uses pin "${pinId}" for both ${seenWithinBus.get(pinId)} and ${entry.label}` });
+            const prev = seenWithinBus.get(pinId);
+            const signals = new Set([prev?.signal, entry.signal]);
+            const allowShare = isSpiBus(bus) && signals.has("mosi") && signals.has("miso");
+
+            if (prev && !allowShare) {
+              errors.push({ part: partIndex, message: `Bus "${bus.name}" uses pin "${pinId}" for both ${prev.label} and ${entry.label}` });
             } else {
-              seenWithinBus.set(pinId, entry.label);
+              seenWithinBus.set(pinId, { label: entry.label, signal: entry.signal });
             }
           }
         } else {
@@ -329,8 +369,9 @@ const Validators: Record<string, ValidatorFunction> = {
 
       const activeBuses = (part.buses || []).filter((b) => (b.devices || []).length > 0);
       const seenConflictPairs = new Set<string>();
+      const conflictsForSoc = socBusData[controllerInfos[part.controller].soc].conflicts;
       for (const bus of activeBuses) {
-        const conflicts = controllerInfo?.busConflicts?.[bus.name] || [];
+        const conflicts = conflictsForSoc[bus.name] || [];
         for (const conflictName of conflicts) {
           if (activeBuses.some((b) => b.name === conflictName)) {
             const key = [bus.name, conflictName].sort().join("|");
@@ -357,12 +398,36 @@ const Validators: Record<string, ValidatorFunction> = {
           });
         });
 
-        for (const [pinId, label] of busPinUsage.entries()) {
+        for (const [pinId, usages] of busPinUsage.entries()) {
           const wiredKeys = keyPinUsage.get(pinId);
           if (wiredKeys && wiredKeys.length > 0) {
-            errors.push({ part: partIndex, message: `Pin "${pinId}" is used for ${label} and also wired to key(s) ${wiredKeys.join(", ")}` });
+            const labels = usages.map((usage) => usage.label).join(" and ");
+            errors.push({ part: partIndex, message: `Pin "${pinId}" is used for ${labels} and also wired to key(s) ${wiredKeys.join(", ")}` });
           }
         }
+      }
+    });
+
+    return errors.length > 0 ? errors : null;
+  },
+  deviceClassification: (keyboard: Keyboard) => {
+    const errors: ValidationError[] = [];
+    // Add more device class checks here as needed
+
+    // each keyboard part can only have up to 1 display
+    keyboard.parts.forEach((part, partIndex) => {
+      const displayDevices: BusDeviceTypeName[] = [];
+      for (const bus of part.buses) {
+        for (const device of bus.devices) {
+          const meta = getBusDeviceMetadata(device.type);
+          if (meta?.class === "display") {
+            displayDevices.push(device.type);
+          }
+        }
+      }
+
+      if (displayDevices.length > 1) {
+        errors.push({ part: partIndex, message: "Only one display device is supported per part; found " + displayDevices.map(id => getBusDeviceMetadata(id)?.fullName || id).join(", ") });
       }
     });
 
@@ -379,7 +444,7 @@ const Validators: Record<string, ValidatorFunction> = {
       const recordEncoderPin = (pinId: string, label: string) => {
         const prev = encoderPinUsage.get(pinId);
         if (prev && prev !== label) {
-          errors.push({ part: partIndex, message: `Pin "${pinId}" in part "${part.name}" is used for ${prev} and ${label}; choose distinct pins.` });
+          errors.push({ part: partIndex, message: `Pin "${pinId}" is used for ${prev} and ${label}; choose distinct pins.` });
         } else {
           encoderPinUsage.set(pinId, label);
         }
@@ -387,17 +452,18 @@ const Validators: Record<string, ValidatorFunction> = {
 
       const validatePin = (pinId: string | undefined, label: string) => {
         if (!pinId) {
-          errors.push({ part: partIndex, message: `${label} in part "${part.name}" is not set` });
+          const labelText = label ? (label.charAt(0).toUpperCase() + label.slice(1)) : label;
+          errors.push({ part: partIndex, message: `${labelText} is not set` });
           return;
         }
 
         if (validPins && !validPins.has(pinId)) {
-          errors.push({ part: partIndex, message: `Pin "${pinId}" for ${label} in part "${part.name}" does not exist on controller "${part.controller}"` });
+          errors.push({ part: partIndex, message: `Pin "${pinId}" for ${label} does not exist on controller "${part.controller}"` });
         }
 
         const mode = part.pins?.[pinId];
         if (mode && mode !== "encoder") {
-          errors.push({ part: partIndex, message: `Pin "${pinId}" for ${label} in part "${part.name}" is marked as "${mode}" instead of "encoder"` });
+          errors.push({ part: partIndex, message: `Pin "${pinId}" for ${label} is marked as "${mode}" instead of "encoder"` });
         }
 
         recordEncoderPin(pinId, label);
@@ -411,11 +477,11 @@ const Validators: Record<string, ValidatorFunction> = {
         if (enc.pinS) {
           // validatePin(enc.pinS, `${baseLabel} button`);
           // data structure exists but Shield Wizard does not support configuring it yet
-          errors.push({ part: partIndex, message: `Push button pin for ${baseLabel} in part "${part.name}" cannot be set here; it must be wired into the key matrix.` });
+          errors.push({ part: partIndex, message: `Push button pin for ${baseLabel} cannot be set here; it must be wired into the key matrix.` });
         }
 
         if (enc.pinA && enc.pinB && enc.pinA === enc.pinB) {
-          errors.push({ part: partIndex, message: `Encoder ${idx + 1} in part "${part.name}" must use different pins for A and B` });
+          errors.push({ part: partIndex, message: `Encoder ${idx + 1} must use different pins for A and B` });
         }
       });
     });
@@ -550,10 +616,10 @@ const Validators: Record<string, ValidatorFunction> = {
     for (const [partIndexAsString, missing] of Object.entries(missingPinsByPart)) {
       const partIndex = Number(partIndexAsString);
       if (missing.input.length > 0) {
-        errors.push({ part: partIndex, message: `Key ${missing.input.join(", ")} are missing an input pin` });
+        errors.push({ part: partIndex, message: `Key ${missing.input.join(", ")} are missing input pin` });
       }
       if (missing.output.length > 0) {
-        errors.push({ part: partIndex, message: `Key ${missing.output.join(", ")} are missing an output pin` });
+        errors.push({ part: partIndex, message: `Key ${missing.output.join(", ")} are missing output pin` });
       }
     }
 
@@ -561,7 +627,7 @@ const Validators: Record<string, ValidatorFunction> = {
     for (const [partIndexAsString, indices] of Object.entries(unexpectedOutputByPart)) {
       const partIndex = Number(partIndexAsString);
       if (indices.length > 0) {
-        errors.push({ part: partIndex, message: `Key ${indices.join(", ")} should not set an output pin` });
+        errors.push({ part: partIndex, message: `Key ${indices.join(", ")} should not set output pin` });
       }
     }
 

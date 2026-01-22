@@ -187,6 +187,9 @@ describe("unibody", () => {
       "config/unittest.json",
       "config/unittest.keymap",
       "config/west.yml",
+      "snippets/unittest-as-peripheral/snippet.yml",
+      "snippets/unittest-as-peripheral/unittest-as-peripheral.conf",
+      "snippets/unittest-as-peripheral/unittest-as-peripheral.overlay",
       "zephyr/module.yml",
     ]);
 
@@ -251,6 +254,9 @@ describe("split", () => {
       "config/unittest.json",
       "config/unittest.keymap",
       "config/west.yml",
+      "snippets/unittest-left-as-peripheral/snippet.yml",
+      "snippets/unittest-left-as-peripheral/unittest-left-as-peripheral.conf",
+      "snippets/unittest-left-as-peripheral/unittest-left-as-peripheral.overlay",
       "zephyr/module.yml",
     ]);
 

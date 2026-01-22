@@ -1,7 +1,9 @@
 import { unwrap } from "solid-js/store";
 import { version } from "virtual:version";
-import { controllerInfos } from "~/components/controllerInfo";
+import { busDeviceMetadata, controllerInfos } from "~/components/controllerInfo";
 import type { Controller, Keyboard, KeyboardPart } from "~/typedef";
+import { centralToPeripheralSnippetName } from "./utils";
+import { isInputDevice } from "~/typehelper";
 
 export const workflows_build_yml = `name: Build ZMK firmware
 on: [push, pull_request, workflow_dispatch]
@@ -11,28 +13,63 @@ jobs:
     uses: zmkfirmware/zmk/.github/workflows/build-user-config.yml@v0.3
 `;
 
-export const config_west_yml = `manifest:
+export function config_west_yml(keyboard: Keyboard): string {
+  const extraRemotes: string[] = [];
+  const extraModules: { repo: string; remote: string; rev: string }[] = [];
+
+  const uniqueDeviceTypes = Array.from(new Set((keyboard.parts.flatMap(part =>
+    part.buses.flatMap((bus) => bus.devices.map(device => device.type))
+  ))));
+
+  for (const deviceType of uniqueDeviceTypes) {
+    const module = busDeviceMetadata[deviceType].module;
+    if (!module) continue;
+    if (!extraRemotes.includes(module.remote)) {
+      extraRemotes.push(module.remote);
+    }
+
+    // check for exact match before adding
+    if (extraModules.every(m => m.repo !== module.repo || m.rev !== module.rev || m.remote !== module.remote)) {
+      extraModules.push({
+        repo: module.repo,
+        remote: module.remote,
+        rev: module.rev,
+      });
+    }
+  }
+
+  const extraRemotesYml = extraRemotes.map(remote => `
+    - name: ${remote}
+      url-base: https://github.com/${remote}`).join('');
+
+  const extraModulesYml = extraModules.map(module => `
+    - name: ${module.repo}
+      remote: ${module.remote}
+      revision: ${module.rev}`).join('');
+
+  return `manifest:
   defaults:
     revision: v0.3
   remotes:
     - name: zmkfirmware
-      url-base: https://github.com/zmkfirmware
+      url-base: https://github.com/zmkfirmware${extraRemotesYml}
     # Additional modules containing boards/shields/custom code can be listed here as well
     # See https://docs.zephyrproject.org/3.2.0/develop/west/manifest.html#projects
   projects:
     - name: zmk
       remote: zmkfirmware
-      import: app/west.yml
+      import: app/west.yml${extraModulesYml}
   self:
     path: config
 `;
+}
 
 export function zephyr_module_yml(keyboard: Keyboard): string {
   return `name: zmk-keyboard-${keyboard.shield.replaceAll('_', '-')}
 build:
   settings:
     board_root: .
-`;
+${keyboard.dongle ? "    snippet_root: .\n" : ""}`;
 }
 
 export function build_yaml(keyboard: Keyboard): string {
@@ -98,7 +135,7 @@ include:
 
 #  - board: ${boardName(firstPart.controller)}
 #    shield: ${keyboard.shield}${niceView(firstPart)}
-#    cmake-args: -DCONFIG_ZMK_SPLIT=y -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n
+#    snippet: ${centralToPeripheralSnippetName(keyboard)}
 #    artifact-name: ${keyboard.shield}_as_peripheral
 
 #  - board: ${boardName(firstPart.controller)}
@@ -139,7 +176,7 @@ include:
 
 #  - board: ${boardName(firstPart.controller)}
 #    shield: ${keyboard.shield}_${firstPart.name}${niceView(firstPart)}
-#    cmake-args: -DCONFIG_ZMK_SPLIT_ROLE_CENTRAL=n
+#    snippet: ${centralToPeripheralSnippetName(keyboard)}
 #    artifact-name: ${keyboard.shield}_${firstPart.name}_as_peripheral
 
 #  - board: ${boardName(firstPart.controller)}
@@ -200,6 +237,18 @@ config SHIELD_${keyboard.shield.toUpperCase()}_DONGLE
 export function shield__kconfig_defconfig(keyboard: Keyboard): string {
   const partCount = keyboard.parts.length;
   let content = '';
+
+  const enablePointing = keyboard.parts.some(part =>
+    part.buses.some(bus =>
+      bus.devices.some(device => isInputDevice(device))
+    )
+  );
+
+  const pointingConfig = enablePointing ? `
+config ZMK_POINTING
+    default y
+` : '';
+
   if (partCount > 1) {
 
     content = `if SHIELD_${keyboard.shield.toUpperCase()}_${keyboard.parts[0].name.toUpperCase()}
@@ -211,28 +260,38 @@ config ZMK_KEYBOARD_NAME
 config ZMK_SPLIT_ROLE_CENTRAL
     default y
 
+config ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS
+  default ${partCount - 1}
+
+config BT_MAX_CONN
+  default ${partCount - 1 + 5}
+
+config BT_MAX_PAIRED
+  default ${partCount - 1 + 5}
+
 endif
 `;
-
 
     content += `
 if ${keyboard.parts.map(part => `SHIELD_${keyboard.shield.toUpperCase()}_${part.name.toUpperCase()}`).join(' || ')}
 
 config ZMK_SPLIT
     default y
-
+${pointingConfig}
 endif
 `;
   } else {
+    // partCount is not greater than 1
+
     content = `if SHIELD_${keyboard.shield.toUpperCase()}
 
 # Name must be less than 16 characters long!
 config ZMK_KEYBOARD_NAME
     default "${keyboard.name}"
-
+${pointingConfig}
 endif
 `
-  }
+  } // end of if partCount > 1
 
   if (keyboard.dongle) {
     content += `
@@ -241,7 +300,7 @@ if SHIELD_${keyboard.shield.toUpperCase()}_DONGLE
 # Name must be less than 16 characters long!
 config ZMK_KEYBOARD_NAME
     default "${keyboard.name}"
-
+${pointingConfig}
 config ZMK_SPLIT
     default y
 

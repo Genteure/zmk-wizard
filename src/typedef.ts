@@ -32,8 +32,8 @@ export const BusNameSchema = z.string()
   .regex(/^[a-zA-Z0-9_]+$/, "Bus name must contain only letters, numbers, and underscores");
 export type BusName = z.infer<typeof BusNameSchema>;
 
-// Device schemas and types (Zod is source of truth)
-export const BusDeviceTypeSchema = z.enum(["ssd1306", "niceview", "ws2812", "74hc595"]);
+// Device schemas and types
+export const BusDeviceTypeSchema = z.enum(["ssd1306", "niceview", "ws2812", "74hc595", "pmw3610", "pinnacle_spi", "pinnacle_i2c"]);
 export type BusDeviceTypeName = z.infer<typeof BusDeviceTypeSchema>;
 
 export const BaseBusDeviceSchema = z.object({
@@ -58,7 +58,9 @@ export type NiceviewDevice = z.infer<typeof NiceviewDeviceSchema>;
 export const WS2812DeviceSchema = BaseBusDeviceSchema.extend({
   type: z.literal("ws2812"),
   length: z.number().min(1).max(256).default(3),
-  cs: PinIdSchema.optional(),
+  // cs: PinIdSchema.optional(),
+  // TODO WS2812 doesn't need CS, this was here only to satisfy the old schema
+  // We want to remove this and the corresponding UI field and special-case handling
 });
 export type WS2812Device = z.infer<typeof WS2812DeviceSchema>;
 
@@ -69,15 +71,63 @@ export const ShiftRegisterDeviceSchema = BaseBusDeviceSchema.extend({
 });
 export type ShiftRegisterDevice = z.infer<typeof ShiftRegisterDeviceSchema>;
 
+export const Pmw3610DeviceSchema = BaseBusDeviceSchema.extend({
+  type: z.literal("pmw3610"),
+  cs: PinIdSchema.optional(),
+  irq: PinIdSchema.optional(),
+  // up to 3200 cpi with 200 increments
+  cpi: z.number()
+    .min(0)
+    .max(3200)
+    .refine((val) => val % 200 === 0, "CPI must be set in 200 increments")
+    // TODO maybe not a good idea to do `refine` validation here,
+    // the UI/UX is worse since zod fail blocks our custom validators
+    .default(600),
+  swapxy: z.boolean().default(false),
+  invertx: z.boolean().default(false),
+  inverty: z.boolean().default(false),
+});
+export type Pmw3610Device = z.infer<typeof Pmw3610DeviceSchema>;
+
+export const PinnacleBaseDeviceSchema = z.object({
+  /**
+   * Data ready pin / interrupt
+   */
+  dr: PinIdSchema.optional(),
+  rotate90: z.boolean().default(false),
+  invertx: z.boolean().default(false),
+  inverty: z.boolean().default(false),
+  sleep: z.boolean().default(true),
+  noSecondaryTap: z.boolean().default(true),
+  noTaps: z.boolean().default(true),
+  sensitivity: z.union([z.literal("1x"), z.literal("2x"), z.literal("3x"), z.literal("4x")]).default("2x"),
+});
+export type PinnacleBaseDevice = z.infer<typeof PinnacleBaseDeviceSchema>;
+
+export const PinnacleSpiDeviceSchema = PinnacleBaseDeviceSchema.extend({
+  type: z.literal("pinnacle_spi"),
+  cs: PinIdSchema.optional(),
+});
+export type PinnacleSpiDevice = z.infer<typeof PinnacleSpiDeviceSchema>;
+
+export const PinnacleI2cDeviceSchema = PinnacleBaseDeviceSchema.extend({
+  type: z.literal("pinnacle_i2c"),
+  add: z.number().min(0).max(0x7f).default(0x2A),
+});
+export type PinnacleI2cDevice = z.infer<typeof PinnacleI2cDeviceSchema>;
+
 export const SpiDeviceSchema = z.discriminatedUnion("type", [
   NiceviewDeviceSchema,
   WS2812DeviceSchema,
   ShiftRegisterDeviceSchema,
+  Pmw3610DeviceSchema,
+  PinnacleSpiDeviceSchema,
 ]);
 export type SpiDevice = z.infer<typeof SpiDeviceSchema>;
 
 export const I2cDeviceSchema = z.discriminatedUnion("type", [
   SSD1306DeviceSchema,
+  PinnacleI2cDeviceSchema,
 ]);
 export type I2cDevice = z.infer<typeof I2cDeviceSchema>;
 
@@ -86,6 +136,9 @@ export const AnyBusDeviceSchema = z.discriminatedUnion("type", [
   NiceviewDeviceSchema,
   WS2812DeviceSchema,
   ShiftRegisterDeviceSchema,
+  Pmw3610DeviceSchema,
+  PinnacleSpiDeviceSchema,
+  PinnacleI2cDeviceSchema,
 ]);
 export type AnyBusDevice = z.infer<typeof AnyBusDeviceSchema>;
 

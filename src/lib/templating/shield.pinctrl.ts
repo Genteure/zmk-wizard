@@ -1,6 +1,7 @@
-import { busDeviceInfos, controllerInfos, type ControllerInfo } from "~/components/controllerInfo";
+import { controllerInfos, getBusDeviceMetadata, type ControllerInfo } from "~/components/controllerInfo";
 import type { AnyBus, I2cBus, I2cDevice, Keyboard, SpiBus, SpiDevice } from "~/typedef";
-import { isI2cBus, isShiftRegisterDevice, isSpiBus, isWS2812 } from "~/typehelper";
+import { isI2cBus, isInputDevice, isPmw3610, isShiftRegisterDevice, isSpiBus, isWS2812 } from "~/typehelper";
+import { inputDeviceNodeName } from "./utils";
 
 export type PinctrlOutput = {
   dts: string;
@@ -12,6 +13,14 @@ type InternalPinctrlOutput = {
   kconfig: string[];
   conf?: string; // nothing implemented yet
 }
+
+type DeviceBuilderArgs<TDevice> = {
+  busName: string;
+  device: TDevice;
+  controllerInfo: ControllerInfo;
+  index?: number;
+  dtsNodeName?: string;
+};
 
 export function createShieldPinctrlFile(keyboard: Keyboard, partIndex: number): PinctrlOutput | null {
   const controller = controllerInfos[keyboard.parts[partIndex].controller];
@@ -49,6 +58,9 @@ function createRp2040PinctrlFile(keyboard: Keyboard, partIndex: number): Pinctrl
 
   const kconfig: string[] = [];
 
+  let pointingIdx = 0;
+  const nextInputBaseName = () => `${part.name}${pointingIdx++}`;
+
   for (const bus of part.buses) {
     if (bus.devices.length === 0) {
       continue;
@@ -66,7 +78,7 @@ function createRp2040PinctrlFile(keyboard: Keyboard, partIndex: number): Pinctrl
 
     dts += rp2040PinctrlNode(controllerInfo, bus);
 
-    const deviceResult = attachDevices(controllerInfo, bus);
+    const deviceResult = attachDevices(controllerInfo, bus, nextInputBaseName);
     dts += deviceResult.dts;
     kconfig.push(...deviceResult.kconfig);
   }
@@ -109,6 +121,9 @@ function createNrf52840PinctrlFile(keyboard: Keyboard, partIndex: number): Pinct
 
   const kconfig: string[] = [];
 
+  let pointingIdx = 0;
+  const nextInputBaseName = () => `${part.name}${pointingIdx++}`;
+
   for (const bus of part.buses) {
     if (bus.devices.length === 0) {
       // unused bus, skip
@@ -130,7 +145,7 @@ function createNrf52840PinctrlFile(keyboard: Keyboard, partIndex: number): Pinct
 
     dts += nrf52840PinctrlNode(controllerInfo, bus);
 
-    const deviceResult = attachDevices(controllerInfo, bus);
+    const deviceResult = attachDevices(controllerInfo, bus, nextInputBaseName);
     dts += deviceResult.dts;
     // defconfig += deviceResult.defconfig + "\n";
     kconfig.push(...deviceResult.kconfig);
@@ -292,7 +307,15 @@ ${isI2cBus(bus) ? "    clock-frequency = <I2C_BITRATE_FAST>;\n" : ""}};
   return content;
 }
 
-function attachDevices(controllerInfo: ControllerInfo, bus: AnyBus): InternalPinctrlOutput {
+/**
+ * Attach devices on the given bus.
+ * This is shared between all supported MCUs.
+ * @param controllerInfo Controller info for the part
+ * @param bus The bus to attach devices to
+ * @param getNextInputBaseName Function to get the next node name for input devices
+ * @returns DTS and Kconfig snippets
+ */
+function attachDevices(controllerInfo: ControllerInfo, bus: AnyBus, getNextInputBaseName: () => string): InternalPinctrlOutput {
   let kconfig: string[] = [];
   let dts = `
 // devices on ${bus.name}
@@ -306,7 +329,13 @@ config I2C
     bus.devices.forEach((device) => {
       const builder = i2cDevices[device.type];
       if (builder) {
-        const output = builder(bus as I2cBus, device as I2cDevice);
+        const dtsNodeName = (isInputDevice(device) && getNextInputBaseName) ? getNextInputBaseName() : undefined;
+        const output = builder({
+          busName: bus.name,
+          device: device as I2cDevice,
+          controllerInfo,
+          dtsNodeName,
+        });
         dts += output.dts;
         kconfig.push(...output.kconfig);
       } else {
@@ -319,19 +348,28 @@ config SPI
     default y
 `);
 
-    // either all devices have a cs pin, or none have
-    const allHaveCs = bus.devices.every(device => !!(device.cs));
-    if (allHaveCs) {
-      const cspins = bus.devices.map((d) => {
-        return `<${controllerInfo.pins[d.cs!].dtsRef} ${busDeviceInfos[d.type].csActiveHigh ? 'GPIO_ACTIVE_HIGH' : 'GPIO_ACTIVE_LOW'}>`;
-      }).join(', ');
+    const devicesWithCs = bus.devices.filter((device) => {
+      const meta = getBusDeviceMetadata(device.type);
+      return 'cs' in meta.props && meta.props.cs && meta.props.cs.widget === "pin";
+    });
+
+    const allHaveCs = devicesWithCs.every((device) => 'cs' in device && device.cs);
+
+    if (devicesWithCs.length > 0 && allHaveCs) {
+      const cspins = devicesWithCs.map((d) => {
+        const csPin = 'cs' in d && d.cs ? d.cs : ''; // should always have value because we checked above
+        const pinRef = controllerInfo.pins[csPin].dtsRef;
+        const gpioFlag = getBusDeviceMetadata(d.type).csActiveHigh ? 'GPIO_ACTIVE_HIGH' : 'GPIO_ACTIVE_LOW';
+        return `<${pinRef} ${gpioFlag}>`;
+      });
+
       dts += `
 // CS pins for devices on ${bus.name}
 &${bus.name} \{
-    cs-gpios = ${cspins};
+    cs-gpios = ${cspins.join(', ')};
 \};
 `;
-    } else {
+    } else if (devicesWithCs.length > 0) {
       dts += `
 // CS pins not defined for at least one device on ${bus.name}, skipping CS pin configuration
 `
@@ -340,7 +378,14 @@ config SPI
     bus.devices.forEach((device, index) => {
       const builder = spiDevices[device.type];
       if (builder) {
-        const output = builder(bus as SpiBus, device as SpiDevice, index);
+        const dtsNodeName = (isInputDevice(device) && getNextInputBaseName) ? getNextInputBaseName() : undefined;
+        const output = builder({
+          busName: bus.name,
+          device: device as SpiDevice,
+          index,
+          controllerInfo,
+          dtsNodeName,
+        });
         dts += output.dts;
         kconfig.push(...output.kconfig);
       } else {
@@ -352,13 +397,16 @@ config SPI
   }
   return { dts, kconfig };
 }
+type I2cDeviceBuilderFunc = (arg: DeviceBuilderArgs<I2cDevice>) => InternalPinctrlOutput;
 
-type I2cDeviceBuilderFunc = (bus: I2cBus, device: I2cDevice) => InternalPinctrlOutput;
 const i2cDevices: Record<I2cDevice["type"], I2cDeviceBuilderFunc> = {
-  ssd1306: (bus, device) => {
+  ssd1306: ({ busName, device }) => {
+    if (device.type !== "ssd1306") return { dts: '', kconfig: [] };
+
     const addressHex = device.add.toString(16).padStart(2, '0');
+
     const dts = `
-&${bus.name} {
+&${busName} {
     oled: ssd1306@${addressHex} {
         compatible = "solomon,ssd1306fb";
         reg = <0x${addressHex}>;
@@ -419,23 +467,50 @@ endif # LVGL
       ]
     };
   },
+  pinnacle_i2c: ({ busName, device, controllerInfo, dtsNodeName }): InternalPinctrlOutput => {
+    if (device.type !== "pinnacle_i2c") return { dts: '', kconfig: [] };
+
+    const addressHex = device.add.toString(16).padStart(2, '0');
+
+    const name = inputDeviceNodeName(dtsNodeName || `pinnacle_spi`);
+    const rotate90 = device.rotate90 ? `\n        rotate-90;` : '';
+    const invx = device.invertx ? `\n        x-invert;` : '';
+    const invy = device.inverty ? `\n        y-invert;` : '';
+    const sleep = device.sleep ? `\n        sleep;` : '';
+    const noSecondaryTap = device.noSecondaryTap ? `\n        no-secondary-tap;` : '';
+    const noTaps = device.noTaps ? `\n        no-taps;` : '';
+
+    const dts = `
+&${busName} {
+    ${name}: ${name}@${addressHex} {
+        status = "okay";
+        compatible = "cirque,pinnacle";
+        reg = <0x${addressHex}>;
+        dr-gpios = <${controllerInfo.pins[device.dr || '']?.dtsRef} (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;${rotate90}${invx}${invy}${sleep}${noSecondaryTap}${noTaps}
+        sensitivity = "${device.sensitivity}";
+    };
+};
+`;
+    return { dts, kconfig: [] };
+  }
 };
 
-type SpiDeviceBuilderFunc = (bus: SpiBus, device: SpiDevice, index: number) => InternalPinctrlOutput;
+type SpiDeviceBuilderFunc = (arg: DeviceBuilderArgs<SpiDevice> & { index: number }) => InternalPinctrlOutput;
+
 const spiDevices: Record<SpiDevice["type"], SpiDeviceBuilderFunc> = {
-  niceview: (bus, _device, _index) => {
+  niceview: ({ busName }) => {
     const dts = `
-// Label ${bus.name} as nice_view_spi,
+// Label ${busName} as nice_view_spi,
 // The actual device node is defined in the \`nice_view\` shield.
-nice_view_spi: &${bus.name} { };
+nice_view_spi: &${busName} { };
 `;
     return { dts, kconfig: [] };
   },
-  ws2812: (bus, device, index): InternalPinctrlOutput => {
-    if (!isWS2812(device)) return { dts: '', kconfig: [] };
+  ws2812: ({ busName, device, index }): InternalPinctrlOutput => {
+    if (!isWS2812(device) || index === undefined) return { dts: '', kconfig: [] };
     const dts = `
 #include <dt-bindings/led/led.h>
-&${bus.name} {
+&${busName} {
     led_strip: ws2812@${index} {
         compatible = "worldsemi,ws2812-spi";
         reg = <${index}>;
@@ -465,11 +540,11 @@ config WS2812_STRIP
       ]
     };
   },
-  "74hc595": (bus, device, index): InternalPinctrlOutput => {
-    if (!isShiftRegisterDevice(device)) return { dts: '', kconfig: [] };
+  "74hc595": ({ busName, device, index }): InternalPinctrlOutput => {
+    if (!isShiftRegisterDevice(device) || index === undefined) return { dts: '', kconfig: [] };
 
     const dts = `
-&${bus.name} {
+&${busName} {
     shifter: 595@${index} {
         compatible = "zmk,gpio-595";
         reg = <${index}>;
@@ -478,6 +553,66 @@ config WS2812_STRIP
         spi-max-frequency = <200000>;
         #gpio-cells = <2>;
         ngpios = <${device.ngpios}>;
+    };
+};
+`;
+    return { dts, kconfig: [] };
+  },
+  pmw3610: ({ busName, device, index, controllerInfo, dtsNodeName }): InternalPinctrlOutput => {
+    if (!isPmw3610(device) || index === undefined) return { dts: '', kconfig: [] };
+
+    const name = inputDeviceNodeName(dtsNodeName || `pmw3610`);
+    const swap = device.swapxy ? `\n        swap-xy;` : '';
+    const invx = device.invertx ? `\n        invert-x;` : '';
+    const invy = device.inverty ? `\n        invert-y;` : '';
+
+    const dts = `
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+&${busName} {
+    ${name}: ${name}@${index} {
+        status = "okay";
+        compatible = "pixart,pmw3610";
+        reg = <${index}>;
+        spi-max-frequency = <2000000>;
+        evt-type = <INPUT_EV_REL>;
+        x-input-code = <INPUT_REL_X>;
+        y-input-code = <INPUT_REL_Y>;
+        irq-gpios = <${controllerInfo.pins[device.irq || '']?.dtsRef} (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+        cpi = <${device.cpi}>;${swap}${invx}${invy}
+    };
+};
+`;
+    return {
+      dts,
+      kconfig: [
+        `
+config PMW3610
+    default y
+`
+      ]
+    };
+  },
+  pinnacle_spi: ({ busName, device, index, controllerInfo, dtsNodeName }): InternalPinctrlOutput => {
+    if (device.type !== "pinnacle_spi" || index === undefined) return { dts: '', kconfig: [] };
+
+    const name = inputDeviceNodeName(dtsNodeName || `pinnacle_spi`);
+    const rotate90 = device.rotate90 ? `\n        rotate-90;` : '';
+    const invx = device.invertx ? `\n        x-invert;` : '';
+    const invy = device.inverty ? `\n        y-invert;` : '';
+    const sleep = device.sleep ? `\n        sleep;` : '';
+    const noSecondaryTap = device.noSecondaryTap ? `\n        no-secondary-tap;` : '';
+    const noTaps = device.noTaps ? `\n        no-taps;` : '';
+
+    const dts = `
+&${busName} {
+    ${name}: ${name}@${index} {
+        status = "okay";
+        compatible = "cirque,pinnacle";
+        reg = <${index}>;
+        spi-max-frequency = <2000000>;
+        dr-gpios = <${controllerInfo.pins[device.dr || '']?.dtsRef} (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;${rotate90}${invx}${invy}${sleep}${noSecondaryTap}${noTaps}
+        sensitivity = "${device.sensitivity}";
     };
 };
 `;

@@ -2,6 +2,7 @@ import { Button } from "@kobalte/core/button";
 import { Dialog } from "@kobalte/core/dialog";
 import { DropdownMenu } from "@kobalte/core/dropdown-menu";
 import { Link } from "@kobalte/core/link";
+import { Popover } from "@kobalte/core/popover";
 import { debounce } from "@solid-primitives/scheduled";
 import { actions } from "astro:actions";
 import { PUBLIC_TURNSTILE_SITEKEY } from "astro:env/client";
@@ -14,16 +15,16 @@ import Package from "lucide-solid/icons/package";
 import PencilLine from "lucide-solid/icons/pencil-line";
 import SunMoon from "lucide-solid/icons/sun-moon";
 import X from "lucide-solid/icons/x";
-import { createEffect, createMemo, createSignal, For, onMount, Show, type VoidComponent } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Match, onMount, Show, Switch, type VoidComponent } from "solid-js";
 import { produce, unwrap } from "solid-js/store";
 import { version } from "virtual:version";
 import { CommonShieldNames } from "~/lib/shieldNames";
 import { swpBgClass } from "~/lib/swpColors";
 import type { ValidationError } from "~/lib/validators";
-import type { KeyboardPart } from "../typedef";
+import type { BusDeviceTypeName, KeyboardPart } from "../typedef";
 import { TurnstileCaptcha } from "./captcha/turnstile";
 import { useWizardContext } from "./context";
-import { busDeviceInfos, controllerInfos, loadBusesForController } from "./controllerInfo";
+import { controllerInfos, getBusDeviceMetadata, loadBusesForController } from "./controllerInfo";
 
 export const InfoEditButton: VoidComponent = () => {
   const context = useWizardContext();
@@ -305,14 +306,19 @@ let KeyboardSchema: typeof import("~/typedef").KeyboardSchema | null = null;
 let validateKeyboard: typeof import("~/lib/validators").validateKeyboard | null = null;
 
 (async () => {
-  const { createZMKConfig: importedCreateZMKConfig } = await import("~/lib/templating");
-  createZMKConfig = importedCreateZMKConfig;
-  const { default: importedJSZip } = (await import("jszip"));
-  JSZip = importedJSZip;
-  const { KeyboardSchema: importedKeyboardSchema } = await import("~/typedef");
-  KeyboardSchema = importedKeyboardSchema;
-  const { validateKeyboard: importedValidateKeyboard } = await import("~/lib/validators");
-  validateKeyboard = importedValidateKeyboard;
+  try {
+    const { createZMKConfig: importedCreateZMKConfig } = await import("~/lib/templating");
+    createZMKConfig = importedCreateZMKConfig;
+    const { default: importedJSZip } = (await import("jszip"));
+    JSZip = importedJSZip;
+    const { KeyboardSchema: importedKeyboardSchema } = await import("~/typedef");
+    KeyboardSchema = importedKeyboardSchema;
+    const { validateKeyboard: importedValidateKeyboard } = await import("~/lib/validators");
+    validateKeyboard = importedValidateKeyboard;
+  } catch (err) {
+    console.error("Error loading scripts", err);
+    // TODO display error on the page
+  }
 })();
 
 export const BuildButton: VoidComponent = () => {
@@ -347,16 +353,20 @@ export const BuildButton: VoidComponent = () => {
 
   // Summary screen local state
   const [showSummary, setShowSummary] = createSignal(false);
-  const [summaryData, setSummaryData] = createSignal<{
+  type SummaryData = {
     name: string;
+    dongle: boolean;
     parts: {
       board: string;
       shield: string;
+      roleC: boolean;
+      roleP: boolean;
       keys: number;
       encoders: number;
-      devices: { type: string, bus: string }[];
-    }[]
-  } | null>(null);
+      devices: { type: BusDeviceTypeName, bus: string }[];
+    }[];
+  };
+  const [summaryData, setSummaryData] = createSignal<SummaryData | null>(null);
 
   // const canBuild = createMemo(() => validationErrors().length === 0 && Boolean(context.snapshot()));
 
@@ -387,7 +397,7 @@ export const BuildButton: VoidComponent = () => {
 
       {
         // build summary UI data
-        const parts = keyboardClone.parts.map((p, idx) => {
+        const parts: SummaryData['parts'] = keyboardClone.parts.map((p, idx) => {
           const keys = keyboardClone.layout.filter((k) => k.part === idx).length;
           const encoders = p.encoders.length;
           const devices = p.buses.flatMap(bus => bus.devices.map(d => ({ type: d.type, bus: bus.name })));
@@ -396,6 +406,8 @@ export const BuildButton: VoidComponent = () => {
             shield: keyboardClone.parts.length > 1
               ? `${keyboardClone.shield}_${p.name}`
               : keyboardClone.shield,
+            roleC: idx === 0,
+            roleP: idx !== 0,
             keys,
             encoders,
             devices,
@@ -403,9 +415,13 @@ export const BuildButton: VoidComponent = () => {
         });
 
         if (keyboardClone.dongle) {
-          parts.push({
+          // add dongle part at position 0
+          parts[0].roleP = true; // make part 0 also peripheral
+          parts.unshift({
             board: "",
             shield: `${keyboardClone.shield}_dongle`,
+            roleC: true,
+            roleP: false,
             keys: 0,
             encoders: 0,
             devices: [],
@@ -414,6 +430,7 @@ export const BuildButton: VoidComponent = () => {
 
         setSummaryData({
           name: keyboardClone.name,
+          dongle: keyboardClone.dongle,
           parts,
         });
         setShowSummary(true);
@@ -629,17 +646,55 @@ export const BuildButton: VoidComponent = () => {
                   </Show>
 
                   <Show when={showSummary()}>
-                    <div class="mt-6">
-                      <div class="text-center mb-3 font-semibold text-xl">
+                    <div class="mt-4">
+                      <div class="text-center mb-2 font-semibold text-xl">
                         {summaryData()?.name}
                       </div>
-                      <div class="max-h-56 overflow-auto px-2 max-w-sm mx-auto">
+                      <div class="max-h-64 overflow-auto px-2 max-w-sm mx-auto">
                         <For each={summaryData()?.parts ?? []}>{(p) => (
                           <div
                             class="p-3 mb-2 bg-base-100 rounded-lg shadow-sm border border-base-300"
                           >
                             <div>
-                              <span class="text-sm">Shield:&nbsp;</span>
+                              <Popover>
+                                <Popover.Trigger>
+                                  <Show when={p.roleC}>
+                                    <span class="badge badge-outline badge-accent font-bold select-none me-1 cursor-pointer">C</span>
+                                  </Show>
+                                  <Show when={p.roleP}>
+                                    <span class="badge badge-outline badge-accent font-bold select-none me-1 cursor-pointer">P</span>
+                                  </Show>
+                                </Popover.Trigger>
+                                <Popover.Content class="popover--content max-w-xs">
+                                  <div>
+                                    <span class="font-bold">C: </span>
+                                    <span class="font-semibold">Central, </span>
+                                    <span class="text-sm">
+                                      processes keymap and communicates with host devices.
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span class="font-bold">P: </span>
+                                    <span class="font-semibold">Peripheral, </span>
+                                    <span class="text-sm">
+                                      reports to the central over an internal BLE connection.
+                                    </span>
+                                  </div>
+
+                                  <Show when={p.roleC}>
+                                    <div class="mt-2 text-sm">
+                                      There can only be one central part in a split keyboard, the role for each part is set at compile time.
+                                    </div>
+                                  </Show>
+                                  <Show when={p.roleP}>
+                                    <div class="mt-2 text-sm">
+                                      Peripheral part(s) only connect to the central part.
+                                      They don't work as USB devices on their own.
+                                    </div>
+                                  </Show>
+
+                                </Popover.Content>
+                              </Popover>
                               <span class="font-semibold font-mono">
                                 {p.shield}
                               </span>
@@ -660,7 +715,7 @@ export const BuildButton: VoidComponent = () => {
                               <For each={p.devices}>{(d, i) => (
                                 <>
                                   <span>
-                                    {busDeviceInfos[d.type as keyof typeof busDeviceInfos]?.name || d.type}
+                                    {getBusDeviceMetadata(d.type)?.fullName || d.type}
                                   </span>
                                   <span class="text-base-content/50">
                                     &nbsp;on&nbsp;
@@ -668,9 +723,7 @@ export const BuildButton: VoidComponent = () => {
                                   <span class="font-mono">
                                     {d.bus}
                                   </span>
-                                  {i() < (p.devices.length - 1)
-                                    ? <span class="text-base-content/50">,&nbsp;</span>
-                                    : null}
+                                  {i() < (p.devices.length - 1) ? <br /> : null}
                                 </>
                               )}</For>
                             </div>
@@ -678,7 +731,7 @@ export const BuildButton: VoidComponent = () => {
                         )}</For>
                       </div>
                       <div class="mt-4 flex items-center justify-center">
-                        <Button class="btn btn-primary" onClick={() => setShowSummary(false)} disabled={isBuilding() || !context.snapshot()}>Confirm</Button>
+                        <Button class="btn btn-primary" onClick={() => setShowSummary(false)} disabled={isBuilding() || !context.snapshot()}>Next</Button>
                       </div>
                     </div>
                   </Show>

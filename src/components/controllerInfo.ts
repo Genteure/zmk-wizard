@@ -1,133 +1,128 @@
-import type { AnyBus, BusDeviceTypeName, BusName, Controller, Soc } from "~/typedef";
+import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, Controller, Soc } from "~/typedef";
 
 export interface VisualGpioPin {
-  id: string;
-  type: "gpio";
+  readonly id: string;
+  readonly type: "gpio";
 }
 
 interface VisualGraphicPin {
-  type: "ui";
+  readonly type: "ui";
   /**
    * How the pin is represented in the UI
    */
-  ui: "power" | "gnd" | "rst" | "empty";
-  text: string;
+  readonly ui: "power" | "gnd" | "rst" | "empty";
+  readonly text: string;
 }
 
 export type VisualPin = VisualGpioPin | VisualGraphicPin;
 
-export interface SpiBusInfo {
-  name: string;
-  type: "spi";
-}
-
-export interface I2cBusInfo {
-  name: string;
-  type: "i2c";
-}
-
-export type BusInfo = SpiBusInfo | I2cBusInfo;
-
 export interface PinctrlSpiPinChoices {
-  mosi: string[];
-  miso: string[];
-  sck: string[];
-  cs: string[];
+  readonly type: "spi";
+  readonly mosi: readonly string[];
+  readonly miso: readonly string[];
+  readonly sck: readonly string[];
 }
-
-export type PinctrlSpiPinChoicesFunc = (spiBus: SpiBusInfo) => PinctrlSpiPinChoices;
 
 export interface PinctrlI2cPinChoices {
-  sda: string[];
-  scl: string[];
+  readonly type: "i2c";
+  readonly sda: readonly string[];
+  readonly scl: readonly string[];
 }
-
-export type PinctrlI2cPinChoicesFunc = (i2cBus: I2cBusInfo) => PinctrlI2cPinChoices;
 
 /**
  * Function that returns pin choices for a given bus.
  * Returned string is the `id` of the pin as defined in the controller's pin list.
  */
-export interface PinctrlPinChoicesFunc {
-  (bus: SpiBusInfo): PinctrlSpiPinChoices;
-  (bus: I2cBusInfo): PinctrlI2cPinChoices;
-}
+export type PinctrlPinChoicesFunc = (name: BusName) => PinctrlSpiPinChoices | PinctrlI2cPinChoices | null;
 
 export interface ControllerInfo {
-  name: string;
-  soc: Soc;
+  readonly name: string;
+  readonly soc: Soc;
   /**
    * Zephyr board name for build.yaml and pinctrl overlay paths
    */
-  board: string;
+  readonly board: string;
   /**
    * Kconfig symbol for the board
    */
-  boardKconfig: string;
+  readonly boardKconfig: string;
   /**
    * URL to documentation
    */
-  docLink: string;
+  readonly docLink: string;
   /**
    * Metadata for each signal pin
    */
-  pins: Record<string, ControllerPinMetadata>;
+  readonly pins: Readonly<Record<string, ControllerPinMetadata>>;
   /**
    * Visual representation of the controller's pins
    */
-  visual: {
-    left: VisualPin[];
-    right: VisualPin[];
+  readonly visual: {
+    readonly left: readonly VisualPin[];
+    readonly right: readonly VisualPin[];
   };
   // buses?: BusInfo[];
-  pinctrlChoices: PinctrlPinChoicesFunc;
-  busConflicts: Record<BusName, BusName[]>;
+  readonly pinctrlChoices: PinctrlPinChoicesFunc;
 }
 
 export interface ControllerPinMetadata {
   /**
    * Display name for the pin
    */
-  displayName: string;
+  readonly displayName: string;
   /**
    * Devicetree syntax reference for the pin
    */
-  dtsRef: string;
+  readonly dtsRef: string;
   /**
    * Devicetree pinctrl node reference for the pin
    */
-  pinctrlRef: string;
+  readonly pinctrlRef: string;
   /**
    * Alternate names for the pin
    */
-  aka?: string[] | undefined;
+  readonly aka?: readonly string[] | undefined;
 }
 
-function makeNrf52840PinctrlChoices(pins: string[]) {
-  function pinctrlPins(bus: SpiBusInfo): PinctrlSpiPinChoices;
-  function pinctrlPins(bus: I2cBusInfo): PinctrlI2cPinChoices;
-  function pinctrlPins(bus: BusInfo): PinctrlSpiPinChoices | PinctrlI2cPinChoices {
-    if (bus.type === "i2c") {
-      return {
-        sda: pins,
-        scl: pins,
-      } satisfies PinctrlI2cPinChoices;
-    }
+type SocBusDefinition = { readonly type: "spi" | "i2c"; readonly name: BusName };
 
-    if (bus.name !== "spi3") {
-      return {
-        mosi: pins,
-        miso: pins,
-        sck: pins,
-        cs: pins,
-      } satisfies PinctrlSpiPinChoices;
+export type SocBusData = {
+  readonly tooltip: string | null;
+  readonly conflicts: Record<BusName, readonly BusName[] | undefined>;
+  readonly pinRequirements: Record<BusName, readonly string[] | undefined>;
+  readonly buses: readonly SocBusDefinition[];
+};
+
+function makeNrf52840PinctrlChoices(pins: readonly string[]): PinctrlPinChoicesFunc {
+  // function pinctrlPins(bus: SpiBusInfo): PinctrlSpiPinChoices;
+  // function pinctrlPins(bus: I2cBusInfo): PinctrlI2cPinChoices;
+  function pinctrlPins(name: BusName): PinctrlSpiPinChoices | PinctrlI2cPinChoices | null {
+
+    switch (name) {
+      case "i2c0":
+      case "i2c1":
+        return {
+          type: 'i2c',
+          sda: pins,
+          scl: pins,
+        } satisfies PinctrlI2cPinChoices;
+
+
+      case "spi0":
+      case "spi1":
+      case "spi2":
+      case "spi3":
+        return {
+          type: 'spi',
+          mosi: pins,
+          miso: pins,
+          sck: pins,
+        } satisfies PinctrlSpiPinChoices;
+
+      default:
+        // invalid bus name
+        return null;
     }
-    return {
-      mosi: pins,
-      miso: pins,
-      sck: pins,
-      cs: pins,
-    } satisfies PinctrlSpiPinChoices;
   }
 
   return pinctrlPins;
@@ -138,88 +133,98 @@ function makeNrf52840PinctrlChoices(pins: string[]) {
  * @param availablePins pins exposed by the controller, from native RP2040 pin names (keys) to controller pin ids (values)
  * @returns function that returns pin choices for a given bus
  */
-function makeRP2040PinctrlChoices(availablePins: Record<string, string>) {
+function makeRP2040PinctrlChoices(availablePins: Readonly<Record<string, string>>): PinctrlPinChoicesFunc {
   const filterPins = (allPins: string[]) => allPins.filter((p) => availablePins.hasOwnProperty(p)).map((p) => availablePins[p]);
+  type PinMap = Record<BusName, PinctrlSpiPinChoices | PinctrlI2cPinChoices>;
   const allPinsForRp2040 = {
-    i2c: {
-      i2c0: {
-        // sda: 0, 4, 8, 16, 20, 24, 28
-        sda: filterPins(["gp0", "gp4", "gp8", "gp12", "gp16", "gp20", "gp24", "gp28"]),
-        // sdl: 1, 5, 9, 17, 21, 25, 29
-        scl: filterPins(["gp1", "gp5", "gp9", "gp13", "gp17", "gp21", "gp25", "gp29"]),
-      },
-      i2c1: {
-        // sda: 2, 6, 10, 14, 18, 22, 26
-        sda: filterPins(["gp2", "gp6", "gp10", "gp14", "gp18", "gp22", "gp26"]),
-        // sdl: 3, 7, 11, 15, 19, 23, 27
-        scl: filterPins(["gp3", "gp7", "gp11", "gp15", "gp19", "gp23", "gp27"]),
-      },
-    } satisfies Record<string, PinctrlI2cPinChoices> as Record<string, PinctrlI2cPinChoices>,
-    spi: {
-      spi0: {
-        // RX = MISO
-        // TX = MOSI
+    i2c0: {
+      type: "i2c",
+      // sda: 0, 4, 8, 16, 20, 24, 28
+      sda: filterPins(["gp0", "gp4", "gp8", "gp12", "gp16", "gp20", "gp24", "gp28"]),
+      // sdl: 1, 5, 9, 17, 21, 25, 29
+      scl: filterPins(["gp1", "gp5", "gp9", "gp13", "gp17", "gp21", "gp25", "gp29"]),
+    },
+    i2c1: {
+      type: "i2c",
+      // sda: 2, 6, 10, 14, 18, 22, 26
+      sda: filterPins(["gp2", "gp6", "gp10", "gp14", "gp18", "gp22", "gp26"]),
+      // sdl: 3, 7, 11, 15, 19, 23, 27
+      scl: filterPins(["gp3", "gp7", "gp11", "gp15", "gp19", "gp23", "gp27"]),
+    },
+    spi0: {
+      type: "spi",
+      // RX = MISO
+      // TX = MOSI
 
-        // spi0 rx = 0, 4, 16, 20
-        miso: filterPins(["gp0", "gp4", "gp16", "gp20"]),
-        // spi0 tx = 3, 7, 19, 23
-        mosi: filterPins(["gp3", "gp7", "gp19", "gp23"]),
-        // spi0 sck = 2, 6, 18, 22
-        sck: filterPins(["gp2", "gp6", "gp18", "gp22"]),
-        // spi0 cs = 1, 5, 17, 21 ???
-        // cs: ["gp1", "gp5", "gp17", "gp21"],
-        cs: Object.values(availablePins), // allow any pin
-      },
-      spi1: {
-        // rx = 8, 12, 24, 28
-        miso: filterPins(["gp8", "gp12", "gp24", "gp28"]),
-        // tx = 11, 15, 27
-        mosi: filterPins(["gp11", "gp15", "gp27"]),
-        // sck = 10, 14, 26
-        sck: filterPins(["gp10", "gp14", "gp26"]),
-        // cs = 9, 13, 25, 29
-        // cs: ["gp9", "gp13", "gp25", "gp29"],
-        cs: Object.values(availablePins), // allow any pin
-      },
-    } satisfies Record<string, PinctrlSpiPinChoices> as Record<string, PinctrlSpiPinChoices>,
-  }
+      // spi0 rx = 0, 4, 16, 20
+      miso: filterPins(["gp0", "gp4", "gp16", "gp20"]),
+      // spi0 tx = 3, 7, 19, 23
+      mosi: filterPins(["gp3", "gp7", "gp19", "gp23"]),
+      // spi0 sck = 2, 6, 18, 22
+      sck: filterPins(["gp2", "gp6", "gp18", "gp22"]),
+    },
+    spi1: {
+      type: "spi",
+      // rx = 8, 12, 24, 28
+      miso: filterPins(["gp8", "gp12", "gp24", "gp28"]),
+      // tx = 11, 15, 27
+      mosi: filterPins(["gp11", "gp15", "gp27"]),
+      // sck = 10, 14, 26
+      sck: filterPins(["gp10", "gp14", "gp26"]),
+    },
+  } satisfies PinMap as PinMap;
 
-  function rp2040PinctrlChoices(bus: SpiBusInfo): PinctrlSpiPinChoices;
-  function rp2040PinctrlChoices(bus: I2cBusInfo): PinctrlI2cPinChoices;
-  function rp2040PinctrlChoices(bus: BusInfo): PinctrlSpiPinChoices | PinctrlI2cPinChoices {
-    return allPinsForRp2040[bus.type][bus.name];
+  // function rp2040PinctrlChoices(bus: SpiBusInfo): PinctrlSpiPinChoices;
+  // function rp2040PinctrlChoices(bus: I2cBusInfo): PinctrlI2cPinChoices;
+  function rp2040PinctrlChoices(name: BusName): PinctrlSpiPinChoices | PinctrlI2cPinChoices | null {
+    return allPinsForRp2040[name] || null;
   }
 
   return rp2040PinctrlChoices;
 }
-
-const busPinRequirementMap = {
+export const socBusData: Record<Soc, SocBusData> = {
   nrf52840: {
-    i2c0: ["sda", "scl"],
-    i2c1: ["sda", "scl"],
-    spi0: ["sck"],
-    spi1: ["sck"],
-    spi2: ["sck"],
-    spi3: [],
-  } as Record<BusName, string[]>,
+    tooltip: "I2C0 and SPI0 are mutually exclusive, I2C1 and SPI1 are mutually exclusive. SPI3 can work without SCK, SPI0/1/2 require SCK.",
+    conflicts: {
+      i2c0: ["spi0"],
+      i2c1: ["spi1"],
+      spi0: ["i2c0"],
+      spi1: ["i2c1"],
+    },
+    pinRequirements: {
+      i2c0: ["sda", "scl"],
+      i2c1: ["sda", "scl"],
+      spi0: ["sck"],
+      spi1: ["sck"],
+      spi2: ["sck"],
+      spi3: [],
+    },
+    buses: [
+      { type: "spi", name: "spi0" },
+      { type: "spi", name: "spi1" },
+      { type: "spi", name: "spi2" },
+      { type: "spi", name: "spi3" },
+      { type: "i2c", name: "i2c0" },
+      { type: "i2c", name: "i2c1" },
+    ],
+  } as const,
   rp2040: {
-    i2c0: ["sda", "scl"],
-    i2c1: ["sda", "scl"],
-    spi0: [], // TODO verify
-    spi1: [],
-  } as Record<BusName, string[]>,
+    tooltip: null,
+    conflicts: {},
+    pinRequirements: {
+      i2c0: ["sda", "scl"],
+      i2c1: ["sda", "scl"],
+      spi0: [], // TODO verify
+      spi1: [],
+    },
+    buses: [
+      { type: "spi", name: "spi0" },
+      { type: "spi", name: "spi1" },
+      { type: "i2c", name: "i2c0" },
+      { type: "i2c", name: "i2c1" },
+    ],
+  } as const,
 } as const;
-export function busPinRequirements(controller: Controller, bus: BusName): string[] {
-  const soc = controllerInfos[controller].soc;
-  return busPinRequirementMap[soc][bus] || [];
-}
-
-const nrf52840BusConflicts: Record<BusName, BusName[]> = {
-  i2c0: ["spi0"],
-  i2c1: ["spi1"],
-  spi0: ["i2c0"],
-  spi1: ["i2c1"],
-};
 
 const controllerInfoNiceNanoV2: ControllerInfo = {
   name: "nice!nano v2",
@@ -295,7 +300,6 @@ const controllerInfoNiceNanoV2: ControllerInfo = {
     "d21", "d20", "d19", "d18", "d15", "d14", "d16", "d10",
     "p101", "p102", "p107",
   ]),
-  busConflicts: nrf52840BusConflicts,
 };
 
 const controllerInfoXiaoBle: ControllerInfo = {
@@ -341,7 +345,6 @@ const controllerInfoXiaoBle: ControllerInfo = {
     "d0", "d1", "d2", "d3", "d4", "d5", "d6",
     "d10", "d9", "d8", "d7",
   ]),
-  busConflicts: nrf52840BusConflicts,
 };
 
 const controllerInfoXiaoBlePlus: ControllerInfo = {
@@ -400,7 +403,6 @@ const controllerInfoXiaoBlePlus: ControllerInfo = {
     "d11", "d12", "d13", "d14", "d15",
     // "d16",
   ]),
-  busConflicts: nrf52840BusConflicts,
 };
 
 const controllerInfoRpiPico: ControllerInfo = {
@@ -488,7 +490,6 @@ const controllerInfoRpiPico: ControllerInfo = {
     "gp10", "gp11", "gp12", "gp13", "gp14", "gp15", "gp16", "gp17", "gp18", "gp19",
     "gp20", "gp21", "gp22", "gp26", "gp27", "gp28",
   ].map((p) => [p, p]))),
-  busConflicts: {}, // No bus conflicts for RP2040..?
 };
 
 const controllerInfoXiaoRp2040: ControllerInfo = {
@@ -526,7 +527,6 @@ const controllerInfoXiaoRp2040: ControllerInfo = {
     "gp2": "d8",
     "gp1": "d7",
   }),
-  busConflicts: {}, // No bus conflicts for RP2040..?
 };
 
 const controllerInfoQtPyRp2040: ControllerInfo = {
@@ -581,7 +581,6 @@ const controllerInfoQtPyRp2040: ControllerInfo = {
     "gp22": "gp22",
     "gp23": "gp23",
   }),
-  busConflicts: {}, // No bus conflicts for RP2040..?
 };
 
 const controllerInfoKB2040: ControllerInfo = {
@@ -677,7 +676,6 @@ const controllerInfoKB2040: ControllerInfo = {
     "gp12": "gp12",
     "gp13": "gp13",
   }),
-  busConflicts: {}, // No bus conflicts for RP2040
 };
 
 const controllerInfoSparkfunProMicroRp2040: ControllerInfo = {
@@ -779,10 +777,9 @@ const controllerInfoSparkfunProMicroRp2040: ControllerInfo = {
     "gp16": "gp16",
     "gp17": "gp17",
   }),
-  busConflicts: {}, // No bus conflicts for RP2040..?
 };
 
-export const controllerInfos: Record<Controller, ControllerInfo> = {
+export const controllerInfos: Readonly<Record<Controller, ControllerInfo>> = {
   "nice_nano_v2": controllerInfoNiceNanoV2,
   "xiao_ble": controllerInfoXiaoBle,
   "xiao_ble_plus": controllerInfoXiaoBlePlus,
@@ -801,73 +798,362 @@ export const controllerInfos: Record<Controller, ControllerInfo> = {
 // TODO before calling createZMKConfig in templating,
 // validate the buses passed in actually exist for the controller
 export function loadBusesForController(type: Controller): AnyBus[] {
-  const soc = controllerInfos[type].soc;
-  switch (soc) {
-    case "nrf52840":
-      return structuredClone([
-        { type: "spi", name: "spi0", devices: [] },
-        { type: "spi", name: "spi1", devices: [] },
-        { type: "spi", name: "spi2", devices: [] },
-        { type: "spi", name: "spi3", devices: [] },
-        { type: "i2c", name: "i2c0", devices: [] },
-        { type: "i2c", name: "i2c1", devices: [] },
-      ]);
-    case "rp2040":
-      return structuredClone([
-        { type: "spi", name: "spi0", devices: [] },
-        { type: "spi", name: "spi1", devices: [] },
-        { type: "i2c", name: "i2c0", devices: [] },
-        { type: "i2c", name: "i2c1", devices: [] },
-      ]);
-    default:
-      return [];
-  }
+  return structuredClone(socBusData[controllerInfos[type].soc].buses.map((bus) => ({ ...bus, devices: [] })));
 }
 
-export interface BusDeviceInfo {
-  name: string;
-  exclusive: boolean;
+export type BusDeviceClass = "display" | "led_strip" | "shift_register" | "pointing";
+
+/**
+ * Rules for device classes. When `maxPerPart` is set, at most that many
+ * devices of the class can be added to a single split part.
+ * If a class is omitted or `maxPerPart` is undefined, it is treated as unlimited.
+ */
+export const deviceClassRules: Readonly<Record<BusDeviceClass, Readonly<{ maxPerPart?: number }>>> = {
+  display: { maxPerPart: 1 },
+  led_strip: { maxPerPart: 1 },
+  shift_register: { maxPerPart: 1 },
+  pointing: {},
+};
+
+export type ZmkModuleRemote = "badjeff" | "petejohanson";
+/**
+ * UI widget type for device property
+ *
+ * - "pin": pin selection
+ * - "dec": decimal number input (base 10)
+ * - "hex": hexadecimal number input (base 16)
+ * - "options": select from predefined options
+ * - "checkbox": boolean checkbox
+ */
+export type DeviceDataWidgetType<T> =
+  T extends string ? "pin" | "stringOptions" /* | "text" */ :
+  T extends number ? "dec" | "hex" | "numberOptions" :
+  T extends boolean ? "checkbox" :
+  // T extends string[] ? "list" :
+  never;
+
+export type AllDeviceDataTypes = string | number | boolean;
+
+export type AllWidgetTypes = DeviceDataWidgetType<AllDeviceDataTypes>;
+
+type DeviceProps<T extends AnyBusDevice["type"]> = Omit<Extract<AnyBusDevice, { type: T }>, "type">;
+
+export type DevicePropDefinition<T> = {
+  readonly widget: DeviceDataWidgetType<T>;
+  readonly optional?: boolean | undefined;
   /**
-   * CS pin for SPI is active high instead of the default active low
+   * Name of the property for UI display
    */
-  csActiveHigh?: true | undefined;
-  // onBus: BusName;
-  needs?: Record<string, boolean>;
-}
+  readonly name?: string | undefined;
+  readonly desc?: string | undefined;
+  readonly min?: number | undefined;
+  readonly max?: number | undefined;
+  readonly options?: readonly T[] | undefined;
+};
 
-export const busDeviceInfos: Record<BusDeviceTypeName, BusDeviceInfo> = {
+type DeviceMetadata = {
+  readonly [K in AnyBusDevice["type"]]: {
+    readonly shortName: string;
+    readonly fullName: string;
+    readonly class: BusDeviceClass;
+    readonly exclusive: boolean;
+    readonly bus: "i2c" | "spi";
+    readonly busPins: {
+      readonly mosi?: boolean | undefined;
+      readonly miso?: boolean | undefined;
+      readonly sck?: boolean | undefined;
+      // I2C pins are always required
+    };
+    /**
+     * CS pin for SPI is active high instead of the default active low
+     */
+    readonly csActiveHigh?: true | undefined;
+    readonly desc?: string | undefined;
+    readonly module?: {
+      readonly remote: ZmkModuleRemote;
+      readonly repo: string;
+      readonly rev: string;
+    } | undefined;
+    readonly defaults?: Partial<DeviceProps<K>> | undefined;
+    readonly props: {
+      readonly [P in keyof DeviceProps<K>]: DevicePropDefinition<DeviceProps<K>[P]>;
+    };
+  };
+};
+
+// shared metadata for pinnacle on i2c and spi
+const pinnacleBaseMetadata = {
+  class: "pointing",
+  exclusive: false,
+  module: {
+    remote: "petejohanson",
+    repo: "cirque-input-module",
+    rev: "0de55f36bc720b5be3d8880dc856d4d78baf5214",
+  },
+  defaults: {
+    rotate90: false,
+    invertx: false,
+    inverty: false,
+    sleep: true,
+    noSecondaryTap: true,
+    noTaps: true,
+    sensitivity: "2x",
+  },
+} as const;
+const pinnacleBaseMetadataProps = {
+  dr: {
+    widget: "pin",
+    desc: "Data Ready / Interrupt",
+  },
+  rotate90: {
+    widget: "checkbox",
+    name: "Rotate 90°",
+  },
+  invertx: {
+    widget: "checkbox",
+    name: "Invert X axis",
+  },
+  inverty: {
+    widget: "checkbox",
+    name: "Invert Y axis",
+  },
+  sleep: {
+    widget: "checkbox",
+    name: "Enable Sleep Mode",
+  },
+  noSecondaryTap: {
+    widget: "checkbox",
+    name: "Disable Secondary Tap",
+  },
+  noTaps: {
+    widget: "checkbox",
+    name: "Disable All Taps",
+  },
+  sensitivity: {
+    widget: "stringOptions",
+    name: "Sensitivity",
+    options: ["1x", "2x", "3x", "4x"] as const,
+  },
+} as const;
+
+/**
+ * Metadata for bus devices, including UI widget types for properties.
+ * Used for displaying device configuration UI, and for validating device properties.
+ * This is the single source of truth for all bus device info.
+ */
+export const busDeviceMetadata: DeviceMetadata = {
   ssd1306: {
-    name: "SSD1306 OLED Display",
+    shortName: "SSD1306",
+    fullName: "SSD1306 OLED Display",
+    class: "display",
+    bus: "i2c",
+    busPins: {
+      // I2C pins are always required
+    },
     exclusive: false,
-    // onBus: "i2c",
+    defaults: {
+      add: 0x3c,
+      width: 128,
+      height: 64,
+    },
+    // desc: undefined,
+    props: {
+      add: {
+        widget: "hex",
+        name: "I2C Address",
+        min: 0x00,
+        max: 0x7f,
+      },
+      width: {
+        widget: "dec",
+        min: 1,
+      },
+      height: {
+        widget: "dec",
+        min: 1,
+      },
+    },
   },
   niceview: {
-    name: "nice!view",
-    csActiveHigh: true,
-    // onBus: "spi",
-    exclusive: false,
-    needs: {
-      sck: true,
+    shortName: "nice!view",
+    fullName: "nice!view",
+    class: "display",
+    bus: "spi",
+    busPins: {
       mosi: true,
-      cs: true,
+      sck: true,
+      // TODO cs check moved to props
+      // cs: true,
+    },
+    exclusive: false,
+    csActiveHigh: true,
+    // desc: undefined,
+    props: {
+      cs: {
+        widget: "pin",
+      },
     },
   },
   ws2812: {
-    name: "WS2812 LED Strip",
-    // onBus: "spi",
-    exclusive: true,
-    needs: {
+    shortName: "WS2812",
+    fullName: "WS2812 LED Strip",
+    class: "led_strip",
+    bus: "spi",
+    busPins: {
       mosi: true,
+    },
+    exclusive: true,
+    defaults: {
+      length: 3,
+    },
+    // desc: undefined,
+    props: {
+      length: {
+        widget: "dec",
+        name: "Chain Length",
+        min: 1,
+        max: 256,
+      },
     },
   },
   "74hc595": {
-    name: "74HC595 Shift Register",
-    // onBus: "spi",
-    exclusive: false,
-    needs: {
+    shortName: "Shift Register",
+    fullName: "74HC595 Shift Register",
+    class: "shift_register",
+    bus: "spi",
+    busPins: {
       mosi: true,
       sck: true,
-      cs: true,
+      // TODO cs check moved to props
+      // cs: true,
+    },
+    exclusive: false,
+    defaults: {
+      ngpios: 8,
+    },
+    // desc: undefined,
+    props: {
+      cs: {
+        widget: "pin",
+      },
+      ngpios: {
+        widget: "numberOptions",
+        name: "Number of GPIOs",
+        options: [8, 16, 24, 32] as const,
+      },
+    },
+  },
+  pmw3610: {
+    shortName: "PMW3610",
+    fullName: "PMW3610 Optical Sensor",
+    class: "pointing",
+    bus: "spi",
+    busPins: {
+      // TODO PMW3610 use the same pin for MOSI and MISO
+      // we want to allow this in both UI and validation
+      mosi: true,
+      miso: true,
+      sck: true,
+      // TODO cs check moved to props
+      // cs: true,
+    },
+    exclusive: false,
+    // desc: undefined,
+    module: {
+      remote: "badjeff",
+      repo: "zmk-pmw3610-driver",
+      rev: "zmk-0.3",
+    },
+    defaults: {
+      cpi: 600,
+      swapxy: false,
+      invertx: false,
+      inverty: false,
+    },
+    props: {
+      cs: {
+        widget: "pin",
+        desc: "Chip Select Pin",
+      },
+      irq: {
+        // TODO add check for irq (or any other `widget: pin` props)
+        widget: "pin",
+        name: "MOTION",
+        desc: "MOTION / Interrupt Pin",
+      },
+      cpi: {
+        widget: "numberOptions",
+        options: Array.from({ length: 16 }, (_, i) => (i + 1) * 200),
+      },
+      swapxy: {
+        widget: "checkbox",
+        name: "Swap X/Y axes",
+      },
+      invertx: {
+        widget: "checkbox",
+        name: "Invert X axis",
+      },
+      inverty: {
+        widget: "checkbox",
+        name: "Invert Y axis",
+      },
+    },
+  },
+  pinnacle_i2c: {
+    ...pinnacleBaseMetadata,
+    shortName: "Pinnacle (I2C)",
+    fullName: "Cirque Pinnacle Trackpad on I2C",
+    bus: "i2c",
+    busPins: {},
+    props: {
+      add: {
+        name: "I2C Address",
+        widget: "hex",
+      },
+      ...pinnacleBaseMetadataProps,
+    },
+  },
+  pinnacle_spi: {
+    ...pinnacleBaseMetadata,
+    shortName: "Pinnacle (SPI)",
+    fullName: "Cirque Pinnacle Trackpad on SPI",
+    bus: "spi",
+    busPins: {
+      mosi: true,
+      miso: true,
+      sck: true,
+    },
+    props: {
+      cs: {
+        widget: "pin",
+        desc: "Chip Select Pin",
+      },
+      ...pinnacleBaseMetadataProps,
     },
   },
 };
+
+export const busDeviceTypes = Object.keys(busDeviceMetadata) as readonly BusDeviceTypeName[];
+
+export function deviceOptionsForBus(busType: "i2c" | "spi"): readonly BusDeviceTypeName[] {
+  return busDeviceTypes.filter((name) => busDeviceMetadata[name].bus === busType);
+}
+
+export function getBusDeviceMetadata(type: BusDeviceTypeName) {
+  return busDeviceMetadata[type];
+}
+
+export function requiredBusPinsForDevice(type: BusDeviceTypeName): readonly string[] {
+  const meta = getBusDeviceMetadata(type);
+  return Object.entries(meta?.busPins || {})
+    .filter(([, needed]) => Boolean(needed))
+    .map(([pin]) => pin);
+}
+
+export function pinPropKeysForDevice(type: BusDeviceTypeName): readonly string[] {
+  const meta = getBusDeviceMetadata(type);
+  if (!meta) return [];
+  return Object.entries(meta.props)
+    .filter(([, prop]) => prop.widget === "pin")
+    .map(([key]) => key);
+}
