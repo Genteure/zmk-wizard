@@ -190,8 +190,8 @@ function encoderOverlay(keyboard: Keyboard, partIndex: number): string {
         : `encoder${encIndex}`;
 
       dts += `&${encoderLabel} {
-    a-gpios = <${dtsPinHandle(part.controller, enc.pinA!)} GPIO_ACTIVE_HIGH>;
-    b-gpios = <${dtsPinHandle(part.controller, enc.pinB!)} GPIO_ACTIVE_HIGH>;
+    a-gpios = <${dtsPinHandle(part.controller, enc.pinA!)} (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+    b-gpios = <${dtsPinHandle(part.controller, enc.pinB!)} (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
     status = "okay";
 };
 `;
@@ -221,8 +221,8 @@ function encoderOverlay(keyboard: Keyboard, partIndex: number): string {
           : `encoder${encIndex}`;
 
         dts += `&${encoderLabel} {
-    a-gpios = <${dummyPin} GPIO_ACTIVE_HIGH>;
-    b-gpios = <${dummyPin} GPIO_ACTIVE_HIGH>;
+    a-gpios = <${dummyPin} (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+    b-gpios = <${dummyPin} (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
 };
 `;
       });
