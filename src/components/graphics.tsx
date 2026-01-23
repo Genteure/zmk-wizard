@@ -1157,7 +1157,7 @@ export const KeyboardPreview: VoidComponent<{
         class="absolute bottom-1 right-1 select-none flex flex-col items-end gap-1 pointer-coarse:gap-2"
         data-controls
       >
-        <Show when={context.nav.activeEditPart === null}>
+        <Show when={context.nav.selectedTab === "layout"}>
           {/* Edit buttons for moving the keys */}
           <div class="flex flex-col items-center gap-1 pointer-coarse:gap-2 rounded ">
             <div class="flex items-center gap-1 pointer-coarse:gap-2">
