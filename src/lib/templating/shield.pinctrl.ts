@@ -593,6 +593,41 @@ config PMW3610
       ]
     };
   },
+  paw3395: ({ busName, device, index, controllerInfo, dtsNodeName }): InternalPinctrlOutput => {
+    if (device.type !== "paw3395" || index === undefined) return { dts: '', kconfig: [] };
+
+    const name = inputDeviceNodeName(dtsNodeName || `paw3395`);
+    const swap = device.swapxy ? `\n        swap-xy;` : '';
+    const invx = device.invertx ? `\n        invert-x;` : '';
+    const invy = device.inverty ? `\n        invert-y;` : '';
+
+    const dts = `
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+&${busName} {
+    ${name}: ${name}@${index} {
+        status = "okay";
+        compatible = "pixart,paw3395";
+        reg = <${index}>;
+        spi-max-frequency = <4000000>;
+        evt-type = <INPUT_EV_REL>;
+        x-input-code = <INPUT_REL_X>;
+        y-input-code = <INPUT_REL_Y>;
+        irq-gpios = <${controllerInfo.pins[device.irq || '']?.dtsRef} (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+        cpi = <${device.cpi}>;${swap}${invx}${invy}
+    };
+};
+`;
+    return {
+      dts,
+      kconfig: [
+        `
+config PAW3395
+    default y
+`
+      ]
+    };
+  },
   pinnacle_spi: ({ busName, device, index, controllerInfo, dtsNodeName }): InternalPinctrlOutput => {
     if (device.type !== "pinnacle_spi" || index === undefined) return { dts: '', kconfig: [] };
 

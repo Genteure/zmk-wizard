@@ -39,6 +39,7 @@ function rootContextHelper(): WizardContextType {
     name: "",
     shield: "",
     dongle: false,
+    modules: [],
     layout: [],
     parts: [
       {
