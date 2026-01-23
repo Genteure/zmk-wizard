@@ -32,6 +32,56 @@
   .dialog--header {
     @apply flex items-baseline justify-between mb-3 select-none;
   }
+
+  /*
+    simplistic syntax highlighting for yaml code blocks
+    with dark and light mode support (Dark+ and Light+ inspired)
+   */
+  .yamlhl .line {
+    @apply block;
+    /* @apply whitespace-pre; */
+  }
+
+  .yamlhl {
+    .hl-c {
+      /* comments */
+      /* dark: #8B949E */
+      /* light: #6E7781 */
+      color: #6e7781;
+      @variant dark {
+        color: #8b949e;
+      }
+    }
+    .hl-k {
+      /* key */
+      /* light: #116329 */
+      /* dark: #7EE787 */
+
+      color: #116329;
+      @variant dark {
+        color: #7ee787;
+      }
+    }
+    .hl-s {
+      /* string */
+      /* dark: #A5D6FF */
+      /* light: #0A3069 */
+      color: #0a3069;
+      @variant dark {
+        color: #a5d6ff;
+      }
+      /* @apply text-green-600 dark:text-green-400; */
+    }
+    .hl-t {
+      /* tag/boolean */
+      /* dark: #E6EDF3 */
+      /* light: #1F2328 */
+      color: #1f2328;
+      @variant dark {
+        color: #e6edf3;
+      }
+    }
+  }
 }
 
 @theme {
@@ -90,3 +140,9 @@
     }
   }
 }
+
+/* :root{
+
+
+  --yamlhl-cmt-color: #8B949E;
+} */

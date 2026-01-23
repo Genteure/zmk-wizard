@@ -1,4 +1,4 @@
-import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, Controller, Soc } from "~/typedef";
+import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, Controller, ModuleId, Soc } from "~/typedef";
 
 export interface VisualGpioPin {
   readonly id: string;
@@ -845,7 +845,56 @@ export const deviceClassRules: Readonly<Record<BusDeviceClass, Readonly<{ maxPer
   pointing: {},
 };
 
-export type ZmkModuleRemote = "badjeff" | "petejohanson";
+export const ZmkModuleRemotes = {
+  "petejohanson": "https://github.com/petejohanson",
+  "badjeff": "https://github.com/badjeff",
+} as const;
+
+export interface ModuleData {
+  readonly remote: keyof typeof ZmkModuleRemotes;
+  readonly repo: string;
+  readonly rev: string;
+  /**
+   * Conflict keys - modules sharing any conflict key cannot be enabled together.
+   * For example, if module A has ["apple", "banana"] and module B has ["apple"],
+   * they conflict because both have "apple".
+   */
+  readonly conflicts: readonly string[];
+}
+
+export type ModuleRegistry = Record<ModuleId, ModuleData>;
+
+export const ZmkModules: ModuleRegistry = {
+  "petejohanson/cirque": {
+    remote: "petejohanson",
+    repo: "cirque-input-module",
+    rev: "0de55f36bc720b5be3d8880dc856d4d78baf5214",
+    conflicts: [],
+  },
+  "badjeff/pmw3610": {
+    remote: "badjeff",
+    repo: "zmk-pmw3610-driver",
+    rev: "zmk-0.3",
+    conflicts: ["pmw3610"], // There might be alternative PMW3610 drivers in the future
+  },
+  "badjeff/paw3395": {
+    remote: "badjeff",
+    repo: "zmk-paw3395-driver",
+    rev: "ab43c664cf84c94bd6b9839f3e4aa9517773de82",
+    conflicts: [],
+  },
+} as const;
+
+/**
+ * Check if two modules conflict with each other.
+ * Two modules conflict if they share any conflict key.
+ */
+export function modulesConflict(moduleA: ModuleId, moduleB: ModuleId): boolean {
+  const conflictsA = ZmkModules[moduleA].conflicts;
+  const conflictsB = ZmkModules[moduleB].conflicts;
+  return conflictsA.some(key => conflictsB.includes(key));
+}
+
 /**
  * UI widget type for device property
  *
@@ -899,11 +948,7 @@ type DeviceMetadata = {
      */
     readonly csActiveHigh?: true | undefined;
     readonly desc?: string | undefined;
-    readonly module?: {
-      readonly remote: ZmkModuleRemote;
-      readonly repo: string;
-      readonly rev: string;
-    } | undefined;
+    readonly module?: ModuleId | undefined;
     readonly defaults?: Partial<DeviceProps<K>> | undefined;
     readonly props: {
       readonly [P in keyof DeviceProps<K>]: DevicePropDefinition<DeviceProps<K>[P]>;
@@ -915,11 +960,7 @@ type DeviceMetadata = {
 const pinnacleBaseMetadata = {
   class: "pointing",
   exclusive: false,
-  module: {
-    remote: "petejohanson",
-    repo: "cirque-input-module",
-    rev: "0de55f36bc720b5be3d8880dc856d4d78baf5214",
-  },
+  module: "petejohanson/cirque",
   defaults: {
     rotate90: false,
     invertx: false,
@@ -1089,11 +1130,7 @@ export const busDeviceMetadata: DeviceMetadata = {
     },
     exclusive: false,
     // desc: undefined,
-    module: {
-      remote: "badjeff",
-      repo: "zmk-pmw3610-driver",
-      rev: "zmk-0.3",
-    },
+    module: "badjeff/pmw3610",
     defaults: {
       cpi: 600,
       swapxy: false,
@@ -1114,6 +1151,56 @@ export const busDeviceMetadata: DeviceMetadata = {
       cpi: {
         widget: "numberOptions",
         options: Array.from({ length: 16 }, (_, i) => (i + 1) * 200),
+      },
+      swapxy: {
+        widget: "checkbox",
+        name: "Swap X/Y axes",
+      },
+      invertx: {
+        widget: "checkbox",
+        name: "Invert X axis",
+      },
+      inverty: {
+        widget: "checkbox",
+        name: "Invert Y axis",
+      },
+    },
+  },
+  paw3395: {
+    shortName: "PAW3395",
+    fullName: "PAW3395 Optical Sensor",
+    class: "pointing",
+    bus: "spi",
+    busPins: {
+      mosi: true,
+      miso: true,
+      sck: true,
+    },
+    exclusive: false,
+    module: "badjeff/paw3395",
+    defaults: {
+      cpi: 600,
+      swapxy: false,
+      invertx: false,
+      inverty: false,
+    },
+    props: {
+      cs: {
+        widget: "pin",
+        desc: "Chip Select Pin",
+      },
+      irq: {
+        widget: "pin",
+        name: "MOTION",
+        desc: "MOTION / Interrupt Pin",
+      },
+      cpi: {
+        widget: "numberOptions",
+        options: [
+          ...Array.from({ length: 15 }, (_, i) => (i + 1) * 200),
+          ...Array.from({ length: 22 }, (_, i) => 3000 + (i + 1) * 400),
+          ...Array.from({ length: 14 }, (_, i) => 12000 + (i + 1) * 1000),
+        ],
       },
       swapxy: {
         widget: "checkbox",

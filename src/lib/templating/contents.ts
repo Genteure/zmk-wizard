@@ -1,9 +1,9 @@
 import { unwrap } from "solid-js/store";
 import { version } from "virtual:version";
-import { busDeviceMetadata, controllerInfos } from "~/components/controllerInfo";
+import { busDeviceMetadata, controllerInfos, ZmkModuleRemotes, ZmkModules } from "~/components/controllerInfo";
 import type { Controller, Keyboard, KeyboardPart } from "~/typedef";
-import { centralToPeripheralSnippetName } from "./utils";
 import { isInputDevice } from "~/typehelper";
+import { centralToPeripheralSnippetName } from "./utils";
 
 export const workflows_build_yml = `name: Build ZMK firmware
 on: [push, pull_request, workflow_dispatch]
@@ -14,7 +14,7 @@ jobs:
 `;
 
 export function config_west_yml(keyboard: Keyboard): string {
-  const extraRemotes: string[] = [];
+  const extraRemotes: (keyof typeof ZmkModuleRemotes)[] = [];
   const extraModules: { repo: string; remote: string; rev: string }[] = [];
 
   const uniqueDeviceTypes = Array.from(new Set((keyboard.parts.flatMap(part =>
@@ -22,8 +22,9 @@ export function config_west_yml(keyboard: Keyboard): string {
   ))));
 
   for (const deviceType of uniqueDeviceTypes) {
-    const module = busDeviceMetadata[deviceType].module;
-    if (!module) continue;
+    const moduleKey = busDeviceMetadata[deviceType].module;
+    if (!moduleKey) continue;
+    const module = ZmkModules[moduleKey];
     if (!extraRemotes.includes(module.remote)) {
       extraRemotes.push(module.remote);
     }
@@ -40,7 +41,7 @@ export function config_west_yml(keyboard: Keyboard): string {
 
   const extraRemotesYml = extraRemotes.map(remote => `
     - name: ${remote}
-      url-base: https://github.com/${remote}`).join('');
+      url-base: ${ZmkModuleRemotes[remote]}`).join('');
 
   const extraModulesYml = extraModules.map(module => `
     - name: ${module.repo}
