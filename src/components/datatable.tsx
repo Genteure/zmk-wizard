@@ -45,9 +45,10 @@ export const DataTable: VoidComponent = () => {
     // Adjust focus after deletion
     if (rowCount > 1) {
       const newRowIndex = Math.min(index, rowCount - 2);
-      setFocusedCell(prev => ({ row: newRowIndex, col: prev.col }));
+      const currentCol = focusedCell().col;
+      setFocusedCell({ row: newRowIndex, col: currentCol });
       // Use requestAnimationFrame to ensure DOM is updated
-      requestAnimationFrame(() => focusCell(newRowIndex, focusedCell().col));
+      requestAnimationFrame(() => focusCell(newRowIndex, currentCol));
     }
   };
 
@@ -195,15 +196,10 @@ export const DataTable: VoidComponent = () => {
     setFocusedCell({ row, col });
   }
 
-  // Set initial focus when data loads
+  // Set initial focus state when data loads (doesn't auto-focus the element)
   onMount(() => {
     if (context.keyboard.layout.length > 0) {
-      requestAnimationFrame(() => {
-        const firstCell = getCellElement(0, 0);
-        if (firstCell) {
-          setFocusedCell({ row: 0, col: 0 });
-        }
-      });
+      setFocusedCell({ row: 0, col: 0 });
     }
   });
 
@@ -315,9 +311,9 @@ export const DataTable: VoidComponent = () => {
                             // Allow normal text editing keys, only intercept navigation
                             if (["ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"].includes(e.key)) {
                               handleGridKeyDown(e, rowIndex(), colIndex() + 1);
-                            } else if (e.key === "ArrowLeft" && e.currentTarget.selectionStart === 0) {
+                            } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart ?? 0) === 0) {
                               handleGridKeyDown(e, rowIndex(), colIndex() + 1);
-                            } else if (e.key === "ArrowRight" && e.currentTarget.selectionStart === e.currentTarget.value.length) {
+                            } else if (e.key === "ArrowRight" && (e.currentTarget.selectionStart ?? 0) === e.currentTarget.value.length) {
                               handleGridKeyDown(e, rowIndex(), colIndex() + 1);
                             }
                           }}
