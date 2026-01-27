@@ -128,18 +128,15 @@ function computeWiringLines(
         }
       }
       
-      if (minFrom !== -1 && minTo !== -1) {
-        lines.push({
-          from: centers[minFrom],
-          to: centers[minTo],
-          type,
-          pinId,
-        });
-        visited.add(minTo);
-        remaining.delete(minTo);
-      } else {
-        break;
-      }
+      // minFrom and minTo will always be valid when remaining.size > 0
+      lines.push({
+        from: centers[minFrom],
+        to: centers[minTo],
+        type,
+        pinId,
+      });
+      visited.add(minTo);
+      remaining.delete(minTo);
     }
   };
   
@@ -567,8 +564,8 @@ export const KeyboardPreview: VoidComponent<{
             <svg
               class="absolute inset-0 overflow-visible pointer-events-none"
               style={{
-                width: contentBbox().width ? `${contentBbox().width}px` : '100%',
-                height: contentBbox().height ? `${contentBbox().height}px` : '100%',
+                width: `${contentBbox().width}px`,
+                height: `${contentBbox().height}px`,
               }}
             >
               <For each={wiringLines()}>
