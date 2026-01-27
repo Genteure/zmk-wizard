@@ -13,6 +13,8 @@ export const Main: VoidComponent = () => {
     (window as any).solidJsUnwrap = unwrap
   }
 
+  document.documentElement.dataset.theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
   return <WizardContext.Provider value={context}><App /></WizardContext.Provider>;
 }
 

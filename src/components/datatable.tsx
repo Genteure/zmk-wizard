@@ -288,7 +288,7 @@ export const DataTable: VoidComponent = () => {
                       class="w-8 h-8 m-1 rounded-lg border text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
                       classList={{
                         "bg-primary text-primary-content border-primary": isSelected(),
-                        "bg-base-200 text-base-content border-base-300 dark:bg-base-300 dark:border-base-400 dark:text-base-200": !isSelected(),
+                        "bg-base-200 text-base-content border-base-300": !isSelected(),
                       }}
                     >
                       {rowIndex()}

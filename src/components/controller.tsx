@@ -63,8 +63,8 @@ const ControllerPin: Component<{
               "cursor-pointer bg-red-500/10 text-red-500 border-red-500": props.usage === "output",
               "cursor-pointer bg-emerald-500/10 text-emerald-500 border-emerald-500": props.usage === "input",
               "underline": props.current,
-              "outline-2 outline-solid dark:outline-emerald-700 outline-emerald-300 drop-shadow-md dark:drop-shadow-white": props.current && props.usage === "input",
-              "outline-2 outline-solid dark:outline-red-700 outline-red-300 drop-shadow-md dark:drop-shadow-white": props.current && props.usage === "output",
+              "outline-2 outline-solid dark:outline-emerald-700 outline-emerald-300 drop-shadow-sm dark:drop-shadow-neutral-500": props.current && props.usage === "input",
+              "outline-2 outline-solid dark:outline-red-700 outline-red-300 drop-shadow-sm dark:drop-shadow-neutral-500": props.current && props.usage === "output",
             }}
 
             onClick={() => {
@@ -427,7 +427,7 @@ export const ShiftRegisterPinConfigurator: Component<{ partIndex: Accessor<numbe
                     <Button
                       class="w-16 justify-center font-semibold rounded border cursor-pointer bg-red-500/10 text-red-600 border-red-500"
                       classList={{
-                        "outline-2 outline-solid outline-red-300 dark:outline-red-700 underline": context.nav.activeWiringPin === pin.id,
+                        "outline-2 outline-solid dark:outline-red-700 outline-red-300 drop-shadow-sm dark:drop-shadow-neutral-500 underline": context.nav.activeWiringPin === pin.id,
                       }}
                       onClick={() => context.setNav("activeWiringPin", pin.id)}
                     >
