@@ -214,7 +214,7 @@ const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
       {/* Key Index */}
       <div
         classList={{
-          "absolute font-mono": true,
+          "absolute font-mono z-[2]": true,
           "transition-all duration-200 ease-out": true,
           "top-0.5 left-0.5 text-sm/tight": props.activeEditPart === keyData().part,
           "top-2/5 left-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl font-bold": props.activeEditPart === null,
@@ -226,7 +226,7 @@ const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
 
       {/* Selection Marker */}
       <Show when={props.isSelected}>
-        <div class="absolute top-0 right-0 w-7 h-7 pointer-events-none overflow-clip rounded-sm">
+        <div class="absolute top-0 right-0 w-7 h-7 pointer-events-none overflow-clip rounded-sm z-[2]">
           <div class="absolute top-0 right-0 rotate-45 bg-success w-7 h-7 -translate-y-1/2 translate-x-1/2"></div>
           <Check strokeWidth="4" class="w-2 h-2 absolute top-0.5 right-0.5 text-success-content" />
         </div>
@@ -235,7 +235,7 @@ const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
       {/* Key Content */}
       <Show when={props.activeEditPart === null}>
         <div
-          class="absolute top-3/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full p-1 text-xs text-center opacity-75 truncate"
+          class="absolute top-3/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full p-1 text-xs text-center opacity-75 truncate z-[2]"
         >
           <span
             class="inline-block rounded-full w-2 h-2 mr-1"
@@ -246,7 +246,7 @@ const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
 
       {/* Wiring pins while wiring this part */}
       <Show when={props.showWiringPins}>
-        <div class="absolute inset-0 flex flex-col items-center justify-center text-lg/tight font-bold leading-tight pointer-events-none text-center">
+        <div class="absolute inset-0 flex flex-col items-center justify-center text-lg/tight font-bold leading-tight pointer-events-none text-center z-[2]">
           <div
             class="text-emerald-500"
             classList={{ "opacity-50 italic": !props.wiring?.input }}
@@ -559,10 +559,10 @@ export const KeyboardPreview: VoidComponent<{
             '[&>button]:cursor-pointer': !effectiveIsPan() && (props.editMode?.() === "wiring") && !isWiringDragging(),
           }}
         >
-          {/* Wiring connection lines - rendered below keys */}
+          {/* Wiring connection lines - rendered above key backgrounds but below key labels */}
           <Show when={props.editMode?.() === "wiring" && wiringLines().length > 0}>
             <svg
-              class="absolute inset-0 overflow-visible pointer-events-none"
+              class="absolute inset-0 overflow-visible pointer-events-none z-[1]"
               style={{
                 width: `${contentBbox().width}px`,
                 height: `${contentBbox().height}px`,
