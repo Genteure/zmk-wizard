@@ -17,6 +17,8 @@ import Check from "lucide-solid/icons/check";
 import Move from "lucide-solid/icons/move";
 import Pencil from "lucide-solid/icons/pencil";
 import RotateCcw from "lucide-solid/icons/rotate-ccw";
+import Zap from "lucide-solid/icons/zap";
+import ZapOff from "lucide-solid/icons/zap-off";
 import ZoomIn from "lucide-solid/icons/zoom-in";
 import ZoomOut from "lucide-solid/icons/zoom-out";
 
@@ -69,31 +71,31 @@ function computeWiringLines(
   activeEditPart: number | null
 ): WiringLine[] {
   const lines: WiringLine[] = [];
-  
+
   // Group keys by their wiring pins (input and output separately)
   const inputGroups = new Map<string, GraphicsKey[]>();
   const outputGroups = new Map<string, GraphicsKey[]>();
-  
+
   for (const gkey of keys) {
     // Only consider keys from the active edit part, or all if none selected
     if (activeEditPart !== null && gkey.part !== activeEditPart) continue;
-    
+
     const wiring = parts[gkey.part]?.keys[gkey.key.id];
     if (!wiring) continue;
-    
+
     if (wiring.input) {
       const group = inputGroups.get(wiring.input) || [];
       group.push(gkey);
       inputGroups.set(wiring.input, group);
     }
-    
+
     if (wiring.output) {
       const group = outputGroups.get(wiring.output) || [];
       group.push(gkey);
       outputGroups.set(wiring.output, group);
     }
   }
-  
+
   // Helper function to create minimum spanning tree lines for a group of keys
   const createMstLines = (
     keysInGroup: GraphicsKey[],
@@ -101,25 +103,25 @@ function computeWiringLines(
     pinId: string
   ) => {
     if (keysInGroup.length < 2) return;
-    
+
     // Get centers of all keys
     const centers = keysInGroup.map(k => keyCenter(k));
-    
+
     // Simple MST using Prim's algorithm
     const visited = new Set<number>([0]);
     const remaining = new Set<number>(keysInGroup.map((_, i) => i).filter(i => i !== 0));
-    
+
     while (remaining.size > 0) {
       let minDist = Infinity;
       let minFrom = -1;
       let minTo = -1;
-      
+
       for (const from of visited) {
         for (const to of remaining) {
           const dx = centers[to].x - centers[from].x;
           const dy = centers[to].y - centers[from].y;
           const dist = dx * dx + dy * dy; // squared distance for comparison
-          
+
           if (dist < minDist) {
             minDist = dist;
             minFrom = from;
@@ -127,11 +129,11 @@ function computeWiringLines(
           }
         }
       }
-      
+
       // minFrom and minTo will always be valid when remaining.size > 0
       // but add defensive check just in case
       if (minFrom === -1 || minTo === -1) break;
-      
+
       lines.push({
         from: centers[minFrom],
         to: centers[minTo],
@@ -142,17 +144,17 @@ function computeWiringLines(
       remaining.delete(minTo);
     }
   };
-  
+
   // Create lines for each input group
   for (const [pinId, keysInGroup] of inputGroups) {
     createMstLines(keysInGroup, 'input', pinId);
   }
-  
+
   // Create lines for each output group
   for (const [pinId, keysInGroup] of outputGroups) {
     createMstLines(keysInGroup, 'output', pinId);
   }
-  
+
   return lines;
 }
 
@@ -229,7 +231,7 @@ const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
 
       {/* Selection Marker */}
       <Show when={props.isSelected}>
-        <div class="absolute top-0 right-0 w-7 h-7 pointer-events-none overflow-clip rounded-sm z-[2]">
+        <div class="absolute top-0 right-0 w-7 h-7 pointer-events-none overflow-clip rounded-sm z-2">
           <div class="absolute top-0 right-0 rotate-45 bg-success w-7 h-7 -translate-y-1/2 translate-x-1/2"></div>
           <Check strokeWidth="4" class="w-2 h-2 absolute top-0.5 right-0.5 text-success-content" />
         </div>
@@ -238,7 +240,7 @@ const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
       {/* Key Content */}
       <Show when={props.activeEditPart === null}>
         <div
-          class="absolute top-3/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full p-1 text-xs text-center opacity-75 truncate z-[2]"
+          class="absolute top-3/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full p-1 text-xs text-center opacity-75 truncate z-2"
         >
           <span
             class="inline-block rounded-full w-2 h-2 mr-1"
@@ -249,7 +251,7 @@ const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
 
       {/* Wiring pins while wiring this part */}
       <Show when={props.showWiringPins}>
-        <div class="absolute inset-0 flex flex-col items-center justify-center text-lg/tight font-bold leading-tight pointer-events-none text-center z-[2]">
+        <div class="absolute inset-0 flex flex-col items-center justify-center text-lg/tight font-bold leading-tight pointer-events-none text-center z-2">
           <div
             class="text-emerald-500"
             classList={{ "opacity-50 italic": !props.wiring?.input }}
@@ -293,6 +295,7 @@ export const KeyboardPreview: VoidComponent<{
   const effectiveIsPan = createMemo(() => ctrlHeld() ? !panMode() : panMode())
 
   const [autoZoom, setAutoZoom] = createSignal(true);
+  const [showConnectionLines, setShowConnectionLines] = createSignal(true);
   const activeMode = createMemo<"pan" | "select" | "wiring">(() => {
     if (effectiveIsPan()) return "pan";
     return (props.editMode?.() === "wiring") ? "wiring" : "select";
@@ -342,7 +345,7 @@ export const KeyboardPreview: VoidComponent<{
 
   // Compute wiring connection lines (only when in wiring mode)
   const wiringLines = createMemo(() => {
-    if (props.editMode?.() !== "wiring") return [];
+    if (props.editMode?.() !== "wiring" || !showConnectionLines()) return [];
     return computeWiringLines(
       props.keys(),
       context.keyboard.parts,
@@ -565,7 +568,7 @@ export const KeyboardPreview: VoidComponent<{
           {/* Wiring connection lines - rendered above key backgrounds but below key labels */}
           <Show when={props.editMode?.() === "wiring" && wiringLines().length > 0}>
             <svg
-              class="absolute inset-0 overflow-visible pointer-events-none z-[1]"
+              class="absolute inset-0 overflow-visible pointer-events-none z-1"
               style={{
                 width: `${contentBbox().width}px`,
                 height: `${contentBbox().height}px`,
@@ -743,6 +746,20 @@ export const KeyboardPreview: VoidComponent<{
                 onTouchCancel={moveRightEnd}
               >
                 <ArrowBigUp aria-hidden class="w-6 h-6 rotate-90" />
+              </Button>
+            </div>
+          </div>
+        </Show>
+        <Show when={props.editMode?.() === "wiring"}>
+          <div class="flex flex-col items-center gap-1 pointer-coarse:gap-2 rounded">
+            <div class="flex items-center gap-1 pointer-coarse:gap-2">
+              <Button
+                aria-label="Toggle wiring connection lines"
+                class="rounded-sm text-base-600 bg-base-200/60 hover:text-primary cursor-pointer border border-zinc-600/50 hover:border-primary/30 backdrop-blur-sm"
+                title={showConnectionLines() ? "Hide wiring connection lines" : "Show wiring connection lines"}
+                onClick={() => setShowConnectionLines(prev => !prev)}
+              >
+                {showConnectionLines() ? <Zap aria-hidden class="w-6 h-6" /> : <ZapOff aria-hidden class="w-6 h-6" />}
               </Button>
             </div>
           </div>
