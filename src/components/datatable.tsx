@@ -207,13 +207,16 @@ export const DataTable: VoidComponent = () => {
 
   return (
     <div class="overflow-auto min-h-32 h-full">
+      <div class="sr-only" aria-live="polite">
+        Use arrow keys to navigate between cells. Press Tab to exit the table.
+      </div>
       <table
         ref={tableRef}
         role="grid"
         aria-label="Keyboard layout keys"
         aria-rowcount={rowCount() + 1}
         aria-colcount={TOTAL_COLS}
-        class="table table-sm table-pin-cols table-pin-rows w-full border-collapse border-spacing-0 min-w-[600px]"
+        class="table table-sm table-pin-cols table-pin-rows w-full border-collapse border-spacing-0 min-w-150"
       >
         <thead>
           <tr role="row" aria-rowindex={1} class="bg-base-300">
@@ -359,11 +362,6 @@ export const DataTable: VoidComponent = () => {
           </For>
         </tbody>
       </table>
-
-      {/* Screen reader instructions */}
-      <div class="sr-only" aria-live="polite">
-        Use arrow keys to navigate between cells. Press Tab to exit the table.
-      </div>
     </div>
   );
 }
