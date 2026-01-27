@@ -129,6 +129,9 @@ function computeWiringLines(
       }
       
       // minFrom and minTo will always be valid when remaining.size > 0
+      // but add defensive check just in case
+      if (minFrom === -1 || minTo === -1) break;
+      
       lines.push({
         from: centers[minFrom],
         to: centers[minTo],
