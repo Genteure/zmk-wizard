@@ -74,6 +74,9 @@ export default defineConfig({
   webServer: {
     command: 'pnpm dev',
     url: 'http://localhost:4321',
-    reuseExistingServer: !process.env.CI,
+    // reuseExistingServer: !process.env.CI,
+    // to allow copilot to run tests with existing server
+    // github copilot runs with env CI=1
+    reuseExistingServer: true,
   },
 });
