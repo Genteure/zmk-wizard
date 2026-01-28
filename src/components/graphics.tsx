@@ -30,10 +30,11 @@ import {
   getKeysBoundingBox,
   getKeyStyles,
   keyCenter,
+  keyToSvgPath,
   type KeyGeometry,
   type Point,
 } from "~/lib/geometry";
-import { swpBgClass, swpBorderClass } from "~/lib/swpColors";
+import { swpBgClass, swpCssVar } from "~/lib/swpColors";
 import type { Key, KeyboardPart, SingleKeyWiring, WiringType } from "../typedef";
 import { normalizeKeys, useWizardContext } from "./context";
 import { controllerInfos } from "./controllerInfo";
@@ -172,15 +173,81 @@ type KeyRendererProps = {
 
 const shiftRegisterPinLabels: Record<string, string> = Object.fromEntries(Array.from({ length: 32 }, (_, i) => [`shifter${i}`, `SR${i}`]))
 
+/**
+ * Props for SVG key rendering.
+ * State calculations (like pinActive) should be done outside this component.
+ */
+type KeySvgProps = {
+  keyData: GraphicsKey;
+  isSelected: boolean;
+  activeEditPart: number | null;
+  pinActive: boolean;
+  offsetX: number;
+  offsetY: number;
+};
+
+/**
+ * SVG component for rendering key background and border.
+ * Rendered as a path element within the parent SVG.
+ */
+const KeySvgPath: VoidComponent<KeySvgProps> = (props) => {
+  const keyData = () => props.keyData;
+  const keyPart = () => keyData().part;
+  const isCurrentPart = () => props.activeEditPart === null || props.activeEditPart === keyPart();
+  const isWiringMode = () => props.activeEditPart !== null;
+
+  const pathData = () => keyToSvgPath(keyData(), {
+    offsetX: props.offsetX,
+    offsetY: props.offsetY,
+  });
+
+  // Fill color: bg-base-300 for selected/pinActive, bg-base-200 otherwise
+  const fill = () => (props.isSelected || props.pinActive)
+    ? "var(--color-base-300)"
+    : "var(--color-base-200)";
+
+  // Stroke color based on state:
+  // - pinActive: amber
+  // - selected: base-content
+  // - layout mode (no active part): part color
+  // - wiring mode, current part: base-content (solid border)
+  // - wiring mode, other part: base-content with opacity (dashed)
+  const stroke = () => {
+    if (props.pinActive) return "var(--color-amber-500)";
+    if (props.isSelected) return "var(--color-base-content)";
+    if (!isWiringMode()) return swpCssVar(keyPart());
+    return "var(--color-base-content)";
+  };
+
+  // Stroke width: 2 for selected/pinActive, 1 otherwise
+  const strokeWidth = () => (props.isSelected || props.pinActive) ? 2 : 1;
+
+  // Dashed pattern for inactive parts in wiring mode
+  const strokeDasharray = () => (isWiringMode() && !isCurrentPart()) ? "4 2" : undefined;
+
+  // Opacity: 50% for inactive parts in wiring mode
+  const strokeOpacity = () => (isWiringMode() && !isCurrentPart()) ? 0.5 : 1;
+
+  return (
+    <path
+      d={pathData()}
+      fill={fill()}
+      stroke={stroke()}
+      stroke-width={strokeWidth()}
+      stroke-dasharray={strokeDasharray()}
+      stroke-opacity={strokeOpacity()}
+    />
+  );
+};
+
+/**
+ * HTML component for rendering key labels and interactive overlay.
+ * Positioned over the SVG background.
+ */
 const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
   const keyData = () => props.keyData;
   const partName = () => props.parts[keyData().part]?.name;
   const showOutputPin = () => props.wiringType === "matrix_diode" || props.wiringType === "matrix_no_diode";
-  const pinActive = () => {
-    if (!props.activeWiringPin) return false;
-    const { input, output } = props.wiring || {};
-    return input === props.activeWiringPin || output === props.activeWiringPin;
-  };
   const pinLabel = (pinId?: string): string => {
     if (!pinId) return "????";
 
@@ -205,17 +272,8 @@ const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
     aria-label={`Key ${keyData().index} (${partName() || "Unnamed Part"})`}
     onClick={() => props.onClick?.(keyData())}
   >
-    <div
-      class="w-full h-full rounded-sm select-none p-0.5 border " // transition duration-300
-      classList={{
-        "bg-base-200": (props.activeEditPart === keyData().part || props.activeEditPart === null),
-        "bg-base-300 border-2": props.isSelected,
-        "border-amber-500 bg-base-300 border-2": props.activeEditPart === keyData().part && pinActive(),
-        [swpBorderClass(keyData().part)]: props.activeEditPart === null,
-        "border-dashed border-base-content/50": props.activeEditPart !== null && props.activeEditPart !== keyData().part,
-      }}
-    >
-
+    {/* Transparent overlay for click detection - background/border now rendered via SVG */}
+    <div class="w-full h-full rounded-sm select-none p-0.5">
       {/* Key Index */}
       <div
         classList={{
@@ -565,6 +623,37 @@ export const KeyboardPreview: VoidComponent<{
             '[&>button]:cursor-pointer': !effectiveIsPan() && (props.editMode?.() === "wiring") && !isWiringDragging(),
           }}
         >
+          {/* SVG layer for key backgrounds and borders */}
+          <Show when={props.keys().length > 0}>
+            <svg
+              class="absolute inset-0 overflow-visible pointer-events-none"
+              style={{
+                width: `${contentBbox().width}px`,
+                height: `${contentBbox().height}px`,
+              }}
+            >
+              <For each={props.keys()}>
+                {(gkey) => {
+                  const pinActive = createMemo(() => {
+                    const wiring = context.keyboard.parts[gkey.part]?.keys[gkey.key.id];
+                    return context.nav.activeWiringPin !== null &&
+                      (wiring?.input === context.nav.activeWiringPin || wiring?.output === context.nav.activeWiringPin);
+                  });
+                  return (
+                    <KeySvgPath
+                      keyData={gkey}
+                      isSelected={context.nav.selectedKeys.includes(gkey.key.id)}
+                      activeEditPart={context.nav.activeEditPart}
+                      pinActive={pinActive()}
+                      offsetX={contentBbox().min.x || 0}
+                      offsetY={contentBbox().min.y || 0}
+                    />
+                  );
+                }}
+              </For>
+            </svg>
+          </Show>
+
           {/* Wiring connection lines - rendered above key backgrounds but below key labels */}
           <Show when={props.editMode?.() === "wiring" && wiringLines().length > 0}>
             <svg
