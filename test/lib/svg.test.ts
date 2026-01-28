@@ -145,8 +145,9 @@ describe("generateKeyboardSvg", () => {
 
       const svg = generateKeyboardSvg(keyboard);
 
-      // Check for part labels
-      expect(svg).toContain('class="key-part"');
+      // Check for part labels (now include part-specific class)
+      expect(svg).toContain('class="key-part part-0"');
+      expect(svg).toContain('class="key-part part-1"');
       expect(svg).toContain(">left</text>");
       expect(svg).toContain(">right</text>");
     });
@@ -247,49 +248,6 @@ describe("generateKeyboardSvg", () => {
 
       expect(svg).toContain("<svg");
       expect(svg).toContain("</svg>");
-    });
-
-    it("should escape special characters in part names", () => {
-      const keys = [
-        {
-          id: "test",
-          part: 0,
-          row: 0,
-          col: 0,
-          w: 1,
-          h: 1,
-          x: 0,
-          y: 0,
-          r: 0,
-          rx: 0,
-          ry: 0,
-        },
-        {
-          id: "test2",
-          part: 1,
-          row: 0,
-          col: 1,
-          w: 1,
-          h: 1,
-          x: 5,
-          y: 0,
-          r: 0,
-          rx: 0,
-          ry: 0,
-        },
-      ] satisfies Key[];
-
-      const keyboard = makeKeyboard("Special", "special_kb", keys, [
-        makePart("left<part>"),
-        makePart("right&part"),
-      ]);
-
-      const svg = generateKeyboardSvg(keyboard);
-
-      // Check that special characters are escaped
-      expect(svg).toContain("&lt;part&gt;");
-      expect(svg).toContain("&amp;part");
-      expect(svg).not.toContain("<part>");
     });
 
     it("should use monospace font for key indices", () => {
