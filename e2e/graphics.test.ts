@@ -616,33 +616,33 @@ test.describe('selection', () => {
       // Focus the editor
       await editor.focus();
       
-      // Press W to pan up (moves content down, so Y increases)
+      // Press W to move content up (Y decreases)
       const initialTranslate = await getTranslate();
       await page.keyboard.press('w');
       await page.waitForTimeout(100);
       const afterWTranslate = await getTranslate();
-      expect(afterWTranslate.y).toBeGreaterThan(initialTranslate.y);
+      expect(afterWTranslate.y).toBeLessThan(initialTranslate.y);
 
-      // Press S to pan down (moves content up, so Y decreases)
+      // Press S to move content down (Y increases)
       await page.keyboard.press('s');
       await page.keyboard.press('s');
       await page.waitForTimeout(100);
       const afterSTranslate = await getTranslate();
-      expect(afterSTranslate.y).toBeLessThan(afterWTranslate.y);
+      expect(afterSTranslate.y).toBeGreaterThan(afterWTranslate.y);
 
-      // Press A to pan left (moves content right, so X increases)
+      // Press A to move content left (X decreases)
       const beforeATranslate = await getTranslate();
       await page.keyboard.press('a');
       await page.waitForTimeout(100);
       const afterATranslate = await getTranslate();
-      expect(afterATranslate.x).toBeGreaterThan(beforeATranslate.x);
+      expect(afterATranslate.x).toBeLessThan(beforeATranslate.x);
 
-      // Press D to pan right (moves content left, so X decreases)
+      // Press D to move content right (X increases)
       await page.keyboard.press('d');
       await page.keyboard.press('d');
       await page.waitForTimeout(100);
       const afterDTranslate = await getTranslate();
-      expect(afterDTranslate.x).toBeLessThan(afterATranslate.x);
+      expect(afterDTranslate.x).toBeGreaterThan(afterATranslate.x);
     });
 
     test('arrow keys pan in pan mode', async ({ page }) => {
@@ -666,33 +666,33 @@ test.describe('selection', () => {
       // Focus the editor
       await editor.focus();
       
-      // Press ArrowUp to pan up (moves content down, so Y increases)
+      // Press ArrowUp to move content up (Y decreases)
       const initialTranslate = await getTranslate();
       await page.keyboard.press('ArrowUp');
       await page.waitForTimeout(100);
       const afterUpTranslate = await getTranslate();
-      expect(afterUpTranslate.y).toBeGreaterThan(initialTranslate.y);
+      expect(afterUpTranslate.y).toBeLessThan(initialTranslate.y);
 
-      // Press ArrowDown to pan down (moves content up, so Y decreases)
+      // Press ArrowDown to move content down (Y increases)
       await page.keyboard.press('ArrowDown');
       await page.keyboard.press('ArrowDown');
       await page.waitForTimeout(100);
       const afterDownTranslate = await getTranslate();
-      expect(afterDownTranslate.y).toBeLessThan(afterUpTranslate.y);
+      expect(afterDownTranslate.y).toBeGreaterThan(afterUpTranslate.y);
 
-      // Press ArrowLeft to pan left (moves content right, so X increases)
+      // Press ArrowLeft to move content left (X decreases)
       const beforeLeftTranslate = await getTranslate();
       await page.keyboard.press('ArrowLeft');
       await page.waitForTimeout(100);
       const afterLeftTranslate = await getTranslate();
-      expect(afterLeftTranslate.x).toBeGreaterThan(beforeLeftTranslate.x);
+      expect(afterLeftTranslate.x).toBeLessThan(beforeLeftTranslate.x);
 
-      // Press ArrowRight to pan right (moves content left, so X decreases)
+      // Press ArrowRight to move content right (X increases)
       await page.keyboard.press('ArrowRight');
       await page.keyboard.press('ArrowRight');
       await page.waitForTimeout(100);
       const afterRightTranslate = await getTranslate();
-      expect(afterRightTranslate.x).toBeLessThan(afterLeftTranslate.x);
+      expect(afterRightTranslate.x).toBeGreaterThan(afterLeftTranslate.x);
     });
   });
 

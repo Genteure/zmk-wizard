@@ -701,11 +701,12 @@ export const KeyboardPreview: VoidComponent<{
       }
 
       // WASD keys for panning (work in all modes, skip if Ctrl/Meta held for browser shortcuts)
+      // W moves content up, S moves content down, A moves content left, D moves content right
       case 'w':
       case 'W': {
         if (!e.ctrlKey && !e.metaKey) {
           e.preventDefault();
-          panView(0, panStep);
+          panView(0, -panStep);
           return;
         }
         break;
@@ -715,7 +716,7 @@ export const KeyboardPreview: VoidComponent<{
         // Only pan if Ctrl/Meta is not held (Ctrl+A is select all)
         if (!e.ctrlKey && !e.metaKey) {
           e.preventDefault();
-          panView(panStep, 0);
+          panView(-panStep, 0);
           return;
         }
         break;
@@ -724,7 +725,7 @@ export const KeyboardPreview: VoidComponent<{
       case 'S': {
         if (!e.ctrlKey && !e.metaKey) {
           e.preventDefault();
-          panView(0, -panStep);
+          panView(0, panStep);
           return;
         }
         break;
@@ -733,7 +734,7 @@ export const KeyboardPreview: VoidComponent<{
       case 'D': {
         if (!e.ctrlKey && !e.metaKey) {
           e.preventDefault();
-          panView(-panStep, 0);
+          panView(panStep, 0);
           return;
         }
         break;
@@ -743,26 +744,27 @@ export const KeyboardPreview: VoidComponent<{
     const keys = getNavigableKeys();
 
     // Handle arrow keys in pan mode for panning
+    // Arrow direction matches content movement direction
     if (activeMode() === 'pan') {
       switch (e.key) {
         case 'ArrowUp': {
           e.preventDefault();
-          panView(0, panStep);
+          panView(0, -panStep);
           return;
         }
         case 'ArrowDown': {
           e.preventDefault();
-          panView(0, -panStep);
+          panView(0, panStep);
           return;
         }
         case 'ArrowLeft': {
           e.preventDefault();
-          panView(panStep, 0);
+          panView(-panStep, 0);
           return;
         }
         case 'ArrowRight': {
           e.preventDefault();
-          panView(-panStep, 0);
+          panView(panStep, 0);
           return;
         }
       }
