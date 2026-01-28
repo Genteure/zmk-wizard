@@ -126,6 +126,10 @@ function validateFileSyntax(files: VirtualTextFolder) {
 
       expect(tree?.rootNode).toBeDefined();
       expect(tree.rootNode.hasError, `${fileName} syntax error`).toBe(false);
+    } else if (ext === "svg") {
+      // SVG files are XML-based, just verify basic structure
+      expect(content).toContain("<svg");
+      expect(content).toContain("</svg>");
     } else {
       expect.unreachable(`No parser for file extension: ${ext} (file: ${fileName})`);
     }
@@ -149,6 +153,7 @@ describe("unibody", () => {
     const fileNames = Object.keys(files).sort();
 
     expect(fileNames).toEqual([
+      ".github/shield-wizard-layout.svg",
       ".github/workflows/build.yml",
       "README.md",
       "boards/shields/unittest/Kconfig.defconfig",
@@ -174,6 +179,7 @@ describe("unibody", () => {
     const fileNames = Object.keys(files).sort();
 
     expect(fileNames).toEqual([
+      ".github/shield-wizard-layout.svg",
       ".github/workflows/build.yml",
       "README.md",
       "boards/shields/unittest/Kconfig.defconfig",
@@ -214,6 +220,7 @@ describe("split", () => {
     const fileNames = Object.keys(files).sort();
 
     expect(fileNames).toEqual([
+      ".github/shield-wizard-layout.svg",
       ".github/workflows/build.yml",
       "README.md",
       "boards/shields/unittest/Kconfig.defconfig",
@@ -240,6 +247,7 @@ describe("split", () => {
     const fileNames = Object.keys(files).sort();
 
     expect(fileNames).toEqual([
+      ".github/shield-wizard-layout.svg",
       ".github/workflows/build.yml",
       "README.md",
       "boards/shields/unittest/Kconfig.defconfig",

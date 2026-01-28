@@ -10,9 +10,11 @@ import {
   zephyr_module_yml,
 } from "./contents";
 import { createShieldOverlayFiles } from "./shield";
+import { generateKeyboardSvg } from "./svg";
 import { shieldRootPath } from "./utils";
 export { config__json } from "./contents";
 export { physicalLayoutKeyboard } from "./shield";
+export { generateKeyboardSvg } from "./svg";
 
 export function createZMKConfig(keyboard: Keyboard): VirtualTextFolder {
   if (keyboard.shield === 'throwerror') {
@@ -22,6 +24,7 @@ export function createZMKConfig(keyboard: Keyboard): VirtualTextFolder {
   const files: VirtualTextFolder = {};
 
   files['.github/workflows/build.yml'] = workflows_build_yml;
+  files['.github/shield-wizard-layout.svg'] = generateKeyboardSvg(keyboard);
   files['config/west.yml'] = config_west_yml(keyboard);
   files['zephyr/module.yml'] = zephyr_module_yml(keyboard);
   files['build.yaml'] = build_yaml(keyboard);
