@@ -452,6 +452,50 @@ test.describe('selection', () => {
       await expect(selectedCount).toHaveText("2 selected");
     });
 
+    test('Space key also selects keys', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      await expect(editor).toBeVisible();
+
+      // Focus the editor
+      await editor.focus();
+
+      // Press arrow down to focus a key
+      await page.keyboard.press('ArrowDown');
+
+      // Press Space to select (alternative to Enter)
+      await page.keyboard.press(' ');
+
+      // Check that a key is selected
+      const selectedCount = editor.locator(':not(.sr-only)').getByText(/^\d+ selected$/);
+      await expect(selectedCount).toHaveText("1 selected");
+    });
+
+    test('Shift+Arrow keys move selected keys', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      await expect(editor).toBeVisible();
+
+      // Focus the editor
+      await editor.focus();
+
+      // Focus and select a key
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
+
+      // Get the initial X position from the data table
+      const xInput = page.getByRole('textbox', { name: 'Key 0 x position' });
+      const initialX = await xInput.inputValue();
+
+      // Press Shift+ArrowRight to move the selected key
+      await page.keyboard.press('Shift+ArrowRight');
+
+      // Wait for the update
+      await page.waitForTimeout(100);
+
+      // The X position should have increased
+      const newX = await xInput.inputValue();
+      expect(parseFloat(newX)).toBeGreaterThan(parseFloat(initialX));
+    });
+
     test('Ctrl+A selects all keys', async ({ page }) => {
       const editor = page.getByRole('application').first();
       await expect(editor).toBeVisible();

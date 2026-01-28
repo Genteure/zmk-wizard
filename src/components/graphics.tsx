@@ -662,6 +662,32 @@ export const KeyboardPreview: VoidComponent<{
       return;
     }
 
+    // Handle zoom shortcuts first (these work even when no keys are present)
+    switch (e.key) {
+      case '+':
+      case '=': {
+        // Zoom in
+        e.preventDefault();
+        scaleAtOrigin(true, (containerSize.width || 0) / 2, (containerSize.height || 0) / 2);
+        return;
+      }
+      
+      case '-':
+      case '_': {
+        // Zoom out
+        e.preventDefault();
+        scaleAtOrigin(false, (containerSize.width || 0) / 2, (containerSize.height || 0) / 2);
+        return;
+      }
+      
+      case '0': {
+        // Reset zoom
+        e.preventDefault();
+        setAutoZoom(true);
+        return;
+      }
+    }
+
     const keys = getNavigableKeys();
     if (keys.length === 0) return;
 
@@ -675,8 +701,8 @@ export const KeyboardPreview: VoidComponent<{
         e.preventDefault();
         const direction = e.key.replace('Arrow', '').toLowerCase() as 'up' | 'down' | 'left' | 'right';
         
-        if (e.shiftKey && activeMode() === 'select' && currentFocused !== null) {
-          // Shift+Arrow: move selected keys
+        if (e.shiftKey && activeMode() === 'select' && context.nav.selectedKeys.length > 0) {
+          // Shift+Arrow: move selected keys (only if there are selected keys)
           switch (direction) {
             case 'up': moveUpStart(); moveUpEnd(); break;
             case 'down': moveDownStart(); moveDownEnd(); break;
@@ -748,29 +774,6 @@ export const KeyboardPreview: VoidComponent<{
         if (keys.length > 0) {
           setFocusedKeyIndex(keys[keys.length - 1].index);
         }
-        break;
-      }
-      
-      case '+':
-      case '=': {
-        // Zoom in
-        e.preventDefault();
-        scaleAtOrigin(true, (containerSize.width || 0) / 2, (containerSize.height || 0) / 2);
-        break;
-      }
-      
-      case '-':
-      case '_': {
-        // Zoom out
-        e.preventDefault();
-        scaleAtOrigin(false, (containerSize.width || 0) / 2, (containerSize.height || 0) / 2);
-        break;
-      }
-      
-      case '0': {
-        // Reset zoom
-        e.preventDefault();
-        setAutoZoom(true);
         break;
       }
     }
