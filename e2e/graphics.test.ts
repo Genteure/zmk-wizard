@@ -406,8 +406,8 @@ test.describe('selection', () => {
       await page.mouse.move(endX, endY, { steps: 5 });
       await page.mouse.up();
 
-      // verify keys are selected
-      const selectedCount = editor.getByText('selected').first();
+      // verify keys are selected (use visible selector to skip sr-only elements)
+      const selectedCount = editor.locator(':not(.sr-only)').getByText(/^\d+ selected$/);
       await expect(selectedCount).toHaveText("60 selected");
 
       await page.mouse.move(startX, startY);
@@ -417,6 +417,142 @@ test.describe('selection', () => {
 
       // verify keys are selected
       await expect(selectedCount).toHaveText("30 selected");
+    });
+  });
+
+  test.describe('keyboard', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.getByRole('menuitem', { name: 'Layout Tools' }).click();
+      await page.getByRole('menuitem', { name: 'Presets' }).click();
+      await page.getByRole('menuitem', { name: 'Sofle' }).click();
+    });
+
+    test('arrow keys and Enter navigate and select keys', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      await expect(editor).toBeVisible();
+
+      // Focus the editor
+      await editor.focus();
+
+      // Press arrow down to focus a key
+      await page.keyboard.press('ArrowDown');
+
+      // Press Enter to select
+      await page.keyboard.press('Enter');
+
+      // Check that a key is selected
+      const selectedCount = editor.locator(':not(.sr-only)').getByText(/^\d+ selected$/);
+      await expect(selectedCount).toHaveText("1 selected");
+      
+      // Navigate right and select another key
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('Enter');
+      
+      // Should have 2 keys selected
+      await expect(selectedCount).toHaveText("2 selected");
+    });
+
+    test('Ctrl+A selects all keys', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      await expect(editor).toBeVisible();
+
+      // Focus the editor and dispatch Ctrl+A via JavaScript
+      // (Playwright's keyboard.press for Ctrl+A can be intercepted by browser's default behavior)
+      await editor.evaluate((el) => {
+        el.focus();
+        const event = new KeyboardEvent('keydown', { key: 'a', ctrlKey: true, bubbles: true });
+        el.dispatchEvent(event);
+      });
+
+      // Check that all keys are selected
+      const selectedCount = editor.locator(':not(.sr-only)').getByText(/^\d+ selected$/);
+      await expect(selectedCount).toHaveText("60 selected");
+    });
+
+    test('Escape clears selection', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      await expect(editor).toBeVisible();
+
+      // Select all keys first via JavaScript dispatch
+      await editor.evaluate((el) => {
+        el.focus();
+        const event = new KeyboardEvent('keydown', { key: 'a', ctrlKey: true, bubbles: true });
+        el.dispatchEvent(event);
+      });
+      
+      const selectedCount = editor.locator(':not(.sr-only)').getByText(/^\d+ selected$/);
+      await expect(selectedCount).toHaveText("60 selected");
+
+      // Re-focus and press Escape to clear selection
+      await editor.focus();
+      await page.keyboard.press('Escape');
+      await expect(selectedCount).toHaveText("0 selected");
+    });
+
+    test('Home and End keys navigate to first and last key', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      await expect(editor).toBeVisible();
+
+      // Focus the editor
+      await editor.focus();
+
+      // Press End to go to last key
+      await page.keyboard.press('End');
+
+      // Press Enter to select the last key
+      await page.keyboard.press('Enter');
+
+      // Press Home to go to first key
+      await page.keyboard.press('Home');
+
+      // Press Enter to also select the first key
+      await page.keyboard.press('Enter');
+
+      // Should have 2 keys selected
+      const selectedCount = editor.locator(':not(.sr-only)').getByText(/^\d+ selected$/);
+      await expect(selectedCount).toHaveText("2 selected");
+    });
+
+    test('plus and minus keys zoom in and out', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      const displayArea = editor.locator('div[style*="transform"]').first();
+      
+      await expect(editor).toBeVisible();
+
+      const getScale = async () => {
+        const style = await displayArea.getAttribute('style');
+        const match = /scale\(\s*([-.\d]+)\s*\)/.exec(style || '');
+        const value = match ? parseFloat(match[1]) : NaN;
+        expect(value).not.toBeNaN();
+        return value;
+      };
+
+      const initialScale = await getScale();
+
+      // Focus the editor
+      await editor.focus();
+
+      // Press + to zoom in
+      await page.keyboard.press('+');
+      await page.waitForTimeout(100);
+
+      const afterZoomInScale = await getScale();
+      expect(afterZoomInScale).toBeGreaterThan(initialScale);
+
+      // Press - to zoom out
+      await page.keyboard.press('-');
+      await page.keyboard.press('-');
+      await page.waitForTimeout(100);
+
+      const afterZoomOutScale = await getScale();
+      expect(afterZoomOutScale).toBeLessThan(afterZoomInScale);
+
+      // Press 0 to reset zoom
+      await page.keyboard.press('0');
+      await page.waitForTimeout(100);
+
+      const afterResetScale = await getScale();
+      expect(afterResetScale).toBeCloseTo(initialScale);
     });
   });
 
