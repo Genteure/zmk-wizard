@@ -163,12 +163,14 @@ type KeyRendererProps = {
   keyData: GraphicsKey;
   parts: KeyboardPart[];
   isSelected: boolean;
+  isFocused: boolean;
   activeEditPart: number | null;
   activeWiringPin: string | null;
   wiring?: SingleKeyWiring;
   wiringType?: WiringType;
   showWiringPins: boolean;
   onClick?: ((key: GraphicsKey) => void) | undefined;
+  onFocus?: ((key: GraphicsKey) => void) | undefined;
 };
 
 const shiftRegisterPinLabels: Record<string, string> = Object.fromEntries(Array.from({ length: 32 }, (_, i) => [`shifter${i}`, `SR${i}`]))
@@ -180,6 +182,7 @@ const shiftRegisterPinLabels: Record<string, string> = Object.fromEntries(Array.
 type KeySvgProps = {
   keyData: GraphicsKey;
   isSelected: boolean;
+  isFocused: boolean;
   activeEditPart: number | null;
   pinActive: boolean;
   offsetX: number;
@@ -201,26 +204,32 @@ const KeySvgPath: VoidComponent<KeySvgProps> = (props) => {
     offsetY: props.offsetY,
   });
 
-  // Fill color: bg-base-300 for selected/pinActive, bg-base-200 otherwise
-  const fill = () => (props.isSelected || props.pinActive)
+  // Fill color: bg-base-300 for selected/pinActive/focused, bg-base-200 otherwise
+  const fill = () => (props.isSelected || props.pinActive || props.isFocused)
     ? "var(--color-base-300)"
     : "var(--color-base-200)";
 
   // Stroke color based on state:
+  // - focused: sky-500 (focus ring color)
   // - pinActive: amber
   // - selected: base-content
   // - layout mode (no active part): part color
   // - wiring mode, current part: base-content (solid border)
   // - wiring mode, other part: base-content with opacity (dashed)
   const stroke = () => {
+    if (props.isFocused) return "var(--color-sky-500)";
     if (props.pinActive) return "var(--color-amber-500)";
     if (props.isSelected) return "var(--color-base-content)";
     if (!isWiringMode()) return swpCssVar(keyPart());
     return "var(--color-base-content)";
   };
 
-  // Stroke width: 2 for selected/pinActive, 1 otherwise
-  const strokeWidth = () => (props.isSelected || props.pinActive) ? 2 : 1;
+  // Stroke width: 3 for focused, 2 for selected/pinActive, 1 otherwise
+  const strokeWidth = () => {
+    if (props.isFocused) return 3;
+    if (props.isSelected || props.pinActive) return 2;
+    return 1;
+  };
 
   // Dashed pattern for inactive parts in wiring mode
   const strokeDasharray = () => (isWiringMode() && !isCurrentPart()) ? "4 2" : undefined;
@@ -264,13 +273,34 @@ const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
     return info.pins[pinId]?.displayName || pinId;
   };
 
+  // Build descriptive ARIA label
+  const ariaLabel = () => {
+    const parts: string[] = [`Key ${keyData().index}`];
+    const pName = partName();
+    if (pName) parts.push(`part ${pName}`);
+    if (props.isSelected) parts.push('selected');
+    if (props.showWiringPins) {
+      const inputPin = props.wiring?.input;
+      const outputPin = props.wiring?.output;
+      if (inputPin) parts.push(`input pin ${pinLabel(inputPin)}`);
+      if (outputPin && showOutputPin()) parts.push(`output pin ${pinLabel(outputPin)}`);
+    }
+    return parts.join(', ');
+  };
+
   return (<Button
     style={getKeyStyles(keyData())}
     classList={{
       "z-10": props.isSelected,
+      "z-20": props.isFocused,
     }}
-    aria-label={`Key ${keyData().index} (${partName() || "Unnamed Part"})`}
+    aria-label={ariaLabel()}
+    aria-pressed={props.isSelected}
+    tabIndex={-1}
     onClick={() => props.onClick?.(keyData())}
+    onFocus={() => props.onFocus?.(keyData())}
+    data-key-index={keyData().index}
+    data-key-id={keyData().key.id}
   >
     {/* Transparent overlay for click detection - background/border now rendered via SVG */}
     <div class="w-full h-full rounded-sm select-none p-0.5">
@@ -354,6 +384,11 @@ export const KeyboardPreview: VoidComponent<{
 
   const [autoZoom, setAutoZoom] = createSignal(true);
   const [showConnectionLines, setShowConnectionLines] = createSignal(true);
+  
+  // Keyboard navigation state: tracks which key has keyboard focus
+  // null means no key is focused (container focus)
+  const [focusedKeyIndex, setFocusedKeyIndex] = createSignal<number | null>(null);
+  
   const activeMode = createMemo<"pan" | "select" | "wiring">(() => {
     if (effectiveIsPan()) return "pan";
     return (props.editMode?.() === "wiring") ? "wiring" : "select";
@@ -537,6 +572,295 @@ export const KeyboardPreview: VoidComponent<{
     }
   };
 
+  // Callback when a key receives focus (e.g., from click)
+  const onKeyFocused = (key: GraphicsKey) => {
+    setFocusedKeyIndex(key.index);
+  };
+
+  /**
+   * Helper to filter keys based on active part in wiring mode
+   */
+  const getNavigableKeys = () => {
+    const keys = props.keys();
+    if (context.nav.activeEditPart === null) return keys;
+    return keys.filter(k => k.part === context.nav.activeEditPart);
+  };
+
+  /**
+   * Find the nearest key in a given direction using spatial navigation.
+   * Uses the key center positions for distance calculations.
+   */
+  const findNearestKeyInDirection = (
+    currentIndex: number,
+    direction: 'up' | 'down' | 'left' | 'right'
+  ): number | null => {
+    const keys = getNavigableKeys();
+    if (keys.length === 0) return null;
+    
+    const currentKey = keys.find(k => k.index === currentIndex);
+    if (!currentKey) return keys[0]?.index ?? null;
+    
+    const currentCenter = keyCenter(currentKey);
+    
+    // Filter keys that are in the correct direction
+    const candidates = keys.filter(k => {
+      if (k.index === currentIndex) return false;
+      const center = keyCenter(k);
+      
+      switch (direction) {
+        case 'up':
+          return center.y < currentCenter.y - 5; // 5px threshold
+        case 'down':
+          return center.y > currentCenter.y + 5;
+        case 'left':
+          return center.x < currentCenter.x - 5;
+        case 'right':
+          return center.x > currentCenter.x + 5;
+      }
+    });
+    
+    if (candidates.length === 0) return null;
+    
+    // Score candidates by combined distance, favoring keys closer to the primary axis
+    const scored = candidates.map(k => {
+      const center = keyCenter(k);
+      const dx = center.x - currentCenter.x;
+      const dy = center.y - currentCenter.y;
+      
+      // Primary axis distance and perpendicular distance
+      let primary: number, perpendicular: number;
+      switch (direction) {
+        case 'up':
+        case 'down':
+          primary = Math.abs(dy);
+          perpendicular = Math.abs(dx);
+          break;
+        case 'left':
+        case 'right':
+          primary = Math.abs(dx);
+          perpendicular = Math.abs(dy);
+          break;
+      }
+      
+      // Score: lower is better. Penalize perpendicular distance more.
+      const score = primary + perpendicular * 2;
+      return { key: k, score };
+    });
+    
+    // Sort by score and return the best match
+    scored.sort((a, b) => a.score - b.score);
+    return scored[0]?.key.index ?? null;
+  };
+
+  /**
+   * Handle keyboard navigation and actions
+   */
+  const onKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = (e) => {
+    // Don't handle if target is an input or inside controls
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.closest('[data-controls]')) {
+      return;
+    }
+
+    // Pan step size (in virtual pixels)
+    const panStep = 50;
+
+    // Helper function to pan the view
+    const panView = (dx: number, dy: number) => {
+      setAutoZoom(false);
+      setTransform(t => ({
+        ...t,
+        x: t.x + dx / t.s,
+        y: t.y + dy / t.s,
+      }));
+    };
+
+    // Handle zoom shortcuts first (these work even when no keys are present)
+    switch (e.key) {
+      case '+':
+      case '=': {
+        // Zoom in
+        e.preventDefault();
+        scaleAtOrigin(true, (containerSize.width || 0) / 2, (containerSize.height || 0) / 2);
+        return;
+      }
+      
+      case '-':
+      case '_': {
+        // Zoom out
+        e.preventDefault();
+        scaleAtOrigin(false, (containerSize.width || 0) / 2, (containerSize.height || 0) / 2);
+        return;
+      }
+      
+      case '0': {
+        // Reset zoom
+        e.preventDefault();
+        setAutoZoom(true);
+        return;
+      }
+
+      // WASD keys for panning (work in all modes, skip if Ctrl/Meta held for browser shortcuts)
+      // W moves content up, S moves content down, A moves content left, D moves content right
+      case 'w':
+      case 'W': {
+        if (!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          panView(0, -panStep);
+          return;
+        }
+        break;
+      }
+      case 'a':
+      case 'A': {
+        // Only pan if Ctrl/Meta is not held (Ctrl+A is select all)
+        if (!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          panView(-panStep, 0);
+          return;
+        }
+        break;
+      }
+      case 's':
+      case 'S': {
+        if (!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          panView(0, panStep);
+          return;
+        }
+        break;
+      }
+      case 'd':
+      case 'D': {
+        if (!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          panView(panStep, 0);
+          return;
+        }
+        break;
+      }
+    }
+
+    const keys = getNavigableKeys();
+
+    // Handle arrow keys in pan mode for panning
+    // Arrow direction matches content movement direction
+    if (activeMode() === 'pan') {
+      switch (e.key) {
+        case 'ArrowUp': {
+          e.preventDefault();
+          panView(0, -panStep);
+          return;
+        }
+        case 'ArrowDown': {
+          e.preventDefault();
+          panView(0, panStep);
+          return;
+        }
+        case 'ArrowLeft': {
+          e.preventDefault();
+          panView(-panStep, 0);
+          return;
+        }
+        case 'ArrowRight': {
+          e.preventDefault();
+          panView(panStep, 0);
+          return;
+        }
+      }
+    }
+
+    // Exit early if no keys to navigate
+    if (keys.length === 0) return;
+
+    const currentFocused = focusedKeyIndex();
+    
+    switch (e.key) {
+      case 'ArrowUp':
+      case 'ArrowDown':
+      case 'ArrowLeft':
+      case 'ArrowRight': {
+        e.preventDefault();
+        const direction = e.key.replace('Arrow', '').toLowerCase() as 'up' | 'down' | 'left' | 'right';
+        
+        if (e.shiftKey && activeMode() === 'select' && context.nav.selectedKeys.length > 0) {
+          // Shift+Arrow: move selected keys (only if there are selected keys)
+          switch (direction) {
+            case 'up': moveUpStart(); moveUpEnd(); break;
+            case 'down': moveDownStart(); moveDownEnd(); break;
+            case 'left': moveLeftStart(); moveLeftEnd(); break;
+            case 'right': moveRightStart(); moveRightEnd(); break;
+          }
+        } else {
+          // Navigate between keys
+          if (currentFocused === null) {
+            // No key focused, focus the first one
+            setFocusedKeyIndex(keys[0].index);
+          } else {
+            const nextIndex = findNearestKeyInDirection(currentFocused, direction);
+            if (nextIndex !== null) {
+              setFocusedKeyIndex(nextIndex);
+            }
+          }
+        }
+        break;
+      }
+      
+      case 'Enter':
+      case ' ': {
+        e.preventDefault();
+        if (currentFocused !== null) {
+          const focusedKey = keys.find(k => k.index === currentFocused);
+          if (focusedKey) {
+            onEachKeyClicked(focusedKey);
+          }
+        }
+        break;
+      }
+      
+      case 'a':
+      case 'A': {
+        // Ctrl+A or Cmd+A: Select all keys
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          if (activeMode() === 'select') {
+            context.setNav("selectedKeys", keys.map(k => k.key.id));
+          }
+        }
+        break;
+      }
+      
+      case 'Escape': {
+        e.preventDefault();
+        // Clear selection and focus
+        if (context.nav.selectedKeys.length > 0) {
+          context.setNav("selectedKeys", []);
+        } else {
+          setFocusedKeyIndex(null);
+        }
+        break;
+      }
+      
+      case 'Home': {
+        e.preventDefault();
+        // Focus first key
+        if (keys.length > 0) {
+          setFocusedKeyIndex(keys[0].index);
+        }
+        break;
+      }
+      
+      case 'End': {
+        e.preventDefault();
+        // Focus last key
+        if (keys.length > 0) {
+          setFocusedKeyIndex(keys[keys.length - 1].index);
+        }
+        break;
+      }
+    }
+  };
+
   const moveKeys = (callback: (k: Key) => void) => repeatTrigger(() => {
     context.setKeyboard("layout", produce((layout) => {
       context.nav.selectedKeys.forEach(id => {
@@ -564,12 +888,44 @@ export const KeyboardPreview: VoidComponent<{
     k.x += 0.25; if (k.rx !== 0) k.rx += 0.25;
   });
 
+  // Clear focus when keys change
+  createEffect(() => {
+    const keys = props.keys();
+    const currentFocused = focusedKeyIndex();
+    if (currentFocused !== null && !keys.some(k => k.index === currentFocused)) {
+      setFocusedKeyIndex(null);
+    }
+  });
+
+  // Live region for screen reader announcements
+  const statusMessage = createMemo(() => {
+    const focused = focusedKeyIndex();
+    const selectedCount = context.nav.selectedKeys.length;
+    const mode = activeMode();
+    
+    const parts: string[] = [];
+    parts.push(props.title);
+    parts.push(`${mode} mode`);
+    if (focused !== null) {
+      const key = props.keys().find(k => k.index === focused);
+      if (key) {
+        parts.push(`Key ${key.index} focused`);
+      }
+    }
+    if (selectedCount > 0) {
+      parts.push(`${selectedCount} selected`);
+    }
+    return parts.join(', ');
+  });
+
   return (
     <div
       ref={setContainerRef}
       role="application"
       aria-label={props.title}
-      class="keyboard-editor w-full h-full relative overflow-clip"
+      aria-describedby={`${props.title.replace(/\s+/g, '-').toLowerCase()}-instructions`}
+      tabIndex={0}
+      class="keyboard-editor w-full h-full relative overflow-clip focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-inset"
       classList={{
         "cursor-grab": effectiveIsPan() && !isPanning(),
         "cursor-grabbing": effectiveIsPan() && isPanning(),
@@ -577,6 +933,7 @@ export const KeyboardPreview: VoidComponent<{
         "cursor-cell": !effectiveIsPan() && (props.editMode?.() === "wiring"),
       }}
       onWheel={onWheelHandler}
+      onKeyDown={onKeyDown}
       onMouseDown={e => {
         // Ignore clicks on controls
         if (e.target && (e.target as HTMLElement).closest("[data-controls]")) {
@@ -643,6 +1000,7 @@ export const KeyboardPreview: VoidComponent<{
                     <KeySvgPath
                       keyData={gkey}
                       isSelected={context.nav.selectedKeys.includes(gkey.key.id)}
+                      isFocused={focusedKeyIndex() === gkey.index}
                       activeEditPart={context.nav.activeEditPart}
                       pinActive={pinActive()}
                       offsetX={contentBbox().min.x || 0}
@@ -689,12 +1047,14 @@ export const KeyboardPreview: VoidComponent<{
                 keyData={gkey}
                 parts={context.keyboard.parts}
                 isSelected={context.nav.selectedKeys.includes(gkey.key.id)}
+                isFocused={focusedKeyIndex() === gkey.index}
                 activeEditPart={context.nav.activeEditPart}
                 activeWiringPin={context.nav.activeWiringPin}
                 wiring={context.keyboard.parts[gkey.part]?.keys[gkey.key.id]}
                 wiringType={context.keyboard.parts[gkey.part]?.wiring}
                 showWiringPins={(props.editMode?.() === "wiring") && context.nav.activeEditPart === gkey.part}
                 onClick={onEachKeyClicked}
+                onFocus={onKeyFocused}
               />
             )}
           </For>
@@ -741,6 +1101,33 @@ export const KeyboardPreview: VoidComponent<{
           const label = mode === "pan" ? "Pan" : mode === "wiring" ? "Wiring" : "Select";
           return `${props.title} • ${label} • ${(transform().s * 100).toFixed(0)}%`;
         })()}
+      </div>
+
+      {/* Screen reader live region for status updates */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        class="sr-only"
+      >
+        {statusMessage()}
+      </div>
+
+      {/* Hidden instructions for screen readers */}
+      <div
+        id={`${props.title.replace(/\s+/g, '-').toLowerCase()}-instructions`}
+        class="sr-only"
+      >
+        Use arrow keys to navigate between keys.
+        Press Enter or Space to select a key.
+        Use Shift+Arrow keys to move selected keys.
+        Press Escape to clear selection.
+        Press Ctrl+A to select all keys.
+        Press Home for first key, End for last key.
+        Use + and - keys to zoom in and out.
+        Press 0 to reset zoom.
+        Use W, A, S, D keys to pan the view.
+        In pan mode, arrow keys also pan the view.
       </div>
 
       {/* Tooltip / instructions */}

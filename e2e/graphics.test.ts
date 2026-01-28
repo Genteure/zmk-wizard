@@ -406,8 +406,8 @@ test.describe('selection', () => {
       await page.mouse.move(endX, endY, { steps: 5 });
       await page.mouse.up();
 
-      // verify keys are selected
-      const selectedCount = editor.getByText('selected').first();
+      // verify keys are selected (use visible selector to skip sr-only elements)
+      const selectedCount = editor.locator(':not(.sr-only)').getByText(/^\d+ selected$/);
       await expect(selectedCount).toHaveText("60 selected");
 
       await page.mouse.move(startX, startY);
@@ -417,6 +417,282 @@ test.describe('selection', () => {
 
       // verify keys are selected
       await expect(selectedCount).toHaveText("30 selected");
+    });
+  });
+
+  test.describe('keyboard', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.getByRole('menuitem', { name: 'Layout Tools' }).click();
+      await page.getByRole('menuitem', { name: 'Presets' }).click();
+      await page.getByRole('menuitem', { name: 'Sofle' }).click();
+    });
+
+    test('arrow keys and Enter navigate and select keys', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      await expect(editor).toBeVisible();
+
+      // Focus the editor
+      await editor.focus();
+
+      // Press arrow down to focus a key
+      await page.keyboard.press('ArrowDown');
+
+      // Press Enter to select
+      await page.keyboard.press('Enter');
+
+      // Check that a key is selected
+      const selectedCount = editor.locator(':not(.sr-only)').getByText(/^\d+ selected$/);
+      await expect(selectedCount).toHaveText("1 selected");
+      
+      // Navigate right and select another key
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('Enter');
+      
+      // Should have 2 keys selected
+      await expect(selectedCount).toHaveText("2 selected");
+    });
+
+    test('Space key also selects keys', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      await expect(editor).toBeVisible();
+
+      // Focus the editor
+      await editor.focus();
+
+      // Press arrow down to focus a key
+      await page.keyboard.press('ArrowDown');
+
+      // Press Space to select (alternative to Enter)
+      await page.keyboard.press(' ');
+
+      // Check that a key is selected
+      const selectedCount = editor.locator(':not(.sr-only)').getByText(/^\d+ selected$/);
+      await expect(selectedCount).toHaveText("1 selected");
+    });
+
+    test('Shift+Arrow keys move selected keys', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      await expect(editor).toBeVisible();
+
+      // Focus the editor
+      await editor.focus();
+
+      // Focus and select a key
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
+
+      // Get the initial X position from the data table
+      const xInput = page.getByRole('textbox', { name: 'Key 0 x position' });
+      const initialX = await xInput.inputValue();
+
+      // Press Shift+ArrowRight to move the selected key
+      await page.keyboard.press('Shift+ArrowRight');
+
+      // Wait for the update
+      await page.waitForTimeout(100);
+
+      // The X position should have increased
+      const newX = await xInput.inputValue();
+      expect(parseFloat(newX)).toBeGreaterThan(parseFloat(initialX));
+    });
+
+    test('Ctrl+A selects all keys', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      await expect(editor).toBeVisible();
+
+      // Focus the editor and dispatch Ctrl+A via JavaScript
+      // (Playwright's keyboard.press for Ctrl+A can be intercepted by browser's default behavior)
+      await editor.evaluate((el) => {
+        el.focus();
+        const event = new KeyboardEvent('keydown', { key: 'a', ctrlKey: true, bubbles: true });
+        el.dispatchEvent(event);
+      });
+
+      // Check that all keys are selected
+      const selectedCount = editor.locator(':not(.sr-only)').getByText(/^\d+ selected$/);
+      await expect(selectedCount).toHaveText("60 selected");
+    });
+
+    test('Escape clears selection', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      await expect(editor).toBeVisible();
+
+      // Select all keys first via JavaScript dispatch
+      await editor.evaluate((el) => {
+        el.focus();
+        const event = new KeyboardEvent('keydown', { key: 'a', ctrlKey: true, bubbles: true });
+        el.dispatchEvent(event);
+      });
+      
+      const selectedCount = editor.locator(':not(.sr-only)').getByText(/^\d+ selected$/);
+      await expect(selectedCount).toHaveText("60 selected");
+
+      // Re-focus and press Escape to clear selection
+      await editor.focus();
+      await page.keyboard.press('Escape');
+      await expect(selectedCount).toHaveText("0 selected");
+    });
+
+    test('Home and End keys navigate to first and last key', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      await expect(editor).toBeVisible();
+
+      // Focus the editor
+      await editor.focus();
+
+      // Press End to go to last key
+      await page.keyboard.press('End');
+
+      // Press Enter to select the last key
+      await page.keyboard.press('Enter');
+
+      // Press Home to go to first key
+      await page.keyboard.press('Home');
+
+      // Press Enter to also select the first key
+      await page.keyboard.press('Enter');
+
+      // Should have 2 keys selected
+      const selectedCount = editor.locator(':not(.sr-only)').getByText(/^\d+ selected$/);
+      await expect(selectedCount).toHaveText("2 selected");
+    });
+
+    test('plus and minus keys zoom in and out', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      const displayArea = editor.locator('div[style*="transform"]').first();
+      
+      await expect(editor).toBeVisible();
+
+      const getScale = async () => {
+        const style = await displayArea.getAttribute('style');
+        const match = /scale\(\s*([-.\d]+)\s*\)/.exec(style || '');
+        const value = match ? parseFloat(match[1]) : NaN;
+        expect(value).not.toBeNaN();
+        return value;
+      };
+
+      const initialScale = await getScale();
+
+      // Focus the editor
+      await editor.focus();
+
+      // Press + to zoom in
+      await page.keyboard.press('+');
+      await page.waitForTimeout(100);
+
+      const afterZoomInScale = await getScale();
+      expect(afterZoomInScale).toBeGreaterThan(initialScale);
+
+      // Press - to zoom out
+      await page.keyboard.press('-');
+      await page.keyboard.press('-');
+      await page.waitForTimeout(100);
+
+      const afterZoomOutScale = await getScale();
+      expect(afterZoomOutScale).toBeLessThan(afterZoomInScale);
+
+      // Press 0 to reset zoom
+      await page.keyboard.press('0');
+      await page.waitForTimeout(100);
+
+      const afterResetScale = await getScale();
+      expect(afterResetScale).toBeCloseTo(initialScale);
+    });
+
+    test('WASD keys pan the view', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      const displayArea = editor.locator('div[style*="transform"]').first();
+      
+      await expect(editor).toBeVisible();
+
+      const getTranslate = async () => {
+        const style = await displayArea.getAttribute('style');
+        // Match translate(Xpx, Ypx) inside the transform
+        const match = /translate\(\s*([-.\d]+)px,\s*([-.\d]+)px\s*\)/.exec(style || '');
+        if (!match) return { x: 0, y: 0 };
+        return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+      };
+
+      // Focus the editor
+      await editor.focus();
+      
+      // Press W to move content up (Y decreases)
+      const initialTranslate = await getTranslate();
+      await page.keyboard.press('w');
+      await page.waitForTimeout(100);
+      const afterWTranslate = await getTranslate();
+      expect(afterWTranslate.y).toBeLessThan(initialTranslate.y);
+
+      // Press S to move content down (Y increases)
+      await page.keyboard.press('s');
+      await page.keyboard.press('s');
+      await page.waitForTimeout(100);
+      const afterSTranslate = await getTranslate();
+      expect(afterSTranslate.y).toBeGreaterThan(afterWTranslate.y);
+
+      // Press A to move content left (X decreases)
+      const beforeATranslate = await getTranslate();
+      await page.keyboard.press('a');
+      await page.waitForTimeout(100);
+      const afterATranslate = await getTranslate();
+      expect(afterATranslate.x).toBeLessThan(beforeATranslate.x);
+
+      // Press D to move content right (X increases)
+      await page.keyboard.press('d');
+      await page.keyboard.press('d');
+      await page.waitForTimeout(100);
+      const afterDTranslate = await getTranslate();
+      expect(afterDTranslate.x).toBeGreaterThan(afterATranslate.x);
+    });
+
+    test('arrow keys pan in pan mode', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      const displayArea = editor.locator('div[style*="transform"]').first();
+      const toggleButton = editor.getByRole('button', { name: 'Toggle Mode' });
+      
+      await expect(editor).toBeVisible();
+
+      const getTranslate = async () => {
+        const style = await displayArea.getAttribute('style');
+        const match = /translate\(\s*([-.\d]+)px,\s*([-.\d]+)px\s*\)/.exec(style || '');
+        if (!match) return { x: 0, y: 0 };
+        return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+      };
+
+      // Switch to Pan mode
+      await toggleButton.click();
+      await expect(toggleButton).toHaveAttribute('title', /current:\s*Pan/);
+
+      // Focus the editor
+      await editor.focus();
+      
+      // Press ArrowUp to move content up (Y decreases)
+      const initialTranslate = await getTranslate();
+      await page.keyboard.press('ArrowUp');
+      await page.waitForTimeout(100);
+      const afterUpTranslate = await getTranslate();
+      expect(afterUpTranslate.y).toBeLessThan(initialTranslate.y);
+
+      // Press ArrowDown to move content down (Y increases)
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('ArrowDown');
+      await page.waitForTimeout(100);
+      const afterDownTranslate = await getTranslate();
+      expect(afterDownTranslate.y).toBeGreaterThan(afterUpTranslate.y);
+
+      // Press ArrowLeft to move content left (X decreases)
+      const beforeLeftTranslate = await getTranslate();
+      await page.keyboard.press('ArrowLeft');
+      await page.waitForTimeout(100);
+      const afterLeftTranslate = await getTranslate();
+      expect(afterLeftTranslate.x).toBeLessThan(beforeLeftTranslate.x);
+
+      // Press ArrowRight to move content right (X increases)
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowRight');
+      await page.waitForTimeout(100);
+      const afterRightTranslate = await getTranslate();
+      expect(afterRightTranslate.x).toBeGreaterThan(afterLeftTranslate.x);
     });
   });
 

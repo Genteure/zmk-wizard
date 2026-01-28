@@ -107,14 +107,14 @@ test.describe('datatable', () => {
       await selectButton.click();
       await expect(selectButton).toHaveAttribute('aria-pressed', 'true');
 
-      // Verify selection is reflected in the graphics preview (use first match)
-      const selectedCount = page.getByLabel('Physical Layout').getByText('1 selected');
+      // Verify selection is reflected in the graphics preview (use exact match to avoid sr-only status)
+      const selectedCount = page.getByLabel('Physical Layout').getByText('1 selected', { exact: true });
       await expect(selectedCount).toBeVisible();
 
       // Click again to deselect
       await selectButton.click();
       await expect(selectButton).toHaveAttribute('aria-pressed', 'false');
-      await expect(page.getByLabel('Physical Layout').getByText('0 selected')).toBeVisible();
+      await expect(page.getByLabel('Physical Layout').getByText('0 selected', { exact: true })).toBeVisible();
     });
 
     test('editing input updates value', async ({ page }) => {
