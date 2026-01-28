@@ -167,6 +167,23 @@ describe("generateKeyboardSvg", () => {
       expect(svg).toContain('class="key-bg part-0"');
       expect(svg).toContain('class="key-bg part-1"');
     });
+
+    it("should rotate text labels for rotated keys", () => {
+      const keys = assignKeysToParts(ferrisLayout!.keys);
+      const keyboard = makeKeyboard("Ferris", "ferris", keys, [
+        makePart("left"),
+        makePart("right"),
+      ]);
+
+      const svg = generateKeyboardSvg(keyboard);
+
+      // Ferris has rotated thumb keys - verify transforms are applied
+      // Check for various rotation angles (Ferris uses 15, 30, -15, -30 degrees)
+      expect(svg).toMatch(/transform="rotate\(15/);
+      expect(svg).toMatch(/transform="rotate\(30/);
+      expect(svg).toMatch(/transform="rotate\(-15/);
+      expect(svg).toMatch(/transform="rotate\(-30/);
+    });
   });
 
   describe("unibody keyboard (60% All 1U)", () => {

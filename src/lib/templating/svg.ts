@@ -164,7 +164,8 @@ function generateStyles(isSplit: boolean, partCount: number): string {
     for (let i = 0; i < partCount; i++) {
       const color = PART_COLORS[i % PART_COLORS.length];
       styles += `
-    .part-${i} { stroke: ${color}; fill: ${color}; }`;
+    .key-bg.part-${i} { stroke: ${color}; }
+    .key-part.part-${i} { fill: ${color}; }`;
     }
   }
 
