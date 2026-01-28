@@ -25,7 +25,7 @@ export type KeyGeometry = KeySize & KeyPosition & KeyRotation;
 
 const DEFAULT_KEY_SIZE = 70;
 const DEFAULT_PADDING = 4;
-const DEFAULT_BORDER_RADIUS = 2;
+const DEFAULT_BORDER_RADIUS = 4;
 
 /**
  * Convert a key geometry object expressed in units (U) into pixel values.

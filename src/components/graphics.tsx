@@ -174,111 +174,17 @@ type KeyRendererProps = {
 const shiftRegisterPinLabels: Record<string, string> = Object.fromEntries(Array.from({ length: 32 }, (_, i) => [`shifter${i}`, `SR${i}`]))
 
 /**
- * Props for SVG key rendering
+ * Props for SVG key rendering.
+ * State calculations (like pinActive) should be done outside this component.
  */
 type KeySvgProps = {
   keyData: GraphicsKey;
   isSelected: boolean;
   activeEditPart: number | null;
-  activeWiringPin: string | null;
-  wiring?: SingleKeyWiring;
+  pinActive: boolean;
   offsetX: number;
   offsetY: number;
 };
-
-/**
- * Compute the fill color for a key based on its state.
- * Returns a CSS color value (using CSS variables where applicable).
- */
-function getKeyFill(
-  activeEditPart: number | null,
-  keyPart: number,
-  isSelected: boolean,
-  pinActive: boolean
-): string {
-  // bg-base-300 for selected or pinActive
-  if (isSelected || (activeEditPart === keyPart && pinActive)) {
-    return "var(--color-base-300)";
-  }
-  // bg-base-200 for active part or when no part is selected
-  if (activeEditPart === keyPart || activeEditPart === null) {
-    return "var(--color-base-200)";
-  }
-  // Faded background for inactive parts
-  return "var(--color-base-200)";
-}
-
-/**
- * Compute the stroke color for a key based on its state.
- * Returns a CSS color value.
- */
-function getKeyStroke(
-  activeEditPart: number | null,
-  keyPart: number,
-  isSelected: boolean,
-  pinActive: boolean
-): string {
-  // border-amber-500 for pinActive
-  if (activeEditPart === keyPart && pinActive) {
-    return "var(--color-amber-500)";
-  }
-  // border-2 (use base-content) for selected
-  if (isSelected) {
-    return "var(--color-base-content)";
-  }
-  // Part border color when no active edit part
-  if (activeEditPart === null) {
-    return swpCssVar(keyPart);
-  }
-  // Dashed border for inactive parts (handled separately via stroke-dasharray)
-  // Use base-content/50 (50% opacity)
-  if (activeEditPart !== keyPart) {
-    return "var(--color-base-content)";
-  }
-  // Default: transparent
-  return "transparent";
-}
-
-/**
- * Check if the key border should be dashed (for inactive parts).
- */
-function getKeyStrokeDasharray(
-  activeEditPart: number | null,
-  keyPart: number
-): string | undefined {
-  if (activeEditPart !== null && activeEditPart !== keyPart) {
-    return "4 2"; // dashed pattern
-  }
-  return undefined;
-}
-
-/**
- * Get stroke opacity for inactive parts.
- */
-function getKeyStrokeOpacity(
-  activeEditPart: number | null,
-  keyPart: number,
-  isSelected: boolean,
-  pinActive: boolean
-): number {
-  if (activeEditPart !== null && activeEditPart !== keyPart && !isSelected && !pinActive) {
-    return 0.5; // 50% opacity for inactive parts
-  }
-  return 1;
-}
-
-/**
- * Get stroke width based on selection/active state.
- */
-function getKeyStrokeWidth(
-  isSelected: boolean,
-  pinActive: boolean
-): number {
-  if (isSelected || pinActive) {
-    return 2; // border-2
-  }
-  return 1; // border (default)
-}
 
 /**
  * SVG component for rendering key background and border.
@@ -286,47 +192,41 @@ function getKeyStrokeWidth(
  */
 const KeySvgPath: VoidComponent<KeySvgProps> = (props) => {
   const keyData = () => props.keyData;
-  const pinActive = () => {
-    if (!props.activeWiringPin) return false;
-    const { input, output } = props.wiring || {};
-    return input === props.activeWiringPin || output === props.activeWiringPin;
-  };
+  const keyPart = () => keyData().part;
+  const isCurrentPart = () => props.activeEditPart === null || props.activeEditPart === keyPart();
+  const isWiringMode = () => props.activeEditPart !== null;
 
   const pathData = () => keyToSvgPath(keyData(), {
     offsetX: props.offsetX,
     offsetY: props.offsetY,
   });
 
-  const fill = () => getKeyFill(
-    props.activeEditPart,
-    keyData().part,
-    props.isSelected,
-    pinActive()
-  );
+  // Fill color: bg-base-300 for selected/pinActive, bg-base-200 otherwise
+  const fill = () => (props.isSelected || props.pinActive) 
+    ? "var(--color-base-300)" 
+    : "var(--color-base-200)";
 
-  const stroke = () => getKeyStroke(
-    props.activeEditPart,
-    keyData().part,
-    props.isSelected,
-    pinActive()
-  );
+  // Stroke color based on state:
+  // - pinActive: amber
+  // - selected: base-content
+  // - layout mode (no active part): part color
+  // - wiring mode, current part: base-content (solid border)
+  // - wiring mode, other part: base-content with opacity (dashed)
+  const stroke = () => {
+    if (props.pinActive) return "var(--color-amber-500)";
+    if (props.isSelected) return "var(--color-base-content)";
+    if (!isWiringMode()) return swpCssVar(keyPart());
+    return "var(--color-base-content)";
+  };
 
-  const strokeDasharray = () => getKeyStrokeDasharray(
-    props.activeEditPart,
-    keyData().part
-  );
+  // Stroke width: 2 for selected/pinActive, 1 otherwise
+  const strokeWidth = () => (props.isSelected || props.pinActive) ? 2 : 1;
 
-  const strokeOpacity = () => getKeyStrokeOpacity(
-    props.activeEditPart,
-    keyData().part,
-    props.isSelected,
-    pinActive()
-  );
+  // Dashed pattern for inactive parts in wiring mode
+  const strokeDasharray = () => (isWiringMode() && !isCurrentPart()) ? "4 2" : undefined;
 
-  const strokeWidth = () => getKeyStrokeWidth(
-    props.isSelected,
-    pinActive()
-  );
+  // Opacity: 50% for inactive parts in wiring mode
+  const strokeOpacity = () => (isWiringMode() && !isCurrentPart()) ? 0.5 : 1;
 
   return (
     <path
@@ -733,17 +633,21 @@ export const KeyboardPreview: VoidComponent<{
               }}
             >
               <For each={props.keys()}>
-                {(gkey) => (
-                  <KeySvgPath
-                    keyData={gkey}
-                    isSelected={context.nav.selectedKeys.includes(gkey.key.id)}
-                    activeEditPart={context.nav.activeEditPart}
-                    activeWiringPin={context.nav.activeWiringPin}
-                    wiring={context.keyboard.parts[gkey.part]?.keys[gkey.key.id]}
-                    offsetX={contentBbox().min.x || 0}
-                    offsetY={contentBbox().min.y || 0}
-                  />
-                )}
+                {(gkey) => {
+                  const wiring = context.keyboard.parts[gkey.part]?.keys[gkey.key.id];
+                  const pinActive = context.nav.activeWiringPin !== null && 
+                    (wiring?.input === context.nav.activeWiringPin || wiring?.output === context.nav.activeWiringPin);
+                  return (
+                    <KeySvgPath
+                      keyData={gkey}
+                      isSelected={context.nav.selectedKeys.includes(gkey.key.id)}
+                      activeEditPart={context.nav.activeEditPart}
+                      pinActive={pinActive}
+                      offsetX={contentBbox().min.x || 0}
+                      offsetY={contentBbox().min.y || 0}
+                    />
+                  );
+                }}
               </For>
             </svg>
           </Show>
