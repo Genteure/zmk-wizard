@@ -202,8 +202,8 @@ const KeySvgPath: VoidComponent<KeySvgProps> = (props) => {
   });
 
   // Fill color: bg-base-300 for selected/pinActive, bg-base-200 otherwise
-  const fill = () => (props.isSelected || props.pinActive) 
-    ? "var(--color-base-300)" 
+  const fill = () => (props.isSelected || props.pinActive)
+    ? "var(--color-base-300)"
     : "var(--color-base-200)";
 
   // Stroke color based on state:
@@ -634,15 +634,17 @@ export const KeyboardPreview: VoidComponent<{
             >
               <For each={props.keys()}>
                 {(gkey) => {
-                  const wiring = context.keyboard.parts[gkey.part]?.keys[gkey.key.id];
-                  const pinActive = context.nav.activeWiringPin !== null && 
-                    (wiring?.input === context.nav.activeWiringPin || wiring?.output === context.nav.activeWiringPin);
+                  const pinActive = createMemo(() => {
+                    const wiring = context.keyboard.parts[gkey.part]?.keys[gkey.key.id];
+                    return context.nav.activeWiringPin !== null &&
+                      (wiring?.input === context.nav.activeWiringPin || wiring?.output === context.nav.activeWiringPin);
+                  });
                   return (
                     <KeySvgPath
                       keyData={gkey}
                       isSelected={context.nav.selectedKeys.includes(gkey.key.id)}
                       activeEditPart={context.nav.activeEditPart}
-                      pinActive={pinActive}
+                      pinActive={pinActive()}
                       offsetX={contentBbox().min.x || 0}
                       offsetY={contentBbox().min.y || 0}
                     />
