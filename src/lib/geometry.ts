@@ -25,6 +25,7 @@ export type KeyGeometry = KeySize & KeyPosition & KeyRotation;
 
 const DEFAULT_KEY_SIZE = 70;
 const DEFAULT_PADDING = 4;
+const DEFAULT_BORDER_RADIUS = 2;
 
 /**
  * Convert a key geometry object expressed in units (U) into pixel values.
@@ -96,6 +97,104 @@ export function getKeyStyles(keyLayout: KeyGeometry, options: Options = {}): JSX
     'transform-origin': transformOrigin,
     transform
   };
+}
+
+export interface KeySvgOptions extends Options {
+  borderRadius?: number;
+  offsetX?: number;
+  offsetY?: number;
+}
+
+/**
+ * Generate an SVG path string for a key with rounded corners.
+ * The path accounts for rotation and padding, matching the visual appearance
+ * of keys rendered with CSS.
+ *
+ * @param key - Key geometry
+ * @param options - Rendering options including keySize, padding, and borderRadius
+ * @returns SVG path data string (d attribute value)
+ */
+export function keyToSvgPath(key: KeyGeometry, options: KeySvgOptions = {}): string {
+  const {
+    keySize = DEFAULT_KEY_SIZE,
+    padding = DEFAULT_PADDING,
+    borderRadius = DEFAULT_BORDER_RADIUS,
+    offsetX = 0,
+    offsetY = 0
+  } = options;
+
+  const pixelValues = scaleToPixel(key, keySize);
+  const w = pixelValues.width - padding;
+  const h = pixelValues.height - padding;
+
+  // The corner radius should not exceed half of the smaller dimension
+  const r = Math.min(borderRadius, w / 2, h / 2);
+
+  // Calculate the center of the key (where the rectangle is drawn)
+  // Similar to CSS: translate(padding/2, padding/2)
+  const rectX = pixelValues.left + padding / 2;
+  const rectY = pixelValues.top + padding / 2;
+
+  // Generate rounded rectangle path corners (before rotation)
+  // Start from top-left corner (after the radius), go clockwise
+  const corners: Point[] = [
+    { x: rectX + r, y: rectY },           // top-left start
+    { x: rectX + w - r, y: rectY },       // top-right start (before arc)
+    { x: rectX + w, y: rectY + r },       // top-right end (after arc)
+    { x: rectX + w, y: rectY + h - r },   // bottom-right start
+    { x: rectX + w - r, y: rectY + h },   // bottom-right end
+    { x: rectX + r, y: rectY + h },       // bottom-left start
+    { x: rectX, y: rectY + h - r },       // bottom-left end
+    { x: rectX, y: rectY + r },           // top-left end
+  ];
+
+  // Arc control points (for quadratic bezier - approximate rounded corners)
+  const arcControls: Point[] = [
+    { x: rectX + w, y: rectY },           // top-right corner
+    { x: rectX + w, y: rectY + h },       // bottom-right corner
+    { x: rectX, y: rectY + h },           // bottom-left corner
+    { x: rectX, y: rectY },               // top-left corner
+  ];
+
+  // Apply rotation if needed
+  const rotation = pixelValues.rotation || 0;
+  const originX = pixelValues.left + pixelValues.transformOriginX;
+  const originY = pixelValues.top + pixelValues.transformOriginY;
+
+  const rotatePoint = (p: Point): Point => {
+    if (rotation === 0) return { x: p.x - offsetX, y: p.y - offsetY };
+
+    const rad = rotation * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const dx = p.x - originX;
+    const dy = p.y - originY;
+
+    return {
+      x: originX + dx * cos - dy * sin - offsetX,
+      y: originY + dx * sin + dy * cos - offsetY,
+    };
+  };
+
+  // Rotate all points
+  const rotatedCorners = corners.map(rotatePoint);
+  const rotatedArcs = arcControls.map(rotatePoint);
+
+  // Build the SVG path with quadratic bezier curves for corners
+  const fp = (p: Point) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+
+  return [
+    `M ${fp(rotatedCorners[0])}`,        // Move to top-left (after radius)
+    `L ${fp(rotatedCorners[1])}`,        // Line to top-right (before arc)
+    `Q ${fp(rotatedArcs[0])} ${fp(rotatedCorners[2])}`, // Arc to top-right end
+    `L ${fp(rotatedCorners[3])}`,        // Line to bottom-right (before arc)
+    `Q ${fp(rotatedArcs[1])} ${fp(rotatedCorners[4])}`, // Arc to bottom-right end
+    `L ${fp(rotatedCorners[5])}`,        // Line to bottom-left (before arc)
+    `Q ${fp(rotatedArcs[2])} ${fp(rotatedCorners[6])}`, // Arc to bottom-left end
+    `L ${fp(rotatedCorners[7])}`,        // Line to top-left (before arc)
+    `Q ${fp(rotatedArcs[3])} ${fp(rotatedCorners[0])}`, // Arc to top-left start
+    'Z'                                   // Close path
+  ].join(' ');
 }
 
 /**
