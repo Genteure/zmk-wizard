@@ -662,6 +662,19 @@ export const KeyboardPreview: VoidComponent<{
       return;
     }
 
+    // Pan step size (in virtual pixels)
+    const panStep = 50;
+
+    // Helper function to pan the view
+    const panView = (dx: number, dy: number) => {
+      setAutoZoom(false);
+      setTransform(t => ({
+        ...t,
+        x: t.x + dx / t.s,
+        y: t.y + dy / t.s,
+      }));
+    };
+
     // Handle zoom shortcuts first (these work even when no keys are present)
     switch (e.key) {
       case '+':
@@ -686,9 +699,67 @@ export const KeyboardPreview: VoidComponent<{
         setAutoZoom(true);
         return;
       }
+
+      // WASD keys for panning (work in all modes)
+      case 'w':
+      case 'W': {
+        e.preventDefault();
+        panView(0, panStep);
+        return;
+      }
+      case 'a':
+      case 'A': {
+        // Only pan if Ctrl/Meta is not held (Ctrl+A is select all)
+        if (!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          panView(panStep, 0);
+          return;
+        }
+        break;
+      }
+      case 's':
+      case 'S': {
+        e.preventDefault();
+        panView(0, -panStep);
+        return;
+      }
+      case 'd':
+      case 'D': {
+        e.preventDefault();
+        panView(-panStep, 0);
+        return;
+      }
     }
 
     const keys = getNavigableKeys();
+
+    // Handle arrow keys in pan mode for panning
+    if (activeMode() === 'pan') {
+      switch (e.key) {
+        case 'ArrowUp': {
+          e.preventDefault();
+          panView(0, panStep);
+          return;
+        }
+        case 'ArrowDown': {
+          e.preventDefault();
+          panView(0, -panStep);
+          return;
+        }
+        case 'ArrowLeft': {
+          e.preventDefault();
+          panView(panStep, 0);
+          return;
+        }
+        case 'ArrowRight': {
+          e.preventDefault();
+          panView(-panStep, 0);
+          return;
+        }
+      }
+    }
+
+    // Exit early if no keys to navigate
     if (keys.length === 0) return;
 
     const currentFocused = focusedKeyIndex();
@@ -822,6 +893,7 @@ export const KeyboardPreview: VoidComponent<{
     const mode = activeMode();
     
     const parts: string[] = [];
+    parts.push(props.title);
     parts.push(`${mode} mode`);
     if (focused !== null) {
       const key = props.keys().find(k => k.index === focused);
@@ -1043,6 +1115,8 @@ export const KeyboardPreview: VoidComponent<{
         Press Home for first key, End for last key.
         Use + and - keys to zoom in and out.
         Press 0 to reset zoom.
+        Use W, A, S, D keys to pan the view.
+        In pan mode, arrow keys also pan the view.
       </div>
 
       {/* Tooltip / instructions */}
@@ -1053,19 +1127,16 @@ export const KeyboardPreview: VoidComponent<{
           <Match when={activeMode() === "wiring"}>
             <div>Click or drag on keys to assign a pin</div>
             <div>Select a pin in the controller panel</div>
-            <div class="opacity-75">Keyboard: Arrows, Enter</div>
           </Match>
           <Match when={activeMode() === "select"}>
             <div>{context.nav.selectedKeys.length} selected</div>
             <div>Drag to box-select keys</div>
             <div>Shift: Add • Alt: Toggle</div>
-            <div class="opacity-75">Keyboard: Arrows, Enter, Shift+Arrows</div>
           </Match>
           <Match when={true}>
             <div>Scroll to zoom in/out</div>
             <div>Drag, pinch to pan and zoom</div>
             <div>Hold Ctrl to temporarily switch modes</div>
-            <div class="opacity-75">Keyboard: +/- zoom, 0 reset</div>
           </Match>
         </Switch>
       </div>

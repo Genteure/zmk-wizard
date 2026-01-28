@@ -598,6 +598,74 @@ test.describe('selection', () => {
       const afterResetScale = await getScale();
       expect(afterResetScale).toBeCloseTo(initialScale);
     });
+
+    test('WASD keys pan the view', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      const displayArea = editor.locator('div[style*="transform"]').first();
+      
+      await expect(editor).toBeVisible();
+
+      const getTranslate = async () => {
+        const style = await displayArea.getAttribute('style');
+        // Match translate(Xpx, Ypx) inside the transform
+        const match = /translate\(\s*([-.\d]+)px,\s*([-.\d]+)px\s*\)/.exec(style || '');
+        if (!match) return { x: 0, y: 0 };
+        return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+      };
+
+      // Focus the editor
+      await editor.focus();
+      
+      // Press W to pan up (moves content down, so Y increases)
+      const initialTranslate = await getTranslate();
+      await page.keyboard.press('w');
+      await page.waitForTimeout(100);
+      const afterWTranslate = await getTranslate();
+      expect(afterWTranslate.y).toBeGreaterThan(initialTranslate.y);
+
+      // Press S to pan down (moves content up, so Y decreases)
+      await page.keyboard.press('s');
+      await page.keyboard.press('s');
+      await page.waitForTimeout(100);
+      const afterSTranslate = await getTranslate();
+      expect(afterSTranslate.y).toBeLessThan(afterWTranslate.y);
+    });
+
+    test('arrow keys pan in pan mode', async ({ page }) => {
+      const editor = page.getByRole('application').first();
+      const displayArea = editor.locator('div[style*="transform"]').first();
+      const toggleButton = editor.getByRole('button', { name: 'Toggle Mode' });
+      
+      await expect(editor).toBeVisible();
+
+      const getTranslate = async () => {
+        const style = await displayArea.getAttribute('style');
+        const match = /translate\(\s*([-.\d]+)px,\s*([-.\d]+)px\s*\)/.exec(style || '');
+        if (!match) return { x: 0, y: 0 };
+        return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+      };
+
+      // Switch to Pan mode
+      await toggleButton.click();
+      await expect(toggleButton).toHaveAttribute('title', /current:\s*Pan/);
+
+      // Focus the editor
+      await editor.focus();
+      
+      // Press ArrowUp to pan up (moves content down, so Y increases)
+      const initialTranslate = await getTranslate();
+      await page.keyboard.press('ArrowUp');
+      await page.waitForTimeout(100);
+      const afterUpTranslate = await getTranslate();
+      expect(afterUpTranslate.y).toBeGreaterThan(initialTranslate.y);
+
+      // Press ArrowDown to pan down (moves content up, so Y decreases)
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('ArrowDown');
+      await page.waitForTimeout(100);
+      const afterDownTranslate = await getTranslate();
+      expect(afterDownTranslate.y).toBeLessThan(afterUpTranslate.y);
+    });
   });
 
   // test.describe('touch', () => {
