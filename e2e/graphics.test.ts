@@ -629,6 +629,20 @@ test.describe('selection', () => {
       await page.waitForTimeout(100);
       const afterSTranslate = await getTranslate();
       expect(afterSTranslate.y).toBeLessThan(afterWTranslate.y);
+
+      // Press A to pan left (moves content right, so X increases)
+      const beforeATranslate = await getTranslate();
+      await page.keyboard.press('a');
+      await page.waitForTimeout(100);
+      const afterATranslate = await getTranslate();
+      expect(afterATranslate.x).toBeGreaterThan(beforeATranslate.x);
+
+      // Press D to pan right (moves content left, so X decreases)
+      await page.keyboard.press('d');
+      await page.keyboard.press('d');
+      await page.waitForTimeout(100);
+      const afterDTranslate = await getTranslate();
+      expect(afterDTranslate.x).toBeLessThan(afterATranslate.x);
     });
 
     test('arrow keys pan in pan mode', async ({ page }) => {
@@ -665,6 +679,20 @@ test.describe('selection', () => {
       await page.waitForTimeout(100);
       const afterDownTranslate = await getTranslate();
       expect(afterDownTranslate.y).toBeLessThan(afterUpTranslate.y);
+
+      // Press ArrowLeft to pan left (moves content right, so X increases)
+      const beforeLeftTranslate = await getTranslate();
+      await page.keyboard.press('ArrowLeft');
+      await page.waitForTimeout(100);
+      const afterLeftTranslate = await getTranslate();
+      expect(afterLeftTranslate.x).toBeGreaterThan(beforeLeftTranslate.x);
+
+      // Press ArrowRight to pan right (moves content left, so X decreases)
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowRight');
+      await page.waitForTimeout(100);
+      const afterRightTranslate = await getTranslate();
+      expect(afterRightTranslate.x).toBeLessThan(afterLeftTranslate.x);
     });
   });
 

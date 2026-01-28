@@ -700,12 +700,15 @@ export const KeyboardPreview: VoidComponent<{
         return;
       }
 
-      // WASD keys for panning (work in all modes)
+      // WASD keys for panning (work in all modes, skip if Ctrl/Meta held for browser shortcuts)
       case 'w':
       case 'W': {
-        e.preventDefault();
-        panView(0, panStep);
-        return;
+        if (!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          panView(0, panStep);
+          return;
+        }
+        break;
       }
       case 'a':
       case 'A': {
@@ -719,15 +722,21 @@ export const KeyboardPreview: VoidComponent<{
       }
       case 's':
       case 'S': {
-        e.preventDefault();
-        panView(0, -panStep);
-        return;
+        if (!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          panView(0, -panStep);
+          return;
+        }
+        break;
       }
       case 'd':
       case 'D': {
-        e.preventDefault();
-        panView(-panStep, 0);
-        return;
+        if (!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          panView(-panStep, 0);
+          return;
+        }
+        break;
       }
     }
 
