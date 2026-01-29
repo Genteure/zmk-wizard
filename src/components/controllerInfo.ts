@@ -99,7 +99,7 @@ export type SocBusData = {
 export interface SocCapabilities {
   /** Whether the SOC supports USB connectivity */
   readonly usb: boolean;
-  /** Whether the SOC supports Bluetooth Low Energy connectivity */
+  /** Whether the SOC supports BLE connectivity */
   readonly ble: boolean;
 }
 

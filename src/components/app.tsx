@@ -525,15 +525,18 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
   };
 
   // -- Part Role -- //
-  // Part 0 is Central unless dongle mode is enabled, in which case the dongle becomes Central.
-  // When dongle mode is enabled, part 0 is both Central (for the physical keyboard) and Peripheral (sends to dongle).
-  // All other parts are always Peripheral.
+  // Part roles determine how each part communicates in the keyboard system.
+  // Part 0 is the primary part that coordinates communication.
+  // - Without dongle: Part 0 is Central (connects to host via USB/BLE).
+  // - With dongle: Part 0 is shown as both Central (primary keyboard part) and Peripheral
+  //   (because it sends data to the dongle which becomes the actual BLE Central).
+  // All other parts are always Peripheral (they send data to part 0 or dongle).
 
   const partRole = createMemo(() => {
     const idx = props.partIndex();
-    // Part 0 is always Central (even with dongle, it's central for its own keys)
+    // Part 0 is shown as Central (primary keyboard part)
     const isCentral = idx === 0;
-    // Part is Peripheral if it's not part 0, or if part 0 with dongle mode (sends to dongle)
+    // Part is Peripheral if it's not part 0, or if part 0 with dongle mode
     const isPeripheral = idx !== 0 || context.keyboard.dongle;
     return { isCentral, isPeripheral };
   });
@@ -699,8 +702,10 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                 <Popover.Portal>
                   <Popover.Content class="popover--content w-64 p-3">
                     <div class="text-sm">
-                      <strong>Central</strong> is the main controller that coordinates communication.
-                      It connects to the host device via USB or BLE.
+                      <strong>Central</strong> is the primary keyboard part that coordinates communication.
+                      <Show when={context.keyboard.dongle} fallback={<> It connects to the host device via USB or BLE.</>}>
+                        {" "}With dongle mode, this part also acts as Peripheral to forward data to the dongle.
+                      </Show>
                     </div>
                   </Popover.Content>
                 </Popover.Portal>
