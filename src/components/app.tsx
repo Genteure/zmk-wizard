@@ -33,6 +33,7 @@ import { ExportTextboxDialog, GenerateLayoutDialog, ImportDevicetreeDialog, Impo
 import { KeyboardPreview, type GraphicsKey } from "./graphics";
 import { physicalToLogical, toKLE } from "./layouthelper";
 import { BuildButton, HelpButton, InfoEditButton } from "./navbar";
+import { config__json, physicalLayoutKeyboard } from "~/lib/templating";
 
 export function ensureKeyIds(keys: Key[]) {
   return keys.map(k => ({ ...k, id: k.id ?? ulid() }));
@@ -231,7 +232,7 @@ export const App: VoidComponent = () => {
   </div>);
 };
 
-// Lazy-load presets to keep main bundle small
+// Lazy-load presets to keep main bundle smaller
 const [presets, setPresets] = createSignal<typeof import("~/lib/physicalLayouts").layouts>();
 async function loadPresets() {
   if (presets()) return;
@@ -364,8 +365,7 @@ const ConfigLayout: Component = () => {
                 <Menubar.Separator class="my-1" />
                 <Menubar.Item
                   as="li"
-                  onSelect={async () => {
-                    const { physicalLayoutKeyboard } = await import("~/lib/templating");
+                  onSelect={() => {
                     const dts = physicalLayoutKeyboard(unwrap(context.keyboard));
                     // dialog will open if content is set and close on null
                     context.setNav("dialog", "exportTextboxContent", dts);
@@ -373,8 +373,7 @@ const ConfigLayout: Component = () => {
                 ><button>Export ZMK Physical Layout DTS</button></Menubar.Item>
                 <Menubar.Item
                   as="li"
-                  onSelect={async () => {
-                    const { config__json } = await import("~/lib/templating");
+                  onSelect={() => {
                     const json = config__json(unwrap(context.keyboard));
                     // dialog will open if content is set and close on null
                     context.setNav("dialog", "exportTextboxContent", json);

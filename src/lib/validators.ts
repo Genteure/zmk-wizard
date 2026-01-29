@@ -1,4 +1,4 @@
-import { controllerInfos, deviceClassRules, getBusDeviceMetadata, requiredBusPinsForDevice, socBusData, type PinctrlI2cPinChoices, type PinctrlSpiPinChoices } from "~/components/controllerInfo";
+import { controllerInfos, deviceClassRules, getBusDeviceMetadata, requiredBusPinsForDevice, socBusData } from "~/components/controllerInfo";
 import type { BusDeviceTypeName } from "~/typedef";
 import { BusNameSchema, ShieldNameSchema, type Keyboard } from "~/typedef";
 import { isI2cBus, isSpiBus } from "~/typehelper";
@@ -245,8 +245,8 @@ const Validators: Record<string, ValidatorFunction> = {
         // Determine hardware-required signals via SoC bus data
         const requiredBySoc = socBusData[controllerInfos[part.controller].soc].pinRequirements[bus.name] || [];
 
-        const validateDevicePinProps = (pinChoicesForBus: PinctrlI2cPinChoices | PinctrlSpiPinChoices | null) => {
-          for (const [idx, device] of devices.entries()) {
+        const validateDevicePinProps = () => {
+          for (const [_idx, device] of devices.entries()) {
             const meta = getBusDeviceMetadata(device.type);
             if (!meta) continue;
 
@@ -298,7 +298,7 @@ const Validators: Record<string, ValidatorFunction> = {
             errors.push({ part: partIndex, message: `Bus "${bus.name}" must use different pins for SDA and SCL` });
           }
 
-          validateDevicePinProps(pinChoices);
+          validateDevicePinProps();
         } else if (isSpiBus(bus)) {
           if (pinChoices.type !== 'spi') {
             errors.push({ part: partIndex, message: `Controller "${part.controller}" does not have SPI bus "${bus.name}"` });
@@ -340,7 +340,7 @@ const Validators: Record<string, ValidatorFunction> = {
             }
           });
 
-          validateDevicePinProps(pinChoices);
+          validateDevicePinProps();
 
           const definedBusPins = [
             { label: "MOSI", signal: "mosi", value: bus.mosi },

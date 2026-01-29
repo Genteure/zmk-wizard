@@ -1,5 +1,5 @@
 import { controllerInfos, getBusDeviceMetadata, type ControllerInfo } from "~/components/controllerInfo";
-import type { AnyBus, I2cBus, I2cDevice, Keyboard, SpiBus, SpiDevice } from "~/typedef";
+import type { AnyBus, I2cDevice, Keyboard, SpiDevice } from "~/typedef";
 import { isI2cBus, isInputDevice, isPmw3610, isShiftRegisterDevice, isSpiBus, isWS2812 } from "~/typehelper";
 import { inputDeviceNodeName } from "./utils";
 
