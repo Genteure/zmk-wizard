@@ -12,7 +12,7 @@
 
 - High-level architecture (what to read first):
 
-  - `src/components/typedef.ts` — shared types/interfaces for keyboard model.
+  - `src/typedef.ts` — shared types/interfaces for keyboard model.
   - `src/components/context.ts` — SolidJS context provider for UI state management.
   - `src/components/*` — UI built with SolidJS components (entry point: `src/components/main.tsx`).
   - `src/pages/*.astro` — Astro pages; `src/pages/index.astro` mounts the client `Main` component.
