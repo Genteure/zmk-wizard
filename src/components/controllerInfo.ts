@@ -93,6 +93,31 @@ export type SocBusData = {
   readonly buses: readonly SocBusDefinition[];
 };
 
+/**
+ * Controller connectivity capabilities based on SOC type.
+ */
+export interface SocCapabilities {
+  /** Whether the SOC supports USB connectivity */
+  readonly usb: boolean;
+  /** Whether the SOC supports Bluetooth Low Energy connectivity */
+  readonly ble: boolean;
+}
+
+/**
+ * SOC capabilities data for each supported SOC type.
+ * Used to display controller capabilities in the UI.
+ */
+export const socCapabilities: Readonly<Record<Soc, SocCapabilities>> = {
+  nrf52840: {
+    usb: true,
+    ble: true,
+  },
+  rp2040: {
+    usb: true,
+    ble: false,
+  },
+} as const;
+
 function makeNrf52840PinctrlChoices(pins: readonly string[]): PinctrlPinChoicesFunc {
   // function pinctrlPins(bus: SpiBusInfo): PinctrlSpiPinChoices;
   // function pinctrlPins(bus: I2cBusInfo): PinctrlI2cPinChoices;
