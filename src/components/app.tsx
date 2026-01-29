@@ -526,12 +526,14 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
 
   // -- Part Role -- //
   // Part 0 is Central unless dongle mode is enabled, in which case the dongle becomes Central.
-  // When dongle mode is enabled, part 0 is Peripheral (it sends to the dongle).
+  // When dongle mode is enabled, part 0 is both Central (for the physical keyboard) and Peripheral (sends to dongle).
   // All other parts are always Peripheral.
 
   const partRole = createMemo(() => {
     const idx = props.partIndex();
-    const isCentral = idx === 0 && !context.keyboard.dongle;
+    // Part 0 is always Central (even with dongle, it's central for its own keys)
+    const isCentral = idx === 0;
+    // Part is Peripheral if it's not part 0, or if part 0 with dongle mode (sends to dongle)
     const isPeripheral = idx !== 0 || context.keyboard.dongle;
     return { isCentral, isPeripheral };
   });
@@ -670,7 +672,7 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
               </div>
             }
           >
-            <span class="text-lg font-semibold truncate">{part().name}</span>
+            <span class="text-lg font-semibold truncate pl-1">{part().name}</span>
             <Button
               class="btn btn-xs btn-ghost btn-circle"
               title="Edit part name"
@@ -698,7 +700,7 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                   <Popover.Content class="popover--content w-64 p-3">
                     <div class="text-sm">
                       <strong>Central</strong> is the main controller that coordinates communication.
-                      It connects to the host device via USB or Bluetooth.
+                      It connects to the host device via USB or BLE.
                     </div>
                   </Popover.Content>
                 </Popover.Portal>
@@ -889,20 +891,24 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                   <div class="text-sm">
                     <Show
                       when={capabilities().ble}
-                      fallback={<>This controller does not support Bluetooth Low Energy (wireless) connections.</>}
+                      fallback={<>This controller does not support BLE (wireless) connections.</>}
                     >
-                      This controller supports Bluetooth Low Energy (wireless) connections.
+                      This controller supports BLE (wireless) connections.
                     </Show>
                   </div>
                 </Popover.Content>
               </Popover.Portal>
             </Popover>
           </div>
+        </div>
 
+        {/* Row 3: Actions (Copy Wiring, future features) */}
+        <div class="flex items-center gap-2 mt-2 pt-2 border-t border-base-300/50">
           {/* Copy Wiring Menu */}
           <DropdownMenu>
-            <DropdownMenu.Trigger class="btn btn-sm btn-circle btn-ghost" title="Copy pin configuration from another part" aria-label="Copy pin configuration from another part">
-              <Copy class="w-4 h-4" aria-hidden />
+            <DropdownMenu.Trigger class="btn btn-xs btn-ghost gap-1" title="Copy pin configuration from another part" aria-label="Copy pin configuration from another part">
+              <Copy class="w-3.5 h-3.5" aria-hidden />
+              <span class="text-xs">Copy Wiring</span>
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content class="p-2 bg-base-200 rounded shadow-lg border menu min-w-[16rem]">
@@ -951,6 +957,7 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           </DropdownMenu>
+          {/* Future actions can be added here */}
         </div>
       </div>
 

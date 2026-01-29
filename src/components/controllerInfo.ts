@@ -116,6 +116,11 @@ export const socCapabilities: Readonly<Record<Soc, SocCapabilities>> = {
     usb: true,
     ble: false,
   },
+  // Future SOC example: BLE-only controller
+  // nrf54l15: {
+  //   usb: false,
+  //   ble: true,
+  // },
 } as const;
 
 function makeNrf52840PinctrlChoices(pins: readonly string[]): PinctrlPinChoicesFunc {
