@@ -637,12 +637,12 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
       {/* Part Header Section - Compact Layout */}
       <div class="w-full max-w-md p-3 bg-base-200/60 rounded-xl border border-base-300">
         {/* Row 1: Part Name and Role */}
-        <div class="flex items-center gap-2 mb-2">
+        <div class="flex items-center gap-2 mb-2 ml-3">
           {/* Part Name with Inline Edit */}
           <Show
             when={!isEditingName()}
             fallback={
-              <div class="flex items-center gap-1 flex-1">
+              <div class="flex items-center gap-1.5 flex-1">
                 <input
                   class="input input-sm input-bordered flex-1 font-semibold"
                   classList={{ "input-error": !isNameValid() }}
@@ -656,7 +656,7 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                   autofocus
                 />
                 <Button
-                  class="btn btn-sm btn-circle btn-success"
+                  class="btn btn-xs btn-circle btn-success"
                   title="Save name"
                   aria-label="Save name"
                   disabled={!isNameValid()}
@@ -665,7 +665,7 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                   <Check class="w-4 h-4" aria-hidden />
                 </Button>
                 <Button
-                  class="btn btn-sm btn-circle btn-ghost"
+                  class="btn btn-xs btn-circle btn-ghost"
                   title="Cancel"
                   aria-label="Cancel editing"
                   onClick={cancelNameEdit}
@@ -675,7 +675,7 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
               </div>
             }
           >
-            <span class="text-lg font-semibold truncate pl-1">{part().name}</span>
+            <span class="text-lg font-semibold truncate">{part().name}</span>
             <Button
               class="btn btn-xs btn-ghost btn-circle"
               title="Edit part name"
@@ -702,9 +702,10 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                 <Popover.Portal>
                   <Popover.Content class="popover--content w-64 p-3">
                     <div class="text-sm">
-                      <strong>Central</strong> is the primary keyboard part that coordinates communication.
-                      <Show when={context.keyboard.dongle} fallback={<> It connects to the host device via USB or BLE.</>}>
-                        {" "}With dongle mode, this part also acts as Peripheral to forward data to the dongle.
+                      <strong>Central</strong> part is the primary keyboard part that processes keymap, communicates
+                      with host devices, and for split keyboards receives data from peripheral part(s).
+                      <Show when={context.keyboard.dongle}>
+                        {" "}With dongle mode, this part is converted to a Peripheral part that only sends data to the dongle.
                       </Show>
                     </div>
                   </Popover.Content>
@@ -719,8 +720,8 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                 <Popover.Portal>
                   <Popover.Content class="popover--content w-64 p-3">
                     <div class="text-sm">
-                      <strong>Peripheral</strong> sends key events to the central controller
-                      via a wireless connection.
+                      <strong>Peripheral</strong> part(s) sends key/input events to the keyboard central
+                      via an internal BLE connection. It does not work as a standalone keyboard.
                     </div>
                   </Popover.Content>
                 </Popover.Portal>
@@ -873,9 +874,13 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                   <div class="text-sm">
                     <Show
                       when={capabilities().usb}
-                      fallback={<>This controller does not support wired USB connections.</>}
+                      fallback={<>This controller does not support USB.</>}
                     >
-                      This controller supports wired USB connections to the host device.
+                      This controller has USB capabilities.
+                      <Show when={partRole().isPeripheral}>
+                        <br />
+                        Note peripheral parts do not work as standalone USB keyboards.
+                      </Show>
                     </Show>
                   </div>
                 </Popover.Content>
@@ -896,9 +901,13 @@ const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) => {
                   <div class="text-sm">
                     <Show
                       when={capabilities().ble}
-                      fallback={<>This controller does not support BLE (wireless) connections.</>}
+                      fallback={<>This controller does not support BLE.</>}
                     >
-                      This controller supports BLE (wireless) connections.
+                      This controller has BLE capabilities.
+                      <Show when={partRole().isPeripheral}>
+                        <br />
+                        Note peripheral parts only communicate to the central part via an internal BLE connection.
+                      </Show>
                     </Show>
                   </div>
                 </Popover.Content>
