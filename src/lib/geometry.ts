@@ -64,20 +64,15 @@ function scaleToPixel(key: KeyGeometry, keySize = DEFAULT_KEY_SIZE) {
   };
 }
 
-export interface KeyStylesOptions extends Options {
-  offsetX?: number;
-  offsetY?: number;
-}
-
 /**
  * Build inline CSS styles for rendering a key element in the UI.
  *
  * @param keyLayout - Key geometry
- * @param options - rendering options including optional offsetX/offsetY to align with SVG rendering
+ * @param options - rendering options
  * @returns A JSX.CSSProperties object for SolidJS `style` prop
  */
-export function getKeyStyles(keyLayout: KeyGeometry, options: KeyStylesOptions = {}): JSX.CSSProperties {
-  const { keySize = DEFAULT_KEY_SIZE, padding = DEFAULT_PADDING, offsetX = 0, offsetY = 0 } = options;
+export function getKeyStyles(keyLayout: KeyGeometry, options: Options = {}): JSX.CSSProperties {
+  const { keySize = DEFAULT_KEY_SIZE, padding = DEFAULT_PADDING } = options;
   const pixelValues = scaleToPixel(keyLayout, keySize);
 
   const width = pixelValues.width - padding;
@@ -95,8 +90,8 @@ export function getKeyStyles(keyLayout: KeyGeometry, options: KeyStylesOptions =
 
   return {
     position: 'absolute',
-    top: `${pixelValues.top - offsetY}px`,
-    left: `${pixelValues.left - offsetX}px`,
+    top: `${pixelValues.top}px`,
+    left: `${pixelValues.left}px`,
     width: `${width}px`,
     height: `${height}px`,
     'transform-origin': transformOrigin,

@@ -169,8 +169,6 @@ type KeyRendererProps = {
   wiring?: SingleKeyWiring;
   wiringType?: WiringType;
   showWiringPins: boolean;
-  offsetX: number;
-  offsetY: number;
   onClick?: ((key: GraphicsKey) => void) | undefined;
   onFocus?: ((key: GraphicsKey) => void) | undefined;
 };
@@ -291,7 +289,7 @@ const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
   };
 
   return (<Button
-    style={getKeyStyles(keyData(), { offsetX: props.offsetX, offsetY: props.offsetY })}
+    style={getKeyStyles(keyData())}
     classList={{
       "z-10": props.isSelected,
       "z-20": props.isFocused,
@@ -1005,8 +1003,8 @@ export const KeyboardPreview: VoidComponent<{
                       isFocused={focusedKeyIndex() === gkey.index}
                       activeEditPart={context.nav.activeEditPart}
                       pinActive={pinActive()}
-                      offsetX={contentBbox().min.x || 0}
-                      offsetY={contentBbox().min.y || 0}
+                      offsetX={0}
+                      offsetY={0}
                     />
                   );
                 }}
@@ -1026,10 +1024,10 @@ export const KeyboardPreview: VoidComponent<{
               <For each={wiringLines()}>
                 {(line) => (
                   <line
-                    x1={line.from.x - (contentBbox().min.x || 0)}
-                    y1={line.from.y - (contentBbox().min.y || 0)}
-                    x2={line.to.x - (contentBbox().min.x || 0)}
-                    y2={line.to.y - (contentBbox().min.y || 0)}
+                    x1={line.from.x}
+                    y1={line.from.y}
+                    x2={line.to.x}
+                    y2={line.to.y}
                     stroke={line.type === 'input' ? '#10b981' : '#ef4444'}
                     stroke-width={line.pinId === context.nav.activeWiringPin ? 4 : 2}
                     stroke-opacity={line.pinId === context.nav.activeWiringPin ? 0.6 : 0.3}
@@ -1055,8 +1053,6 @@ export const KeyboardPreview: VoidComponent<{
                 wiring={context.keyboard.parts[gkey.part]?.keys[gkey.key.id]}
                 wiringType={context.keyboard.parts[gkey.part]?.wiring}
                 showWiringPins={(props.editMode?.() === "wiring") && context.nav.activeEditPart === gkey.part}
-                offsetX={contentBbox().min.x || 0}
-                offsetY={contentBbox().min.y || 0}
                 onClick={onEachKeyClicked}
                 onFocus={onKeyFocused}
               />
