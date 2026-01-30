@@ -14,6 +14,7 @@ interface KeyWithCenter {
 
 /**
  * Cluster values using a tolerance threshold.
+ * Uses the cluster's maximum value for distance comparison to prevent cluster drift.
  * Returns array of cluster representative values (mean of each cluster).
  */
 function clusterValues(values: number[], tolerance: number): number[] {
@@ -24,9 +25,10 @@ function clusterValues(values: number[], tolerance: number): number[] {
 
   for (let i = 1; i < sorted.length; i++) {
     const lastCluster = clusters[clusters.length - 1];
-    const clusterMean = lastCluster.reduce((a, b) => a + b, 0) / lastCluster.length;
+    // Use cluster max to prevent drift as cluster grows
+    const clusterMax = Math.max(...lastCluster);
 
-    if (sorted[i] - clusterMean <= tolerance) {
+    if (sorted[i] - clusterMax <= tolerance) {
       lastCluster.push(sorted[i]);
     } else {
       clusters.push([sorted[i]]);
@@ -59,13 +61,15 @@ function findClosestCluster(value: number, clusterCenters: number[]): number {
  * Algorithm overview:
  * 1. Compute the center point of each key (accounting for rotation).
  * 2. Cluster Y-coordinates to identify logical rows.
- * 3. For each row, cluster X-coordinates to identify logical columns.
- * 4. Build a global column mapping to align columns across rows.
- * 5. Assign row/col to each key and sort.
+ * 3. Group keys by row and sort by X within each row.
+ * 4. Cluster X-coordinates globally to identify logical columns.
+ * 5. Assign keys to grid columns, resolving conflicts by finding nearest available.
+ * 6. Compact grid by removing empty columns.
+ * 7. Assign row/col to each key and sort.
  *
  * @param keys - Array of keys to convert (modified in place)
  * @param _ignoreOrder - Kept for API compatibility; this algorithm is position-based
- *                       and doesn't depend on input order
+ *                       and produces the same result regardless of input order
  */
 export function physicalToLogical(keys: Key[], _ignoreOrder: boolean): void {
   if (keys.length === 0) return;
@@ -108,17 +112,8 @@ export function physicalToLogical(keys: Key[], _ignoreOrder: boolean): void {
     group.sort((a, b) => a.center.x - b.center.x);
   }
 
-  // Step 4: Build column grid
-  // Collect all X positions across all rows and cluster them globally
-  const allXValues: { x: number; rowIndex: number; keyIndex: number }[] = [];
-  for (let r = 0; r < rowGroups.length; r++) {
-    for (let k = 0; k < rowGroups[r].length; k++) {
-      allXValues.push({ x: rowGroups[r][k].center.x, rowIndex: r, keyIndex: k });
-    }
-  }
-
-  // Cluster X coordinates globally with tolerance of 0.5 units
-  const xCoords = allXValues.map(v => v.x);
+  // Step 4: Cluster X coordinates globally
+  const xCoords = rowGroups.flatMap(group => group.map(kwc => kwc.center.x));
   const colCenters = clusterValues(xCoords, 0.5);
 
   // Step 5: Assign columns to keys
@@ -135,14 +130,31 @@ export function physicalToLogical(keys: Key[], _ignoreOrder: boolean): void {
     for (const kwc of rowKeys) {
       let colIndex = findClosestCluster(kwc.center.x, colCenters);
 
-      // If this column is already used in this row, find the next available
-      while (usedCols.has(colIndex)) {
-        colIndex++;
-      }
-
-      // Ensure we have enough columns
-      while (colIndex >= grid.length) {
-        grid.push(new Array(rowGroups.length).fill(undefined));
+      // If this column is already used in this row, find the nearest available column
+      if (usedCols.has(colIndex)) {
+        // Search for nearest available column (alternating left/right)
+        let offset = 1;
+        while (true) {
+          // Try right first
+          const rightIdx = colIndex + offset;
+          if (rightIdx < grid.length && !usedCols.has(rightIdx)) {
+            colIndex = rightIdx;
+            break;
+          }
+          // Try left
+          const leftIdx = colIndex - offset;
+          if (leftIdx >= 0 && !usedCols.has(leftIdx)) {
+            colIndex = leftIdx;
+            break;
+          }
+          // If we've exceeded grid bounds on both sides, extend the grid
+          if (rightIdx >= grid.length && leftIdx < 0) {
+            grid.push(new Array(rowGroups.length).fill(undefined));
+            colIndex = grid.length - 1;
+            break;
+          }
+          offset++;
+        }
       }
 
       grid[colIndex][r] = kwc.key;

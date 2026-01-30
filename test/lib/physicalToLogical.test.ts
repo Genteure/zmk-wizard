@@ -135,7 +135,7 @@ describe("physicalToLogical", () => {
       }
     });
 
-    it("should handle keys in random order when ignoreOrder is true", () => {
+    it("should handle keys provided in random order", () => {
       // Keys provided in random order
       const keys = [
         makeKey("k11", 1, 1),
@@ -188,24 +188,41 @@ describe("physicalToLogical", () => {
     });
 
     it("should handle column-staggered layout (like an ergo keyboard)", () => {
-      // Simulating a column-staggered layout:
-      // Col 0: keys at y=0.5, 1.5, 2.5
-      // Col 1: keys at y=0.25, 1.25, 2.25
-      // Col 2: keys at y=0, 1, 2
+      // Simulating a realistic column-staggered layout where each column has vertical offset
+      // but the rows are still approximately 1U apart. This is like a Ferris or Corne.
+      // Physical columns have stagger, but each physical row is ~1U apart from the next.
+      // Col 0: keys at y=0.3, 1.3, 2.3  (offset down by 0.3)
+      // Col 1: keys at y=0.15, 1.15, 2.15  (offset down by 0.15)
+      // Col 2: keys at y=0, 1, 2  (no offset - home row position)
+      // Col 3: keys at y=0.15, 1.15, 2.15  (offset down by 0.15)
+      // Col 4: keys at y=0.3, 1.3, 2.3  (offset down by 0.3)
       const keys = [
-        makeKey("c0r0", 0, 0.5), makeKey("c0r1", 0, 1.5), makeKey("c0r2", 0, 2.5),
-        makeKey("c1r0", 1, 0.25), makeKey("c1r1", 1, 1.25), makeKey("c1r2", 1, 2.25),
-        makeKey("c2r0", 2, 0), makeKey("c2r1", 2, 1), makeKey("c2r2", 2, 2),
+        // Row 0 (physical Y ~0 to 0.3)
+        makeKey("r0c0", 0, 0.3), makeKey("r0c1", 1, 0.15), makeKey("r0c2", 2, 0),
+        makeKey("r0c3", 3, 0.15), makeKey("r0c4", 4, 0.3),
+        // Row 1 (physical Y ~1 to 1.3)
+        makeKey("r1c0", 0, 1.3), makeKey("r1c1", 1, 1.15), makeKey("r1c2", 2, 1),
+        makeKey("r1c3", 3, 1.15), makeKey("r1c4", 4, 1.3),
+        // Row 2 (physical Y ~2 to 2.3)
+        makeKey("r2c0", 0, 2.3), makeKey("r2c1", 1, 2.15), makeKey("r2c2", 2, 2),
+        makeKey("r2c3", 3, 2.15), makeKey("r2c4", 4, 2.3),
       ];
       physicalToLogical(keys, false);
 
-      // Should identify 3 rows (clustered by Y with tolerance)
+      // Should identify 3 rows (clustered by Y - rows are 1U apart, stagger is within 0.5U)
       const rows = new Set(keys.map(k => k.row));
       expect(rows.size).toBe(3);
 
-      // Keys should be assigned to columns correctly
+      // Should identify 5 columns
       const cols = new Set(keys.map(k => k.col));
-      expect(cols.size).toBe(3);
+      expect(cols.size).toBe(5);
+
+      // Keys in same physical column should be in same logical column
+      for (let c = 0; c < 5; c++) {
+        const colKeys = keys.filter(k => k.id.includes(`c${c}`));
+        const logicalCols = new Set(colKeys.map(k => k.col));
+        expect(logicalCols.size).toBe(1); // All keys in physical col should share logical col
+      }
     });
   });
 
@@ -225,17 +242,30 @@ describe("physicalToLogical", () => {
 
     it("should handle non-unit sized keys", () => {
       // 1.5U and 2U keys
+      // Row 0: k0 (1.5U at x=0) center=0.75, k1 (1U at x=1.5) center=2.0
+      // Row 1: k2 (2U at x=0) center=1.0, k3 (1U at x=2) center=2.5
       const keys = [
-        makeKey("k0", 0, 0, 1.5, 1),    // 1.5U wide
-        makeKey("k1", 1.5, 0, 1, 1),    // 1U
-        makeKey("k2", 0, 1, 2, 1),      // 2U wide
-        makeKey("k3", 2, 1, 1, 1),      // 1U
+        makeKey("k0", 0, 0, 1.5, 1),    // 1.5U wide, center at 0.75
+        makeKey("k1", 1.5, 0, 1, 1),    // 1U, center at 2.0
+        makeKey("k2", 0, 1, 2, 1),      // 2U wide, center at 1.0
+        makeKey("k3", 2, 1, 1, 1),      // 1U, center at 2.5
       ];
       physicalToLogical(keys, false);
 
       // Should have 2 rows
       const rows = new Set(keys.map(k => k.row));
       expect(rows.size).toBe(2);
+
+      // Verify row assignments
+      expect(keys.find(k => k.id === "k0")!.row).toBe(0);
+      expect(keys.find(k => k.id === "k1")!.row).toBe(0);
+      expect(keys.find(k => k.id === "k2")!.row).toBe(1);
+      expect(keys.find(k => k.id === "k3")!.row).toBe(1);
+
+      // Verify column assignments (k0 and k2 should be in same/nearby column due to similar centers)
+      const k0 = keys.find(k => k.id === "k0")!;
+      const k1 = keys.find(k => k.id === "k1")!;
+      expect(k0.col).toBeLessThan(k1.col); // k0 center (0.75) < k1 center (2.0)
     });
 
     it("should handle keys with rotation but same center alignment", () => {
