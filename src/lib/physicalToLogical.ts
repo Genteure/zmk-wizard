@@ -27,8 +27,37 @@ interface KeyInfo {
   };
 }
 
+// ============ Constants ============
+
 // Threshold for considering keys as having a large gap (1.5U)
+// This creates an empty row/column in the logical layout
 const GAP_THRESHOLD = 1.5;
+
+// Minimum distance between key centers to be considered different positions
+// Guards against overlapping/duplicate keys
+const MIN_DISTANCE_THRESHOLD = 0.001;
+
+// Minimum forward distance for a key to be considered "ahead" in ray-casting
+// Prevents selecting keys that are barely in front or behind
+const MIN_FORWARD_DISTANCE = 0.1;
+
+// Maximum alignment ratio (perpendicular/forward distance)
+// tan(60°) ≈ 1.73 - keys more than 60 degrees off-axis are skipped
+const MAX_ALIGNMENT_RATIO = 1.73;
+
+// Weight for forward distance in neighbor scoring
+// Lower values prefer closer keys; higher values prefer aligned keys
+const FORWARD_DISTANCE_WEIGHT = 0.3;
+
+// Threshold for considering keys aligned on the perpendicular axis (0.5U)
+const ALIGNMENT_THRESHOLD = 0.5;
+
+// Threshold for considering a key as "axis-aligned" (cos(30°) ≈ 0.87)
+// Keys with localDown.y or localRight.x below this are considered rotated
+const AXIS_ALIGNED_THRESHOLD = 0.87;
+
+// Keys wider/taller than this threshold use center-based column/row assignment
+const LARGE_KEY_THRESHOLD = 2;
 
 /**
  * Convert physical layout positions to logical row/column assignments.
@@ -64,8 +93,9 @@ function computeKeyInfos(keys: Key[]): KeyInfo[] {
     const localCenterY = key.h / 2;
 
     // Transform local center to global position
-    const originX = key.rx || key.x;
-    const originY = key.ry || key.y;
+    // Use nullish coalescing to properly handle rx/ry of 0
+    const originX = key.rx ?? key.x;
+    const originY = key.ry ?? key.y;
     const dx = key.x - originX + localCenterX;
     const dy = key.y - originY + localCenterY;
 
@@ -144,13 +174,13 @@ function findBestNeighbor(
     };
 
     const distance = Math.sqrt(toTarget.x ** 2 + toTarget.y ** 2);
-    if (distance < 0.001) continue; // Skip if too close (same position)
+    if (distance < MIN_DISTANCE_THRESHOLD) continue; // Skip if too close (same position)
 
     // Calculate forward distance (projection onto direction vector)
     const forwardDist = toTarget.x * dirVector.x + toTarget.y * dirVector.y;
     
     // Skip if target is behind us (not in the forward direction)
-    if (forwardDist < 0.1) continue;
+    if (forwardDist < MIN_FORWARD_DISTANCE) continue;
 
     // Calculate the perpendicular distance (how far off-axis the target is)
     const perpendicularDist = Math.abs(
@@ -164,11 +194,11 @@ function findBestNeighbor(
     // We also add forward distance to prefer closer keys when alignment is similar
     const alignmentRatio = perpendicularDist / forwardDist;
     
-    // Skip if the key is too far off-axis (more than ~60 degrees)
-    if (alignmentRatio > 1.73) continue; // tan(60°) ≈ 1.73
+    // Skip if the key is too far off-axis
+    if (alignmentRatio > MAX_ALIGNMENT_RATIO) continue;
     
     // Score: prefer keys with low perpendicular distance first, then closer
-    const score = perpendicularDist + forwardDist * 0.3;
+    const score = perpendicularDist + forwardDist * FORWARD_DISTANCE_WEIGHT;
 
     if (!bestNeighbor || score < bestNeighbor.score) {
       bestNeighbor = {
@@ -272,9 +302,6 @@ function buildClusters(keyInfos: KeyInfo[]): { colGroups: Map<number, number[]>;
   const colUF = new UnionFind(n);
   const rowUF = new UnionFind(n);
 
-  // Threshold for considering a key as "axis-aligned" (cos(30°) ≈ 0.87)
-  const AXIS_ALIGNED_THRESHOLD = 0.87;
-
   // Check if layout is a standard grid (keys at integer x,y positions and axis-aligned)
   const isStandardGrid = keyInfos.every(info => 
     Number.isInteger(info.key.x) && 
@@ -285,14 +312,14 @@ function buildClusters(keyInfos: KeyInfo[]): { colGroups: Map<number, number[]>;
 
   if (isStandardGrid) {
     // For standard grids, determine column based on key position and width
-    // For 1U keys: column = key.x
-    // For wide keys: column = round(center.x) 
+    // For normal keys: column = key.x
+    // For large keys (>2U): column = floor(center.x) 
     const getKeyColumn = (info: KeyInfo): number => {
-      if (info.key.w > 2) {
-        // Large key (>2U) - use center position
+      if (info.key.w > LARGE_KEY_THRESHOLD) {
+        // Large key - use center position
         return Math.floor(info.center.x);
       } else {
-        // Normal key (<=2U) - use x position
+        // Normal key - use x position
         return info.key.x;
       }
     };
@@ -316,11 +343,11 @@ function buildClusters(keyInfos: KeyInfo[]): { colGroups: Map<number, number[]>;
     
     // For rows, determine based on key position and height
     const getKeyRow = (info: KeyInfo): number => {
-      if (info.key.h > 2) {
-        // Large key (>2U) - use center position
+      if (info.key.h > LARGE_KEY_THRESHOLD) {
+        // Large key - use center position
         return Math.floor(info.center.y);
       } else {
-        // Normal key (<=2U) - use y position
+        // Normal key - use y position
         return info.key.y;
       }
     };
@@ -345,8 +372,6 @@ function buildClusters(keyInfos: KeyInfo[]): { colGroups: Map<number, number[]>;
     // For non-standard layouts (rotated or staggered), use neighbor-based clustering
     
     // Threshold for considering keys aligned
-    const ALIGNMENT_THRESHOLD = 0.5;
-    
     // Union keys that are vertically adjacent (same column)
     for (const info of keyInfos) {
       for (const dir of ["up", "down"] as const) {

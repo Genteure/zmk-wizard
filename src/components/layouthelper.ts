@@ -63,7 +63,7 @@ export function parsePhysicalLayoutDts(dts: string): Key[] | null {
     return null;
   }
 
-  physicalToLogical(keys, false);
+  physicalToLogical(keys);
   return keys;
 }
 
@@ -127,7 +127,7 @@ export function parseLayoutJson(json: string): Key[] | null {
     if (keys.some(k => k.row < 0 || k.col < 0)) {
       // key is missing row or col
       console.log("some keys are missing row or col, running physicalToLogical");
-      physicalToLogical(keys, false);
+      physicalToLogical(keys);
     } else {
       for (let i = 1; i < keys.length; i++) {
         // ensure keys are sorted by row then col
@@ -135,7 +135,7 @@ export function parseLayoutJson(json: string): Key[] | null {
           // row is smaller than previous key's row
           // or row is the same but col is smaller but col is not greater
           console.log("keys are not properly ordered, running physicalToLogical");
-          physicalToLogical(keys, false);
+          physicalToLogical(keys);
           break;
         }
       }
@@ -209,7 +209,7 @@ export function parseKLE(json: string): Key[] | null {
 
     // If any rows/cols are missing, infer from physical positions
     if (keys.some(k => k.row < 0 || k.col < 0)) {
-      physicalToLogical(keys, false);
+      physicalToLogical(keys);
     } else {
       // sort by row/col to ensure ordering
       keys.sort((a, b) => (a.row - b.row) || (a.col - b.col));
@@ -219,8 +219,8 @@ export function parseKLE(json: string): Key[] | null {
     const totalHeightPhysical = Math.max(...keys.map(k => k.y + k.h)) - Math.min(...keys.map(k => k.y));
     const totalRows = Math.max(...keys.map(k => k.row)) + 1;
     if (totalRows > (totalHeightPhysical * 2)) {
-      // Likely garbage; recompute allowing reordering
-      physicalToLogical(keys, true);
+      // Likely garbage; recompute
+      physicalToLogical(keys);
     }
 
     return keys;
