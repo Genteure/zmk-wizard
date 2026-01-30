@@ -4,108 +4,172 @@ import type { Key } from "../typedef";
 import { Serial } from "./kle-serial";
 import { Keyboard as KLEKeyboard, Key as KLEKey } from "./kle-serial";
 
-export function physicalToLogical(keys: Key[], ignoreOrder: boolean): void {
+/**
+ * Interface for a key with its computed center position.
+ */
+interface KeyWithCenter {
+  key: Key;
+  center: Point;
+}
+
+/**
+ * Cluster values using a tolerance threshold.
+ * Returns array of cluster representative values (mean of each cluster).
+ */
+function clusterValues(values: number[], tolerance: number): number[] {
+  if (values.length === 0) return [];
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const clusters: number[][] = [[sorted[0]]];
+
+  for (let i = 1; i < sorted.length; i++) {
+    const lastCluster = clusters[clusters.length - 1];
+    const clusterMean = lastCluster.reduce((a, b) => a + b, 0) / lastCluster.length;
+
+    if (sorted[i] - clusterMean <= tolerance) {
+      lastCluster.push(sorted[i]);
+    } else {
+      clusters.push([sorted[i]]);
+    }
+  }
+
+  // Return the mean of each cluster
+  return clusters.map(cluster => cluster.reduce((a, b) => a + b, 0) / cluster.length);
+}
+
+/**
+ * Find the closest cluster index for a given value.
+ */
+function findClosestCluster(value: number, clusterCenters: number[]): number {
+  let minDist = Infinity;
+  let minIndex = 0;
+  for (let i = 0; i < clusterCenters.length; i++) {
+    const dist = Math.abs(value - clusterCenters[i]);
+    if (dist < minDist) {
+      minDist = dist;
+      minIndex = i;
+    }
+  }
+  return minIndex;
+}
+
+/**
+ * Convert physical layout positions to logical row/col grid positions.
+ *
+ * Algorithm overview:
+ * 1. Compute the center point of each key (accounting for rotation).
+ * 2. Cluster Y-coordinates to identify logical rows.
+ * 3. For each row, cluster X-coordinates to identify logical columns.
+ * 4. Build a global column mapping to align columns across rows.
+ * 5. Assign row/col to each key and sort.
+ *
+ * @param keys - Array of keys to convert (modified in place)
+ * @param _ignoreOrder - Kept for API compatibility; this algorithm is position-based
+ *                       and doesn't depend on input order
+ */
+export function physicalToLogical(keys: Key[], _ignoreOrder: boolean): void {
   if (keys.length === 0) return;
 
-  // use center point as key position
-  // normalize y to start from 0
-  const posList = keys.map(k => keyCenter(k, { keySize: 1 }));
-  const minPosY = Math.min(...posList.map(p => p.y));
-  posList.forEach(p => p.y -= minPosY);
-  const posMap = new Map<Key, Point>(keys.map((k, i) => [k, posList[i]]));
+  // Step 1: Compute center points for all keys
+  const keysWithCenters: KeyWithCenter[] = keys.map(k => ({
+    key: k,
+    center: keyCenter(k, { keySize: 1 }),
+  }));
 
-  if (ignoreOrder) {
-    // sort keys by y (vertical) grouped to integer, then by x (horizontal)
-    // TODO optimize for column staggered layouts
-    keys.sort(
-      (a, b) =>
-        (Math.floor(posMap.get(a)?.y ?? 0) - Math.floor(posMap.get(b)?.y ?? 0)) ||
-        ((posMap.get(a)?.x ?? 0) - (posMap.get(b)?.x ?? 0))
-    );
+  // Normalize coordinates to start from 0
+  const minX = Math.min(...keysWithCenters.map(k => k.center.x));
+  const minY = Math.min(...keysWithCenters.map(k => k.center.y));
+  keysWithCenters.forEach(k => {
+    k.center.x -= minX;
+    k.center.y -= minY;
+  });
+
+  // Step 2: Cluster Y-coordinates to identify logical rows
+  // Use a tolerance of 0.5 units (half a standard key) for row clustering
+  const yValues = keysWithCenters.map(k => k.center.y);
+  const rowCenters = clusterValues(yValues, 0.5);
+
+  // Map each key to its row
+  const keyToRow = new Map<Key, number>();
+  for (const kwc of keysWithCenters) {
+    const rowIndex = findClosestCluster(kwc.center.y, rowCenters);
+    keyToRow.set(kwc.key, rowIndex);
   }
 
-  // step 1: group keys into logical rows based on x coordinate breaks
+  // Step 3: Group keys by row and sort by X within each row
+  const rowGroups: KeyWithCenter[][] = rowCenters.map(() => []);
+  for (const kwc of keysWithCenters) {
+    const rowIndex = keyToRow.get(kwc.key)!;
+    rowGroups[rowIndex].push(kwc);
+  }
 
-  const rows: Key[][] = [[]];
-  rows[0].push(keys[0]);
-  for (let i = 1; i < keys.length; i++) {
-    const current = keys[i];
-    const currentPos = posMap.get(current);
-    const prevPos = posMap.get(keys[i - 1]);
-    // for a key to be in the same row,
-    // its x must be at least 0.4 greater than the previous key's x
-    if (!currentPos || !prevPos) continue; // should not happen
-    // if (currentPos.y > (prevPos.y + 0.4)) {
-    if (currentPos.x < (prevPos.x + 0.4)) {
-      // new row
-      rows.push([current]);
-    } else {
-      // same row
-      rows[rows.length - 1].push(current);
+  // Sort keys within each row by X coordinate
+  for (const group of rowGroups) {
+    group.sort((a, b) => a.center.x - b.center.x);
+  }
+
+  // Step 4: Build column grid
+  // Collect all X positions across all rows and cluster them globally
+  const allXValues: { x: number; rowIndex: number; keyIndex: number }[] = [];
+  for (let r = 0; r < rowGroups.length; r++) {
+    for (let k = 0; k < rowGroups[r].length; k++) {
+      allXValues.push({ x: rowGroups[r][k].center.x, rowIndex: r, keyIndex: k });
     }
   }
 
-  // step 2: match cols based on x coordinate
-  // TODO somehow make it more symmetric
+  // Cluster X coordinates globally with tolerance of 0.5 units
+  const xCoords = allXValues.map(v => v.x);
+  const colCenters = clusterValues(xCoords, 0.5);
 
-  /**
-   * cols[c] = Array(rows.length)
-   * For example, a key from row[r] can only be in cols[any][r]
-   */
-  const cols: (Key | undefined)[][] = [[]];
-  /**
-   * cursors for each row to track which key has been assigned to a column
-   */
-  const rowCursors: number[] = new Array(rows.length).fill(0);
+  // Step 5: Assign columns to keys
+  // For each row, assign each key to the closest column cluster
+  // Ensure no two keys in the same row get the same column
+  const grid: (Key | undefined)[][] = colCenters.map(() =>
+    new Array(rowGroups.length).fill(undefined)
+  );
 
-  while (true) {
-    // find the next key with the smallest x among the row cursors
-    let minKey: Key | null = null;
-    let minRowIndex = -1;
-    for (let r = 0; r < rows.length; r++) {
-      const row = rows[r];
-      const cursor = rowCursors[r];
-      if (cursor < row.length) {
-        const key = row[cursor];
-        const keyPos = posMap.get(key);
-        if (!keyPos) continue; // should not happen
-        if (minKey === null || keyPos.x < (posMap.get(minKey)?.x ?? Infinity)) {
-          minKey = key;
-          minRowIndex = r;
-        }
+  for (let r = 0; r < rowGroups.length; r++) {
+    const rowKeys = rowGroups[r];
+    const usedCols = new Set<number>();
+
+    for (const kwc of rowKeys) {
+      let colIndex = findClosestCluster(kwc.center.x, colCenters);
+
+      // If this column is already used in this row, find the next available
+      while (usedCols.has(colIndex)) {
+        colIndex++;
       }
-    }
-    if (minKey === null) {
-      // all keys are exhausted
-      break;
-    }
 
-    rowCursors[minRowIndex]++;
+      // Ensure we have enough columns
+      while (colIndex >= grid.length) {
+        grid.push(new Array(rowGroups.length).fill(undefined));
+      }
 
-    // check if minKey can fit into an existing column
-    if (cols[cols.length - 1][minRowIndex]) {
-      // last column already has a key from this row
-      // need to create a new column
-      const newCol: (Key | undefined)[] = [];
-      newCol[minRowIndex] = minKey;
-      cols.push(newCol);
-    } else {
-      // can fit into the last column
-      cols[cols.length - 1][minRowIndex] = minKey;
+      grid[colIndex][r] = kwc.key;
+      usedCols.add(colIndex);
     }
   }
 
-  // step 3: assign row and col to each key and sort
-  for (let c = 0; c < cols.length; c++) {
-    const col = cols[c];
-    for (let r = 0; r < col.length; r++) {
-      const key = col[r];
+  // Step 6: Remove empty columns and compact the grid
+  const compactGrid: (Key | undefined)[][] = [];
+  for (let c = 0; c < grid.length; c++) {
+    if (grid[c].some(k => k !== undefined)) {
+      compactGrid.push(grid[c]);
+    }
+  }
+
+  // Step 7: Assign row and col to each key
+  for (let c = 0; c < compactGrid.length; c++) {
+    for (let r = 0; r < compactGrid[c].length; r++) {
+      const key = compactGrid[c][r];
       if (key) {
         key.row = r;
         key.col = c;
       }
     }
   }
+
+  // Sort keys by row then col
   keys.sort((a, b) => (a.row - b.row) || (a.col - b.col));
 }
 
