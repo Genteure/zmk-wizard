@@ -169,6 +169,8 @@ type KeyRendererProps = {
   wiring?: SingleKeyWiring;
   wiringType?: WiringType;
   showWiringPins: boolean;
+  offsetX: number;
+  offsetY: number;
   onClick?: ((key: GraphicsKey) => void) | undefined;
   onFocus?: ((key: GraphicsKey) => void) | undefined;
 };
@@ -289,7 +291,7 @@ const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
   };
 
   return (<Button
-    style={getKeyStyles(keyData())}
+    style={getKeyStyles(keyData(), { offsetX: props.offsetX, offsetY: props.offsetY })}
     classList={{
       "z-10": props.isSelected,
       "z-20": props.isFocused,
@@ -1053,6 +1055,8 @@ export const KeyboardPreview: VoidComponent<{
                 wiring={context.keyboard.parts[gkey.part]?.keys[gkey.key.id]}
                 wiringType={context.keyboard.parts[gkey.part]?.wiring}
                 showWiringPins={(props.editMode?.() === "wiring") && context.nav.activeEditPart === gkey.part}
+                offsetX={contentBbox().min.x || 0}
+                offsetY={contentBbox().min.y || 0}
                 onClick={onEachKeyClicked}
                 onFocus={onKeyFocused}
               />
