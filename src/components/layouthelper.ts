@@ -4,107 +4,19 @@ import type { Key } from "../typedef";
 import { Serial } from "./kle-serial";
 import { Keyboard as KLEKeyboard, Key as KLEKey } from "./kle-serial";
 
-export function physicalToLogical(keys: Key[], ignoreOrder: boolean): void {
+export function physicalToLogical(keys: Key[]): void {
   if (keys.length === 0) return;
 
-  // use center point as key position
-  // normalize y to start from 0
-  const posList = keys.map(k => keyCenter(k, { keySize: 1 }));
-  const minPosY = Math.min(...posList.map(p => p.y));
-  posList.forEach(p => p.y -= minPosY);
-  const posMap = new Map<Key, Point>(keys.map((k, i) => [k, posList[i]]));
+  // TODO implement heuristic algorithm to map physical positions to logical rows/cols
 
-  if (ignoreOrder) {
-    // sort keys by y (vertical) grouped to integer, then by x (horizontal)
-    // TODO optimize for column staggered layouts
-    keys.sort(
-      (a, b) =>
-        (Math.floor(posMap.get(a)?.y ?? 0) - Math.floor(posMap.get(b)?.y ?? 0)) ||
-        ((posMap.get(a)?.x ?? 0) - (posMap.get(b)?.x ?? 0))
-    );
-  }
-
-  // step 1: group keys into logical rows based on x coordinate breaks
-
-  const rows: Key[][] = [[]];
-  rows[0].push(keys[0]);
-  for (let i = 1; i < keys.length; i++) {
-    const current = keys[i];
-    const currentPos = posMap.get(current);
-    const prevPos = posMap.get(keys[i - 1]);
-    // for a key to be in the same row,
-    // its x must be at least 0.4 greater than the previous key's x
-    if (!currentPos || !prevPos) continue; // should not happen
-    // if (currentPos.y > (prevPos.y + 0.4)) {
-    if (currentPos.x < (prevPos.x + 0.4)) {
-      // new row
-      rows.push([current]);
-    } else {
-      // same row
-      rows[rows.length - 1].push(current);
-    }
-  }
-
-  // step 2: match cols based on x coordinate
-  // TODO somehow make it more symmetric
-
-  /**
-   * cols[c] = Array(rows.length)
-   * For example, a key from row[r] can only be in cols[any][r]
-   */
-  const cols: (Key | undefined)[][] = [[]];
-  /**
-   * cursors for each row to track which key has been assigned to a column
-   */
-  const rowCursors: number[] = new Array(rows.length).fill(0);
-
-  while (true) {
-    // find the next key with the smallest x among the row cursors
-    let minKey: Key | null = null;
-    let minRowIndex = -1;
-    for (let r = 0; r < rows.length; r++) {
-      const row = rows[r];
-      const cursor = rowCursors[r];
-      if (cursor < row.length) {
-        const key = row[cursor];
-        const keyPos = posMap.get(key);
-        if (!keyPos) continue; // should not happen
-        if (minKey === null || keyPos.x < (posMap.get(minKey)?.x ?? Infinity)) {
-          minKey = key;
-          minRowIndex = r;
-        }
-      }
-    }
-    if (minKey === null) {
-      // all keys are exhausted
-      break;
+  // final step: assign row and col to each key and sort
+  for (let c = 0; c < .length; c++) {
+    // ...
+    if (...) {
+      key.row = r;
+      key.col = c;
     }
 
-    rowCursors[minRowIndex]++;
-
-    // check if minKey can fit into an existing column
-    if (cols[cols.length - 1][minRowIndex]) {
-      // last column already has a key from this row
-      // need to create a new column
-      const newCol: (Key | undefined)[] = [];
-      newCol[minRowIndex] = minKey;
-      cols.push(newCol);
-    } else {
-      // can fit into the last column
-      cols[cols.length - 1][minRowIndex] = minKey;
-    }
-  }
-
-  // step 3: assign row and col to each key and sort
-  for (let c = 0; c < cols.length; c++) {
-    const col = cols[c];
-    for (let r = 0; r < col.length; r++) {
-      const key = col[r];
-      if (key) {
-        key.row = r;
-        key.col = c;
-      }
-    }
   }
   keys.sort((a, b) => (a.row - b.row) || (a.col - b.col));
 }
