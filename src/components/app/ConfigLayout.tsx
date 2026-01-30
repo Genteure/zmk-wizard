@@ -12,11 +12,11 @@ import ExternalLink from "lucide-solid/icons/external-link";
 
 import { bboxCenter, getKeysBoundingBox, keyCenter } from "~/lib/geometry";
 import { swpBgClass } from "~/lib/swpColors";
+import { config__json, physicalLayoutKeyboard } from "~/lib/templating";
 import { normalizeKeys, useWizardContext } from "../context";
 import { DataTable } from "../datatable";
 import { ExportTextboxDialog, GenerateLayoutDialog, ImportDevicetreeDialog, ImportKleJsonDialog, ImportLayoutJsonDialog } from "../dialogs";
 import { physicalToLogical, toKLE } from "../layouthelper";
-import { config__json, physicalLayoutKeyboard } from "~/lib/templating";
 import { ensureKeyIds } from "./App";
 
 // Lazy-load presets to keep main bundle smaller

@@ -2,7 +2,6 @@
 // This file is kept for backward compatibility
 export {
   BusDevicesConfigurator,
-  ControllerPin,
   ControllerPinConfigurator,
   devicePropWidgetRenderers,
   type DevicePropFieldProps,
