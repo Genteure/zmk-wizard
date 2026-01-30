@@ -16,16 +16,17 @@ interface PhysicalToLogicalConfig {
   rowTolerance: number;
 
   /**
-   * Tolerance for considering two keys to be in the same column.
-   * Keys with x-coordinates within this tolerance may share a column.
+   * Tolerance for detecting X-coordinate breaks between rows.
+   * When processing keys in order, a new row starts if the X coordinate
+   * decreases by more than this tolerance.
    * Default: 0.4 (slightly less than half a key unit)
    */
-  colTolerance: number;
+  xBreakTolerance: number;
 }
 
 const DEFAULT_CONFIG: PhysicalToLogicalConfig = {
   rowTolerance: 0.5,
-  colTolerance: 0.4,
+  xBreakTolerance: 0.4,
 };
 
 /**
@@ -62,7 +63,7 @@ export function physicalToLogical(keys: Key[], ignoreOrder: boolean): void {
   const rows = clusterIntoRows(keys, posMap, config, ignoreOrder);
 
   // Phase 2: Assign columns using sweep-line algorithm
-  const cols = assignColumns(rows, posMap, config);
+  const cols = assignColumns(rows, posMap);
 
   // Phase 3: Assign row/col values and sort
   for (let c = 0; c < cols.length; c++) {
@@ -127,7 +128,7 @@ function clusterByXBreaks(
 
     // A key starts a new row if its X is significantly less than the previous key
     // (meaning we've "wrapped" to a new row)
-    if (currentPos.x < prevPos.x + config.colTolerance) {
+    if (currentPos.x < prevPos.x + config.xBreakTolerance) {
       rows.push([current]);
     } else {
       rows[rows.length - 1].push(current);
@@ -164,15 +165,15 @@ function clusterByYGaps(
     pos: posMap.get(k)!,
   }));
 
-  // Sort by Y, then by X
-  const sorted = [...keysWithPos].sort((a, b) =>
+  // Sort by Y, then by X (keysWithPos is a new array, safe to sort in place)
+  keysWithPos.sort((a, b) =>
     (a.pos.y - b.pos.y) || (a.pos.x - b.pos.x)
   );
 
   // Calculate gaps between consecutive keys (Y-axis only)
   const gaps: { index: number; gap: number }[] = [];
-  for (let i = 1; i < sorted.length; i++) {
-    const gap = sorted[i].pos.y - sorted[i - 1].pos.y;
+  for (let i = 1; i < keysWithPos.length; i++) {
+    const gap = keysWithPos[i].pos.y - keysWithPos[i - 1].pos.y;
     gaps.push({ index: i, gap });
   }
 
@@ -180,11 +181,13 @@ function clusterByYGaps(
   const rowBreaks: number[] = [0]; // Always start at index 0
 
   // Filter out very small gaps (noise within a row)
-  const significantGaps = gaps.filter(g => g.gap > config.colTolerance);
+  // Use a small threshold to detect significant Y-axis gaps between rows
+  const minSignificantGap = config.rowTolerance * 0.5;
+  const significantGaps = gaps.filter(g => g.gap > minSignificantGap);
 
   if (significantGaps.length === 0) {
     // All keys are in roughly the same row (within tolerance)
-    rowBreaks.push(sorted.length);
+    rowBreaks.push(keysWithPos.length);
   } else {
     // Determine row boundary threshold based on gap distribution
     const sortedGapValues = significantGaps.map(g => g.gap).sort((a, b) => a - b);
@@ -196,9 +199,10 @@ function clusterByYGaps(
 
     let rowGapThreshold: number;
 
-    if (gapRange < config.colTolerance) {
+    if (gapRange < config.rowTolerance) {
       // Gaps are uniform - this is likely a perfect grid or uniform stagger
       // All significant gaps are row boundaries
+      // Use a small epsilon to ensure gaps equal to minGap are included
       rowGapThreshold = minGap - 0.001;
     } else {
       // Gaps vary - find the natural break point
@@ -230,7 +234,7 @@ function clusterByYGaps(
         rowBreaks.push(g.index);
       }
     }
-    rowBreaks.push(sorted.length);
+    rowBreaks.push(keysWithPos.length);
   }
 
   // Split into rows based on breaks
@@ -238,7 +242,7 @@ function clusterByYGaps(
   for (let i = 0; i < rowBreaks.length - 1; i++) {
     const start = rowBreaks[i];
     const end = rowBreaks[i + 1];
-    const row = sorted.slice(start, end).map(item => item.key);
+    const row = keysWithPos.slice(start, end).map(item => item.key);
     if (row.length > 0) {
       rows.push(row);
     }
@@ -264,8 +268,7 @@ function clusterByYGaps(
  */
 function assignColumns(
   rows: Key[][],
-  posMap: Map<Key, Point>,
-  config: PhysicalToLogicalConfig
+  posMap: Map<Key, Point>
 ): (Key | undefined)[][] {
   const numRows = rows.length;
   const cols: (Key | undefined)[][] = [];
