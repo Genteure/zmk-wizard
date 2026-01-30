@@ -4,102 +4,70 @@ import type { Key } from "../typedef";
 import { Serial } from "./kle-serial";
 import { Keyboard as KLEKeyboard, Key as KLEKey } from "./kle-serial";
 
+/**
+ * Configuration for the physical to logical layout conversion algorithm.
+ */
+interface PhysicalToLogicalConfig {
+  /**
+   * Tolerance for considering two keys to be in the same row.
+   * Keys with y-coordinates within this tolerance are considered row candidates.
+   * Default: 0.5 (half a key unit)
+   */
+  rowTolerance: number;
+
+  /**
+   * Tolerance for considering two keys to be in the same column.
+   * Keys with x-coordinates within this tolerance may share a column.
+   * Default: 0.4 (slightly less than half a key unit)
+   */
+  colTolerance: number;
+}
+
+const DEFAULT_CONFIG: PhysicalToLogicalConfig = {
+  rowTolerance: 0.5,
+  colTolerance: 0.4,
+};
+
+/**
+ * Convert physical key positions to logical row/col grid positions.
+ *
+ * This algorithm handles various keyboard layouts including:
+ * - Standard row-staggered layouts (QWERTY style)
+ * - Column-staggered layouts (ergo keyboards)
+ * - Rotated layouts (thumb clusters, split keyboards)
+ * - Mixed key sizes (spacebars, modifiers)
+ *
+ * The algorithm works in three phases:
+ * 1. Cluster keys into logical rows based on Y-coordinate proximity
+ * 2. Assign columns by sweeping left-to-right, grouping keys vertically
+ * 3. Sort keys by (row, col) and assign final positions
+ *
+ * @param keys Array of keys to convert (modified in place)
+ * @param ignoreOrder If true, sorts keys before processing to find optimal layout.
+ *                    If false, preserves the original key order as much as possible.
+ */
 export function physicalToLogical(keys: Key[], ignoreOrder: boolean): void {
   if (keys.length === 0) return;
 
-  // use center point as key position
-  // normalize y to start from 0
+  const config = DEFAULT_CONFIG;
+
+  // Calculate center point for each key (accounting for rotation)
+  // Normalize y coordinates to start from 0
   const posList = keys.map(k => keyCenter(k, { keySize: 1 }));
   const minPosY = Math.min(...posList.map(p => p.y));
   posList.forEach(p => p.y -= minPosY);
   const posMap = new Map<Key, Point>(keys.map((k, i) => [k, posList[i]]));
 
-  if (ignoreOrder) {
-    // sort keys by y (vertical) grouped to integer, then by x (horizontal)
-    // TODO optimize for column staggered layouts
-    keys.sort(
-      (a, b) =>
-        (Math.floor(posMap.get(a)?.y ?? 0) - Math.floor(posMap.get(b)?.y ?? 0)) ||
-        ((posMap.get(a)?.x ?? 0) - (posMap.get(b)?.x ?? 0))
-    );
-  }
+  // Phase 1: Cluster keys into logical rows
+  const rows = clusterIntoRows(keys, posMap, config, ignoreOrder);
 
-  // step 1: group keys into logical rows based on x coordinate breaks
+  // Phase 2: Assign columns using sweep-line algorithm
+  const cols = assignColumns(rows, posMap, config);
 
-  const rows: Key[][] = [[]];
-  rows[0].push(keys[0]);
-  for (let i = 1; i < keys.length; i++) {
-    const current = keys[i];
-    const currentPos = posMap.get(current);
-    const prevPos = posMap.get(keys[i - 1]);
-    // for a key to be in the same row,
-    // its x must be at least 0.4 greater than the previous key's x
-    if (!currentPos || !prevPos) continue; // should not happen
-    // if (currentPos.y > (prevPos.y + 0.4)) {
-    if (currentPos.x < (prevPos.x + 0.4)) {
-      // new row
-      rows.push([current]);
-    } else {
-      // same row
-      rows[rows.length - 1].push(current);
-    }
-  }
-
-  // step 2: match cols based on x coordinate
-  // TODO somehow make it more symmetric
-
-  /**
-   * cols[c] = Array(rows.length)
-   * For example, a key from row[r] can only be in cols[any][r]
-   */
-  const cols: (Key | undefined)[][] = [[]];
-  /**
-   * cursors for each row to track which key has been assigned to a column
-   */
-  const rowCursors: number[] = new Array(rows.length).fill(0);
-
-  while (true) {
-    // find the next key with the smallest x among the row cursors
-    let minKey: Key | null = null;
-    let minRowIndex = -1;
-    for (let r = 0; r < rows.length; r++) {
-      const row = rows[r];
-      const cursor = rowCursors[r];
-      if (cursor < row.length) {
-        const key = row[cursor];
-        const keyPos = posMap.get(key);
-        if (!keyPos) continue; // should not happen
-        if (minKey === null || keyPos.x < (posMap.get(minKey)?.x ?? Infinity)) {
-          minKey = key;
-          minRowIndex = r;
-        }
-      }
-    }
-    if (minKey === null) {
-      // all keys are exhausted
-      break;
-    }
-
-    rowCursors[minRowIndex]++;
-
-    // check if minKey can fit into an existing column
-    if (cols[cols.length - 1][minRowIndex]) {
-      // last column already has a key from this row
-      // need to create a new column
-      const newCol: (Key | undefined)[] = [];
-      newCol[minRowIndex] = minKey;
-      cols.push(newCol);
-    } else {
-      // can fit into the last column
-      cols[cols.length - 1][minRowIndex] = minKey;
-    }
-  }
-
-  // step 3: assign row and col to each key and sort
+  // Phase 3: Assign row/col values and sort
   for (let c = 0; c < cols.length; c++) {
-    const col = cols[c];
-    for (let r = 0; r < col.length; r++) {
-      const key = col[r];
+    for (let r = 0; r < cols[c].length; r++) {
+      const key = cols[c][r];
       if (key) {
         key.row = r;
         key.col = c;
@@ -107,6 +75,241 @@ export function physicalToLogical(keys: Key[], ignoreOrder: boolean): void {
     }
   }
   keys.sort((a, b) => (a.row - b.row) || (a.col - b.col));
+}
+
+/**
+ * Cluster keys into logical rows based on Y-coordinate proximity.
+ *
+ * Uses different strategies based on ignoreOrder:
+ * - ignoreOrder=true: Statistical clustering based on Y-coordinate gaps
+ * - ignoreOrder=false: X-coordinate break detection (for pre-ordered keys)
+ *
+ * The algorithm handles both:
+ * - Perfect 1U grids where rows are exactly 1 unit apart
+ * - Staggered/rotated layouts where keys in the same row have varying Y
+ */
+function clusterIntoRows(
+  keys: Key[],
+  posMap: Map<Key, Point>,
+  config: PhysicalToLogicalConfig,
+  ignoreOrder: boolean
+): Key[][] {
+  if (keys.length <= 1) {
+    return keys.length === 0 ? [] : [[keys[0]]];
+  }
+
+  if (!ignoreOrder) {
+    // Use X-coordinate break detection for pre-ordered keys
+    // This works well when keys are already in row-major order
+    return clusterByXBreaks(keys, posMap, config);
+  }
+
+  // For ignoreOrder=true, use Y-coordinate clustering
+  return clusterByYGaps(keys, posMap, config);
+}
+
+/**
+ * Cluster keys by detecting X-coordinate breaks.
+ * A new row starts when the X coordinate decreases significantly.
+ * This works well for keyboards where keys are listed in row-major order.
+ */
+function clusterByXBreaks(
+  keys: Key[],
+  posMap: Map<Key, Point>,
+  config: PhysicalToLogicalConfig
+): Key[][] {
+  const rows: Key[][] = [[keys[0]]];
+
+  for (let i = 1; i < keys.length; i++) {
+    const current = keys[i];
+    const currentPos = posMap.get(current)!;
+    const prevPos = posMap.get(keys[i - 1])!;
+
+    // A key starts a new row if its X is significantly less than the previous key
+    // (meaning we've "wrapped" to a new row)
+    if (currentPos.x < prevPos.x + config.colTolerance) {
+      rows.push([current]);
+    } else {
+      rows[rows.length - 1].push(current);
+    }
+  }
+
+  // Sort keys within each row by X coordinate
+  for (const row of rows) {
+    row.sort((a, b) => posMap.get(a)!.x - posMap.get(b)!.x);
+  }
+
+  // Sort rows by average Y coordinate
+  rows.sort((a, b) => {
+    const avgYA = a.reduce((sum, k) => sum + posMap.get(k)!.y, 0) / a.length;
+    const avgYB = b.reduce((sum, k) => sum + posMap.get(k)!.y, 0) / b.length;
+    return avgYA - avgYB;
+  });
+
+  return rows;
+}
+
+/**
+ * Cluster keys by detecting significant gaps in Y coordinates.
+ * Uses statistical analysis to find natural row boundaries.
+ */
+function clusterByYGaps(
+  keys: Key[],
+  posMap: Map<Key, Point>,
+  config: PhysicalToLogicalConfig
+): Key[][] {
+  // Create array of keys with positions for sorting
+  const keysWithPos = keys.map(k => ({
+    key: k,
+    pos: posMap.get(k)!,
+  }));
+
+  // Sort by Y, then by X
+  const sorted = [...keysWithPos].sort((a, b) =>
+    (a.pos.y - b.pos.y) || (a.pos.x - b.pos.x)
+  );
+
+  // Calculate gaps between consecutive keys (Y-axis only)
+  const gaps: { index: number; gap: number }[] = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const gap = sorted[i].pos.y - sorted[i - 1].pos.y;
+    gaps.push({ index: i, gap });
+  }
+
+  // Analyze gap distribution to determine row boundaries
+  const rowBreaks: number[] = [0]; // Always start at index 0
+
+  // Filter out very small gaps (noise within a row)
+  const significantGaps = gaps.filter(g => g.gap > config.colTolerance);
+
+  if (significantGaps.length === 0) {
+    // All keys are in roughly the same row (within tolerance)
+    rowBreaks.push(sorted.length);
+  } else {
+    // Determine row boundary threshold based on gap distribution
+    const sortedGapValues = significantGaps.map(g => g.gap).sort((a, b) => a - b);
+
+    // Check if gaps are uniform (perfect grid) or varied
+    const minGap = sortedGapValues[0];
+    const maxGap = sortedGapValues[sortedGapValues.length - 1];
+    const gapRange = maxGap - minGap;
+
+    let rowGapThreshold: number;
+
+    if (gapRange < config.colTolerance) {
+      // Gaps are uniform - this is likely a perfect grid or uniform stagger
+      // All significant gaps are row boundaries
+      rowGapThreshold = minGap - 0.001;
+    } else {
+      // Gaps vary - find the natural break point
+      // Look for the largest jump in gap values
+      let maxJump = 0;
+      let jumpIndex = 0;
+      for (let i = 1; i < sortedGapValues.length; i++) {
+        const jump = sortedGapValues[i] - sortedGapValues[i - 1];
+        if (jump > maxJump) {
+          maxJump = jump;
+          jumpIndex = i;
+        }
+      }
+
+      // If there's a significant jump, use the midpoint as threshold
+      // Otherwise, use the overall median
+      if (maxJump > config.rowTolerance) {
+        rowGapThreshold = (sortedGapValues[jumpIndex - 1] + sortedGapValues[jumpIndex]) / 2;
+      } else {
+        // Use median gap as threshold
+        const medianIndex = Math.floor(sortedGapValues.length / 2);
+        rowGapThreshold = sortedGapValues[medianIndex];
+      }
+    }
+
+    // Mark row boundaries where gap exceeds threshold
+    for (const g of gaps) {
+      if (g.gap >= rowGapThreshold) {
+        rowBreaks.push(g.index);
+      }
+    }
+    rowBreaks.push(sorted.length);
+  }
+
+  // Split into rows based on breaks
+  const rows: Key[][] = [];
+  for (let i = 0; i < rowBreaks.length - 1; i++) {
+    const start = rowBreaks[i];
+    const end = rowBreaks[i + 1];
+    const row = sorted.slice(start, end).map(item => item.key);
+    if (row.length > 0) {
+      rows.push(row);
+    }
+  }
+
+  // Sort keys within each row by X coordinate
+  for (const row of rows) {
+    row.sort((a, b) => posMap.get(a)!.x - posMap.get(b)!.x);
+  }
+
+  return rows;
+}
+
+/**
+ * Assign columns to keys using a sweep-line algorithm.
+ *
+ * The algorithm sweeps from left to right:
+ * 1. Find the next key (smallest X) among all rows
+ * 2. If it can fit in the current column (no overlap), add it
+ * 3. Otherwise, start a new column
+ *
+ * This produces a minimal grid that respects the physical layout.
+ */
+function assignColumns(
+  rows: Key[][],
+  posMap: Map<Key, Point>,
+  config: PhysicalToLogicalConfig
+): (Key | undefined)[][] {
+  const numRows = rows.length;
+  const cols: (Key | undefined)[][] = [];
+  const rowCursors: number[] = new Array(numRows).fill(0);
+
+  while (true) {
+    // Find the key with smallest X among all row cursors
+    let minKey: Key | null = null;
+    let minRowIndex = -1;
+    let minX = Infinity;
+
+    for (let r = 0; r < numRows; r++) {
+      const cursor = rowCursors[r];
+      if (cursor < rows[r].length) {
+        const key = rows[r][cursor];
+        const x = posMap.get(key)!.x;
+        if (x < minX) {
+          minX = x;
+          minKey = key;
+          minRowIndex = r;
+        }
+      }
+    }
+
+    if (minKey === null) {
+      // All keys processed
+      break;
+    }
+
+    rowCursors[minRowIndex]++;
+
+    // Try to fit this key into the last column
+    if (cols.length === 0 || cols[cols.length - 1][minRowIndex] !== undefined) {
+      // Need a new column - either first key or row already has a key in last column
+      const newCol: (Key | undefined)[] = new Array(numRows).fill(undefined);
+      newCol[minRowIndex] = minKey;
+      cols.push(newCol);
+    } else {
+      // Can fit into the last column
+      cols[cols.length - 1][minRowIndex] = minKey;
+    }
+  }
+
+  return cols;
 }
 
 export function parsePhysicalLayoutDts(dts: string): Key[] | null {
