@@ -1,4 +1,5 @@
 import type { Key } from "~/typedef";
+import { keyCenter } from "./geometry";
 
 interface Point {
   x: number;
@@ -81,6 +82,7 @@ export function physicalToLogical(keys: Key[]): void {
 
 /**
  * Compute center point and local axes for each key.
+ * Reuses keyCenter from geometry.ts for center calculation.
  */
 function computeKeyInfos(keys: Key[]): KeyInfo[] {
   return keys.map((key, index) => {
@@ -88,21 +90,8 @@ function computeKeyInfos(keys: Key[]): KeyInfo[] {
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
 
-    // Key center in physical space (accounting for rotation)
-    const localCenterX = key.w / 2;
-    const localCenterY = key.h / 2;
-
-    // Transform local center to global position
-    // Use nullish coalescing to properly handle rx/ry of 0
-    const originX = key.rx ?? key.x;
-    const originY = key.ry ?? key.y;
-    const dx = key.x - originX + localCenterX;
-    const dy = key.y - originY + localCenterY;
-
-    const center: Point = {
-      x: originX + dx * cos - dy * sin,
-      y: originY + dx * sin + dy * cos,
-    };
+    // Use keyCenter from geometry.ts with keySize=1 for unit coordinates
+    const center = keyCenter(key, { keySize: 1, padding: 0 });
 
     // Local axis unit vectors (right and down in key's local space)
     const localRight: Point = { x: cos, y: sin };
