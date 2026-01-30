@@ -8,6 +8,8 @@ export function physicalToLogical(keys: Key[]): void {
   if (keys.length === 0) return;
 
   // TODO implement heuristic algorithm to map physical positions to logical rows/cols
+  // See ~/lib/physicalToLogical.ts
+  throw new Error("physicalToLogical will be completely rewritten in a dedicated module");
 
   // final step: assign row and col to each key and sort
   for (let c = 0; c < .length; c++) {
