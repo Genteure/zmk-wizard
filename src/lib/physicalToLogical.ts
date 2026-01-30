@@ -1,6 +1,33 @@
 import type { Key } from "~/typedef";
 import { keyCenter } from "./geometry";
 
+/**
+ * Physical to Logical Layout Conversion Algorithm
+ * 
+ * This module converts physical key positions to logical row/column assignments.
+ * 
+ * Approach:
+ * 1. Compute key centers and local axes (accounting for rotation)
+ * 2. Use ray-casting to find neighbor relationships in each direction
+ * 3. Build row and column clusters using Union-Find based on neighbors
+ * 4. Assign final row/column numbers based on cluster positions
+ * 
+ * Special handling:
+ * - Standard grids (integer x/y, no rotation): Group by position directly
+ * - Non-standard layouts: Use ray-casting with alignment thresholds
+ * 
+ * Known limitations:
+ * - Complex staggered layouts (like Ferris) may not cluster correctly
+ *   when columns have significantly different Y offsets
+ * - Non-uniform key widths in non-grid layouts may create too many
+ *   column groups (e.g., 60% ISO)
+ * 
+ * Future improvements needed:
+ * - Better handling of column stagger by considering relative row positions
+ * - Key width awareness for column clustering
+ * - Iterative cluster merging starting from most confident relationships
+ */
+
 interface Point {
   x: number;
   y: number;
