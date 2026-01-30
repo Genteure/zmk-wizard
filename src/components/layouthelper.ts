@@ -1,27 +1,10 @@
 import { ulid } from "ulidx";
-import { keyCenter, type Point } from "~/lib/geometry";
 import type { Key } from "../typedef";
 import { Serial } from "./kle-serial";
 import { Keyboard as KLEKeyboard, Key as KLEKey } from "./kle-serial";
 
-export function physicalToLogical(keys: Key[]): void {
-  if (keys.length === 0) return;
-
-  // TODO implement heuristic algorithm to map physical positions to logical rows/cols
-  // See ~/lib/physicalToLogical.ts
-  throw new Error("physicalToLogical will be completely rewritten in a dedicated module");
-
-  // final step: assign row and col to each key and sort
-  for (let c = 0; c < .length; c++) {
-    // ...
-    if (...) {
-      key.row = r;
-      key.col = c;
-    }
-
-  }
-  keys.sort((a, b) => (a.row - b.row) || (a.col - b.col));
-}
+// Re-export from the dedicated module
+export { physicalToLogical } from "~/lib/physicalToLogical";
 
 export function parsePhysicalLayoutDts(dts: string): Key[] | null {
   const layoutRegex = /\{[^\}]*?compatible *?= *?\"zmk,physical-layout\";.+?\}/s;
