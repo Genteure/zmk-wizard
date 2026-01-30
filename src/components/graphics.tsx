@@ -185,8 +185,6 @@ type KeySvgProps = {
   isFocused: boolean;
   activeEditPart: number | null;
   pinActive: boolean;
-  offsetX: number;
-  offsetY: number;
 };
 
 /**
@@ -199,10 +197,8 @@ const KeySvgPath: VoidComponent<KeySvgProps> = (props) => {
   const isCurrentPart = () => props.activeEditPart === null || props.activeEditPart === keyPart();
   const isWiringMode = () => props.activeEditPart !== null;
 
-  const pathData = () => keyToSvgPath(keyData(), {
-    offsetX: props.offsetX,
-    offsetY: props.offsetY,
-  });
+  // No offset needed - the container's position:relative offset handles coordinate transformation
+  const pathData = () => keyToSvgPath(keyData());
 
   // Fill color: bg-base-300 for selected/pinActive/focused, bg-base-200 otherwise
   const fill = () => (props.isSelected || props.pinActive || props.isFocused)
@@ -1003,8 +999,6 @@ export const KeyboardPreview: VoidComponent<{
                       isFocused={focusedKeyIndex() === gkey.index}
                       activeEditPart={context.nav.activeEditPart}
                       pinActive={pinActive()}
-                      offsetX={0}
-                      offsetY={0}
                     />
                   );
                 }}
