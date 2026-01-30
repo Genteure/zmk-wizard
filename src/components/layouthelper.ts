@@ -2,9 +2,7 @@ import { ulid } from "ulidx";
 import type { Key } from "../typedef";
 import { Serial } from "./kle-serial";
 import { Keyboard as KLEKeyboard, Key as KLEKey } from "./kle-serial";
-
-// Re-export from the dedicated module
-export { physicalToLogical } from "~/lib/physicalToLogical";
+import { physicalToLogical } from "~/lib/physicalToLogical";
 
 export function parsePhysicalLayoutDts(dts: string): Key[] | null {
   const layoutRegex = /\{[^\}]*?compatible *?= *?\"zmk,physical-layout\";.+?\}/s;
@@ -215,13 +213,14 @@ export function parseKLE(json: string): Key[] | null {
       keys.sort((a, b) => (a.row - b.row) || (a.col - b.col));
     }
 
+    // TODO remove this section because we have new algorithm that shouldn't need this
     // Sanity check: too many rows vs physical height -> allow reordering
-    const totalHeightPhysical = Math.max(...keys.map(k => k.y + k.h)) - Math.min(...keys.map(k => k.y));
-    const totalRows = Math.max(...keys.map(k => k.row)) + 1;
-    if (totalRows > (totalHeightPhysical * 2)) {
-      // Likely garbage; recompute
-      physicalToLogical(keys);
-    }
+    // const totalHeightPhysical = Math.max(...keys.map(k => k.y + k.h)) - Math.min(...keys.map(k => k.y));
+    // const totalRows = Math.max(...keys.map(k => k.row)) + 1;
+    // if (totalRows > (totalHeightPhysical * 2)) {
+    //   // Likely garbage; recompute
+    //   physicalToLogical(keys);
+    // }
 
     return keys;
   } catch (e) {
