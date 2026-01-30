@@ -31,7 +31,8 @@ import { controllerInfos, loadBusesForController, socCapabilities } from "./cont
 import { DataTable } from "./datatable";
 import { ExportTextboxDialog, GenerateLayoutDialog, ImportDevicetreeDialog, ImportKleJsonDialog, ImportLayoutJsonDialog } from "./dialogs";
 import { KeyboardPreview, type GraphicsKey } from "./graphics";
-import { physicalToLogical, toKLE } from "./layouthelper";
+import { toKLE } from "./layouthelper";
+import { physicalToLogical } from "~/lib/physicalToLogical";
 import { BuildButton, HelpButton, InfoEditButton } from "./navbar";
 import { config__json, physicalLayoutKeyboard } from "~/lib/templating";
 
@@ -339,11 +340,14 @@ const ConfigLayout: Component = () => {
                       ><button>Generate Physical Layout from Logical</button></Menubar.Item>
                       <Menubar.Item
                         as="li"
-                        onSelect={() => context.setKeyboard("layout", produce(keys => physicalToLogical(keys, false)))}
+                        // onSelect={() => context.setKeyboard("layout", produce(keys => physicalToLogical(keys, false)))}
+                        onSelect={() => context.setKeyboard("layout", produce(keys => physicalToLogical(keys)))}
                       ><button>Generate Logical Layout from Physical</button></Menubar.Item>
                       <Menubar.Item
                         as="li"
-                        onSelect={() => context.setKeyboard("layout", produce(keys => physicalToLogical(keys, true)))}
+                        // onSelect={() => context.setKeyboard("layout", produce(keys => physicalToLogical(keys, true)))}
+                        // TODO remove this option, duplicate of above
+                        onSelect={() => context.setKeyboard("layout", produce(keys => physicalToLogical(keys)))}
                       ><button>Generate Logical Layout from Physical (allow reordering)</button></Menubar.Item>
                     </Menubar.Content>
                   </Menubar.Portal>
