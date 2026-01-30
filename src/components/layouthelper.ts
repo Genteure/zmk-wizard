@@ -5,11 +5,20 @@ import { Serial } from "./kle-serial";
 import { Keyboard as KLEKeyboard, Key as KLEKey } from "./kle-serial";
 
 /**
+ * Tolerance for row clustering as a fraction of key height.
+ * Keys with Y-center difference within this fraction of the smaller key's height
+ * are considered to be in the same row. 0.4 (40%) works well for standard keyboards
+ * with typical row stagger while avoiding false groupings.
+ */
+const ROW_CLUSTERING_TOLERANCE = 0.4;
+
+/**
  * Convert physical layout positions to logical row/column grid.
- * Uses ray-casting and clustering to determine key relationships.
+ * Uses Y-coordinate clustering to group keys into rows, then assigns columns
+ * based on X position within each row.
  *
  * @param keys - Array of keys with physical layout data (x, y, w, h, r, rx, ry)
- * @param _allowReorder - Currently unused, kept for API compatibility
+ * @param _allowReorder - Reserved for future use
  */
 export function physicalToLogical(keys: Key[], _allowReorder = false): void {
   if (keys.length === 0) return;
@@ -41,7 +50,7 @@ export function physicalToLogical(keys: Key[], _allowReorder = false): void {
     };
   });
 
-  // Find row clusters using horizontal ray-casting
+  // Find row clusters using Y-coordinate proximity
   const rowClusters = findRowClusters(keyData);
 
   // Assign row indices first
@@ -100,8 +109,8 @@ function average(values: number[]): number {
 }
 
 /**
- * Find row clusters by ray-casting horizontally.
- * Keys that can be connected by a horizontal line through their centers belong to the same row.
+ * Groups keys with similar Y-coordinates into row clusters.
+ * Uses Union-Find to efficiently merge keys that are within the tolerance threshold.
  */
 function findRowClusters(keyData: KeyData[]): KeyData[][] {
   if (keyData.length === 0) return [];
@@ -130,17 +139,14 @@ function findRowClusters(keyData: KeyData[]): KeyData[][] {
     }
   }
 
-  // Group keys that have overlapping Y ranges (within tolerance)
-  // This implements horizontal ray-casting: if a horizontal ray can pass through both keys,
-  // they are potentially in the same row
+  // Group keys with similar Y positions (within tolerance)
   for (let i = 0; i < sortedByY.length; i++) {
     const ki = sortedByY[i];
     for (let j = i + 1; j < sortedByY.length; j++) {
       const kj = sortedByY[j];
 
-      // Check if their Y ranges overlap
-      // Use center-based approach with tolerance based on key height
-      const tolerance = Math.min(ki.effectiveHeight, kj.effectiveHeight) * 0.4;
+      // Check if Y-center difference is within tolerance
+      const tolerance = Math.min(ki.effectiveHeight, kj.effectiveHeight) * ROW_CLUSTERING_TOLERANCE;
       if (Math.abs(ki.center.y - kj.center.y) <= tolerance) {
         union(ki.index, kj.index);
       }

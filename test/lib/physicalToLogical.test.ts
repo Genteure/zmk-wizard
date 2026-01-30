@@ -214,7 +214,7 @@ describe("physicalToLogical", () => {
   });
 
   describe("rotated keys", () => {
-    it("should handle keys with rotation", () => {
+    it("should group keys at same Y position into same row despite slight rotation", () => {
       // Two keys, one rotated 15 degrees
       const keys: Key[] = [
         makeKey(-1, -1, 0, 0),
@@ -229,8 +229,8 @@ describe("physicalToLogical", () => {
       expect(keys[1].row).toBe(keys[2].row);
     });
 
-    it("should handle column of rotated keys like ergo thumb cluster", () => {
-      // Thumb keys rotated around a common point - like Ferris thumbs
+    it("should group keys at same Y position into same row with different rotations", () => {
+      // Two keys at the same Y position with different rotation angles
       const keys: Key[] = [
         makeKey(-1, -1, 3.3, 3.55, { r: 15, rx: 4.3, ry: 4.55 }),
         makeKey(-1, -1, 4.3, 3.55, { r: 30, rx: 4.3, ry: 4.55 }),
@@ -238,7 +238,7 @@ describe("physicalToLogical", () => {
 
       physicalToLogical(keys);
 
-      // Both should be in the same row (they're thumb keys on the same arc)
+      // Both keys have the same Y coordinate (3.55), so they should be in the same row
       expect(keys[0].row).toBe(keys[1].row);
     });
   });
