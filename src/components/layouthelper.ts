@@ -1,24 +1,163 @@
 import { ulid } from "ulidx";
-import { keyCenter, type Point } from "~/lib/geometry";
+import { keyCenter, keyToPolygon, type Point } from "~/lib/geometry";
 import type { Key } from "../typedef";
 import { Serial } from "./kle-serial";
 import { Keyboard as KLEKeyboard, Key as KLEKey } from "./kle-serial";
 
-export function physicalToLogical(keys: Key[]): void {
+/**
+ * Convert physical layout positions to logical row/column grid.
+ * Uses ray-casting and clustering to determine key relationships.
+ *
+ * @param keys - Array of keys with physical layout data (x, y, w, h, r, rx, ry)
+ * @param _allowReorder - Currently unused, kept for API compatibility
+ */
+export function physicalToLogical(keys: Key[], _allowReorder = false): void {
   if (keys.length === 0) return;
 
-  // TODO implement heuristic algorithm to map physical positions to logical rows/cols
+  // Get transformed centers for each key (accounting for rotation)
+  const keyData = keys.map((key, index) => {
+    const center = keyCenter(key, { keySize: 1 });
+    const polygon = keyToPolygon(key, { keySize: 1 });
 
-  // final step: assign row and col to each key and sort
-  for (let c = 0; c < .length; c++) {
-    // ...
-    if (...) {
-      key.row = r;
-      key.col = c;
+    // Compute bounding box from polygon
+    const xValues = polygon.map(p => p.x);
+    const yValues = polygon.map(p => p.y);
+    const minX = Math.min(...xValues);
+    const maxX = Math.max(...xValues);
+    const minY = Math.min(...yValues);
+    const maxY = Math.max(...yValues);
+
+    return {
+      index,
+      key,
+      center,
+      minX,
+      maxX,
+      minY,
+      maxY,
+      // Effective width/height after rotation
+      effectiveWidth: maxX - minX,
+      effectiveHeight: maxY - minY,
+    };
+  });
+
+  // Find row clusters using horizontal ray-casting
+  const rowClusters = findRowClusters(keyData);
+
+  // Assign row indices first
+  const sortedRowClusters = [...rowClusters].sort((a, b) => {
+    const avgYA = average(a.map(k => k.center.y));
+    const avgYB = average(b.map(k => k.center.y));
+    return avgYA - avgYB;
+  });
+
+  const keyToRow = new Map<number, number>();
+  sortedRowClusters.forEach((cluster, rowIndex) => {
+    for (const k of cluster) {
+      keyToRow.set(k.index, rowIndex);
     }
+  });
 
+  // Assign columns within each row based on X position
+  // This ensures staggered keyboards get proper column assignments
+  const keyToCol = new Map<number, number>();
+
+  for (const rowCluster of sortedRowClusters) {
+    // Sort keys in this row by X position
+    const sortedInRow = [...rowCluster].sort((a, b) => a.center.x - b.center.x);
+
+    // Assign columns based on sorted order within the row
+    sortedInRow.forEach((k, colIndex) => {
+      keyToCol.set(k.index, colIndex);
+    });
   }
+
+  // Apply row and column assignments
+  for (let i = 0; i < keys.length; i++) {
+    keys[i].row = keyToRow.get(i) ?? 0;
+    keys[i].col = keyToCol.get(i) ?? 0;
+  }
+
+  // Sort keys by row then column
   keys.sort((a, b) => (a.row - b.row) || (a.col - b.col));
+}
+
+interface KeyData {
+  index: number;
+  key: Key;
+  center: Point;
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  effectiveWidth: number;
+  effectiveHeight: number;
+}
+
+function average(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+/**
+ * Find row clusters by ray-casting horizontally.
+ * Keys that can be connected by a horizontal line through their centers belong to the same row.
+ */
+function findRowClusters(keyData: KeyData[]): KeyData[][] {
+  if (keyData.length === 0) return [];
+
+  // Sort keys by Y center
+  const sortedByY = [...keyData].sort((a, b) => a.center.y - b.center.y);
+
+  // Use Union-Find for clustering
+  const parent = new Map<number, number>();
+  for (const k of keyData) {
+    parent.set(k.index, k.index);
+  }
+
+  function find(x: number): number {
+    if (parent.get(x) !== x) {
+      parent.set(x, find(parent.get(x)!));
+    }
+    return parent.get(x)!;
+  }
+
+  function union(x: number, y: number): void {
+    const rootX = find(x);
+    const rootY = find(y);
+    if (rootX !== rootY) {
+      parent.set(rootX, rootY);
+    }
+  }
+
+  // Group keys that have overlapping Y ranges (within tolerance)
+  // This implements horizontal ray-casting: if a horizontal ray can pass through both keys,
+  // they are potentially in the same row
+  for (let i = 0; i < sortedByY.length; i++) {
+    const ki = sortedByY[i];
+    for (let j = i + 1; j < sortedByY.length; j++) {
+      const kj = sortedByY[j];
+
+      // Check if their Y ranges overlap
+      // Use center-based approach with tolerance based on key height
+      const tolerance = Math.min(ki.effectiveHeight, kj.effectiveHeight) * 0.4;
+      if (Math.abs(ki.center.y - kj.center.y) <= tolerance) {
+        union(ki.index, kj.index);
+      }
+    }
+  }
+
+  // Build clusters
+  const clusters = new Map<number, KeyData[]>();
+  for (const k of keyData) {
+    const root = find(k.index);
+    if (!clusters.has(root)) {
+      clusters.set(root, []);
+    }
+    clusters.get(root)!.push(k);
+  }
+
+  return Array.from(clusters.values());
 }
 
 export function parsePhysicalLayoutDts(dts: string): Key[] | null {
