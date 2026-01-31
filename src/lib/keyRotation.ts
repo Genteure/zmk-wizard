@@ -258,3 +258,43 @@ export function calculateDefaultAnchorPosition(
     y: roundTo(center.y + distanceFromCenter * Math.sin(anchorAngle)),
   };
 }
+
+/**
+ * Move the anchor (rotation origin) to a new position without changing the key's
+ * final visual appearance (position after rotation).
+ * 
+ * This is used in center mode when the user drags the anchor point - the key
+ * should appear to stay in the same place while only the rotation origin moves.
+ * 
+ * @param key - Current key geometry
+ * @param newAnchor - New anchor point position (in units)
+ * @returns Updated key geometry with same visual position but new anchor
+ */
+export function moveAnchorWithoutAffectingPosition(
+  key: { x: number; y: number; w: number; h: number; r: number; rx: number; ry: number },
+  newAnchor: Point
+): { x: number; y: number; w: number; h: number; r: number; rx: number; ry: number } {
+  // The key's rotated center should remain at the same visual position
+  const fixedRotatedCenter = getKeyRotatedCenter(key);
+  
+  // With the new anchor at newAnchor, we need to find new x, y such that:
+  // When we rotate the key's center around newAnchor by r degrees,
+  // it ends up at fixedRotatedCenter.
+  //
+  // rotatePoint(unrotatedCenter, newAnchor, r) = fixedRotatedCenter
+  // So: unrotatedCenter = rotatePoint(fixedRotatedCenter, newAnchor, -r)
+  const unrotatedCenter = rotatePoint(fixedRotatedCenter, newAnchor, -key.r);
+  
+  const newX = unrotatedCenter.x - key.w / 2;
+  const newY = unrotatedCenter.y - key.h / 2;
+  
+  return {
+    x: roundTo(newX),
+    y: roundTo(newY),
+    w: key.w,
+    h: key.h,
+    r: key.r, // Rotation angle stays the same
+    rx: roundTo(newAnchor.x),
+    ry: roundTo(newAnchor.y),
+  };
+}

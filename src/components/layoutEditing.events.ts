@@ -4,6 +4,7 @@ import { keyCenter, type Point } from "~/lib/geometry";
 import {
   applyAnchorRotation,
   getKeyRotatedCenter,
+  moveAnchorWithoutAffectingPosition,
   rotatePoint,
 } from "~/lib/keyRotation";
 import type { Key } from "../typedef";
@@ -184,11 +185,13 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
       // For common center rotation with multiple keys
       if (handleType === "rotate-center-common" && rotateMode === "center") {
         // Calculate the common center of all selected keys (in units)
+        // Use the visual (rotated) center of each key
         const selectedKeys = [...dragStart!.originalKeys.values()];
         let sumX = 0, sumY = 0;
         for (const orig of selectedKeys) {
-          sumX += orig.x + orig.w / 2;
-          sumY += orig.y + orig.h / 2;
+          const rotatedCenter = getKeyRotatedCenter(orig);
+          sumX += rotatedCenter.x;
+          sumY += rotatedCenter.y;
         }
         const commonCenterUnit = {
           x: sumX / selectedKeys.length,
@@ -208,33 +211,35 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
           deltaAngle = Math.round(deltaAngle / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES;
         }
 
-        // Apply rotation to each key around the common center
+        // Apply rotation to each key around the common center VISUALLY
+        // Each key keeps its own rx,ry at its center (local center rotation)
         for (const [id, original] of dragStart!.originalKeys) {
           const k = layout.find(key => key.id === id);
           if (!k) continue;
 
-          // Each key's center in units
-          const keyCenterUnit = {
-            x: original.x + original.w / 2,
-            y: original.y + original.h / 2
-          };
+          // Get the visual (rotated) center of the key
+          const originalRotatedCenter = getKeyRotatedCenter(original);
 
-          // Rotate this key's center around the common center
-          const newKeyCenterUnit = rotatePoint(keyCenterUnit, commonCenterUnit, deltaAngle);
-
-          // New key position (top-left corner)
-          const newX = newKeyCenterUnit.x - original.w / 2;
-          const newY = newKeyCenterUnit.y - original.h / 2;
+          // Rotate this key's visual center around the common center
+          const newRotatedCenterUnit = rotatePoint(originalRotatedCenter, commonCenterUnit, deltaAngle);
 
           // New rotation angle
           const newR = original.r + deltaAngle;
 
-          // Set rx,ry to the common center so all keys share the same rotation origin
+          // Each key has its own rotation origin at its center (local center mode)
+          // The new key center (unrotated) should be at newRotatedCenterUnit since rx,ry = center
+          const newX = newRotatedCenterUnit.x - original.w / 2;
+          const newY = newRotatedCenterUnit.y - original.h / 2;
+          
+          // Set rx,ry to the key's new center (each key has its own rotation origin)
+          const newRx = newX + original.w / 2;
+          const newRy = newY + original.h / 2;
+
           k.x = roundTo(newX);
           k.y = roundTo(newY);
           k.r = roundTo(newR);
-          k.rx = roundTo(commonCenterUnit.x);
-          k.ry = roundTo(commonCenterUnit.y);
+          k.rx = roundTo(newRx);
+          k.ry = roundTo(newRy);
         }
         return;
       }
@@ -246,50 +251,74 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
 
         if (rotateMode === "center") {
           // LOCAL CENTER MODE
-          // User drags around the key to rotate it around its rotation origin
-          // If rx,ry is not set, use key center as rotation origin
+          // Two sub-cases:
+          // 1. User drags the anchor point -> move anchor without affecting key visual position
+          // 2. User drags the rotation ring -> rotate key around its rotation origin
           
-          // ZMK data model: rx=0,ry=0 means "use x,y as rotation origin" (no explicit origin set)
-          // This is the canonical way to represent "unset" in ZMK physical layouts.
-          // Get the rotation origin (rx,ry if explicitly set, otherwise key center)
-          const rotationOriginUnit = (original.rx !== 0 || original.ry !== 0)
-            ? { x: original.rx, y: original.ry }
-            : { x: original.x + original.w / 2, y: original.y + original.h / 2 };
-          
-          const rotationOriginPx = {
-            x: rotationOriginUnit.x * KEY_SIZE,
-            y: rotationOriginUnit.y * KEY_SIZE
-          };
-          
-          // Calculate rotation delta from drag
-          const startAngle = angleFromPoints(rotationOriginPx, dragStart!.virtualPos);
-          const currentAngle = angleFromPoints(rotationOriginPx, currentPos);
-          let deltaAngle = currentAngle - startAngle;
-
-          if (snap) {
-            deltaAngle = Math.round(deltaAngle / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES;
-          }
-
-          // If rx,ry was not set before (both 0), initialize to key center
-          // This allows center rotation to work properly for keys without explicit rotation origins
-          if (original.rx === 0 && original.ry === 0) {
-            const keyCenterUnit = { x: original.x + original.w / 2, y: original.y + original.h / 2 };
-            k.r = roundTo(original.r + deltaAngle);
-            k.rx = roundTo(keyCenterUnit.x);
-            k.ry = roundTo(keyCenterUnit.y);
-            // x, y stay the same since we're rotating around key center
-          } else {
-            // rx,ry already set - rotate around it
-            // Key center position moves as we rotate around rx,ry
-            const keyCenterUnit = { x: original.x + original.w / 2, y: original.y + original.h / 2 };
-            const newKeyCenterUnit = rotatePoint(keyCenterUnit, rotationOriginUnit, deltaAngle);
+          if (handleType === "rotate-anchor") {
+            // User is dragging the anchor point in center mode
+            // Move the anchor to the new position without affecting the key's visual position
+            let newAnchorX = currentPos.x / KEY_SIZE;
+            let newAnchorY = currentPos.y / KEY_SIZE;
             
-            k.x = roundTo(newKeyCenterUnit.x - original.w / 2);
-            k.y = roundTo(newKeyCenterUnit.y - original.h / 2);
-            k.r = roundTo(original.r + deltaAngle);
-            // Keep existing rx,ry
-            k.rx = original.rx;
-            k.ry = original.ry;
+            if (snap) {
+              newAnchorX = snapToGrid(newAnchorX);
+              newAnchorY = snapToGrid(newAnchorY);
+            }
+            
+            const newAnchor = { x: newAnchorX, y: newAnchorY };
+            const result = moveAnchorWithoutAffectingPosition(original, newAnchor);
+            k.x = result.x;
+            k.y = result.y;
+            k.r = result.r;
+            k.rx = result.rx;
+            k.ry = result.ry;
+          } else {
+            // User drags around the key to rotate it around its rotation origin
+            // If rx,ry is not set, use key center as rotation origin
+            
+            // ZMK data model: rx=0,ry=0 means "use x,y as rotation origin" (no explicit origin set)
+            // This is the canonical way to represent "unset" in ZMK physical layouts.
+            // Get the rotation origin (rx,ry if explicitly set, otherwise key center)
+            const rotationOriginUnit = (original.rx !== 0 || original.ry !== 0)
+              ? { x: original.rx, y: original.ry }
+              : { x: original.x + original.w / 2, y: original.y + original.h / 2 };
+            
+            const rotationOriginPx = {
+              x: rotationOriginUnit.x * KEY_SIZE,
+              y: rotationOriginUnit.y * KEY_SIZE
+            };
+            
+            // Calculate rotation delta from drag
+            const startAngle = angleFromPoints(rotationOriginPx, dragStart!.virtualPos);
+            const currentAngle = angleFromPoints(rotationOriginPx, currentPos);
+            let deltaAngle = currentAngle - startAngle;
+
+            if (snap) {
+              deltaAngle = Math.round(deltaAngle / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES;
+            }
+
+            // If rx,ry was not set before (both 0), initialize to key center
+            // This allows center rotation to work properly for keys without explicit rotation origins
+            if (original.rx === 0 && original.ry === 0) {
+              const keyCenterUnit = { x: original.x + original.w / 2, y: original.y + original.h / 2 };
+              k.r = roundTo(original.r + deltaAngle);
+              k.rx = roundTo(keyCenterUnit.x);
+              k.ry = roundTo(keyCenterUnit.y);
+              // x, y stay the same since we're rotating around key center
+            } else {
+              // rx,ry already set - rotate around it
+              // Key center position moves as we rotate around rx,ry
+              const keyCenterUnit = { x: original.x + original.w / 2, y: original.y + original.h / 2 };
+              const newKeyCenterUnit = rotatePoint(keyCenterUnit, rotationOriginUnit, deltaAngle);
+              
+              k.x = roundTo(newKeyCenterUnit.x - original.w / 2);
+              k.y = roundTo(newKeyCenterUnit.y - original.h / 2);
+              k.r = roundTo(original.r + deltaAngle);
+              // Keep existing rx,ry
+              k.rx = original.rx;
+              k.ry = original.ry;
+            }
           }
         } else {
           // ANCHOR MODE

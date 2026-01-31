@@ -117,7 +117,7 @@ export const LayoutEditOverlay: VoidComponent<LayoutEditOverlayProps> = (props) 
       >
         {/* Per-key overlays */}
         <For each={selectedKeys()}>
-          {(gkey) => (
+          {(gkey, index) => (
             <KeyOverlay
               gkey={gkey}
               tool={props.editState.tool}
@@ -125,6 +125,7 @@ export const LayoutEditOverlay: VoidComponent<LayoutEditOverlayProps> = (props) 
               v2c={props.v2c}
               contentBbox={props.contentBbox}
               isMultiSelect={selectedKeys().length > 1}
+              keyIndex={index()}
             />
           )}
         </For>
@@ -272,6 +273,8 @@ const KeyOverlay: VoidComponent<{
   v2c: (x: number, y: number) => { x: number; y: number };
   contentBbox: () => { min: { x: number; y: number }; width: number; height: number };
   isMultiSelect?: boolean;
+  /** Key index for display in ghost outline */
+  keyIndex: number;
 }> = (props) => {
   // Get the key's polygon corners in screen coordinates
   const screenCorners = createMemo(() => {
@@ -362,13 +365,13 @@ const KeyOverlay: VoidComponent<{
               />
               {/* Key index label at original position */}
               <text
-                x={outline()[0].x + 3}
-                y={outline()[0].y + 12}
-                font-size="9"
+                x={outline()[0].x + 4}
+                y={outline()[0].y + 14}
+                font-size="11"
                 fill={COLORS.ghostOutline}
-                class="select-none font-mono"
+                class="select-none font-mono font-semibold"
               >
-                orig
+                {props.gkey.key.id}
               </text>
             </g>
           );
@@ -472,17 +475,17 @@ const KeyOverlay: VoidComponent<{
         <Show when={screenRotationAnchor()}>
           {(anchor) => (
             <g>
-              {/* Line from origin to anchor */}
+              {/* Line from key center to anchor (more intuitive than x,y to anchor) */}
               <line
-                x1={screenOrigin().x}
-                y1={screenOrigin().y}
+                x1={screenCenter().x}
+                y1={screenCenter().y}
                 x2={anchor().x}
                 y2={anchor().y}
                 stroke={COLORS.guideLine}
                 stroke-width={1}
                 stroke-dasharray="3,3"
               />
-              {/* Anchor point - draggable in anchor mode */}
+              {/* Anchor point - draggable in both anchor and center modes */}
               <circle
                 cx={anchor().x}
                 cy={anchor().y}
@@ -617,10 +620,11 @@ const RotationArc: VoidComponent<{
     const endX = cx + radius * Math.cos(currentAngle);
     const endY = cy + radius * Math.sin(currentAngle);
     
-    // Arrow direction: tangent to the arc at the end point
-    // For clockwise (positive angle), tangent points in +90° direction from radius
-    // For counter-clockwise (negative angle), tangent points in -90° direction
-    const tangentAngle = currentAngle + (normalizedAngle > 0 ? Math.PI / 2 : -Math.PI / 2);
+    // Arrow direction: tangent to the arc at the end point, pointing in direction of rotation
+    // For clockwise (positive angle), arrow points in the direction the rotation went (+90° from radius toward end)
+    // For counter-clockwise (negative angle), arrow points the other way (-90° from radius toward end)
+    // We want the arrow to point backward along the arc (showing where it came from)
+    const tangentAngle = currentAngle + (normalizedAngle > 0 ? -Math.PI / 2 : Math.PI / 2);
     const arrowLen = 6;
     
     const ax1 = endX + arrowLen * Math.cos(tangentAngle - 0.5);
