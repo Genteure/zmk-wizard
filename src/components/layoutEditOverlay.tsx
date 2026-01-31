@@ -7,11 +7,8 @@ import type { LayoutEditState, LayoutEditTool, RotateMode } from "./layoutEditin
 const KEY_SIZE = 70; // pixels per unit
 
 /** Handle size in pixels */
-const HANDLE_SIZE = 8;
+const HANDLE_SIZE = 10;
 const HANDLE_HALF = HANDLE_SIZE / 2;
-
-/** Edge handle inset - smaller than corner handles to visually distinguish them */
-const EDGE_HANDLE_INSET = 1;
 
 /** Minimum radius in pixels to show rotation arc (avoid cluttered display for small rotations) */
 const MIN_ROTATION_ARC_RADIUS = 10;
@@ -208,13 +205,15 @@ const KeyOverlay: VoidComponent<{
 
   return (
     <g>
-      {/* Resize handles (show on resize tool) */}
+      {/* Resize handle (show on resize tool) - only bottom-right corner */}
       <Show when={props.tool() === "resize"}>
-        <For each={screenCorners()}>
-          {(corner, index) => (
+        {(() => {
+          // Bottom-right corner is index 2 in the polygon (after rotation)
+          const corner = () => screenCorners()[2];
+          return (
             <rect
-              x={corner.x - HANDLE_HALF}
-              y={corner.y - HANDLE_HALF}
+              x={corner().x - HANDLE_HALF}
+              y={corner().y - HANDLE_HALF}
               width={HANDLE_SIZE}
               height={HANDLE_SIZE}
               fill={COLORS.handle}
@@ -223,36 +222,11 @@ const KeyOverlay: VoidComponent<{
               rx={1}
               class="cursor-nwse-resize"
               style={{ "pointer-events": "auto" }}
+              data-handle="resize"
+              data-key-id={props.gkey.key.id}
             />
-          )}
-        </For>
-        {/* Edge midpoint handles */}
-        <For each={[0, 1, 2, 3]}>
-          {(i) => {
-            const midpoint = () => {
-              const corners = screenCorners();
-              const p1 = corners[i];
-              const p2 = corners[(i + 1) % 4];
-              return { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-            };
-            // Edge handles are slightly smaller than corner handles to visually distinguish them
-            const edgeHandleSize = HANDLE_SIZE - EDGE_HANDLE_INSET * 2;
-            return (
-              <rect
-                x={midpoint().x - edgeHandleSize / 2}
-                y={midpoint().y - edgeHandleSize / 2}
-                width={edgeHandleSize}
-                height={edgeHandleSize}
-                fill="white"
-                stroke={COLORS.handle}
-                stroke-width={1.5}
-                rx={1}
-                class={i % 2 === 0 ? "cursor-ns-resize" : "cursor-ew-resize"}
-                style={{ "pointer-events": "auto" }}
-              />
-            );
-          }}
-        </For>
+          );
+        })()}
       </Show>
 
       {/* Rotation handle (show on rotate tool) */}
@@ -285,17 +259,23 @@ const KeyOverlay: VoidComponent<{
             fill={COLORS.anchor}
             stroke="white"
             stroke-width={1.5}
+            style={{ "pointer-events": "auto" }}
+            data-handle="rotate-center"
+            data-key-id={props.gkey.key.id}
           />
-          {/* Rotation indicator circle */}
+          {/* Rotation indicator circle - draggable for rotation */}
           <circle
             cx={screenCenter().x}
             cy={screenCenter().y}
             r={25}
             fill="none"
             stroke={COLORS.rotationArc}
-            stroke-width={1.5}
+            stroke-width={8}
             stroke-dasharray="4,4"
-            opacity={0.6}
+            opacity={0.3}
+            style={{ "pointer-events": "auto" }}
+            data-handle="rotate-center"
+            data-key-id={props.gkey.key.id}
           />
           {/* Rotation direction arrow */}
           <path
@@ -323,17 +303,20 @@ const KeyOverlay: VoidComponent<{
                 stroke-width={1}
                 stroke-dasharray="3,3"
               />
-              {/* Anchor point */}
+              {/* Anchor point - draggable in anchor mode */}
               <circle
                 cx={anchor().x}
                 cy={anchor().y}
-                r={5}
+                r={8}
                 fill={COLORS.anchor}
                 stroke="white"
                 stroke-width={1.5}
+                style={{ "pointer-events": "auto" }}
+                data-handle="rotate-anchor"
+                data-key-id={props.gkey.key.id}
               />
               <text
-                x={anchor().x + 8}
+                x={anchor().x + 12}
                 y={anchor().y + 4}
                 font-size="10"
                 fill={COLORS.anchor}
@@ -359,19 +342,21 @@ const KeyOverlay: VoidComponent<{
         <circle
           cx={screenCenter().x}
           cy={screenCenter().y}
-          r={6}
+          r={10}
           fill={COLORS.handle}
           stroke="white"
           stroke-width={1.5}
           class="cursor-move"
           style={{ "pointer-events": "auto" }}
+          data-handle="move"
+          data-key-id={props.gkey.key.id}
         />
         {/* Move arrows */}
-        <g stroke={COLORS.handle} stroke-width={1.5} fill="none" opacity={0.6}>
-          <line x1={screenCenter().x} y1={screenCenter().y - 12} x2={screenCenter().x} y2={screenCenter().y - 20} />
-          <line x1={screenCenter().x} y1={screenCenter().y + 12} x2={screenCenter().x} y2={screenCenter().y + 20} />
-          <line x1={screenCenter().x - 12} y1={screenCenter().y} x2={screenCenter().x - 20} y2={screenCenter().y} />
-          <line x1={screenCenter().x + 12} y1={screenCenter().y} x2={screenCenter().x + 20} y2={screenCenter().y} />
+        <g stroke="white" stroke-width={2} fill="none" style={{ "pointer-events": "none" }}>
+          <line x1={screenCenter().x} y1={screenCenter().y - 3} x2={screenCenter().x} y2={screenCenter().y - 6} />
+          <line x1={screenCenter().x} y1={screenCenter().y + 3} x2={screenCenter().x} y2={screenCenter().y + 6} />
+          <line x1={screenCenter().x - 3} y1={screenCenter().y} x2={screenCenter().x - 6} y2={screenCenter().y} />
+          <line x1={screenCenter().x + 3} y1={screenCenter().y} x2={screenCenter().x + 6} y2={screenCenter().y} />
         </g>
       </Show>
     </g>

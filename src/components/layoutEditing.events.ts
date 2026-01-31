@@ -1,6 +1,6 @@
 import type { Accessor, JSX, Setter } from "solid-js";
 import { produce } from "solid-js/store";
-import { keyCenter, keyToPolygon, pointInPolygon, type Point } from "~/lib/geometry";
+import { keyCenter, type Point } from "~/lib/geometry";
 import type { Key } from "../typedef";
 import type { WizardContextType } from "./context";
 import { normalizeKeys } from "./context";
@@ -70,6 +70,7 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
     clientY: number;
     virtualPos: Point;
     tool: LayoutEditTool;
+    handleType: string; // "move", "resize", "rotate-center", "rotate-anchor"
     selectedKeyIds: string[];
     originalKeys: Map<string, { x: number; y: number; w: number; h: number; r: number; rx: number; ry: number }>;
     rotateAnchor?: Point;
@@ -85,19 +86,6 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
       x: vPos.x + bbox.min.x + bbox.width / 2,
       y: vPos.y + bbox.min.y + bbox.height / 2,
     };
-  };
-
-  /**
-   * Find key at position
-   */
-  const findKeyAtPosition = (pos: Point): GraphicsKey | null => {
-    for (const k of state.keys()) {
-      const polygon = keyToPolygon(k);
-      if (pointInPolygon(polygon, pos.x, pos.y)) {
-        return k;
-      }
-    }
-    return null;
   };
 
   /**
@@ -266,36 +254,41 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
   };
 
   /**
-   * Start drag operation
+   * Start drag operation - only if clicking on a handle
    */
-  const startDrag = (clientX: number, clientY: number) => {
+  const startDrag = (clientX: number, clientY: number, target: EventTarget | null) => {
     const tool = state.tool();
     if (tool === "select") return; // Select tool doesn't use this handler
 
+    // Check if we clicked on a handle element
+    const handleElement = (target as HTMLElement | SVGElement)?.closest?.("[data-handle]");
+    if (!handleElement) return; // Only start drag if clicking on a handle
+
+    const handleType = handleElement.getAttribute("data-handle");
+    const handleKeyId = handleElement.getAttribute("data-key-id");
+    if (!handleType) return;
+
     const virtualPos = getVirtualPosWithOffset(clientX, clientY);
-    const selectedKeys = state.context.nav.selectedKeys;
+    let selectedKeys = state.context.nav.selectedKeys;
 
-    // If clicking on a key that's not selected, select it first
-    const clickedKey = findKeyAtPosition(virtualPos);
-    let keyIds = [...selectedKeys];
-
-    if (clickedKey && !selectedKeys.includes(clickedKey.key.id)) {
-      // Select just this key
-      keyIds = [clickedKey.key.id];
-      state.context.setNav("selectedKeys", keyIds);
+    // If handle is for a specific key that's not selected, select it
+    if (handleKeyId && !selectedKeys.includes(handleKeyId)) {
+      selectedKeys = [handleKeyId];
+      state.context.setNav("selectedKeys", selectedKeys);
     }
 
-    if (keyIds.length === 0) return;
+    if (selectedKeys.length === 0) return;
 
-    const originalKeys = captureOriginalKeys(keyIds);
-    const rotateAnchor = tool === "rotate" ? calculateRotationAnchor(keyIds) : undefined;
+    const originalKeys = captureOriginalKeys(selectedKeys);
+    const rotateAnchor = tool === "rotate" ? calculateRotationAnchor(selectedKeys) : undefined;
 
     dragStart = {
       clientX,
       clientY,
       virtualPos,
       tool,
-      selectedKeyIds: keyIds,
+      handleType,
+      selectedKeyIds: selectedKeys,
       originalKeys,
       rotateAnchor,
     };
@@ -351,8 +344,11 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
       const target = e.target as HTMLElement;
       if (target.closest("[data-controls]")) return;
 
-      e.preventDefault();
-      startDrag(e.clientX, e.clientY);
+      // Only start drag if clicking on a handle
+      startDrag(e.clientX, e.clientY, e.target);
+      if (dragStart) {
+        e.preventDefault();
+      }
     },
 
     onMouseMove: (e) => {
@@ -372,8 +368,11 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
       const target = e.target as HTMLElement;
       if (target.closest("[data-controls]")) return;
 
-      e.preventDefault();
-      startDrag(e.touches[0].clientX, e.touches[0].clientY);
+      // Only start drag if touching a handle
+      startDrag(e.touches[0].clientX, e.touches[0].clientY, e.target);
+      if (dragStart) {
+        e.preventDefault();
+      }
     },
 
     onTouchMove: (e) => {

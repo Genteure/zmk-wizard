@@ -400,9 +400,11 @@ export const KeyboardPreview: VoidComponent<{
     return (props.editMode?.() === "wiring") ? "wiring" : "select";
   });
 
-  // Auto zoom effect
+  // Auto zoom effect - disabled while layout editing drag is in progress
   createEffect(() => {
     if (!autoZoom()) return;
+    // Lock view during layout editing drag to prevent layout shift
+    if (isLayoutDragging()) return;
 
     const bbox = contentBbox();
     if (bbox.keyCount === 0) {
