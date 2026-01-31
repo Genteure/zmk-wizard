@@ -45,6 +45,8 @@ import {
   type GraphicState,
   type InteractionEventHandlers
 } from "./graphics.events";
+import { createLayoutEditEventHandlers, type DragPreview } from "./layoutEditing.events";
+import { createLayoutEditState, LayoutEditToolbar } from "./layoutEditing";
 
 export type GraphicsKey = KeyGeometry & {
   index: number,
@@ -365,6 +367,8 @@ export const KeyboardPreview: VoidComponent<{
   // Parent controls which edit tool is active when not in Pan mode
   editMode?: Accessor<"select" | "wiring">,
   moveSelectedKey: "physical" | "logical",
+  /** If true, this is the physical layout view (enables layout editing toolbar) */
+  isPhysicalLayout?: boolean,
 }> = (props) => {
   const context = useWizardContext();
   const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
@@ -384,6 +388,11 @@ export const KeyboardPreview: VoidComponent<{
   // Keyboard navigation state: tracks which key has keyboard focus
   // null means no key is focused (container focus)
   const [focusedKeyIndex, setFocusedKeyIndex] = createSignal<number | null>(null);
+
+  // Layout editing state (only used for physical layout)
+  const layoutEditState = props.isPhysicalLayout ? createLayoutEditState() : null;
+  const [isLayoutDragging, setIsLayoutDragging] = createSignal(false);
+  const [dragPreview, setDragPreview] = createSignal<DragPreview | null>(null);
   
   const activeMode = createMemo<"pan" | "select" | "wiring">(() => {
     if (effectiveIsPan()) return "pan";
@@ -520,8 +529,31 @@ export const KeyboardPreview: VoidComponent<{
   const selectionHandler: InteractionEventHandlers = createDragSelectEventHandlers(eventHandlerStates);
   const wiringHandler: InteractionEventHandlers = createWiringEventHandlers(eventHandlerStates);
 
+  // Layout edit handlers (only for physical layout)
+  const layoutEditHandler = props.isPhysicalLayout && layoutEditState ? createLayoutEditEventHandlers({
+    c2v: eventHandlerStates.c2v,
+    contentBbox: eventHandlerStates.contentBbox,
+    keys: props.keys,
+    context,
+    tool: layoutEditState.tool,
+    rotateMode: layoutEditState.rotateMode,
+    setIsDragging: setIsLayoutDragging,
+    setDragPreview,
+  }) : null;
+
+  // Check if we should use layout edit handlers
+  const isLayoutEditToolActive = createMemo(() => {
+    if (!layoutEditState) return false;
+    const tool = layoutEditState.tool();
+    return tool !== "select" && context.nav.selectedTab === "layout";
+  });
+
   // Current active handlers based on mode
   const activeHandlers = createMemo<InteractionEventHandlers>(() => {
+    // Layout editing tools take precedence when active in physical layout
+    if (isLayoutEditToolActive() && layoutEditHandler && !effectiveIsPan()) {
+      return layoutEditHandler;
+    }
     if (effectiveIsPan()) return panHandler;
     return (props.editMode?.() === "wiring") ? wiringHandler : selectionHandler;
   });
@@ -651,7 +683,7 @@ export const KeyboardPreview: VoidComponent<{
   /**
    * Handle keyboard navigation and actions
    */
-  const onKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = (e) => {
+  const onKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = async (e) => {
     // Don't handle if target is an input or inside controls
     const target = e.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.closest('[data-controls]')) {
@@ -670,6 +702,71 @@ export const KeyboardPreview: VoidComponent<{
         y: t.y + dy / t.s,
       }));
     };
+
+    // Layout editing tool shortcuts (only in physical layout view with layout tab selected)
+    if (layoutEditState && context.nav.selectedTab === "layout") {
+      switch (e.key.toLowerCase()) {
+        case 'v': {
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            layoutEditState.setTool("select");
+            return;
+          }
+          // Ctrl+V for paste
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            const clipboardKeys = layoutEditState.clipboard();
+            if (clipboardKeys && clipboardKeys.length > 0) {
+              const { ulid } = await import("ulidx");
+              const pasteOffset = 0.5;
+              const newKeys = clipboardKeys.map(k => ({
+                ...k,
+                id: ulid(),
+                x: k.x + pasteOffset,
+                y: k.y + pasteOffset,
+                rx: k.rx !== 0 ? k.rx + pasteOffset : 0,
+                ry: k.ry !== 0 ? k.ry + pasteOffset : 0,
+              }));
+              context.setKeyboard("layout", produce(layout => {
+                layout.push(...newKeys);
+              }));
+              context.setNav("selectedKeys", newKeys.map(k => k.id));
+              normalizeKeys(context);
+            }
+            return;
+          }
+          break;
+        }
+        case 'm': {
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            layoutEditState.setTool("move");
+            return;
+          }
+          break;
+        }
+        case 'r': {
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            layoutEditState.setTool("rotate");
+            return;
+          }
+          break;
+        }
+        case 'c': {
+          // Ctrl+C for copy
+          if (e.ctrlKey || e.metaKey) {
+            const selectedIds = context.nav.selectedKeys;
+            if (selectedIds.length > 0) {
+              e.preventDefault();
+              const selectedKeys = context.keyboard.layout.filter(k => selectedIds.includes(k.id));
+              layoutEditState.setClipboard(structuredClone(selectedKeys));
+            }
+          }
+          break;
+        }
+      }
+    }
 
     // Handle zoom shortcuts first (these work even when no keys are present)
     switch (e.key) {
@@ -1096,10 +1193,24 @@ export const KeyboardPreview: VoidComponent<{
       <div class="absolute top-2 left-2 bg-base-200/50 backdrop-blur-sm px-2 py-0.5 select-none rounded-lg text-xs md:text-sm font-medium shadow-md">
         {(() => {
           const mode = activeMode();
-          const label = mode === "pan" ? "Pan" : mode === "wiring" ? "Wiring" : "Select";
+          const tool = layoutEditState?.tool();
+          // Show active tool when layout editing is available
+          const label = mode === "pan" ? "Pan" 
+            : mode === "wiring" ? "Wiring" 
+            : (tool && tool !== "select" && context.nav.selectedTab === "layout") ? tool.charAt(0).toUpperCase() + tool.slice(1)
+            : "Select";
           return `${props.title} • ${label} • ${(transform().s * 100).toFixed(0)}%`;
         })()}
       </div>
+
+      {/* Layout editing toolbar (only for physical layout in layout tab) */}
+      <Show when={layoutEditState && props.isPhysicalLayout}>
+        <LayoutEditToolbar
+          editState={layoutEditState!}
+          keys={props.keys}
+          isPhysicalLayout={props.isPhysicalLayout}
+        />
+      </Show>
 
       {/* Screen reader live region for status updates */}
       <div
