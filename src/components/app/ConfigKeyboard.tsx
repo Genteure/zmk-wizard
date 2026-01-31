@@ -1,11 +1,12 @@
 import { Link } from "@kobalte/core/link";
+import AlertTriangle from "lucide-solid/icons/alert-triangle";
 import Minus from "lucide-solid/icons/minus";
 import Plus from "lucide-solid/icons/plus";
-import { createMemo, For, type VoidComponent } from "solid-js";
+import { createMemo, For, Show, type VoidComponent } from "solid-js";
 import { produce } from "solid-js/store";
 import type { ModuleId } from "~/typedef";
 import { useWizardContext } from "../context";
-import { ZmkModules, busDeviceMetadata, busDeviceTypes } from "../controllerInfo";
+import { modulesConflict, ZmkModules, busDeviceMetadata, busDeviceTypes } from "../controllerInfo";
 
 /**
  * Get the list of all available module IDs
@@ -22,6 +23,13 @@ function getDevicesForModule(moduleId: ModuleId): string[] {
   }).map(type => busDeviceMetadata[type].fullName);
 }
 
+/**
+ * Get all enabled modules that conflict with the given module.
+ */
+function getConflictingModules(moduleId: ModuleId, enabledModules: ModuleId[]): ModuleId[] {
+  return enabledModules.filter(enabled => modulesConflict(moduleId, enabled));
+}
+
 export const ConfigKeyboard: VoidComponent = () => {
   const context = useWizardContext();
 
@@ -32,7 +40,25 @@ export const ConfigKeyboard: VoidComponent = () => {
     return allModuleIds.filter(id => !enabled.has(id));
   });
 
+  /**
+   * Check if a module can be added (not conflicting with any enabled module)
+   */
+  const canAddModule = (moduleId: ModuleId): boolean => {
+    return getConflictingModules(moduleId, enabledModules()).length === 0;
+  };
+
+  /**
+   * Get the reason why a module cannot be added (conflicting modules)
+   */
+  const getConflictReason = (moduleId: ModuleId): string | null => {
+    const conflicts = getConflictingModules(moduleId, enabledModules());
+    if (conflicts.length === 0) return null;
+    const names = conflicts.map(id => `${ZmkModules[id].remote}/${ZmkModules[id].repo}`);
+    return `Conflicts with: ${names.join(", ")}`;
+  };
+
   const addModule = (moduleId: ModuleId) => {
+    if (!canAddModule(moduleId)) return;
     context.setKeyboard("modules", produce((modules) => {
       if (!modules.includes(moduleId)) {
         modules.push(moduleId);
@@ -117,8 +143,16 @@ export const ConfigKeyboard: VoidComponent = () => {
               {(moduleId) => {
                 const moduleData = () => ZmkModules[moduleId];
                 const devices = () => getDevicesForModule(moduleId);
+                const hasConflict = () => !canAddModule(moduleId);
+                const conflictReason = () => getConflictReason(moduleId);
                 return (
-                  <div class="flex items-center justify-between p-3 bg-base-100 rounded border border-base-300">
+                  <div
+                    class="flex items-center justify-between p-3 bg-base-100 rounded border"
+                    classList={{
+                      "border-base-300": !hasConflict(),
+                      "border-warning/50 bg-warning/5": hasConflict(),
+                    }}
+                  >
                     <div class="flex-1">
                       <div class="font-medium">
                         <Link
@@ -133,11 +167,22 @@ export const ConfigKeyboard: VoidComponent = () => {
                       <div class="text-xs text-base-content/60">
                         Provides: {devices().join(", ")}
                       </div>
+                      <Show when={conflictReason()}>
+                        <div class="flex items-center gap-1 text-xs text-warning mt-1">
+                          <AlertTriangle class="w-3 h-3" />
+                          {conflictReason()}
+                        </div>
+                      </Show>
                     </div>
                     <button
-                      class="btn btn-sm btn-ghost text-success hover:bg-success/10"
+                      class="btn btn-sm btn-ghost"
+                      classList={{
+                        "text-success hover:bg-success/10": !hasConflict(),
+                        "text-base-content/40 cursor-not-allowed": hasConflict(),
+                      }}
                       onClick={() => addModule(moduleId)}
-                      title="Add module"
+                      disabled={hasConflict()}
+                      title={hasConflict() ? conflictReason() ?? "Cannot add" : "Add module"}
                     >
                       <Plus class="w-4 h-4" />
                       Add

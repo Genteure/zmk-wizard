@@ -1,4 +1,4 @@
-import { controllerInfos, deviceClassRules, getBusDeviceMetadata, requiredBusPinsForDevice, socBusData } from "~/components/controllerInfo";
+import { controllerInfos, deviceClassRules, getBusDeviceMetadata, modulesConflict, requiredBusPinsForDevice, socBusData, ZmkModules } from "~/components/controllerInfo";
 import type { BusDeviceTypeName } from "~/typedef";
 import { BusNameSchema, ShieldNameSchema, type Keyboard } from "~/typedef";
 import { isI2cBus, isSpiBus } from "~/typehelper";
@@ -41,6 +41,28 @@ const Validators: Record<string, ValidatorFunction> = {
     }
 
     return null;
+  },
+  moduleConflicts: (keyboard: Keyboard) => {
+    const errors: ValidationError[] = [];
+    const modules = keyboard.modules;
+
+    // Check each pair of modules for conflicts
+    for (let i = 0; i < modules.length; i++) {
+      for (let j = i + 1; j < modules.length; j++) {
+        const moduleA = modules[i];
+        const moduleB = modules[j];
+        if (modulesConflict(moduleA, moduleB)) {
+          const dataA = ZmkModules[moduleA];
+          const dataB = ZmkModules[moduleB];
+          errors.push({
+            part: null,
+            message: `Modules "${dataA.remote}/${dataA.repo}" and "${dataB.remote}/${dataB.repo}" conflict with each other`,
+          });
+        }
+      }
+    }
+
+    return errors.length > 0 ? errors : null;
   },
   keyCountAndLogicalLayout: (keyboard: Keyboard) => {
     const keyCount = keyboard.layout.length;

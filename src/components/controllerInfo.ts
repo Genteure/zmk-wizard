@@ -1,4 +1,4 @@
-import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, Controller, Soc } from "~/typedef";
+import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, Controller, ModuleId, ModuleRegistry, Soc } from "~/typedef";
 
 export interface VisualGpioPin {
   readonly id: string;
@@ -845,23 +845,28 @@ export const deviceClassRules: Readonly<Record<BusDeviceClass, Readonly<{ maxPer
   pointing: {},
 };
 
-export const ZmkModules = {
+export const ZmkModules: ModuleRegistry = {
   "petejohanson/cirque": {
     remote: "petejohanson",
     repo: "cirque-input-module",
     rev: "0de55f36bc720b5be3d8880dc856d4d78baf5214",
+    conflicts: [],
   },
   "badjeff/pmw3610": {
     remote: "badjeff",
     repo: "zmk-pmw3610-driver",
     rev: "zmk-0.3",
+    // PMW3610 and PAW3395 are both optical sensors, they share the "badjeff-optical-sensor" conflict key
+    conflicts: ["badjeff-optical-sensor"],
   },
   "badjeff/paw3395": {
     remote: "badjeff",
     repo: "zmk-paw3395-driver",
     rev: "ab43c664cf84c94bd6b9839f3e4aa9517773de82",
+    // PMW3610 and PAW3395 are both optical sensors, they share the "badjeff-optical-sensor" conflict key
+    conflicts: ["badjeff-optical-sensor"],
   },
-} as const;
+};
 
 export type ZmkModuleRemote = typeof ZmkModules[keyof typeof ZmkModules]["remote"];
 
@@ -869,6 +874,16 @@ export const ZmkModuleRemotes: Record<ZmkModuleRemote, string> = {
   "petejohanson": "https://github.com/petejohanson",
   "badjeff": "https://github.com/badjeff",
 } as const;
+
+/**
+ * Check if two modules conflict with each other.
+ * Two modules conflict if they share any conflict key.
+ */
+export function modulesConflict(moduleA: ModuleId, moduleB: ModuleId): boolean {
+  const conflictsA = ZmkModules[moduleA].conflicts;
+  const conflictsB = ZmkModules[moduleB].conflicts;
+  return conflictsA.some(key => conflictsB.includes(key));
+}
 
 /**
  * UI widget type for device property
@@ -923,7 +938,7 @@ type DeviceMetadata = {
      */
     readonly csActiveHigh?: true | undefined;
     readonly desc?: string | undefined;
-    readonly module?: keyof typeof ZmkModules | undefined;
+    readonly module?: ModuleId | undefined;
     readonly defaults?: Partial<DeviceProps<K>> | undefined;
     readonly props: {
       readonly [P in keyof DeviceProps<K>]: DevicePropDefinition<DeviceProps<K>[P]>;
