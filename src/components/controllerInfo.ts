@@ -845,7 +845,31 @@ export const deviceClassRules: Readonly<Record<BusDeviceClass, Readonly<{ maxPer
   pointing: {},
 };
 
-export type ZmkModuleRemote = "badjeff" | "petejohanson";
+export const ZmkModules = {
+  "petejohanson/cirque": {
+    remote: "petejohanson",
+    repo: "cirque-input-module",
+    rev: "0de55f36bc720b5be3d8880dc856d4d78baf5214",
+  },
+  "badjeff/pmw3610": {
+    remote: "badjeff",
+    repo: "zmk-pmw3610-driver",
+    rev: "zmk-0.3",
+  },
+  "badjeff/paw3395": {
+    remote: "badjeff",
+    repo: "zmk-paw3395-driver",
+    rev: "ab43c664cf84c94bd6b9839f3e4aa9517773de82",
+  },
+} as const;
+
+export type ZmkModuleRemote = typeof ZmkModules[keyof typeof ZmkModules]["remote"];
+
+export const ZmkModuleRemotes: Record<ZmkModuleRemote, string> = {
+  "petejohanson": "https://github.com/petejohanson",
+  "badjeff": "https://github.com/badjeff",
+} as const;
+
 /**
  * UI widget type for device property
  *
@@ -899,11 +923,7 @@ type DeviceMetadata = {
      */
     readonly csActiveHigh?: true | undefined;
     readonly desc?: string | undefined;
-    readonly module?: {
-      readonly remote: ZmkModuleRemote;
-      readonly repo: string;
-      readonly rev: string;
-    } | undefined;
+    readonly module?: keyof typeof ZmkModules | undefined;
     readonly defaults?: Partial<DeviceProps<K>> | undefined;
     readonly props: {
       readonly [P in keyof DeviceProps<K>]: DevicePropDefinition<DeviceProps<K>[P]>;
@@ -1114,6 +1134,56 @@ export const busDeviceMetadata: DeviceMetadata = {
       cpi: {
         widget: "numberOptions",
         options: Array.from({ length: 16 }, (_, i) => (i + 1) * 200),
+      },
+      swapxy: {
+        widget: "checkbox",
+        name: "Swap X/Y axes",
+      },
+      invertx: {
+        widget: "checkbox",
+        name: "Invert X axis",
+      },
+      inverty: {
+        widget: "checkbox",
+        name: "Invert Y axis",
+      },
+    },
+  },
+  paw3395: {
+    shortName: "PAW3395",
+    fullName: "PAW3395 Optical Sensor",
+    class: "pointing",
+    bus: "spi",
+    busPins: {
+      mosi: true,
+      miso: true,
+      sck: true,
+    },
+    exclusive: false,
+    module: "badjeff/paw3395",
+    defaults: {
+      cpi: 600,
+      swapxy: false,
+      invertx: false,
+      inverty: false,
+    },
+    props: {
+      cs: {
+        widget: "pin",
+        desc: "Chip Select Pin",
+      },
+      irq: {
+        widget: "pin",
+        name: "MOTION",
+        desc: "MOTION / Interrupt Pin",
+      },
+      cpi: {
+        widget: "numberOptions",
+        options: [
+          ...Array.from({ length: 15 }, (_, i) => (i + 1) * 200),
+          ...Array.from({ length: 22 }, (_, i) => 3000 + (i + 1) * 400),
+          ...Array.from({ length: 14 }, (_, i) => 12000 + (i + 1) * 1000),
+        ],
       },
       swapxy: {
         widget: "checkbox",

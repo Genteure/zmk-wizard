@@ -33,7 +33,7 @@ export const BusNameSchema = z.string()
 export type BusName = z.infer<typeof BusNameSchema>;
 
 // Device schemas and types
-export const BusDeviceTypeSchema = z.enum(["ssd1306", "niceview", "ws2812", "74hc595", "pmw3610", "pinnacle_spi", "pinnacle_i2c"]);
+export const BusDeviceTypeSchema = z.enum(["ssd1306", "niceview", "ws2812", "74hc595", "pmw3610", "paw3395", "pinnacle_spi", "pinnacle_i2c"]);
 export type BusDeviceTypeName = z.infer<typeof BusDeviceTypeSchema>;
 
 export const BaseBusDeviceSchema = z.object({
@@ -89,6 +89,21 @@ export const Pmw3610DeviceSchema = BaseBusDeviceSchema.extend({
 });
 export type Pmw3610Device = z.infer<typeof Pmw3610DeviceSchema>;
 
+export const Paw3395DeviceSchema = BaseBusDeviceSchema.extend({
+  type: z.literal("paw3395"),
+  cs: PinIdSchema.optional(),
+  irq: PinIdSchema.optional(),
+  cpi: z.number()
+    .min(0)
+    .max(26000)
+    .refine((val) => val % 50 === 0, "CPI must be set in 50 increments")
+    .default(800),
+  swapxy: z.boolean().default(false),
+  invertx: z.boolean().default(false),
+  inverty: z.boolean().default(false),
+});
+export type Paw3395Device = z.infer<typeof Paw3395DeviceSchema>;
+
 export const PinnacleBaseDeviceSchema = z.object({
   /**
    * Data ready pin / interrupt
@@ -121,6 +136,7 @@ export const SpiDeviceSchema = z.discriminatedUnion("type", [
   WS2812DeviceSchema,
   ShiftRegisterDeviceSchema,
   Pmw3610DeviceSchema,
+  Paw3395DeviceSchema,
   PinnacleSpiDeviceSchema,
 ]);
 export type SpiDevice = z.infer<typeof SpiDeviceSchema>;
@@ -137,6 +153,7 @@ export const AnyBusDeviceSchema = z.discriminatedUnion("type", [
   WS2812DeviceSchema,
   ShiftRegisterDeviceSchema,
   Pmw3610DeviceSchema,
+  Paw3395DeviceSchema,
   PinnacleSpiDeviceSchema,
   PinnacleI2cDeviceSchema,
 ]);
