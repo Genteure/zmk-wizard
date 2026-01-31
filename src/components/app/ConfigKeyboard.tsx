@@ -87,7 +87,7 @@ export const ConfigKeyboard: VoidComponent = () => {
                         </Link>
                       </div>
                       <div class="text-xs text-base-content/60">
-                        Enables: {devices().join(", ")}
+                        Provides: {devices().join(", ")}
                       </div>
                     </div>
                     <button
