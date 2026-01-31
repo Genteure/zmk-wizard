@@ -9,7 +9,7 @@ import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, I2cBus, ModuleId
 import { AnyBusDeviceSchema } from "~/typedef";
 import { addDeviceToBus, isI2cBus, isSpiBus } from "~/typehelper";
 import { useWizardContext } from "../context";
-import { busDeviceMetadata, busDeviceTypes, controllerInfos, deviceClassRules, getBusDeviceMetadata, pinPropKeysForDevice, requiredBusPinsForDevice, socBusData, ZmkModules, type AllDeviceDataTypes, type BusDeviceClass, type ControllerInfo, type DevicePropDefinition, type PinctrlI2cPinChoices, type PinctrlSpiPinChoices } from "../controllerInfo";
+import { busDeviceMetadata, busDeviceTypes, controllerInfos, deviceClassRules, getBusDeviceMetadata, getDeviceGroup, pinPropKeysForDevice, requiredBusPinsForDevice, socBusData, ZmkModules, type AllDeviceDataTypes, type BusDeviceClass, type ControllerInfo, type DeviceGroup, type DevicePropDefinition, type PinctrlI2cPinChoices, type PinctrlSpiPinChoices } from "../controllerInfo";
 import { devicePropWidgetRenderers } from "./devicePropWidgets";
 
 function defaultDevice(type: BusDeviceTypeName): AnyBusDevice {
@@ -27,7 +27,14 @@ const AddDevicePanel: VoidComponent<{
   hasDeviceType: (type: BusDeviceTypeName) => boolean;
   addDevice: (busIdx: number, type: BusDeviceTypeName) => void;
 }> = (panelProps) => {
-  const [busPickerType, setBusPickerType] = createSignal<BusDeviceTypeName | null>(null);
+  /**
+   * A device option can be either a single device type or a group of device variants.
+   */
+  type DeviceOption =
+    | { kind: "single"; type: BusDeviceTypeName }
+    | { kind: "group"; group: DeviceGroup; variants: BusDeviceTypeName[] };
+
+  const [openOption, setOpenOption] = createSignal<DeviceOption | null>(null);
 
   /**
    * Check if a device type's required module is enabled
@@ -51,8 +58,38 @@ const AddDevicePanel: VoidComponent<{
   /**
    * Device types that are available (have their modules enabled)
    */
-  const availableDeviceOptions = createMemo(() => {
+  const availableDeviceTypes = createMemo(() => {
     return deviceOptionsForController().filter(isModuleEnabled);
+  });
+
+  /**
+   * Compute device options, collapsing grouped variants into single options.
+   * Device types that belong to a group are combined into one group option.
+   * Device types not in any group become single options.
+   */
+  const availableDeviceOptions = createMemo((): DeviceOption[] => {
+    const availableTypes = availableDeviceTypes();
+    const options: DeviceOption[] = [];
+    const seenGroups = new Set<string>();
+
+    for (const type of availableTypes) {
+      const group = getDeviceGroup(type);
+      if (group) {
+        // Check if we've already processed this group
+        const groupKey = group.displayName;
+        if (seenGroups.has(groupKey)) continue;
+        seenGroups.add(groupKey);
+
+        // Get all available variants of this group
+        const availableVariants = group.variants.filter((v) => availableTypes.includes(v));
+        if (availableVariants.length > 0) {
+          options.push({ kind: "group", group, variants: availableVariants });
+        }
+      } else {
+        options.push({ kind: "single", type });
+      }
+    }
+    return options;
   });
 
   /**
@@ -133,44 +170,125 @@ const AddDevicePanel: VoidComponent<{
     return buses.every((bus) => !busEligible(type, bus));
   };
 
+  /**
+   * Check if an option is disabled (any variant's button would be disabled)
+   * For groups, the option is disabled only if ALL variants are disabled.
+   */
+  const optionDisabled = (option: DeviceOption): boolean => {
+    if (option.kind === "single") {
+      return deviceButtonDisabled(option.type);
+    }
+    // Group is disabled if all its variants are disabled
+    return option.variants.every((v) => deviceButtonDisabled(v));
+  };
+
+  /**
+   * Get disabled reason for an option
+   */
+  const optionDisabledReason = (option: DeviceOption): string => {
+    if (option.kind === "single") {
+      return deviceDisabledReason(option.type);
+    }
+    // For groups, return the reason for the first variant (they should have similar reasons)
+    for (const v of option.variants) {
+      const reason = deviceDisabledReason(v);
+      if (reason) return reason;
+    }
+    return "";
+  };
+
+  /**
+   * Get display name for an option
+   */
+  const optionDisplayName = (option: DeviceOption): string => {
+    if (option.kind === "single") {
+      return getBusDeviceMetadata(option.type)?.shortName || option.type;
+    }
+    return option.group.displayName;
+  };
+
+  /**
+   * Get full name for an option (for aria-label)
+   */
+  const optionFullName = (option: DeviceOption): string => {
+    if (option.kind === "single") {
+      return getBusDeviceMetadata(option.type)?.fullName || option.type;
+    }
+    return option.group.displayName;
+  };
+
+  /**
+   * Check if this option matches the currently open popover
+   */
+  const isOptionOpen = (option: DeviceOption): boolean => {
+    const open = openOption();
+    if (!open) return false;
+    if (option.kind === "single" && open.kind === "single") {
+      return option.type === open.type;
+    }
+    if (option.kind === "group" && open.kind === "group") {
+      return option.group.displayName === open.group.displayName;
+    }
+    return false;
+  };
+
+  /**
+   * Get all bus/variant pairs for an option's popover
+   */
+  const busVariantPairsForOption = (option: DeviceOption): Array<{ bus: AnyBus; variant: BusDeviceTypeName }> => {
+    const pairs: Array<{ bus: AnyBus; variant: BusDeviceTypeName }> = [];
+    if (option.kind === "single") {
+      for (const bus of busesForType(option.type)) {
+        pairs.push({ bus, variant: option.type });
+      }
+    } else {
+      for (const variant of option.variants) {
+        for (const bus of busesForType(variant)) {
+          pairs.push({ bus, variant });
+        }
+      }
+    }
+    return pairs;
+  };
+
   return (
     <div class="border border-base-300 rounded-xl bg-base-200/50 p-3">
       <div class="font-semibold text-sm">Add device</div>
       {/* <div class="text-xs text-base-content/75">Choose a device, then select a bus.</div> */}
       <div class="mt-2 flex flex-wrap gap-2">
-        <For each={availableDeviceOptions()}>{(type) => {
-          const disabled = createMemo(() => deviceButtonDisabled(type));
-          const setOpen = (next: boolean) => setBusPickerType(next ? type : null);
+        <For each={availableDeviceOptions()}>{(option) => {
+          const disabled = createMemo(() => optionDisabled(option));
+          const setOpen = (next: boolean) => setOpenOption(next ? option : null);
 
           return (
-            <Popover open={busPickerType() === type} onOpenChange={(next) => !disabled() && setOpen(next)} placement="bottom-start" gutter={6}>
+            <Popover open={isOptionOpen(option)} onOpenChange={(next) => !disabled() && setOpen(next)} placement="bottom-start" gutter={6}>
               <Popover.Anchor>
                 <Button
                   class="btn btn-sm btn-soft"
                   disabled={disabled()}
-                  title={disabled() ? deviceDisabledReason(type) : undefined}
+                  title={disabled() ? optionDisabledReason(option) : undefined}
                   onClick={() => {
                     if (disabled()) return;
-                    setOpen(!(busPickerType() === type));
+                    setOpen(!isOptionOpen(option));
                   }}
                 >
-                  {(getBusDeviceMetadata(type))?.shortName || type}
+                  {optionDisplayName(option)}
                 </Button>
               </Popover.Anchor>
               <Popover.Portal>
-                <Popover.Content class="popover--content w-64 max-w-sm p-3 flex flex-col gap-2" aria-label={`Add ${(getBusDeviceMetadata(type))?.fullName || type}`}>
-                  <div class="text-sm text-center font-semibold">Add {(getBusDeviceMetadata(type))?.fullName || type}</div>
+                <Popover.Content class="popover--content w-64 max-w-sm p-3 flex flex-col gap-2" aria-label={`Add ${optionFullName(option)}`}>
+                  <div class="text-sm text-center font-semibold">Add {optionFullName(option)}</div>
                   <div class="flex flex-wrap gap-2">
-                    <For each={busesForType(type)}>{(bus) => {
-                      const enabled = () => busEligible(type, bus);
+                    <For each={busVariantPairsForOption(option)}>{({ bus, variant }) => {
+                      const enabled = () => busEligible(variant, bus);
                       return (
                         <Button
                           class="btn btn-soft w-full"
                           disabled={!enabled()}
-                          // title={enabled() ? undefined : busDisabledReason(type, bus)}
+                          // title={enabled() ? undefined : busDisabledReason(variant, bus)}
                           onClick={() => {
                             if (!enabled()) return;
-                            panelProps.addDevice(panelProps.buses().findIndex((b) => b.name === bus.name), type);
+                            panelProps.addDevice(panelProps.buses().findIndex((b) => b.name === bus.name), variant);
                             setOpen(false);
                           }}
                         >

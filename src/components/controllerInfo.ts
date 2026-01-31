@@ -1252,6 +1252,42 @@ export const busDeviceMetadata: DeviceMetadata = {
 
 export const busDeviceTypes = Object.keys(busDeviceMetadata) as readonly BusDeviceTypeName[];
 
+/**
+ * Groups of device types that represent the same device on different buses.
+ * Each group has a display name and an array of device types (variants).
+ * When a group has multiple variants, the UI shows a single button that
+ * lets users choose which bus to add the device to.
+ */
+export interface DeviceGroup {
+  /** Display name for the grouped device button */
+  readonly displayName: string;
+  /** Device type variants in this group */
+  readonly variants: readonly BusDeviceTypeName[];
+}
+
+/**
+ * Registry of device groups for devices that work on multiple buses.
+ * Key is a unique group identifier, value is the group definition.
+ */
+export const deviceGroups: Readonly<Record<string, DeviceGroup>> = {
+  pinnacle: {
+    displayName: "Pinnacle",
+    variants: ["pinnacle_i2c", "pinnacle_spi"],
+  },
+};
+
+/**
+ * Get the group a device type belongs to, if any.
+ */
+export function getDeviceGroup(type: BusDeviceTypeName): DeviceGroup | null {
+  for (const group of Object.values(deviceGroups)) {
+    if (group.variants.includes(type)) {
+      return group;
+    }
+  }
+  return null;
+}
+
 export function deviceOptionsForBus(busType: "i2c" | "spi"): readonly BusDeviceTypeName[] {
   return busDeviceTypes.filter((name) => busDeviceMetadata[name].bus === busType);
 }
