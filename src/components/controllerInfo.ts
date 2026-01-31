@@ -935,11 +935,7 @@ type DeviceMetadata = {
 const pinnacleBaseMetadata = {
   class: "pointing",
   exclusive: false,
-  module: {
-    remote: "petejohanson",
-    repo: "cirque-input-module",
-    rev: "0de55f36bc720b5be3d8880dc856d4d78baf5214",
-  },
+  module: "petejohanson/cirque",
   defaults: {
     rotate90: false,
     invertx: false,
@@ -1109,11 +1105,7 @@ export const busDeviceMetadata: DeviceMetadata = {
     },
     exclusive: false,
     // desc: undefined,
-    module: {
-      remote: "badjeff",
-      repo: "zmk-pmw3610-driver",
-      rev: "zmk-0.3",
-    },
+    module: "badjeff/pmw3610",
     defaults: {
       cpi: 600,
       swapxy: false,

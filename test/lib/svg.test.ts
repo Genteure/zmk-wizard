@@ -32,6 +32,7 @@ function makeKeyboard(
     name,
     shield,
     dongle: false,
+    modules: [],
     layout: keys,
     parts,
   };

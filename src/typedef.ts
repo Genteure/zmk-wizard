@@ -317,12 +317,27 @@ export const ShieldNameSchema = z.string()
   .max(32, "Shield name cannot be longer than 32 characters");
 export type ShieldName = z.infer<typeof ShieldNameSchema>;
 
+/**
+ * Module ID is in the format "remote/repo", e.g. "petejohanson/cirque"
+ */
+export const ModuleIdSchema = z.enum([
+  "petejohanson/cirque",
+  "badjeff/pmw3610",
+  "badjeff/paw3395",
+]);
+export type ModuleId = z.infer<typeof ModuleIdSchema>;
+
 export const KeyboardSchema = z.object({
   name: z.string()
     .min(1, "Keyboard name cannot be empty")
     .max(16, "Keyboard name cannot be longer than 16 characters"),
   shield: ShieldNameSchema,
   dongle: z.boolean().default(false),
+  /**
+   * External modules that are enabled for this keyboard.
+   * Devices from these modules can be added to the keyboard.
+   */
+  modules: z.array(ModuleIdSchema).default([]),
   layout: z.array(KeySchema).min(1, "Keyboard must have at least one key"),
   parts: z.array(KeyboardPartSchema).min(1, "Keyboard must have at least one part"),
 });

@@ -9,7 +9,7 @@ import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, I2cBus, PinSelec
 import { AnyBusDeviceSchema } from "~/typedef";
 import { addDeviceToBus, isI2cBus, isSpiBus } from "~/typehelper";
 import { useWizardContext } from "../context";
-import { busDeviceMetadata, busDeviceTypes, controllerInfos, deviceClassRules, getBusDeviceMetadata, pinPropKeysForDevice, requiredBusPinsForDevice, socBusData, type AllDeviceDataTypes, type BusDeviceClass, type ControllerInfo, type DevicePropDefinition, type PinctrlI2cPinChoices, type PinctrlSpiPinChoices } from "../controllerInfo";
+import { busDeviceMetadata, busDeviceTypes, controllerInfos, deviceClassRules, getBusDeviceMetadata, pinPropKeysForDevice, requiredBusPinsForDevice, socBusData, ZmkModules, type AllDeviceDataTypes, type BusDeviceClass, type ControllerInfo, type DevicePropDefinition, type PinctrlI2cPinChoices, type PinctrlSpiPinChoices } from "../controllerInfo";
 import { devicePropWidgetRenderers } from "./devicePropWidgets";
 
 function defaultDevice(type: BusDeviceTypeName): AnyBusDevice {
@@ -575,9 +575,14 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
                       </div>
                     </Show>
                     <Show when={deviceData().meta.module}>
-                      <div class="text-xs text-base-content/70 mt-1">
-                        External device driver from <Link class="link" target="_blank" rel="noopener" href={`https://github.com/${deviceData().meta.module?.remote}/${deviceData().meta.module?.repo}/tree/${deviceData().meta.module?.rev}`}>{`https://github.com/${deviceData().meta.module?.remote}/${deviceData().meta.module?.repo}`}</Link>
-                      </div>
+                      {(moduleKey) => {
+                        const moduleData = () => ZmkModules[moduleKey()];
+                        return (
+                          <div class="text-xs text-base-content/70 mt-1">
+                            External device driver from <Link class="link" target="_blank" rel="noopener" href={`https://github.com/${moduleData().remote}/${moduleData().repo}/tree/${moduleData().rev}`}>{`https://github.com/${moduleData().remote}/${moduleData().repo}`}</Link>
+                          </div>
+                        );
+                      }}
                     </Show>
 
                     <div class="divider my-1"></div>

@@ -1,6 +1,6 @@
 import { unwrap } from "solid-js/store";
 import { version } from "virtual:version";
-import { busDeviceMetadata, controllerInfos } from "~/components/controllerInfo";
+import { busDeviceMetadata, controllerInfos, ZmkModules } from "~/components/controllerInfo";
 import type { Controller, Keyboard, KeyboardPart } from "~/typedef";
 import { centralToPeripheralSnippetName } from "./utils";
 import { isInputDevice } from "~/typehelper";
@@ -22,8 +22,9 @@ export function config_west_yml(keyboard: Keyboard): string {
   ))));
 
   for (const deviceType of uniqueDeviceTypes) {
-    const module = busDeviceMetadata[deviceType].module;
-    if (!module) continue;
+    const moduleKey = busDeviceMetadata[deviceType].module;
+    if (!moduleKey) continue;
+    const module = ZmkModules[moduleKey];
     if (!extraRemotes.includes(module.remote)) {
       extraRemotes.push(module.remote);
     }

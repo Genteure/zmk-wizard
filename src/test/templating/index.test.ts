@@ -111,6 +111,7 @@ function makeKeyboard(data: LegacyKeyboardData): Keyboard {
     name: data.name,
     shield: data.shield,
     dongle: data.dongle,
+    modules: [],
     layout,
     parts,
   } satisfies Keyboard;
