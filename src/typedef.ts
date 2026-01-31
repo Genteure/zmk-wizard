@@ -327,27 +327,6 @@ export const ModuleIdSchema = z.enum([
 ]);
 export type ModuleId = z.infer<typeof ModuleIdSchema>;
 
-/**
- * Module data structure with repository info and conflict declarations.
- * Two modules with the same conflicts key cannot be used together.
- */
-export interface ModuleData {
-  readonly remote: string;
-  readonly repo: string;
-  readonly rev: string;
-  /**
-   * Conflict keys - modules sharing any conflict key cannot be enabled together.
-   * For example, if module A has ["apple", "banana"] and module B has ["apple"],
-   * they conflict because both have "apple".
-   */
-  readonly conflicts: readonly string[];
-}
-
-/**
- * Type-safe record of all available modules, keyed by ModuleId.
- */
-export type ModuleRegistry = Record<ModuleId, ModuleData>;
-
 export const KeyboardSchema = z.object({
   name: z.string()
     .min(1, "Keyboard name cannot be empty")

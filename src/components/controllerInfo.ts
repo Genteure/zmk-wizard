@@ -1,4 +1,4 @@
-import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, Controller, ModuleId, ModuleRegistry, Soc } from "~/typedef";
+import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, Controller, ModuleId, Soc } from "~/typedef";
 
 export interface VisualGpioPin {
   readonly id: string;
@@ -845,6 +845,25 @@ export const deviceClassRules: Readonly<Record<BusDeviceClass, Readonly<{ maxPer
   pointing: {},
 };
 
+export const ZmkModuleRemotes = {
+  "petejohanson": "https://github.com/petejohanson",
+  "badjeff": "https://github.com/badjeff",
+} as const;
+
+export interface ModuleData {
+  readonly remote: keyof typeof ZmkModuleRemotes;
+  readonly repo: string;
+  readonly rev: string;
+  /**
+   * Conflict keys - modules sharing any conflict key cannot be enabled together.
+   * For example, if module A has ["apple", "banana"] and module B has ["apple"],
+   * they conflict because both have "apple".
+   */
+  readonly conflicts: readonly string[];
+}
+
+export type ModuleRegistry = Record<ModuleId, ModuleData>;
+
 export const ZmkModules: ModuleRegistry = {
   "petejohanson/cirque": {
     remote: "petejohanson",
@@ -856,23 +875,14 @@ export const ZmkModules: ModuleRegistry = {
     remote: "badjeff",
     repo: "zmk-pmw3610-driver",
     rev: "zmk-0.3",
-    // PMW3610 and PAW3395 are both optical sensors, they share the "badjeff-optical-sensor" conflict key
-    conflicts: ["badjeff-optical-sensor"],
+    conflicts: ["pmw3610"], // There might be alternative PMW3610 drivers in the future
   },
   "badjeff/paw3395": {
     remote: "badjeff",
     repo: "zmk-paw3395-driver",
     rev: "ab43c664cf84c94bd6b9839f3e4aa9517773de82",
-    // PMW3610 and PAW3395 are both optical sensors, they share the "badjeff-optical-sensor" conflict key
-    conflicts: ["badjeff-optical-sensor"],
+    conflicts: [],
   },
-};
-
-export type ZmkModuleRemote = typeof ZmkModules[keyof typeof ZmkModules]["remote"];
-
-export const ZmkModuleRemotes: Record<ZmkModuleRemote, string> = {
-  "petejohanson": "https://github.com/petejohanson",
-  "badjeff": "https://github.com/badjeff",
 } as const;
 
 /**

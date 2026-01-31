@@ -14,6 +14,22 @@ import { modulesConflict, ZmkModules, busDeviceMetadata, busDeviceTypes } from "
 const allModuleIds = Object.keys(ZmkModules) as ModuleId[];
 
 /**
+ * Precompute the conflict relationships so we can do fast lookups later.
+ */
+const moduleConflictMap = Object.fromEntries(
+  allModuleIds.map((moduleId) => {
+    const conflicts = new Set<ModuleId>();
+    for (const otherId of allModuleIds) {
+      if (moduleId === otherId) continue;
+      if (modulesConflict(moduleId, otherId)) {
+        conflicts.add(otherId);
+      }
+    }
+    return [moduleId, conflicts] as const;
+  }),
+) as Record<ModuleId, Set<ModuleId>>;
+
+/**
  * Get information about which devices require a specific module
  */
 function getDevicesForModule(moduleId: ModuleId): string[] {
@@ -27,7 +43,9 @@ function getDevicesForModule(moduleId: ModuleId): string[] {
  * Get all enabled modules that conflict with the given module.
  */
 function getConflictingModules(moduleId: ModuleId, enabledModules: ModuleId[]): ModuleId[] {
-  return enabledModules.filter(enabled => modulesConflict(moduleId, enabled));
+  const conflictSet = moduleConflictMap[moduleId];
+  if (conflictSet.size === 0) return [];
+  return enabledModules.filter((enabled) => conflictSet.has(enabled));
 }
 
 export const ConfigKeyboard: VoidComponent = () => {
