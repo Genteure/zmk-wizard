@@ -1,5 +1,5 @@
 import { Button } from "@kobalte/core/button";
-import { Popover } from "@kobalte/core/popover";
+import { Dialog } from "@kobalte/core/dialog";
 import { ToggleGroup } from "@kobalte/core/toggle-group";
 import { Tooltip } from "@kobalte/core/tooltip";
 import Anchor from "lucide-solid/icons/anchor";
@@ -8,13 +8,13 @@ import Clipboard from "lucide-solid/icons/clipboard";
 import Copy from "lucide-solid/icons/copy";
 import FlipHorizontal2 from "lucide-solid/icons/flip-horizontal-2";
 import FlipVertical2 from "lucide-solid/icons/flip-vertical-2";
+import Hash from "lucide-solid/icons/hash";
 import Move from "lucide-solid/icons/move";
 import MousePointer from "lucide-solid/icons/mouse-pointer";
 import RectangleHorizontal from "lucide-solid/icons/rectangle-horizontal";
 import RotateCw from "lucide-solid/icons/rotate-cw";
-import Target from "lucide-solid/icons/target";
 import X from "lucide-solid/icons/x";
-import { createMemo, createSignal, For, Show, type Accessor, type ParentComponent, type Setter, type VoidComponent } from "solid-js";
+import { createMemo, createSignal, Show, type Accessor, type ParentComponent, type Setter, type VoidComponent } from "solid-js";
 import { produce } from "solid-js/store";
 import { ulid } from "ulidx";
 import { bboxCenter, getKeysBoundingBox, type Point } from "~/lib/geometry";
@@ -211,144 +211,157 @@ export const LayoutEditToolbar: VoidComponent<LayoutEditToolbarProps> = (props) 
     return null;
   }
 
+  const currentTool = editState().tool;
+  const isEditingTool = () => currentTool() !== "select";
+
   return (
-    <div class="absolute top-2 right-2 flex flex-col gap-1 z-20" data-controls>
-      {/* Tool selection */}
-      <div class="flex flex-wrap gap-1 bg-base-200/80 backdrop-blur-sm rounded-lg p-1 shadow-md">
+    <div class="absolute top-2 right-2 flex items-start gap-1 z-20" data-controls>
+      {/* Compact tool selection */}
+      <div class="flex items-center gap-0.5 bg-base-200/90 backdrop-blur-sm rounded-lg p-0.5 shadow-md">
         <ToggleGroup
-          value={editState().tool()}
+          value={currentTool()}
           onChange={(v) => v && editState().setTool(v as LayoutEditTool)}
           class="flex gap-0.5"
         >
-          <ToolbarTooltip content="Select" shortcut="V">
+          <ToolbarTooltip content="Select (V)">
             <ToggleGroup.Item
               value="select"
-              class="btn btn-sm btn-square btn-ghost"
-              classList={{ "btn-active": editState().tool() === "select" }}
+              class="btn btn-xs btn-square btn-ghost"
+              classList={{ "btn-active bg-primary/20": currentTool() === "select" }}
             >
-              <MousePointer class="w-4 h-4" />
+              <MousePointer class="w-3.5 h-3.5" />
             </ToggleGroup.Item>
           </ToolbarTooltip>
 
-          <ToolbarTooltip content="Move" shortcut="M">
+          <ToolbarTooltip content="Move (M)">
             <ToggleGroup.Item
               value="move"
-              class="btn btn-sm btn-square btn-ghost"
-              classList={{ "btn-active": editState().tool() === "move" }}
+              class="btn btn-xs btn-square btn-ghost"
+              classList={{ "btn-active bg-primary/20": currentTool() === "move" }}
             >
-              <Move class="w-4 h-4" />
+              <Move class="w-3.5 h-3.5" />
             </ToggleGroup.Item>
           </ToolbarTooltip>
 
-          <ToolbarTooltip content="Rotate" shortcut="R">
+          <ToolbarTooltip content="Rotate (R)">
             <ToggleGroup.Item
               value="rotate"
-              class="btn btn-sm btn-square btn-ghost"
-              classList={{ "btn-active": editState().tool() === "rotate" }}
+              class="btn btn-xs btn-square btn-ghost"
+              classList={{ "btn-active bg-primary/20": currentTool() === "rotate" }}
             >
-              <RotateCw class="w-4 h-4" />
+              <RotateCw class="w-3.5 h-3.5" />
             </ToggleGroup.Item>
           </ToolbarTooltip>
 
-          <ToolbarTooltip content="Resize" shortcut="S">
+          <ToolbarTooltip content="Resize (S)">
             <ToggleGroup.Item
               value="resize"
-              class="btn btn-sm btn-square btn-ghost"
-              classList={{ "btn-active": editState().tool() === "resize" }}
+              class="btn btn-xs btn-square btn-ghost"
+              classList={{ "btn-active bg-primary/20": currentTool() === "resize" }}
             >
-              <RectangleHorizontal class="w-4 h-4" />
+              <RectangleHorizontal class="w-3.5 h-3.5" />
             </ToggleGroup.Item>
           </ToolbarTooltip>
         </ToggleGroup>
 
-        {/* Rotation mode toggle (only shown when rotate tool is active) */}
-        <Show when={editState().tool() === "rotate"}>
-          <div class="border-l border-base-300 mx-1" />
+        {/* Rotation mode (only when rotate tool is active) */}
+        <Show when={currentTool() === "rotate"}>
+          <div class="border-l border-base-300 h-4 mx-0.5" />
           <ToggleGroup
             value={editState().rotateMode()}
             onChange={(v) => v && editState().setRotateMode(v as RotateMode)}
             class="flex gap-0.5"
           >
-            <ToolbarTooltip content="Rotate around key center">
+            <ToolbarTooltip content="Center rotation">
               <ToggleGroup.Item
                 value="center"
-                class="btn btn-sm btn-square btn-ghost"
-                classList={{ "btn-active": editState().rotateMode() === "center" }}
+                class="btn btn-xs btn-square btn-ghost"
+                classList={{ "btn-active bg-amber-500/20": editState().rotateMode() === "center" }}
               >
-                <Circle class="w-4 h-4" />
+                <Circle class="w-3.5 h-3.5" />
               </ToggleGroup.Item>
             </ToolbarTooltip>
 
-            <ToolbarTooltip content="Rotate around anchor point">
+            <ToolbarTooltip content="Anchor rotation">
               <ToggleGroup.Item
                 value="anchor"
-                class="btn btn-sm btn-square btn-ghost"
-                classList={{ "btn-active": editState().rotateMode() === "anchor" }}
+                class="btn btn-xs btn-square btn-ghost"
+                classList={{ "btn-active bg-amber-500/20": editState().rotateMode() === "anchor" }}
               >
-                <Anchor class="w-4 h-4" />
+                <Anchor class="w-3.5 h-3.5" />
               </ToggleGroup.Item>
             </ToolbarTooltip>
           </ToggleGroup>
         </Show>
+
+        {/* Tool-specific exact input button */}
+        <Show when={isEditingTool() && hasSelection()}>
+          <div class="border-l border-base-300 h-4 mx-0.5" />
+          <ToolExactDialog
+            tool={currentTool}
+            rotateMode={editState().rotateMode}
+          />
+        </Show>
       </div>
 
-      {/* Actions toolbar */}
-      <div class="flex flex-wrap gap-1 bg-base-200/80 backdrop-blur-sm rounded-lg p-1 shadow-md">
-        <ToolbarTooltip content="Copy" shortcut="Ctrl+C">
-          <Button
-            class="btn btn-sm btn-square btn-ghost"
-            disabled={!hasSelection()}
-            onClick={copyKeys}
-          >
-            <Copy class="w-4 h-4" />
-          </Button>
-        </ToolbarTooltip>
+      {/* Actions (only show when editing tool is active) */}
+      <Show when={isEditingTool()}>
+        <div class="flex items-center gap-0.5 bg-base-200/90 backdrop-blur-sm rounded-lg p-0.5 shadow-md">
+          <ToolbarTooltip content="Copy (Ctrl+C)">
+            <Button
+              class="btn btn-xs btn-square btn-ghost"
+              disabled={!hasSelection()}
+              onClick={copyKeys}
+            >
+              <Copy class="w-3.5 h-3.5" />
+            </Button>
+          </ToolbarTooltip>
 
-        <ToolbarTooltip content="Paste" shortcut="Ctrl+V">
-          <Button
-            class="btn btn-sm btn-square btn-ghost"
-            disabled={!editState().clipboard()}
-            onClick={pasteKeys}
-          >
-            <Clipboard class="w-4 h-4" />
-          </Button>
-        </ToolbarTooltip>
+          <ToolbarTooltip content="Paste (Ctrl+V)">
+            <Button
+              class="btn btn-xs btn-square btn-ghost"
+              disabled={!editState().clipboard()}
+              onClick={pasteKeys}
+            >
+              <Clipboard class="w-3.5 h-3.5" />
+            </Button>
+          </ToolbarTooltip>
 
-        <div class="border-l border-base-300 mx-1" />
+          <div class="border-l border-base-300 h-4 mx-0.5" />
 
-        <ToolbarTooltip content="Mirror Horizontal">
-          <Button
-            class="btn btn-sm btn-square btn-ghost"
-            disabled={!hasSelection()}
-            onClick={mirrorHorizontal}
-          >
-            <FlipHorizontal2 class="w-4 h-4" />
-          </Button>
-        </ToolbarTooltip>
+          <ToolbarTooltip content="Mirror H">
+            <Button
+              class="btn btn-xs btn-square btn-ghost"
+              disabled={!hasSelection()}
+              onClick={mirrorHorizontal}
+            >
+              <FlipHorizontal2 class="w-3.5 h-3.5" />
+            </Button>
+          </ToolbarTooltip>
 
-        <ToolbarTooltip content="Mirror Vertical">
-          <Button
-            class="btn btn-sm btn-square btn-ghost"
-            disabled={!hasSelection()}
-            onClick={mirrorVertical}
-          >
-            <FlipVertical2 class="w-4 h-4" />
-          </Button>
-        </ToolbarTooltip>
-
-        <div class="border-l border-base-300 mx-1" />
-
-        {/* Position/Size popover */}
-        <MoveExactPopover />
-      </div>
+          <ToolbarTooltip content="Mirror V">
+            <Button
+              class="btn btn-xs btn-square btn-ghost"
+              disabled={!hasSelection()}
+              onClick={mirrorVertical}
+            >
+              <FlipVertical2 class="w-3.5 h-3.5" />
+            </Button>
+          </ToolbarTooltip>
+        </div>
+      </Show>
     </div>
   );
 };
 
 /**
- * Popover for entering exact position/size values
+ * Tool-specific dialog for entering exact values
+ * Each tool has different fields relevant to that operation
  */
-const MoveExactPopover: VoidComponent = () => {
+const ToolExactDialog: VoidComponent<{
+  tool: Accessor<LayoutEditTool>;
+  rotateMode: Accessor<RotateMode>;
+}> = (props) => {
   const context = useWizardContext();
   const [isOpen, setIsOpen] = createSignal(false);
 
@@ -361,9 +374,7 @@ const MoveExactPopover: VoidComponent = () => {
   const [rxValue, setRxValue] = createSignal("");
   const [ryValue, setRyValue] = createSignal("");
 
-  const hasSelection = createMemo(() => context.nav.selectedKeys.length > 0);
-
-  // Load values when popover opens
+  // Load values when dialog opens
   const loadValues = () => {
     const selectedIds = context.nav.selectedKeys;
     if (selectedIds.length === 0) return;
@@ -371,8 +382,6 @@ const MoveExactPopover: VoidComponent = () => {
     const selectedKeys = context.keyboard.layout.filter(k => selectedIds.includes(k.id));
     if (selectedKeys.length === 0) return;
 
-    // If single selection, show exact values
-    // If multiple selection, show empty (user can enter value to apply to all)
     if (selectedKeys.length === 1) {
       const k = selectedKeys[0];
       setXValue(k.x.toString());
@@ -383,7 +392,7 @@ const MoveExactPopover: VoidComponent = () => {
       setRxValue(k.rx.toString());
       setRyValue(k.ry.toString());
     } else {
-      // For multiple selection, check if values are the same
+      // For multiple selection, show common values or empty
       const sameX = selectedKeys.every(k => k.x === selectedKeys[0].x);
       const sameY = selectedKeys.every(k => k.y === selectedKeys[0].y);
       const sameW = selectedKeys.every(k => k.w === selectedKeys[0].w);
@@ -402,7 +411,7 @@ const MoveExactPopover: VoidComponent = () => {
     }
   };
 
-  // Apply values to selected keys
+  // Apply values
   const applyValues = () => {
     const selectedIds = context.nav.selectedKeys;
     if (selectedIds.length === 0) return;
@@ -412,88 +421,181 @@ const MoveExactPopover: VoidComponent = () => {
         const k = layout.find(key => key.id === id);
         if (!k) return;
 
-        const x = parseFloat(xValue());
-        const y = parseFloat(yValue());
-        const w = parseFloat(wValue());
-        const h = parseFloat(hValue());
-        const r = parseFloat(rValue());
-        const rx = parseFloat(rxValue());
-        const ry = parseFloat(ryValue());
+        const tool = props.tool();
 
-        if (!isNaN(x)) k.x = x;
-        if (!isNaN(y)) k.y = y;
-        if (!isNaN(w) && w > 0) k.w = w;
-        if (!isNaN(h) && h > 0) k.h = h;
-        if (!isNaN(r)) k.r = r;
-        if (!isNaN(rx)) k.rx = rx;
-        if (!isNaN(ry)) k.ry = ry;
+        if (tool === "move") {
+          const x = parseFloat(xValue());
+          const y = parseFloat(yValue());
+          if (!isNaN(x)) k.x = x;
+          if (!isNaN(y)) k.y = y;
+        } else if (tool === "resize") {
+          const w = parseFloat(wValue());
+          const h = parseFloat(hValue());
+          if (!isNaN(w) && w > 0) k.w = w;
+          if (!isNaN(h) && h > 0) k.h = h;
+        } else if (tool === "rotate") {
+          const r = parseFloat(rValue());
+          const rx = parseFloat(rxValue());
+          const ry = parseFloat(ryValue());
+          if (!isNaN(r)) k.r = r;
+          if (!isNaN(rx)) k.rx = rx;
+          if (!isNaN(ry)) k.ry = ry;
+        }
       });
     }));
     normalizeKeys(context);
     setIsOpen(false);
   };
 
-  const fields = [
-    { label: "X", value: xValue, setValue: setXValue, placeholder: "X position" },
-    { label: "Y", value: yValue, setValue: setYValue, placeholder: "Y position" },
-    { label: "W", value: wValue, setValue: setWValue, placeholder: "Width" },
-    { label: "H", value: hValue, setValue: setHValue, placeholder: "Height" },
-    { label: "R", value: rValue, setValue: setRValue, placeholder: "Rotation (deg)" },
-    { label: "RX", value: rxValue, setValue: setRxValue, placeholder: "Rotation origin X" },
-    { label: "RY", value: ryValue, setValue: setRyValue, placeholder: "Rotation origin Y" },
-  ];
+  const dialogTitle = createMemo(() => {
+    switch (props.tool()) {
+      case "move": return "Set Position";
+      case "resize": return "Set Size";
+      case "rotate": return "Set Rotation";
+      default: return "Set Values";
+    }
+  });
 
   return (
-    <Popover open={isOpen()} onOpenChange={(open) => {
+    <Dialog open={isOpen()} onOpenChange={(open) => {
       setIsOpen(open);
       if (open) loadValues();
     }}>
-      <ToolbarTooltip content="Set exact values">
-        <Popover.Trigger
-          class="btn btn-sm btn-square btn-ghost"
-          disabled={!hasSelection()}
+      <ToolbarTooltip content="Exact values">
+        <Dialog.Trigger
+          class="btn btn-xs btn-square btn-ghost"
         >
-          <Target class="w-4 h-4" />
-        </Popover.Trigger>
+          <Hash class="w-3.5 h-3.5" />
+        </Dialog.Trigger>
       </ToolbarTooltip>
-      <Popover.Portal>
-        <Popover.Content class="popover--content w-64 p-3 bg-base-200 rounded-lg shadow-xl border border-base-300 z-50">
+      <Dialog.Portal>
+        <Dialog.Overlay class="fixed inset-0 bg-black/30 z-40" />
+        <Dialog.Content 
+          class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 p-3 bg-base-200 rounded-lg shadow-xl border border-base-300 z-50"
+          onClick={(e: MouseEvent) => e.stopPropagation()}
+          onPointerDown={(e: PointerEvent) => e.stopPropagation()}
+          onMouseDown={(e: MouseEvent) => e.stopPropagation()}
+        >
           <div class="flex items-center justify-between mb-3">
-            <h3 class="font-semibold text-sm">Set Key Properties</h3>
-            <Popover.CloseButton class="btn btn-xs btn-circle btn-ghost">
+            <Dialog.Title class="font-semibold text-sm">{dialogTitle()}</Dialog.Title>
+            <Dialog.CloseButton class="btn btn-xs btn-circle btn-ghost">
               <X class="w-4 h-4" />
-            </Popover.CloseButton>
+            </Dialog.CloseButton>
           </div>
 
-          <div class="grid grid-cols-2 gap-2 mb-3">
-            <For each={fields}>
-              {(field) => (
-                <label class="input input-sm input-bordered flex items-center gap-1">
-                  <span class="text-xs font-mono text-base-content/70 w-6">{field.label}</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder={field.placeholder}
-                    class="w-full bg-transparent"
-                    value={field.value()}
-                    onInput={(e) => field.setValue(e.currentTarget.value)}
-                  />
-                </label>
-              )}
-            </For>
-          </div>
+          {/* Move tool fields */}
+          <Show when={props.tool() === "move"}>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+              <label class="input input-sm input-bordered flex items-center gap-1">
+                <span class="text-xs font-mono text-base-content/70 w-4">X</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="X position"
+                  class="w-full bg-transparent"
+                  value={xValue()}
+                  onInput={(e) => setXValue(e.currentTarget.value)}
+                />
+              </label>
+              <label class="input input-sm input-bordered flex items-center gap-1">
+                <span class="text-xs font-mono text-base-content/70 w-4">Y</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Y position"
+                  class="w-full bg-transparent"
+                  value={yValue()}
+                  onInput={(e) => setYValue(e.currentTarget.value)}
+                />
+              </label>
+            </div>
+          </Show>
+
+          {/* Resize tool fields */}
+          <Show when={props.tool() === "resize"}>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+              <label class="input input-sm input-bordered flex items-center gap-1">
+                <span class="text-xs font-mono text-base-content/70 w-4">W</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Width"
+                  class="w-full bg-transparent"
+                  value={wValue()}
+                  onInput={(e) => setWValue(e.currentTarget.value)}
+                />
+              </label>
+              <label class="input input-sm input-bordered flex items-center gap-1">
+                <span class="text-xs font-mono text-base-content/70 w-4">H</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Height"
+                  class="w-full bg-transparent"
+                  value={hValue()}
+                  onInput={(e) => setHValue(e.currentTarget.value)}
+                />
+              </label>
+            </div>
+          </Show>
+
+          {/* Rotate tool fields */}
+          <Show when={props.tool() === "rotate"}>
+            <div class="space-y-2 mb-3">
+              <label class="input input-sm input-bordered flex items-center gap-1">
+                <span class="text-xs font-mono text-base-content/70 w-8">R°</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Rotation angle"
+                  class="w-full bg-transparent"
+                  value={rValue()}
+                  onInput={(e) => setRValue(e.currentTarget.value)}
+                />
+              </label>
+              <Show when={props.rotateMode() === "anchor"}>
+                <div class="grid grid-cols-2 gap-2">
+                  <label class="input input-sm input-bordered flex items-center gap-1">
+                    <span class="text-xs font-mono text-base-content/70 w-6">RX</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="Anchor X"
+                      class="w-full bg-transparent"
+                      value={rxValue()}
+                      onInput={(e) => setRxValue(e.currentTarget.value)}
+                    />
+                  </label>
+                  <label class="input input-sm input-bordered flex items-center gap-1">
+                    <span class="text-xs font-mono text-base-content/70 w-6">RY</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="Anchor Y"
+                      class="w-full bg-transparent"
+                      value={ryValue()}
+                      onInput={(e) => setRyValue(e.currentTarget.value)}
+                    />
+                  </label>
+                </div>
+                <p class="text-xs text-base-content/60">
+                  Anchor point (0 = key center)
+                </p>
+              </Show>
+            </div>
+          </Show>
 
           <div class="flex justify-end gap-2">
-            <Popover.CloseButton class="btn btn-sm btn-ghost">
+            <Dialog.CloseButton class="btn btn-sm btn-ghost">
               Cancel
-            </Popover.CloseButton>
+            </Dialog.CloseButton>
             <Button class="btn btn-sm btn-primary" onClick={applyValues}>
               Apply
             </Button>
           </div>
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog>
   );
 };
 

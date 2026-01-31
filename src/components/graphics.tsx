@@ -47,6 +47,7 @@ import {
 } from "./graphics.events";
 import { createLayoutEditEventHandlers, type DragPreview } from "./layoutEditing.events";
 import { createLayoutEditState, LayoutEditToolbar } from "./layoutEditing";
+import { LayoutEditOverlay } from "./layoutEditOverlay";
 
 export type GraphicsKey = KeyGeometry & {
   index: number,
@@ -1202,6 +1203,16 @@ export const KeyboardPreview: VoidComponent<{
           return `${props.title} • ${label} • ${(transform().s * 100).toFixed(0)}%`;
         })()}
       </div>
+
+      {/* Layout editing overlay (SVG handles, indicators) */}
+      <Show when={layoutEditState && props.isPhysicalLayout && context.nav.selectedTab === "layout"}>
+        <LayoutEditOverlay
+          keys={props.keys}
+          editState={layoutEditState!}
+          v2c={v2c}
+          contentBbox={contentBbox}
+        />
+      </Show>
 
       {/* Layout editing toolbar (only for physical layout in layout tab) */}
       <Show when={layoutEditState && props.isPhysicalLayout}>
