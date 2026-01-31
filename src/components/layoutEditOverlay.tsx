@@ -13,6 +13,12 @@ const HANDLE_HALF = HANDLE_SIZE / 2;
 /** Rotation ring radius for center rotation mode */
 const ROTATION_RING_RADIUS = 35;
 
+/** Additional radius for common center rotation ring (multi-select) */
+const COMMON_ROTATION_RING_OFFSET = 10;
+
+/** Arrow head offset for rotation direction indicator */
+const ROTATION_ARROW_OFFSET = 5;
+
 /** Minimum radius in pixels to show rotation arc (avoid cluttered display for small rotations) */
 const MIN_ROTATION_ARC_RADIUS = 10;
 
@@ -150,7 +156,7 @@ export const LayoutEditOverlay: VoidComponent<LayoutEditOverlayProps> = (props) 
                   <circle
                     cx={screenCenter().x}
                     cy={screenCenter().y}
-                    r={ROTATION_RING_RADIUS + 10}
+                    r={ROTATION_RING_RADIUS + COMMON_ROTATION_RING_OFFSET}
                     fill="none"
                     stroke={COLORS.rotationArc}
                     stroke-width={ROTATION_INDICATOR_STROKE}
@@ -169,12 +175,12 @@ export const LayoutEditOverlay: VoidComponent<LayoutEditOverlayProps> = (props) 
                     stroke="white"
                     stroke-width={2}
                   />
-                  {/* Rotation direction indicator */}
+                  {/* Rotation direction indicator arrow */}
                   <path
-                    d={`M ${screenCenter().x + ROTATION_RING_RADIUS + 10} ${screenCenter().y} 
-                        L ${screenCenter().x + ROTATION_RING_RADIUS + 5} ${screenCenter().y - 5}
-                        M ${screenCenter().x + ROTATION_RING_RADIUS + 10} ${screenCenter().y}
-                        L ${screenCenter().x + ROTATION_RING_RADIUS + 5} ${screenCenter().y + 5}`}
+                    d={`M ${screenCenter().x + ROTATION_RING_RADIUS + COMMON_ROTATION_RING_OFFSET} ${screenCenter().y} 
+                        L ${screenCenter().x + ROTATION_RING_RADIUS + ROTATION_ARROW_OFFSET} ${screenCenter().y - ROTATION_ARROW_OFFSET}
+                        M ${screenCenter().x + ROTATION_RING_RADIUS + COMMON_ROTATION_RING_OFFSET} ${screenCenter().y}
+                        L ${screenCenter().x + ROTATION_RING_RADIUS + ROTATION_ARROW_OFFSET} ${screenCenter().y + ROTATION_ARROW_OFFSET}`}
                     stroke={COLORS.rotationArc}
                     stroke-width={2}
                     fill="none"
@@ -519,13 +525,14 @@ const RotationArc: VoidComponent<{
     
     if (radius < MIN_ROTATION_ARC_RADIUS) return ""; // Too small to show
     
-    // The arc goes from the current position BACK to the original (unrotated) position
-    // This shows where the key came from, not where it's going
-    // Start at current position (startPoint), end at original position (rotated back)
+    // The arc shows the rotation path from the ORIGINAL position to the CURRENT position.
+    // - currentAngle: where the key center is now (after rotation)
+    // - originalAngle: where the key center was before rotation (computed by subtracting the rotation angle)
+    // The arc starts at originalAngle and ends at currentAngle, showing the rotation direction.
     const currentAngle = Math.atan2(dy, dx);
     const originalAngle = currentAngle - (props.angle * Math.PI / 180);
     
-    // Arc parameters - start from original, end at current
+    // Arc parameters - start from original position, end at current position
     const startX = cx + radius * Math.cos(originalAngle);
     const startY = cy + radius * Math.sin(originalAngle);
     const endX = cx + radius * Math.cos(currentAngle);

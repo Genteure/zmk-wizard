@@ -494,7 +494,7 @@ const ToolExactDialog: VoidComponent<{
           <Show when={props.tool() === "move"}>
             <div class="grid grid-cols-2 gap-2 mb-2">
               <label class="input input-sm input-bordered flex items-center gap-1">
-                <span class="text-xs font-mono text-base-content/70 w-6">ΔX</span>
+                <span class="text-xs font-mono text-base-content/70 w-6" aria-label="X offset">ΔX</span>
                 <input
                   type="text"
                   inputMode="decimal"
@@ -502,10 +502,11 @@ const ToolExactDialog: VoidComponent<{
                   class="w-full bg-transparent"
                   value={xValue()}
                   onInput={(e) => setXValue(e.currentTarget.value)}
+                  aria-label="X offset value"
                 />
               </label>
               <label class="input input-sm input-bordered flex items-center gap-1">
-                <span class="text-xs font-mono text-base-content/70 w-6">ΔY</span>
+                <span class="text-xs font-mono text-base-content/70 w-6" aria-label="Y offset">ΔY</span>
                 <input
                   type="text"
                   inputMode="decimal"
@@ -513,6 +514,7 @@ const ToolExactDialog: VoidComponent<{
                   class="w-full bg-transparent"
                   value={yValue()}
                   onInput={(e) => setYValue(e.currentTarget.value)}
+                  aria-label="Y offset value"
                 />
               </label>
             </div>
