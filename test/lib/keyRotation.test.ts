@@ -9,6 +9,7 @@ import {
   applyLocalCenterRotation,
   applyAnchorRotation,
   moveAnchorWithoutAffectingPosition,
+  moveAnchorKeepingOriginalPosition,
 } from "../../src/lib/keyRotation";
 
 describe("keyRotation", () => {
@@ -222,6 +223,57 @@ describe("keyRotation", () => {
       expect(result.r).toBe(key.r); // Rotation should stay the same
       expect(result.rx).toBeCloseTo(newAnchor.x, 3);
       expect(result.ry).toBeCloseTo(newAnchor.y, 3);
+    });
+  });
+
+  describe("moveAnchorKeepingOriginalPosition", () => {
+    it("preserves x,y position when moving anchor for key with r=0", () => {
+      const key = { x: 1, y: 1, w: 1, h: 1, r: 0, rx: 1.5, ry: 1.5 };
+      
+      const newAnchor = { x: 3, y: 3 };
+      const result = moveAnchorKeepingOriginalPosition(key, newAnchor);
+      
+      // Original x,y should stay the same
+      expect(result.x).toBe(key.x);
+      expect(result.y).toBe(key.y);
+      expect(result.rx).toBeCloseTo(newAnchor.x, 3);
+      expect(result.ry).toBeCloseTo(newAnchor.y, 3);
+    });
+
+    it("preserves x,y position when moving anchor for rotated key", () => {
+      const key = { x: 2, y: 2, w: 1, h: 1, r: 45, rx: 2.5, ry: 2.5 };
+      const originalRotatedCenter = getKeyRotatedCenter(key);
+      
+      const newAnchor = { x: 5, y: 5 };
+      const result = moveAnchorKeepingOriginalPosition(key, newAnchor);
+      const newRotatedCenter = getKeyRotatedCenter(result);
+      
+      // Original x,y should stay the same
+      expect(result.x).toBe(key.x);
+      expect(result.y).toBe(key.y);
+      // Visual center should be the same (because we adjust r to compensate)
+      expect(newRotatedCenter.x).toBeCloseTo(originalRotatedCenter.x, 3);
+      expect(newRotatedCenter.y).toBeCloseTo(originalRotatedCenter.y, 3);
+    });
+
+    it("adjusts rotation angle to preserve visual position when x,y is fixed", () => {
+      // Key rotated 90 degrees around its center
+      const key = { x: 0, y: 0, w: 2, h: 2, r: 90, rx: 1, ry: 1 };
+      const originalRotatedCenter = getKeyRotatedCenter(key);
+      
+      // Move anchor to a new position
+      const newAnchor = { x: 4, y: 4 };
+      const result = moveAnchorKeepingOriginalPosition(key, newAnchor);
+      const newRotatedCenter = getKeyRotatedCenter(result);
+      
+      // x,y should be preserved
+      expect(result.x).toBe(key.x);
+      expect(result.y).toBe(key.y);
+      // Visual center should be the same
+      expect(newRotatedCenter.x).toBeCloseTo(originalRotatedCenter.x, 2);
+      expect(newRotatedCenter.y).toBeCloseTo(originalRotatedCenter.y, 2);
+      // r should have changed
+      expect(result.r).not.toBe(key.r);
     });
   });
 });

@@ -6,11 +6,13 @@ import Anchor from "lucide-solid/icons/anchor";
 import Circle from "lucide-solid/icons/circle";
 import Clipboard from "lucide-solid/icons/clipboard";
 import Copy from "lucide-solid/icons/copy";
+import Crosshair from "lucide-solid/icons/crosshair";
 import FlipHorizontal2 from "lucide-solid/icons/flip-horizontal-2";
 import FlipVertical2 from "lucide-solid/icons/flip-vertical-2";
 import Hash from "lucide-solid/icons/hash";
 import Move from "lucide-solid/icons/move";
 import MousePointer from "lucide-solid/icons/mouse-pointer";
+import Pin from "lucide-solid/icons/pin";
 import RectangleHorizontal from "lucide-solid/icons/rectangle-horizontal";
 import RotateCw from "lucide-solid/icons/rotate-cw";
 import Settings from "lucide-solid/icons/settings";
@@ -32,6 +34,11 @@ export type LayoutEditTool = "select" | "move" | "rotate" | "resize";
  * Rotation modes for the rotate tool
  */
 export type RotateMode = "anchor" | "center";
+
+/**
+ * Anchor move modes for center rotation - determines what stays fixed when moving anchor
+ */
+export type CenterAnchorMoveMode = "final" | "original";
 
 /**
  * Snapping settings for movement and rotation
@@ -70,6 +77,8 @@ export interface LayoutEditState {
   setTool: Setter<LayoutEditTool>;
   rotateMode: Accessor<RotateMode>;
   setRotateMode: Setter<RotateMode>;
+  centerAnchorMoveMode: Accessor<CenterAnchorMoveMode>;
+  setCenterAnchorMoveMode: Setter<CenterAnchorMoveMode>;
   clipboard: Accessor<Key[] | null>;
   setClipboard: Setter<Key[] | null>;
   snapSettings: Accessor<SnapSettings>;
@@ -82,6 +91,7 @@ export interface LayoutEditState {
 export function createLayoutEditState(): LayoutEditState {
   const [tool, setTool] = createSignal<LayoutEditTool>("select");
   const [rotateMode, setRotateMode] = createSignal<RotateMode>("center");
+  const [centerAnchorMoveMode, setCenterAnchorMoveMode] = createSignal<CenterAnchorMoveMode>("final");
   const [clipboard, setClipboard] = createSignal<Key[] | null>(null);
   const [snapSettings, setSnapSettings] = createSignal<SnapSettings>(DEFAULT_SNAP_SETTINGS);
 
@@ -90,6 +100,8 @@ export function createLayoutEditState(): LayoutEditState {
     setTool,
     rotateMode,
     setRotateMode,
+    centerAnchorMoveMode,
+    setCenterAnchorMoveMode,
     clipboard,
     setClipboard,
     snapSettings,
@@ -252,14 +264,84 @@ export const LayoutEditToolbar: VoidComponent<LayoutEditToolbarProps> = (props) 
 
   return (
     <div class="absolute top-2 right-2 flex items-start gap-1 z-20" data-controls>
-      {/* Snapping options (leftmost for minimal layout shift) */}
+      {/* Left group: Options that change based on tool selection (minimizes layout shift) */}
       <Show when={props.isPhysicalLayout}>
         <div class="flex items-center gap-0.5 bg-base-200/90 backdrop-blur-sm rounded-lg p-0.5 shadow-md">
+          {/* Snapping options */}
           <SnapSettingsPopover editState={editState()} />
+
+          {/* Rotation mode options (only when rotate tool is active) */}
+          <Show when={currentTool() === "rotate"}>
+            <div class="border-l border-base-300 h-4 mx-0.5" />
+            <ToggleGroup
+              value={editState().rotateMode()}
+              onChange={(v) => v && editState().setRotateMode(v as RotateMode)}
+              class="flex gap-0.5"
+            >
+              <ToolbarTooltip content="Center rotation">
+                <ToggleGroup.Item
+                  value="center"
+                  class="btn btn-xs btn-square btn-ghost"
+                  classList={{ "btn-active bg-amber-500/20": editState().rotateMode() === "center" }}
+                >
+                  <Circle class="w-3.5 h-3.5" />
+                </ToggleGroup.Item>
+              </ToolbarTooltip>
+
+              <ToolbarTooltip content="Anchor rotation">
+                <ToggleGroup.Item
+                  value="anchor"
+                  class="btn btn-xs btn-square btn-ghost"
+                  classList={{ "btn-active bg-amber-500/20": editState().rotateMode() === "anchor" }}
+                >
+                  <Anchor class="w-3.5 h-3.5" />
+                </ToggleGroup.Item>
+              </ToolbarTooltip>
+            </ToggleGroup>
+
+            {/* Anchor move mode (only for center rotation mode) */}
+            <Show when={editState().rotateMode() === "center"}>
+              <div class="border-l border-base-300 h-4 mx-0.5" />
+              <ToggleGroup
+                value={editState().centerAnchorMoveMode()}
+                onChange={(v) => v && editState().setCenterAnchorMoveMode(v as CenterAnchorMoveMode)}
+                class="flex gap-0.5"
+              >
+                <ToolbarTooltip content="Keep final position fixed when moving anchor">
+                  <ToggleGroup.Item
+                    value="final"
+                    class="btn btn-xs btn-square btn-ghost"
+                    classList={{ "btn-active bg-green-500/20": editState().centerAnchorMoveMode() === "final" }}
+                  >
+                    <Crosshair class="w-3.5 h-3.5" />
+                  </ToggleGroup.Item>
+                </ToolbarTooltip>
+
+                <ToolbarTooltip content="Keep original x,y fixed when moving anchor">
+                  <ToggleGroup.Item
+                    value="original"
+                    class="btn btn-xs btn-square btn-ghost"
+                    classList={{ "btn-active bg-green-500/20": editState().centerAnchorMoveMode() === "original" }}
+                  >
+                    <Pin class="w-3.5 h-3.5" />
+                  </ToggleGroup.Item>
+                </ToolbarTooltip>
+              </ToggleGroup>
+            </Show>
+          </Show>
+
+          {/* Tool-specific exact input button */}
+          <Show when={isEditingTool() && hasSelection()}>
+            <div class="border-l border-base-300 h-4 mx-0.5" />
+            <ToolExactDialog
+              tool={currentTool}
+              rotateMode={editState().rotateMode}
+            />
+          </Show>
         </div>
       </Show>
 
-      {/* Tool selection (only for physical layout) */}
+      {/* Tool selection (only for physical layout) - stable position on right */}
       <Show when={props.isPhysicalLayout}>
         <div class="flex items-center gap-0.5 bg-base-200/90 backdrop-blur-sm rounded-lg p-0.5 shadow-md">
           <ToggleGroup
@@ -307,45 +389,6 @@ export const LayoutEditToolbar: VoidComponent<LayoutEditToolbarProps> = (props) 
               </ToggleGroup.Item>
             </ToolbarTooltip>
           </ToggleGroup>
-
-          {/* Rotation mode (only when rotate tool is active) */}
-          <Show when={currentTool() === "rotate"}>
-            <div class="border-l border-base-300 h-4 mx-0.5" />
-            <ToggleGroup
-              value={editState().rotateMode()}
-              onChange={(v) => v && editState().setRotateMode(v as RotateMode)}
-              class="flex gap-0.5"
-            >
-              <ToolbarTooltip content="Center rotation">
-                <ToggleGroup.Item
-                  value="center"
-                  class="btn btn-xs btn-square btn-ghost"
-                  classList={{ "btn-active bg-amber-500/20": editState().rotateMode() === "center" }}
-                >
-                  <Circle class="w-3.5 h-3.5" />
-                </ToggleGroup.Item>
-              </ToolbarTooltip>
-
-              <ToolbarTooltip content="Anchor rotation">
-                <ToggleGroup.Item
-                  value="anchor"
-                  class="btn btn-xs btn-square btn-ghost"
-                  classList={{ "btn-active bg-amber-500/20": editState().rotateMode() === "anchor" }}
-                >
-                  <Anchor class="w-3.5 h-3.5" />
-                </ToggleGroup.Item>
-              </ToolbarTooltip>
-            </ToggleGroup>
-          </Show>
-
-          {/* Tool-specific exact input button */}
-          <Show when={isEditingTool() && hasSelection()}>
-            <div class="border-l border-base-300 h-4 mx-0.5" />
-            <ToolExactDialog
-              tool={currentTool}
-              rotateMode={editState().rotateMode}
-            />
-          </Show>
         </div>
       </Show>
 

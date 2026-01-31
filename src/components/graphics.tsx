@@ -540,6 +540,7 @@ export const KeyboardPreview: VoidComponent<{
     context,
     tool: layoutEditState.tool,
     rotateMode: layoutEditState.rotateMode,
+    centerAnchorMoveMode: layoutEditState.centerAnchorMoveMode,
     snapSettings: layoutEditState.snapSettings,
     setIsDragging: setIsLayoutDragging,
     setDragPreview,

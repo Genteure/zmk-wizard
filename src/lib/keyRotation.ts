@@ -298,3 +298,50 @@ export function moveAnchorWithoutAffectingPosition(
     ry: roundTo(newAnchor.y),
   };
 }
+
+/**
+ * Move the anchor (rotation origin) to a new position while keeping the key's
+ * original x,y position fixed. The rotation angle changes to compensate.
+ * 
+ * This is an alternative mode for center rotation where the user wants to
+ * preserve the base position (x,y) while changing where the key rotates around.
+ * 
+ * @param key - Current key geometry
+ * @param newAnchor - New anchor point position (in units)
+ * @returns Updated key geometry with same x,y but new anchor and adjusted rotation
+ */
+export function moveAnchorKeepingOriginalPosition(
+  key: { x: number; y: number; w: number; h: number; r: number; rx: number; ry: number },
+  newAnchor: Point
+): { x: number; y: number; w: number; h: number; r: number; rx: number; ry: number } {
+  // Keep x,y fixed, calculate new rotation angle
+  // The unrotated center is fixed at (x + w/2, y + h/2)
+  // We need to find what rotation angle around newAnchor puts the rotated center
+  // at the same visual position as before
+  
+  const fixedRotatedCenter = getKeyRotatedCenter(key);
+  const fixedUnrotatedCenter = getKeyUnrotatedCenter(key); // This is the point we want to keep fixed
+  
+  // We need to find angle r' such that:
+  // rotatePoint(fixedUnrotatedCenter, newAnchor, r') = fixedRotatedCenter
+  //
+  // In other words: rotate the unrotated center around the new anchor to get the same final position
+  
+  // Calculate angle from newAnchor to fixedUnrotatedCenter
+  const angleToUnrotated = angleBetweenPoints(newAnchor, fixedUnrotatedCenter);
+  // Calculate angle from newAnchor to fixedRotatedCenter
+  const angleToRotated = angleBetweenPoints(newAnchor, fixedRotatedCenter);
+  
+  // The rotation angle is the difference
+  const newR = normalizeAngle(angleToRotated - angleToUnrotated);
+  
+  return {
+    x: key.x, // Keep original x
+    y: key.y, // Keep original y
+    w: key.w,
+    h: key.h,
+    r: roundTo(newR),
+    rx: roundTo(newAnchor.x),
+    ry: roundTo(newAnchor.y),
+  };
+}

@@ -5,13 +5,14 @@ import {
   applyAnchorRotation,
   getKeyRotatedCenter,
   moveAnchorWithoutAffectingPosition,
+  moveAnchorKeepingOriginalPosition,
   rotatePoint,
 } from "~/lib/keyRotation";
 import type { Key } from "../typedef";
 import type { WizardContextType } from "./context";
 import { normalizeKeys } from "./context";
 import type { GraphicsKey } from "./graphics";
-import type { LayoutEditTool, RotateMode, SnapSettings } from "./layoutEditing";
+import type { LayoutEditTool, RotateMode, SnapSettings, CenterAnchorMoveMode } from "./layoutEditing";
 import { angleFromPoints, roundTo, snapToGrid } from "./layoutEditing";
 
 /** Pixels of movement required before a drag operation starts */
@@ -27,6 +28,7 @@ export interface LayoutEditDragState {
   context: WizardContextType;
   tool: Accessor<LayoutEditTool>;
   rotateMode: Accessor<RotateMode>;
+  centerAnchorMoveMode: Accessor<CenterAnchorMoveMode>;
   snapSettings: Accessor<SnapSettings>;
   setIsDragging: Setter<boolean>;
   setDragPreview: Setter<DragPreview | null>;
@@ -251,13 +253,13 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
 
         if (rotateMode === "center") {
           // LOCAL CENTER MODE
-          // Two sub-cases:
-          // 1. User drags the anchor point -> move anchor without affecting key visual position
+          // Three sub-cases:
+          // 1. User drags the anchor point -> move anchor based on centerAnchorMoveMode
           // 2. User drags the rotation ring -> rotate key around its rotation origin
+          // 3. Multiple keys with common center ring -> handled above
           
           if (handleType === "rotate-anchor") {
             // User is dragging the anchor point in center mode
-            // Move the anchor to the new position without affecting the key's visual position
             let newAnchorX = currentPos.x / KEY_SIZE;
             let newAnchorY = currentPos.y / KEY_SIZE;
             
@@ -268,7 +270,13 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
             }
             
             const newAnchor = { x: newAnchorX, y: newAnchorY };
-            const result = moveAnchorWithoutAffectingPosition(original, newAnchor);
+            
+            // Use the appropriate anchor move function based on mode
+            const anchorMoveMode = state.centerAnchorMoveMode();
+            const result = anchorMoveMode === "final"
+              ? moveAnchorWithoutAffectingPosition(original, newAnchor)
+              : moveAnchorKeepingOriginalPosition(original, newAnchor);
+            
             k.x = result.x;
             k.y = result.y;
             k.r = result.r;
