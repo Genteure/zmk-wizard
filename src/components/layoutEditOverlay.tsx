@@ -22,8 +22,11 @@ const ROTATION_ARROW_OFFSET = 5;
 /** Minimum radius in pixels to show rotation arc (avoid cluttered display for small rotations) */
 const MIN_ROTATION_ARC_RADIUS = 10;
 
-/** Rotation indicator stroke width for draggable rotation ring */
+/** Rotation indicator stroke width for draggable rotation ring (visual) */
 const ROTATION_INDICATOR_STROKE = 8;
+
+/** Hit area stroke width for rotation ring (larger than visual for easier clicking) */
+const ROTATION_RING_HIT_AREA_STROKE = 20;
 
 /** Color constants */
 const COLORS = {
@@ -152,7 +155,19 @@ export const LayoutEditOverlay: VoidComponent<LayoutEditOverlayProps> = (props) 
             return (
               <Show when={commonCenter()}>
                 <g>
-                  {/* Common rotation ring */}
+                  {/* Invisible hit area for easier clicking */}
+                  <circle
+                    cx={screenCenter().x}
+                    cy={screenCenter().y}
+                    r={ROTATION_RING_RADIUS + COMMON_ROTATION_RING_OFFSET}
+                    fill="none"
+                    stroke="transparent"
+                    stroke-width={ROTATION_RING_HIT_AREA_STROKE}
+                    style={{ "pointer-events": "auto" }}
+                    class="cursor-grab"
+                    data-handle="rotate-center-common"
+                  />
+                  {/* Visible common rotation ring */}
                   <circle
                     cx={screenCenter().x}
                     cy={screenCenter().y}
@@ -162,9 +177,7 @@ export const LayoutEditOverlay: VoidComponent<LayoutEditOverlayProps> = (props) 
                     stroke-width={ROTATION_INDICATOR_STROKE}
                     stroke-dasharray="6,4"
                     opacity={0.4}
-                    style={{ "pointer-events": "auto" }}
-                    class="cursor-grab"
-                    data-handle="rotate-center-common"
+                    style={{ "pointer-events": "none" }}
                   />
                   {/* Center dot */}
                   <circle
@@ -293,6 +306,20 @@ const KeyOverlay: VoidComponent<{
     return props.v2c(anchorX - bbox.min.x - bbox.width / 2, anchorY - bbox.min.y - bbox.height / 2);
   });
 
+  // Get rotation ring center for center mode: use rotation anchor (rx,ry) if set, otherwise key center
+  const rotationRingCenter = createMemo(() => {
+    const k = props.gkey.key;
+    const bbox = props.contentBbox();
+    
+    if (k.rx !== 0 || k.ry !== 0) {
+      // Use rotation anchor if set
+      return props.v2c(k.rx * KEY_SIZE - bbox.min.x - bbox.width / 2, k.ry * KEY_SIZE - bbox.min.y - bbox.height / 2);
+    }
+    // Otherwise use key center
+    const center = keyCenter(props.gkey);
+    return props.v2c(center.x - bbox.min.x - bbox.width / 2, center.y - bbox.min.y - bbox.height / 2);
+  });
+
   // Calculate original (unrotated) key outline for rotation visualization
   const originalKeyOutline = createMemo(() => {
     const k = props.gkey.key;
@@ -394,25 +421,35 @@ const KeyOverlay: VoidComponent<{
 
         {/* Center point with rotation ring (for center rotation mode - single key only) */}
         <Show when={props.rotateMode() === "center" && !props.isMultiSelect}>
-          {/* Rotation ring - draggable */}
+          {/* Invisible hit area for easier clicking */}
           <circle
-            cx={screenCenter().x}
-            cy={screenCenter().y}
+            cx={rotationRingCenter().x}
+            cy={rotationRingCenter().y}
+            r={ROTATION_RING_RADIUS}
+            fill="none"
+            stroke="transparent"
+            stroke-width={ROTATION_RING_HIT_AREA_STROKE}
+            style={{ "pointer-events": "auto" }}
+            class="cursor-grab"
+            data-handle="rotate-center"
+            data-key-id={props.gkey.key.id}
+          />
+          {/* Visible rotation ring */}
+          <circle
+            cx={rotationRingCenter().x}
+            cy={rotationRingCenter().y}
             r={ROTATION_RING_RADIUS}
             fill="none"
             stroke={COLORS.rotationArc}
             stroke-width={ROTATION_INDICATOR_STROKE}
             stroke-dasharray="4,4"
             opacity={0.4}
-            style={{ "pointer-events": "auto" }}
-            class="cursor-grab"
-            data-handle="rotate-center"
-            data-key-id={props.gkey.key.id}
+            style={{ "pointer-events": "none" }}
           />
           {/* Center dot */}
           <circle
-            cx={screenCenter().x}
-            cy={screenCenter().y}
+            cx={rotationRingCenter().x}
+            cy={rotationRingCenter().y}
             r={5}
             fill={COLORS.rotationArc}
             stroke="white"
@@ -420,10 +457,10 @@ const KeyOverlay: VoidComponent<{
           />
           {/* Rotation direction arrow on the ring */}
           <path
-            d={`M ${screenCenter().x + ROTATION_RING_RADIUS} ${screenCenter().y} 
-                L ${screenCenter().x + ROTATION_RING_RADIUS - 5} ${screenCenter().y - 5}
-                M ${screenCenter().x + ROTATION_RING_RADIUS} ${screenCenter().y}
-                L ${screenCenter().x + ROTATION_RING_RADIUS - 5} ${screenCenter().y + 5}`}
+            d={`M ${rotationRingCenter().x + ROTATION_RING_RADIUS} ${rotationRingCenter().y} 
+                L ${rotationRingCenter().x + ROTATION_RING_RADIUS - 5} ${rotationRingCenter().y - 5}
+                M ${rotationRingCenter().x + ROTATION_RING_RADIUS} ${rotationRingCenter().y}
+                L ${rotationRingCenter().x + ROTATION_RING_RADIUS - 5} ${rotationRingCenter().y + 5}`}
             stroke={COLORS.rotationArc}
             stroke-width={2}
             fill="none"
@@ -453,6 +490,7 @@ const KeyOverlay: VoidComponent<{
                 stroke="white"
                 stroke-width={1.5}
                 style={{ "pointer-events": "auto" }}
+                class="cursor-move"
                 data-handle="rotate-anchor"
                 data-key-id={props.gkey.key.id}
               />
@@ -505,15 +543,28 @@ const KeyOverlay: VoidComponent<{
 };
 
 /**
+ * Normalize angle to the shortest path (-180 to 180)
+ * e.g., 270° -> -90°, -270° -> 90°
+ */
+function normalizeToShortestAngle(angle: number): number {
+  // Normalize to -180 to 180 range
+  let normalized = ((angle % 360) + 540) % 360 - 180;
+  return normalized;
+}
+
+/**
  * Rotation arc indicator showing angle and direction
  * The arc shows the direction from original position to current rotated position.
- * Positive angle = clockwise rotation in screen coordinates (Y down)
+ * For angles > 180°, the arc takes the short way (e.g., 270° shows as -90°)
  */
 const RotationArc: VoidComponent<{
   center: Point;
   startPoint: Point;
   angle: number;
 }> = (props) => {
+  // Normalize angle to take the short way around for >180°
+  const displayAngle = () => normalizeToShortestAngle(props.angle);
+
   const arcPath = createMemo(() => {
     const { x: cx, y: cy } = props.center;
     const { x: sx, y: sy } = props.startPoint;
@@ -525,12 +576,14 @@ const RotationArc: VoidComponent<{
     
     if (radius < MIN_ROTATION_ARC_RADIUS) return ""; // Too small to show
     
+    const normalizedAngle = displayAngle();
+    
     // The arc shows the rotation path from the ORIGINAL position to the CURRENT position.
     // - currentAngle: where the key center is now (after rotation)
     // - originalAngle: where the key center was before rotation (computed by subtracting the rotation angle)
     // The arc starts at originalAngle and ends at currentAngle, showing the rotation direction.
     const currentAngle = Math.atan2(dy, dx);
-    const originalAngle = currentAngle - (props.angle * Math.PI / 180);
+    const originalAngle = currentAngle - (normalizedAngle * Math.PI / 180);
     
     // Arc parameters - start from original position, end at current position
     const startX = cx + radius * Math.cos(originalAngle);
@@ -538,9 +591,10 @@ const RotationArc: VoidComponent<{
     const endX = cx + radius * Math.cos(currentAngle);
     const endY = cy + radius * Math.sin(currentAngle);
     
-    const largeArc = Math.abs(props.angle) > 180 ? 1 : 0;
+    // For normalized angles, we always take the short way (largeArc = 0)
+    const largeArc = 0;
     // In screen coords (Y down), positive angle = clockwise = sweep=1
-    const sweep = props.angle > 0 ? 1 : 0;
+    const sweep = normalizedAngle > 0 ? 1 : 0;
     
     return `M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} ${sweep} ${endX} ${endY}`;
   });
@@ -555,6 +609,8 @@ const RotationArc: VoidComponent<{
     
     if (radius < MIN_ROTATION_ARC_RADIUS) return "";
     
+    const normalizedAngle = displayAngle();
+    
     // Arrow points at the current position (end of the arc)
     const currentAngle = Math.atan2(dy, dx);
     const endX = cx + radius * Math.cos(currentAngle);
@@ -563,7 +619,7 @@ const RotationArc: VoidComponent<{
     // Arrow direction: tangent to the arc at the end point
     // For clockwise (positive angle), tangent points in +90° direction from radius
     // For counter-clockwise (negative angle), tangent points in -90° direction
-    const tangentAngle = currentAngle + (props.angle > 0 ? Math.PI / 2 : -Math.PI / 2);
+    const tangentAngle = currentAngle + (normalizedAngle > 0 ? Math.PI / 2 : -Math.PI / 2);
     const arrowLen = 6;
     
     const ax1 = endX + arrowLen * Math.cos(tangentAngle - 0.5);
@@ -590,7 +646,7 @@ const RotationArc: VoidComponent<{
           stroke={COLORS.rotationArc}
           stroke-width={2}
         />
-        {/* Angle label */}
+        {/* Angle label - shows actual angle, not normalized */}
         <text
           x={props.center.x}
           y={props.center.y - 30}

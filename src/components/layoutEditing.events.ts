@@ -3,7 +3,6 @@ import { produce } from "solid-js/store";
 import { keyCenter, type Point } from "~/lib/geometry";
 import {
   applyAnchorRotation,
-  applyLocalCenterRotation,
   getKeyRotatedCenter,
   rotatePoint,
 } from "~/lib/keyRotation";
@@ -182,37 +181,113 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
     const KEY_SIZE = 70;
 
     state.context.setKeyboard("layout", produce(layout => {
+      // For common center rotation with multiple keys
+      if (handleType === "rotate-center-common" && rotateMode === "center") {
+        // Calculate the common center of all selected keys (in units)
+        const selectedKeys = [...dragStart!.originalKeys.values()];
+        let sumX = 0, sumY = 0;
+        for (const orig of selectedKeys) {
+          sumX += orig.x + orig.w / 2;
+          sumY += orig.y + orig.h / 2;
+        }
+        const commonCenterUnit = {
+          x: sumX / selectedKeys.length,
+          y: sumY / selectedKeys.length
+        };
+        const commonCenterPx = {
+          x: commonCenterUnit.x * KEY_SIZE,
+          y: commonCenterUnit.y * KEY_SIZE
+        };
+
+        // Calculate rotation delta from drag
+        const startAngle = angleFromPoints(commonCenterPx, dragStart!.virtualPos);
+        const currentAngle = angleFromPoints(commonCenterPx, currentPos);
+        let deltaAngle = currentAngle - startAngle;
+
+        if (snap) {
+          deltaAngle = Math.round(deltaAngle / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES;
+        }
+
+        // Apply rotation to each key around the common center
+        for (const [id, original] of dragStart!.originalKeys) {
+          const k = layout.find(key => key.id === id);
+          if (!k) continue;
+
+          // Each key's center in units
+          const keyCenterUnit = {
+            x: original.x + original.w / 2,
+            y: original.y + original.h / 2
+          };
+
+          // Rotate this key's center around the common center
+          const newKeyCenterUnit = rotatePoint(keyCenterUnit, commonCenterUnit, deltaAngle);
+
+          // New key position (top-left corner)
+          const newX = newKeyCenterUnit.x - original.w / 2;
+          const newY = newKeyCenterUnit.y - original.h / 2;
+
+          // New rotation angle
+          const newR = original.r + deltaAngle;
+
+          // Set rx,ry to the common center so all keys share the same rotation origin
+          k.x = roundTo(newX);
+          k.y = roundTo(newY);
+          k.r = roundTo(newR);
+          k.rx = roundTo(commonCenterUnit.x);
+          k.ry = roundTo(commonCenterUnit.y);
+        }
+        return;
+      }
+
+      // Single key or individual key rotation
       for (const [id, original] of dragStart!.originalKeys) {
         const k = layout.find(key => key.id === id);
         if (!k) continue;
 
         if (rotateMode === "center") {
           // LOCAL CENTER MODE
-          // User drags around the key to rotate it around its center
-          // rx,ry should be set to key center
+          // User drags around the key to rotate it around its rotation origin
+          // If rx,ry is not set, use key center as rotation origin
           
-          // Calculate the key's center in pixels
-          const keyCenterPx = {
-            x: (original.x + original.w / 2) * KEY_SIZE,
-            y: (original.y + original.h / 2) * KEY_SIZE
+          // Get the rotation origin (rx,ry if set, otherwise key center)
+          const rotationOriginUnit = (original.rx !== 0 || original.ry !== 0)
+            ? { x: original.rx, y: original.ry }
+            : { x: original.x + original.w / 2, y: original.y + original.h / 2 };
+          
+          const rotationOriginPx = {
+            x: rotationOriginUnit.x * KEY_SIZE,
+            y: rotationOriginUnit.y * KEY_SIZE
           };
           
           // Calculate rotation delta from drag
-          const startAngle = angleFromPoints(keyCenterPx, dragStart!.virtualPos);
-          const currentAngle = angleFromPoints(keyCenterPx, currentPos);
+          const startAngle = angleFromPoints(rotationOriginPx, dragStart!.virtualPos);
+          const currentAngle = angleFromPoints(rotationOriginPx, currentPos);
           let deltaAngle = currentAngle - startAngle;
 
           if (snap) {
             deltaAngle = Math.round(deltaAngle / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES;
           }
 
-          // Apply rotation using the new math library
-          const result = applyLocalCenterRotation(original, deltaAngle);
-          k.x = result.x;
-          k.y = result.y;
-          k.r = result.r;
-          k.rx = result.rx;
-          k.ry = result.ry;
+          // If rx,ry was not set before, initialize to key center
+          if (original.rx === 0 && original.ry === 0) {
+            const keyCenterUnit = { x: original.x + original.w / 2, y: original.y + original.h / 2 };
+            k.r = roundTo(original.r + deltaAngle);
+            k.rx = roundTo(keyCenterUnit.x);
+            k.ry = roundTo(keyCenterUnit.y);
+            // x, y stay the same since we're rotating around key center
+          } else {
+            // rx,ry already set - rotate around it
+            // Key center position moves as we rotate around rx,ry
+            const keyCenterUnit = { x: original.x + original.w / 2, y: original.y + original.h / 2 };
+            const newKeyCenterUnit = rotatePoint(keyCenterUnit, rotationOriginUnit, deltaAngle);
+            
+            k.x = roundTo(newKeyCenterUnit.x - original.w / 2);
+            k.y = roundTo(newKeyCenterUnit.y - original.h / 2);
+            k.r = roundTo(original.r + deltaAngle);
+            // Keep existing rx,ry
+            k.rx = original.rx;
+            k.ry = original.ry;
+          }
         } else {
           // ANCHOR MODE
           // User drags the anchor point (rx,ry), and key rotates to point away from it

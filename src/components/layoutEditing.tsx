@@ -15,7 +15,7 @@ import RectangleHorizontal from "lucide-solid/icons/rectangle-horizontal";
 import RotateCw from "lucide-solid/icons/rotate-cw";
 import X from "lucide-solid/icons/x";
 import { createMemo, createSignal, Show, type Accessor, type ParentComponent, type Setter, type VoidComponent } from "solid-js";
-import { produce } from "solid-js/store";
+import { produce, unwrap } from "solid-js/store";
 import { ulid } from "ulidx";
 import { bboxCenter, getKeysBoundingBox, type Point } from "~/lib/geometry";
 import type { Key } from "../typedef";
@@ -114,8 +114,9 @@ export const LayoutEditToolbar: VoidComponent<LayoutEditToolbarProps> = (props) 
   const copyKeys = () => {
     const keys = selectedKeysData();
     if (keys.length === 0) return;
-    // Deep clone the keys
-    editState().setClipboard(structuredClone(keys));
+    // Unwrap from Solid store proxy and deep clone the keys
+    const unwrappedKeys = keys.map(k => ({ ...unwrap(k) }));
+    editState().setClipboard(structuredClone(unwrappedKeys));
   };
 
   // Paste keys from clipboard
@@ -304,8 +305,8 @@ export const LayoutEditToolbar: VoidComponent<LayoutEditToolbarProps> = (props) 
         </Show>
       </div>
 
-      {/* Actions (only show when editing tool is active) */}
-      <Show when={isEditingTool()}>
+      {/* Actions (show for all tools, including select) */}
+      <Show when={hasSelection() || editState().clipboard()}>
         <div class="flex items-center gap-0.5 bg-base-200/90 backdrop-blur-sm rounded-lg p-0.5 shadow-md">
           <ToolbarTooltip content="Copy (Ctrl+C)">
             <Button
