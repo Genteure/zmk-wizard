@@ -6,8 +6,8 @@ import { Popover } from "@kobalte/core/popover";
 import { Tabs } from "@kobalte/core/tabs";
 import { ulid } from "ulidx";
 
-import LayoutDashboard from "lucide-solid/icons/layout-dashboard";
 import LucideKeyboard from "lucide-solid/icons/keyboard";
+import LayoutDashboard from "lucide-solid/icons/layout-dashboard";
 import RadioReceiver from "lucide-solid/icons/radio-receiver";
 
 import { swpBgClass } from "~/lib/swpColors";
@@ -152,18 +152,25 @@ export const App: VoidComponent = () => {
         >
           <Tabs.List class="flex relative items-center border-b border-base-300 mb-4">
             <Tabs.Trigger class="btn btn-ghost px-2" value="layout">
-              <LayoutDashboard class="inline-block w-6 h-6 mr-1" />
+              <LayoutDashboard class="inline-block w-6 h-6 mr-1" aria-hidden />
               Layout
             </Tabs.Trigger>
 
             <Tabs.Trigger class="btn btn-ghost px-2" value="keyboard">
-              <LucideKeyboard class="inline-block w-6 h-6 mr-1" />
+              <LucideKeyboard class="inline-block w-6 h-6 mr-1" aria-hidden />
               Keyboard
             </Tabs.Trigger>
 
             {/* <div class="p-1 border-b-3 border-transparent select-none">
               Parts:
             </div> */}
+
+            <Show when={context.keyboard.dongle}>
+              <Tabs.Trigger class="btn btn-ghost px-2" value="dongle">
+                <RadioReceiver class="inline-block w-6 h-6 mr-1" aria-hidden />
+                Dongle
+              </Tabs.Trigger>
+            </Show>
 
             <For
               each={context.keyboard.parts}
@@ -174,6 +181,7 @@ export const App: VoidComponent = () => {
                 value={`part-${i()}`}
               >
                 <span
+                  aria-hidden
                   class="inline-block rounded-full w-3 h-3 mr-1"
                   classList={{ [swpBgClass(i())]: true }}
                 />
@@ -182,12 +190,7 @@ export const App: VoidComponent = () => {
                 </span>
               </Tabs.Trigger>)}
             </For>
-            <Show when={context.keyboard.dongle}>
-              <Tabs.Trigger class="btn btn-ghost px-2" value="dongle">
-                <RadioReceiver class="inline-block w-6 h-6 mr-1" />
-                Dongle
-              </Tabs.Trigger>
-            </Show>
+
             <Tabs.Indicator class="absolute transition-all bg-primary h-0.5 -bottom-px" />
           </Tabs.List>
         </div>
@@ -200,6 +203,12 @@ export const App: VoidComponent = () => {
           <ConfigKeyboard />
         </Tabs.Content>
 
+        <Show when={context.keyboard.dongle}>
+          <Tabs.Content value="dongle" class="flex flex-col gap-2 overflow-y-auto flex-1">
+            <ConfigDongle />
+          </Tabs.Content>
+        </Show>
+
         <For each={context.keyboard.parts}>
           {(_part, i) => (
             <Tabs.Content value={`part-${i()}`} class="flex flex-col gap-2 overflow-y-auto flex-1">
@@ -208,11 +217,6 @@ export const App: VoidComponent = () => {
           )}
         </For>
 
-        <Show when={context.keyboard.dongle}>
-          <Tabs.Content value="dongle" class="flex flex-col gap-2 overflow-y-auto flex-1">
-            <ConfigDongle />
-          </Tabs.Content>
-        </Show>
       </Tabs>
       {/* <!-- /Config, Preview --> */}
       <div class="flex-3 flex flex-col">
