@@ -223,6 +223,10 @@ const Validators: Record<string, ValidatorFunction> = {
           if (meta.bus !== bus.type) {
             errors.push({ part: partIndex, message: `Device type "${device.type}" is not allowed on ${bus.type.toUpperCase()} bus "${bus.name}"` });
           }
+          // Check if device requires a module that is not enabled
+          if (meta.module && !keyboard.modules.includes(meta.module)) {
+            errors.push({ part: partIndex, message: `Device "${meta.fullName}" requires external module "${meta.module}" which is not enabled` });
+          }
         }
 
         for (const device of devices) {

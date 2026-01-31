@@ -5,7 +5,7 @@ import Info from "lucide-solid/icons/info";
 import { createMemo, createSignal, For, Show, type Accessor, type VoidComponent } from "solid-js";
 import { produce } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
-import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, I2cBus, PinSelection, SpiBus } from "~/typedef";
+import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, I2cBus, ModuleId, PinSelection, SpiBus } from "~/typedef";
 import { AnyBusDeviceSchema } from "~/typedef";
 import { addDeviceToBus, isI2cBus, isSpiBus } from "~/typehelper";
 import { useWizardContext } from "../context";
@@ -20,6 +20,7 @@ function defaultDevice(type: BusDeviceTypeName): AnyBusDevice {
 const AddDevicePanel: VoidComponent<{
   buses: Accessor<AnyBus[]>;
   controllerInfo: Accessor<ControllerInfo | null>;
+  enabledModules: Accessor<ModuleId[]>;
   disabledByConflictBuses: Accessor<Set<BusName>>;
   conflictingActiveFor: (busName: BusName) => BusName[];
   busHasExclusive: (bus: AnyBus) => boolean;
@@ -28,11 +29,37 @@ const AddDevicePanel: VoidComponent<{
 }> = (panelProps) => {
   const [busPickerType, setBusPickerType] = createSignal<BusDeviceTypeName | null>(null);
 
+  /**
+   * Check if a device type's required module is enabled
+   */
+  const isModuleEnabled = (type: BusDeviceTypeName): boolean => {
+    const meta = getBusDeviceMetadata(type);
+    if (!meta.module) return true; // No module required
+    return panelProps.enabledModules().includes(meta.module);
+  };
+
+  /**
+   * Get device types that have compatible buses on this controller
+   */
   const deviceOptionsForController = createMemo(() => {
     return busDeviceTypes.filter((type: BusDeviceTypeName) => {
       const meta = getBusDeviceMetadata(type);
       return panelProps.buses().some((bus) => bus.type === meta.bus);
     });
+  });
+
+  /**
+   * Device types that are available (have their modules enabled)
+   */
+  const availableDeviceOptions = createMemo(() => {
+    return deviceOptionsForController().filter(isModuleEnabled);
+  });
+
+  /**
+   * Count devices that need a module that isn't enabled
+   */
+  const hiddenDeviceCount = createMemo(() => {
+    return deviceOptionsForController().filter(type => !isModuleEnabled(type)).length;
   });
 
   const busesForType = (type: BusDeviceTypeName) => {
@@ -111,7 +138,7 @@ const AddDevicePanel: VoidComponent<{
       <div class="font-semibold text-sm">Add device</div>
       {/* <div class="text-xs text-base-content/75">Choose a device, then select a bus.</div> */}
       <div class="mt-2 flex flex-wrap gap-2">
-        <For each={deviceOptionsForController()}>{(type) => {
+        <For each={availableDeviceOptions()}>{(type) => {
           const disabled = createMemo(() => deviceButtonDisabled(type));
           const setOpen = (next: boolean) => setBusPickerType(next ? type : null);
 
@@ -159,6 +186,12 @@ const AddDevicePanel: VoidComponent<{
         }}</For>
       </div>
 
+      <Show when={hiddenDeviceCount() > 0}>
+        <div class="text-xs text-base-content/70 mt-2 px-1 py-1 bg-base-300/50 rounded">
+          {hiddenDeviceCount()} more device{hiddenDeviceCount() > 1 ? "s" : ""} available after adding external modules in the Keyboard tab.
+        </div>
+      </Show>
+
       <div class="text-xs text-base-content/75 mt-2">
         Configuring SPI/I2C devices was not tested thoroughly with all possible configurations and may produce broken builds.
         Please join the <Link class="link" href="https://zmk.dev/community/discord/invite" target="_blank" rel="noopener noreferrer">ZMK Community Discord</Link> for help
@@ -172,6 +205,7 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
   const context = useWizardContext();
   const part = createMemo(() => context.keyboard.parts[props.partIndex()]);
   const buses = (() => part().buses);
+  const enabledModules = () => context.keyboard.modules;
 
   const controllerInfo = createMemo(() => controllerInfos[part().controller]);
   const socBusMetadata = createMemo(() => socBusData[controllerInfo().soc]);
@@ -625,6 +659,7 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
         <AddDevicePanel
           buses={buses}
           controllerInfo={controllerInfo}
+          enabledModules={enabledModules}
           disabledByConflictBuses={disabledByConflictBuses}
           conflictingActiveFor={conflictingActiveFor}
           busHasExclusive={busHasExclusive}
