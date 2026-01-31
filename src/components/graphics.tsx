@@ -390,8 +390,8 @@ export const KeyboardPreview: VoidComponent<{
   // null means no key is focused (container focus)
   const [focusedKeyIndex, setFocusedKeyIndex] = createSignal<number | null>(null);
 
-  // Layout editing state (only used for physical layout)
-  const layoutEditState = props.isPhysicalLayout ? createLayoutEditState() : null;
+  // Layout editing state (used for both physical and logical layouts for toolbar actions)
+  const layoutEditState = createLayoutEditState();
   const [isLayoutDragging, setIsLayoutDragging] = createSignal(false);
   const [dragPreview, setDragPreview] = createSignal<DragPreview | null>(null);
   
@@ -533,7 +533,7 @@ export const KeyboardPreview: VoidComponent<{
   const wiringHandler: InteractionEventHandlers = createWiringEventHandlers(eventHandlerStates);
 
   // Layout edit handlers (only for physical layout)
-  const layoutEditHandler = props.isPhysicalLayout && layoutEditState ? createLayoutEditEventHandlers({
+  const layoutEditHandler = props.isPhysicalLayout ? createLayoutEditEventHandlers({
     c2v: eventHandlerStates.c2v,
     contentBbox: eventHandlerStates.contentBbox,
     keys: props.keys,
@@ -547,7 +547,6 @@ export const KeyboardPreview: VoidComponent<{
 
   // Check if we should use layout edit handlers
   const isLayoutEditToolActive = createMemo(() => {
-    if (!layoutEditState) return false;
     const tool = layoutEditState.tool();
     return tool !== "select" && context.nav.selectedTab === "layout";
   });
@@ -708,7 +707,7 @@ export const KeyboardPreview: VoidComponent<{
     };
 
     // Layout editing tool shortcuts (only in physical layout view with layout tab selected)
-    if (layoutEditState && context.nav.selectedTab === "layout") {
+    if (context.nav.selectedTab === "layout") {
       switch (e.key.toLowerCase()) {
         case 'v': {
           if (!e.ctrlKey && !e.metaKey) {
@@ -1197,7 +1196,7 @@ export const KeyboardPreview: VoidComponent<{
       <div class="absolute top-2 left-2 bg-base-200/50 backdrop-blur-sm px-2 py-0.5 select-none rounded-lg text-xs md:text-sm font-medium shadow-md">
         {(() => {
           const mode = activeMode();
-          const tool = layoutEditState?.tool();
+          const tool = layoutEditState.tool();
           // Show active tool when layout editing is available
           const label = mode === "pan" ? "Pan" 
             : mode === "wiring" ? "Wiring" 
@@ -1208,28 +1207,22 @@ export const KeyboardPreview: VoidComponent<{
       </div>
 
       {/* Layout editing overlay (SVG handles, indicators) */}
-      <Show when={layoutEditState && props.isPhysicalLayout && context.nav.selectedTab === "layout"}>
+      <Show when={props.isPhysicalLayout && context.nav.selectedTab === "layout"}>
         <LayoutEditOverlay
           keys={props.keys}
-          editState={layoutEditState!}
+          editState={layoutEditState}
           v2c={v2c}
           contentBbox={contentBbox}
         />
       </Show>
 
       {/* Layout editing toolbar */}
-      <Show when={layoutEditState || context.nav.selectedTab === "layout"}>
-        {(() => {
-          // Create a minimal edit state for logical layout if needed
-          const minimalEditState = layoutEditState || createLayoutEditState();
-          return (
-            <LayoutEditToolbar
-              editState={minimalEditState}
-              keys={props.keys}
-              isPhysicalLayout={props.isPhysicalLayout}
-            />
-          );
-        })()}
+      <Show when={context.nav.selectedTab === "layout"}>
+        <LayoutEditToolbar
+          editState={layoutEditState}
+          keys={props.keys}
+          isPhysicalLayout={props.isPhysicalLayout}
+        />
       </Show>
 
       {/* Screen reader live region for status updates */}

@@ -242,7 +242,7 @@ export const LayoutEditToolbar: VoidComponent<LayoutEditToolbarProps> = (props) 
     normalizeKeys(context);
   };
 
-  // Skip rendering toolbar if not in layout tab (hide when in wiring mode)
+  // Skip rendering toolbar if not in layout tab (e.g., when in wiring or other modes)
   if (context.nav.selectedTab !== "layout") {
     return null;
   }
