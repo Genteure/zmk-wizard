@@ -90,13 +90,13 @@ describe("keyRotation", () => {
       expect(angleBetweenPoints(from, to)).toBeCloseTo(0, 5);
     });
 
-    it("returns 90 for point below", () => {
+    it("returns 90 for point in +y direction (below in screen coords)", () => {
       const from = { x: 0, y: 0 };
       const to = { x: 0, y: 1 };
       expect(angleBetweenPoints(from, to)).toBeCloseTo(90, 5);
     });
 
-    it("returns -90 for point above", () => {
+    it("returns -90 for point in -y direction (above in screen coords)", () => {
       const from = { x: 0, y: 0 };
       const to = { x: 0, y: -1 };
       expect(angleBetweenPoints(from, to)).toBeCloseTo(-90, 5);

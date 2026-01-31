@@ -5,6 +5,7 @@ import {
   applyAnchorRotation,
   applyLocalCenterRotation,
   getKeyRotatedCenter,
+  rotatePoint,
 } from "~/lib/keyRotation";
 import type { Key } from "../typedef";
 import type { WizardContextType } from "./context";
@@ -251,31 +252,20 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
               deltaAngle = Math.round(deltaAngle / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES;
             }
 
-            // Get the current rotated center
+            // Get the current rotated center and anchor in units
             const rotatedCenter = getKeyRotatedCenter(original);
+            const anchorUnit = { x: original.rx || original.x, y: original.ry || original.y };
             
-            // Rotate the center around the anchor
-            const rad = deltaAngle * Math.PI / 180;
-            const cos = Math.cos(rad);
-            const sin = Math.sin(rad);
-            const dx = rotatedCenter.x - (original.rx || original.x);
-            const dy = rotatedCenter.y - (original.ry || original.y);
-            const newCenterX = (original.rx || original.x) + dx * cos - dy * sin;
-            const newCenterY = (original.ry || original.y) + dx * sin + dy * cos;
+            // Rotate the center around the anchor using the helper function
+            const newCenter = rotatePoint(rotatedCenter, anchorUnit, deltaAngle);
             
             // Calculate new x,y to place key such that after rotation its center is at newCenter
             // Inverse rotate newCenter around anchor to get unrotated center
             const newR = original.r + deltaAngle;
-            const radNew = -newR * Math.PI / 180;
-            const cosNew = Math.cos(radNew);
-            const sinNew = Math.sin(radNew);
-            const dxNew = newCenterX - (original.rx || original.x);
-            const dyNew = newCenterY - (original.ry || original.y);
-            const unrotatedCenterX = (original.rx || original.x) + dxNew * cosNew - dyNew * sinNew;
-            const unrotatedCenterY = (original.ry || original.y) + dxNew * sinNew + dyNew * cosNew;
+            const unrotatedCenter = rotatePoint(newCenter, anchorUnit, -newR);
             
-            k.x = roundTo(unrotatedCenterX - original.w / 2);
-            k.y = roundTo(unrotatedCenterY - original.h / 2);
+            k.x = roundTo(unrotatedCenter.x - original.w / 2);
+            k.y = roundTo(unrotatedCenter.y - original.h / 2);
             k.r = roundTo(newR);
             // Keep existing anchor
             k.rx = original.rx;

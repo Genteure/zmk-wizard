@@ -13,6 +13,9 @@ const HANDLE_HALF = HANDLE_SIZE / 2;
 /** Minimum radius in pixels to show rotation arc (avoid cluttered display for small rotations) */
 const MIN_ROTATION_ARC_RADIUS = 10;
 
+/** Rotation indicator stroke width for draggable rotation ring */
+const ROTATION_INDICATOR_STROKE = 8;
+
 /** Color constants */
 const COLORS = {
   handle: "#3b82f6", // blue-500
@@ -270,7 +273,7 @@ const KeyOverlay: VoidComponent<{
             r={25}
             fill="none"
             stroke={COLORS.rotationArc}
-            stroke-width={8}
+            stroke-width={ROTATION_INDICATOR_STROKE}
             stroke-dasharray="4,4"
             opacity={0.3}
             style={{ "pointer-events": "auto" }}

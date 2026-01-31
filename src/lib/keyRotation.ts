@@ -245,9 +245,12 @@ export function calculateDefaultAnchorPosition(
 ): Point {
   const center = getKeyRotatedCenter(key);
   
-  // Place anchor in the direction opposite to where the key is pointing
-  // Key points in direction of r + 270 (since r=0 means key points up, which is -90 in standard coords)
-  // Anchor should be behind the key, so r + 90
+  // Place anchor in the direction opposite to where the key is pointing.
+  // In our coordinate system:
+  // - r=0 means key points "up" (toward -y in screen coords)
+  // - We want anchor "below" the key (in the +y direction from key perspective)
+  // - To convert: key's local "down" direction = r + 90 degrees in world coords
+  //   (because r=0 pointing up = -90° in standard math coords, so down = -90° + 180° = +90°)
   const anchorAngle = (key.r + 90) * Math.PI / 180;
   
   return {
