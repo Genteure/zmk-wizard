@@ -1,6 +1,11 @@
 import type { Accessor, JSX, Setter } from "solid-js";
 import { produce } from "solid-js/store";
 import { keyCenter, type Point } from "~/lib/geometry";
+import {
+  applyAnchorRotation,
+  applyLocalCenterRotation,
+  getKeyRotatedCenter,
+} from "~/lib/keyRotation";
 import type { Key } from "../typedef";
 import type { WizardContextType } from "./context";
 import { normalizeKeys } from "./context";
@@ -162,13 +167,18 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
   };
 
   /**
-   * Apply rotation transformation during drag
+   * Apply rotation transformation during drag.
+   * 
+   * Two modes:
+   * - Center mode: Rotate each key around its own center. The user drags to change rotation angle.
+   * - Anchor mode: The key center stays fixed. User drags the anchor point and key rotates to point away from it.
    */
   const applyRotateTransform = (currentPos: Point, snap: boolean) => {
-    if (!dragStart || !dragStart.rotateAnchor) return;
+    if (!dragStart) return;
 
     const rotateMode = state.rotateMode();
-    const anchor = dragStart.rotateAnchor;
+    const handleType = dragStart.handleType;
+    const KEY_SIZE = 70;
 
     state.context.setKeyboard("layout", produce(layout => {
       for (const [id, original] of dragStart!.originalKeys) {
@@ -176,50 +186,101 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
         if (!k) continue;
 
         if (rotateMode === "center") {
-          // Rotate around each key's own center
-          const keyCenter = { x: (original.x + original.w / 2) * 70, y: (original.y + original.h / 2) * 70 };
-          const startAngle = angleFromPoints(keyCenter, dragStart!.virtualPos);
-          const currentAngle = angleFromPoints(keyCenter, currentPos);
+          // LOCAL CENTER MODE
+          // User drags around the key to rotate it around its center
+          // rx,ry should be set to key center
+          
+          // Calculate the key's center in pixels
+          const keyCenterPx = {
+            x: (original.x + original.w / 2) * KEY_SIZE,
+            y: (original.y + original.h / 2) * KEY_SIZE
+          };
+          
+          // Calculate rotation delta from drag
+          const startAngle = angleFromPoints(keyCenterPx, dragStart!.virtualPos);
+          const currentAngle = angleFromPoints(keyCenterPx, currentPos);
           let deltaAngle = currentAngle - startAngle;
 
           if (snap) {
             deltaAngle = Math.round(deltaAngle / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES;
           }
 
-          k.r = roundTo(original.r + deltaAngle);
-          // Set rotation origin to key center
-          k.rx = 0;
-          k.ry = 0;
+          // Apply rotation using the new math library
+          const result = applyLocalCenterRotation(original, deltaAngle);
+          k.x = result.x;
+          k.y = result.y;
+          k.r = result.r;
+          k.rx = result.rx;
+          k.ry = result.ry;
         } else {
-          // Rotate around common anchor point
-          const startAngle = angleFromPoints(anchor, dragStart!.virtualPos);
-          const currentAngle = angleFromPoints(anchor, currentPos);
-          let deltaAngle = currentAngle - startAngle;
+          // ANCHOR MODE
+          // User drags the anchor point (rx,ry), and key rotates to point away from it
+          // Key center after rotation stays fixed
+          
+          if (handleType === "rotate-anchor") {
+            // User is dragging the anchor point itself
+            // Convert current position from pixels to units
+            let newAnchorX = currentPos.x / KEY_SIZE;
+            let newAnchorY = currentPos.y / KEY_SIZE;
+            
+            if (snap) {
+              newAnchorX = snapToGrid(newAnchorX);
+              newAnchorY = snapToGrid(newAnchorY);
+            }
+            
+            const newAnchor = { x: newAnchorX, y: newAnchorY };
+            const result = applyAnchorRotation(original, newAnchor);
+            k.x = result.x;
+            k.y = result.y;
+            k.r = result.r;
+            k.rx = result.rx;
+            k.ry = result.ry;
+          } else {
+            // User is dragging elsewhere - rotate key around current anchor
+            // Calculate rotation delta
+            const anchorPx = {
+              x: (original.rx || original.x) * KEY_SIZE,
+              y: (original.ry || original.y) * KEY_SIZE
+            };
+            
+            const startAngle = angleFromPoints(anchorPx, dragStart!.virtualPos);
+            const currentAngle = angleFromPoints(anchorPx, currentPos);
+            let deltaAngle = currentAngle - startAngle;
 
-          if (snap) {
-            deltaAngle = Math.round(deltaAngle / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES;
+            if (snap) {
+              deltaAngle = Math.round(deltaAngle / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES;
+            }
+
+            // Get the current rotated center
+            const rotatedCenter = getKeyRotatedCenter(original);
+            
+            // Rotate the center around the anchor
+            const rad = deltaAngle * Math.PI / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            const dx = rotatedCenter.x - (original.rx || original.x);
+            const dy = rotatedCenter.y - (original.ry || original.y);
+            const newCenterX = (original.rx || original.x) + dx * cos - dy * sin;
+            const newCenterY = (original.ry || original.y) + dx * sin + dy * cos;
+            
+            // Calculate new x,y to place key such that after rotation its center is at newCenter
+            // Inverse rotate newCenter around anchor to get unrotated center
+            const newR = original.r + deltaAngle;
+            const radNew = -newR * Math.PI / 180;
+            const cosNew = Math.cos(radNew);
+            const sinNew = Math.sin(radNew);
+            const dxNew = newCenterX - (original.rx || original.x);
+            const dyNew = newCenterY - (original.ry || original.y);
+            const unrotatedCenterX = (original.rx || original.x) + dxNew * cosNew - dyNew * sinNew;
+            const unrotatedCenterY = (original.ry || original.y) + dxNew * sinNew + dyNew * cosNew;
+            
+            k.x = roundTo(unrotatedCenterX - original.w / 2);
+            k.y = roundTo(unrotatedCenterY - original.h / 2);
+            k.r = roundTo(newR);
+            // Keep existing anchor
+            k.rx = original.rx;
+            k.ry = original.ry;
           }
-
-          // Calculate new position by rotating key center around anchor
-          const keyCenter = { x: (original.x + original.w / 2) * 70, y: (original.y + original.h / 2) * 70 };
-          const dx = keyCenter.x - anchor.x;
-          const dy = keyCenter.y - anchor.y;
-          const rad = deltaAngle * Math.PI / 180;
-          const cos = Math.cos(rad);
-          const sin = Math.sin(rad);
-          const newCenterX = anchor.x + dx * cos - dy * sin;
-          const newCenterY = anchor.y + dx * sin + dy * cos;
-
-          // Update key position (convert from center to top-left)
-          k.x = roundTo((newCenterX - original.w * 70 / 2) / 70);
-          k.y = roundTo((newCenterY - original.h * 70 / 2) / 70);
-
-          // Update rotation
-          k.r = roundTo(original.r + deltaAngle);
-
-          // Set rotation origin to the anchor point
-          k.rx = roundTo(anchor.x / 70);
-          k.ry = roundTo(anchor.y / 70);
         }
       }
     }));
