@@ -988,6 +988,10 @@ export const KeyboardPreview: VoidComponent<{
               <For each={props.keys()}>
                 {(gkey) => {
                   const pinActive = createMemo(() => {
+                    // Keys not belonging to the active part should always be shown as inactive
+                    if (context.nav.activeEditPart !== null && gkey.part !== context.nav.activeEditPart) {
+                      return false;
+                    }
                     const wiring = context.keyboard.parts[gkey.part]?.keys[gkey.key.id];
                     return context.nav.activeWiringPin !== null &&
                       (wiring?.input === context.nav.activeWiringPin || wiring?.output === context.nav.activeWiringPin);
