@@ -357,6 +357,7 @@ export const LayoutEditToolbar: VoidComponent<LayoutEditToolbarProps> = (props) 
 /**
  * Tool-specific dialog for entering exact values
  * Each tool has different fields relevant to that operation
+ * Move tool uses offset values (relative), resize and rotate use absolute values
  */
 const ToolExactDialog: VoidComponent<{
   tool: Accessor<LayoutEditTool>;
@@ -366,6 +367,8 @@ const ToolExactDialog: VoidComponent<{
   const [isOpen, setIsOpen] = createSignal(false);
 
   // Local form state
+  // For move tool: x,y are offsets (relative)
+  // For resize/rotate: values are absolute
   const [xValue, setXValue] = createSignal("");
   const [yValue, setYValue] = createSignal("");
   const [wValue, setWValue] = createSignal("");
@@ -382,10 +385,14 @@ const ToolExactDialog: VoidComponent<{
     const selectedKeys = context.keyboard.layout.filter(k => selectedIds.includes(k.id));
     if (selectedKeys.length === 0) return;
 
-    if (selectedKeys.length === 1) {
+    const tool = props.tool();
+
+    if (tool === "move") {
+      // For move tool, always start with 0 offset
+      setXValue("0");
+      setYValue("0");
+    } else if (selectedKeys.length === 1) {
       const k = selectedKeys[0];
-      setXValue(k.x.toString());
-      setYValue(k.y.toString());
       setWValue(k.w.toString());
       setHValue(k.h.toString());
       setRValue(k.r.toString());
@@ -393,16 +400,12 @@ const ToolExactDialog: VoidComponent<{
       setRyValue(k.ry.toString());
     } else {
       // For multiple selection, show common values or empty
-      const sameX = selectedKeys.every(k => k.x === selectedKeys[0].x);
-      const sameY = selectedKeys.every(k => k.y === selectedKeys[0].y);
       const sameW = selectedKeys.every(k => k.w === selectedKeys[0].w);
       const sameH = selectedKeys.every(k => k.h === selectedKeys[0].h);
       const sameR = selectedKeys.every(k => k.r === selectedKeys[0].r);
       const sameRx = selectedKeys.every(k => k.rx === selectedKeys[0].rx);
       const sameRy = selectedKeys.every(k => k.ry === selectedKeys[0].ry);
 
-      setXValue(sameX ? selectedKeys[0].x.toString() : "");
-      setYValue(sameY ? selectedKeys[0].y.toString() : "");
       setWValue(sameW ? selectedKeys[0].w.toString() : "");
       setHValue(sameH ? selectedKeys[0].h.toString() : "");
       setRValue(sameR ? selectedKeys[0].r.toString() : "");
@@ -424,10 +427,14 @@ const ToolExactDialog: VoidComponent<{
         const tool = props.tool();
 
         if (tool === "move") {
-          const x = parseFloat(xValue());
-          const y = parseFloat(yValue());
-          if (!isNaN(x)) k.x = x;
-          if (!isNaN(y)) k.y = y;
+          // Move tool uses offset (relative) values
+          const dx = parseFloat(xValue());
+          const dy = parseFloat(yValue());
+          if (!isNaN(dx)) k.x = roundTo(k.x + dx);
+          if (!isNaN(dy)) k.y = roundTo(k.y + dy);
+          // Also move rotation anchor if it's set
+          if (k.rx !== 0 && !isNaN(dx)) k.rx = roundTo(k.rx + dx);
+          if (k.ry !== 0 && !isNaN(dy)) k.ry = roundTo(k.ry + dy);
         } else if (tool === "resize") {
           const w = parseFloat(wValue());
           const h = parseFloat(hValue());
@@ -449,7 +456,7 @@ const ToolExactDialog: VoidComponent<{
 
   const dialogTitle = createMemo(() => {
     switch (props.tool()) {
-      case "move": return "Set Position";
+      case "move": return "Move by Offset";
       case "resize": return "Set Size";
       case "rotate": return "Set Rotation";
       default: return "Set Values";
@@ -483,32 +490,35 @@ const ToolExactDialog: VoidComponent<{
             </Dialog.CloseButton>
           </div>
 
-          {/* Move tool fields */}
+          {/* Move tool fields - offset values */}
           <Show when={props.tool() === "move"}>
-            <div class="grid grid-cols-2 gap-2 mb-3">
+            <div class="grid grid-cols-2 gap-2 mb-2">
               <label class="input input-sm input-bordered flex items-center gap-1">
-                <span class="text-xs font-mono text-base-content/70 w-4">X</span>
+                <span class="text-xs font-mono text-base-content/70 w-6">ΔX</span>
                 <input
                   type="text"
                   inputMode="decimal"
-                  placeholder="X position"
+                  placeholder="0"
                   class="w-full bg-transparent"
                   value={xValue()}
                   onInput={(e) => setXValue(e.currentTarget.value)}
                 />
               </label>
               <label class="input input-sm input-bordered flex items-center gap-1">
-                <span class="text-xs font-mono text-base-content/70 w-4">Y</span>
+                <span class="text-xs font-mono text-base-content/70 w-6">ΔY</span>
                 <input
                   type="text"
                   inputMode="decimal"
-                  placeholder="Y position"
+                  placeholder="0"
                   class="w-full bg-transparent"
                   value={yValue()}
                   onInput={(e) => setYValue(e.currentTarget.value)}
                 />
               </label>
             </div>
+            <p class="text-xs text-base-content/60 mb-3">
+              Offset in units (negative = left/up)
+            </p>
           </Show>
 
           {/* Resize tool fields */}

@@ -10,6 +10,9 @@ const KEY_SIZE = 70; // pixels per unit
 const HANDLE_SIZE = 10;
 const HANDLE_HALF = HANDLE_SIZE / 2;
 
+/** Rotation ring radius for center rotation mode */
+const ROTATION_RING_RADIUS = 35;
+
 /** Minimum radius in pixels to show rotation arc (avoid cluttered display for small rotations) */
 const MIN_ROTATION_ARC_RADIUS = 10;
 
@@ -24,6 +27,7 @@ const COLORS = {
   rotationArc: "#8b5cf6", // violet-500
   origin: "#22c55e", // green-500
   guideLine: "#94a3b8", // slate-400
+  ghostOutline: "#94a3b8", // slate-400 - for original position outline
 };
 
 interface LayoutEditOverlayProps {
@@ -111,9 +115,85 @@ export const LayoutEditOverlay: VoidComponent<LayoutEditOverlayProps> = (props) 
               rotateMode={props.editState.rotateMode}
               v2c={props.v2c}
               contentBbox={props.contentBbox}
+              isMultiSelect={selectedKeys().length > 1}
             />
           )}
         </For>
+
+        {/* Common center rotation ring for multi-select in center mode */}
+        <Show when={props.editState.tool() === "rotate" && props.editState.rotateMode() === "center" && selectedKeys().length > 1}>
+          {(() => {
+            // Calculate common center of all selected keys
+            const commonCenter = createMemo(() => {
+              const keys = selectedKeys();
+              if (keys.length === 0) return null;
+              let sumX = 0, sumY = 0;
+              for (const k of keys) {
+                const center = keyCenter(k);
+                sumX += center.x;
+                sumY += center.y;
+              }
+              return { x: sumX / keys.length, y: sumY / keys.length };
+            });
+
+            const screenCenter = () => {
+              const center = commonCenter();
+              if (!center) return { x: 0, y: 0 };
+              const bbox = props.contentBbox();
+              return props.v2c(center.x - bbox.min.x - bbox.width / 2, center.y - bbox.min.y - bbox.height / 2);
+            };
+
+            return (
+              <Show when={commonCenter()}>
+                <g>
+                  {/* Common rotation ring */}
+                  <circle
+                    cx={screenCenter().x}
+                    cy={screenCenter().y}
+                    r={ROTATION_RING_RADIUS + 10}
+                    fill="none"
+                    stroke={COLORS.rotationArc}
+                    stroke-width={ROTATION_INDICATOR_STROKE}
+                    stroke-dasharray="6,4"
+                    opacity={0.4}
+                    style={{ "pointer-events": "auto" }}
+                    class="cursor-grab"
+                    data-handle="rotate-center-common"
+                  />
+                  {/* Center dot */}
+                  <circle
+                    cx={screenCenter().x}
+                    cy={screenCenter().y}
+                    r={6}
+                    fill={COLORS.rotationArc}
+                    stroke="white"
+                    stroke-width={2}
+                  />
+                  {/* Rotation direction indicator */}
+                  <path
+                    d={`M ${screenCenter().x + ROTATION_RING_RADIUS + 10} ${screenCenter().y} 
+                        L ${screenCenter().x + ROTATION_RING_RADIUS + 5} ${screenCenter().y - 5}
+                        M ${screenCenter().x + ROTATION_RING_RADIUS + 10} ${screenCenter().y}
+                        L ${screenCenter().x + ROTATION_RING_RADIUS + 5} ${screenCenter().y + 5}`}
+                    stroke={COLORS.rotationArc}
+                    stroke-width={2}
+                    fill="none"
+                  />
+                  <text
+                    x={screenCenter().x}
+                    y={screenCenter().y - ROTATION_RING_RADIUS - 15}
+                    font-size="9"
+                    fill={COLORS.rotationArc}
+                    text-anchor="middle"
+                    class="select-none font-mono"
+                  >
+                    common center
+                  </text>
+                </g>
+              </Show>
+            );
+          })()}
+        </Show>
 
         {/* Rotation anchor point (for anchor mode with single point) */}
         <Show when={rotationAnchor()}>
@@ -172,6 +252,7 @@ const KeyOverlay: VoidComponent<{
   rotateMode: Accessor<RotateMode>;
   v2c: (x: number, y: number) => { x: number; y: number };
   contentBbox: () => { min: { x: number; y: number }; width: number; height: number };
+  isMultiSelect?: boolean;
 }> = (props) => {
   // Get the key's polygon corners in screen coordinates
   const screenCorners = createMemo(() => {
@@ -206,8 +287,60 @@ const KeyOverlay: VoidComponent<{
     return props.v2c(anchorX - bbox.min.x - bbox.width / 2, anchorY - bbox.min.y - bbox.height / 2);
   });
 
+  // Calculate original (unrotated) key outline for rotation visualization
+  const originalKeyOutline = createMemo(() => {
+    const k = props.gkey.key;
+    if (props.tool() !== "rotate" || k.r === 0) return null;
+    
+    // Get the key's unrotated corners (at x,y position, before rotation)
+    const x = k.x * KEY_SIZE;
+    const y = k.y * KEY_SIZE;
+    const w = k.w * KEY_SIZE;
+    const h = k.h * KEY_SIZE;
+    
+    // These are the corners before rotation
+    const corners = [
+      { x, y },
+      { x: x + w, y },
+      { x: x + w, y: y + h },
+      { x, y: y + h },
+    ];
+    
+    const bbox = props.contentBbox();
+    return corners.map(p => props.v2c(p.x - bbox.min.x - bbox.width / 2, p.y - bbox.min.y - bbox.height / 2));
+  });
+
   return (
     <g>
+      {/* Ghost outline showing original (unrotated) key position */}
+      <Show when={originalKeyOutline()}>
+        {(outline) => {
+          const points = () => outline().map(p => `${p.x},${p.y}`).join(" ");
+          return (
+            <g>
+              <polygon
+                points={points()}
+                fill="none"
+                stroke={COLORS.ghostOutline}
+                stroke-width={1.5}
+                stroke-dasharray="4,3"
+                opacity={0.6}
+              />
+              {/* Key index label at original position */}
+              <text
+                x={outline()[0].x + 3}
+                y={outline()[0].y + 12}
+                font-size="9"
+                fill={COLORS.ghostOutline}
+                class="select-none font-mono"
+              >
+                orig
+              </text>
+            </g>
+          );
+        }}
+      </Show>
+
       {/* Resize handle (show on resize tool) - only bottom-right corner */}
       <Show when={props.tool() === "resize"}>
         {(() => {
@@ -253,39 +386,38 @@ const KeyOverlay: VoidComponent<{
           x,y
         </text>
 
-        {/* Center point (for center rotation mode) */}
-        <Show when={props.rotateMode() === "center"}>
+        {/* Center point with rotation ring (for center rotation mode - single key only) */}
+        <Show when={props.rotateMode() === "center" && !props.isMultiSelect}>
+          {/* Rotation ring - draggable */}
           <circle
             cx={screenCenter().x}
             cy={screenCenter().y}
-            r={5}
-            fill={COLORS.anchor}
-            stroke="white"
-            stroke-width={1.5}
-            style={{ "pointer-events": "auto" }}
-            data-handle="rotate-center"
-            data-key-id={props.gkey.key.id}
-          />
-          {/* Rotation indicator circle - draggable for rotation */}
-          <circle
-            cx={screenCenter().x}
-            cy={screenCenter().y}
-            r={25}
+            r={ROTATION_RING_RADIUS}
             fill="none"
             stroke={COLORS.rotationArc}
             stroke-width={ROTATION_INDICATOR_STROKE}
             stroke-dasharray="4,4"
-            opacity={0.3}
+            opacity={0.4}
             style={{ "pointer-events": "auto" }}
+            class="cursor-grab"
             data-handle="rotate-center"
             data-key-id={props.gkey.key.id}
           />
-          {/* Rotation direction arrow */}
+          {/* Center dot */}
+          <circle
+            cx={screenCenter().x}
+            cy={screenCenter().y}
+            r={5}
+            fill={COLORS.rotationArc}
+            stroke="white"
+            stroke-width={1.5}
+          />
+          {/* Rotation direction arrow on the ring */}
           <path
-            d={`M ${screenCenter().x + 25} ${screenCenter().y} 
-                L ${screenCenter().x + 20} ${screenCenter().y - 5}
-                M ${screenCenter().x + 25} ${screenCenter().y}
-                L ${screenCenter().x + 20} ${screenCenter().y + 5}`}
+            d={`M ${screenCenter().x + ROTATION_RING_RADIUS} ${screenCenter().y} 
+                L ${screenCenter().x + ROTATION_RING_RADIUS - 5} ${screenCenter().y - 5}
+                M ${screenCenter().x + ROTATION_RING_RADIUS} ${screenCenter().y}
+                L ${screenCenter().x + ROTATION_RING_RADIUS - 5} ${screenCenter().y + 5}`}
             stroke={COLORS.rotationArc}
             stroke-width={2}
             fill="none"
@@ -368,6 +500,8 @@ const KeyOverlay: VoidComponent<{
 
 /**
  * Rotation arc indicator showing angle and direction
+ * The arc shows the direction from original position to current rotated position.
+ * Positive angle = clockwise rotation in screen coordinates (Y down)
  */
 const RotationArc: VoidComponent<{
   center: Point;
@@ -385,17 +519,20 @@ const RotationArc: VoidComponent<{
     
     if (radius < MIN_ROTATION_ARC_RADIUS) return ""; // Too small to show
     
-    // Calculate start and end angles
-    const startAngle = Math.atan2(dy, dx);
-    const endAngle = startAngle + (props.angle * Math.PI / 180);
+    // The arc goes from the current position BACK to the original (unrotated) position
+    // This shows where the key came from, not where it's going
+    // Start at current position (startPoint), end at original position (rotated back)
+    const currentAngle = Math.atan2(dy, dx);
+    const originalAngle = currentAngle - (props.angle * Math.PI / 180);
     
-    // Arc parameters
-    const startX = cx + radius * Math.cos(startAngle);
-    const startY = cy + radius * Math.sin(startAngle);
-    const endX = cx + radius * Math.cos(endAngle);
-    const endY = cy + radius * Math.sin(endAngle);
+    // Arc parameters - start from original, end at current
+    const startX = cx + radius * Math.cos(originalAngle);
+    const startY = cy + radius * Math.sin(originalAngle);
+    const endX = cx + radius * Math.cos(currentAngle);
+    const endY = cy + radius * Math.sin(currentAngle);
     
     const largeArc = Math.abs(props.angle) > 180 ? 1 : 0;
+    // In screen coords (Y down), positive angle = clockwise = sweep=1
     const sweep = props.angle > 0 ? 1 : 0;
     
     return `M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} ${sweep} ${endX} ${endY}`;
@@ -411,20 +548,21 @@ const RotationArc: VoidComponent<{
     
     if (radius < MIN_ROTATION_ARC_RADIUS) return "";
     
-    const startAngle = Math.atan2(dy, dx);
-    const endAngle = startAngle + (props.angle * Math.PI / 180);
+    // Arrow points at the current position (end of the arc)
+    const currentAngle = Math.atan2(dy, dx);
+    const endX = cx + radius * Math.cos(currentAngle);
+    const endY = cy + radius * Math.sin(currentAngle);
     
-    const endX = cx + radius * Math.cos(endAngle);
-    const endY = cy + radius * Math.sin(endAngle);
-    
-    // Arrow direction perpendicular to radius at end point
-    const arrowAngle = endAngle + (props.angle > 0 ? Math.PI / 2 : -Math.PI / 2);
+    // Arrow direction: tangent to the arc at the end point
+    // For clockwise (positive angle), tangent points in +90° direction from radius
+    // For counter-clockwise (negative angle), tangent points in -90° direction
+    const tangentAngle = currentAngle + (props.angle > 0 ? Math.PI / 2 : -Math.PI / 2);
     const arrowLen = 6;
     
-    const ax1 = endX + arrowLen * Math.cos(arrowAngle - 0.5);
-    const ay1 = endY + arrowLen * Math.sin(arrowAngle - 0.5);
-    const ax2 = endX + arrowLen * Math.cos(arrowAngle + 0.5);
-    const ay2 = endY + arrowLen * Math.sin(arrowAngle + 0.5);
+    const ax1 = endX + arrowLen * Math.cos(tangentAngle - 0.5);
+    const ay1 = endY + arrowLen * Math.sin(tangentAngle - 0.5);
+    const ax2 = endX + arrowLen * Math.cos(tangentAngle + 0.5);
+    const ay2 = endY + arrowLen * Math.sin(tangentAngle + 0.5);
     
     return `M ${ax1} ${ay1} L ${endX} ${endY} L ${ax2} ${ay2}`;
   });
