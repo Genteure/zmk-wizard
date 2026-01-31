@@ -249,7 +249,9 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
           // User drags around the key to rotate it around its rotation origin
           // If rx,ry is not set, use key center as rotation origin
           
-          // Get the rotation origin (rx,ry if set, otherwise key center)
+          // ZMK data model: rx=0,ry=0 means "use x,y as rotation origin" (no explicit origin set)
+          // This is the canonical way to represent "unset" in ZMK physical layouts.
+          // Get the rotation origin (rx,ry if explicitly set, otherwise key center)
           const rotationOriginUnit = (original.rx !== 0 || original.ry !== 0)
             ? { x: original.rx, y: original.ry }
             : { x: original.x + original.w / 2, y: original.y + original.h / 2 };
@@ -268,7 +270,8 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
             deltaAngle = Math.round(deltaAngle / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES;
           }
 
-          // If rx,ry was not set before, initialize to key center
+          // If rx,ry was not set before (both 0), initialize to key center
+          // This allows center rotation to work properly for keys without explicit rotation origins
           if (original.rx === 0 && original.ry === 0) {
             const keyCenterUnit = { x: original.x + original.w / 2, y: original.y + original.h / 2 };
             k.r = roundTo(original.r + deltaAngle);

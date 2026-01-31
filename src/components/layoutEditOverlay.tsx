@@ -307,15 +307,16 @@ const KeyOverlay: VoidComponent<{
   });
 
   // Get rotation ring center for center mode: use rotation anchor (rx,ry) if set, otherwise key center
+  // ZMK data model: rx=0,ry=0 means "use x,y as rotation origin" (no explicit origin set)
   const rotationRingCenter = createMemo(() => {
     const k = props.gkey.key;
     const bbox = props.contentBbox();
     
     if (k.rx !== 0 || k.ry !== 0) {
-      // Use rotation anchor if set
+      // Use rotation anchor if explicitly set (non-zero)
       return props.v2c(k.rx * KEY_SIZE - bbox.min.x - bbox.width / 2, k.ry * KEY_SIZE - bbox.min.y - bbox.height / 2);
     }
-    // Otherwise use key center
+    // Otherwise use key center (rx,ry not set means use x,y as origin)
     const center = keyCenter(props.gkey);
     return props.v2c(center.x - bbox.min.x - bbox.width / 2, center.y - bbox.min.y - bbox.height / 2);
   });
