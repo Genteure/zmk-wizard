@@ -2,6 +2,9 @@
   "name": "Packed2040",
   "shield": "packed2040",
   "dongle": false,
+  "modules": [
+    "badjeff/pmw3610"
+  ],
   "layout": [
     {
       "id": "01KFJW6537KYWMNMXMJEZE2KDY",

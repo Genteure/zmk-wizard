@@ -2,6 +2,10 @@
   "name": "ManyPointing",
   "shield": "manypointing",
   "dongle": true,
+  "modules": [
+    "petejohanson/cirque",
+    "badjeff/pmw3610"
+  ],
   "layout": [
     {
       "id": "01KFK515WPM9Z7AGV7F25KN984",
