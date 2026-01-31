@@ -1,4 +1,4 @@
-import { createMemo, For, type VoidComponent } from "solid-js";
+import { createMemo, For, Show, type VoidComponent } from "solid-js";
 import { produce } from "solid-js/store";
 
 import { Link } from "@kobalte/core/link";
@@ -8,12 +8,14 @@ import { ulid } from "ulidx";
 
 import LayoutDashboard from "lucide-solid/icons/layout-dashboard";
 import LucideKeyboard from "lucide-solid/icons/keyboard";
+import RadioReceiver from "lucide-solid/icons/radio-receiver";
 
 import { swpBgClass } from "~/lib/swpColors";
 import type { Key } from "../../typedef";
 import { useWizardContext } from "../context";
 import { KeyboardPreview, type GraphicsKey } from "../graphics";
 import { BuildButton, HelpButton, InfoEditButton } from "../navbar";
+import { ConfigDongle } from "./ConfigDongle";
 import { ConfigKeyboard } from "./ConfigKeyboard";
 import { ConfigLayout } from "./ConfigLayout";
 import { ConfigPart } from "./ConfigPart";
@@ -180,6 +182,12 @@ export const App: VoidComponent = () => {
                 </span>
               </Tabs.Trigger>)}
             </For>
+            <Show when={context.keyboard.dongle}>
+              <Tabs.Trigger class="btn btn-ghost px-2" value="dongle">
+                <RadioReceiver class="inline-block w-6 h-6 mr-1" />
+                Dongle
+              </Tabs.Trigger>
+            </Show>
             <Tabs.Indicator class="absolute transition-all bg-primary h-0.5 -bottom-px" />
           </Tabs.List>
         </div>
@@ -199,6 +207,12 @@ export const App: VoidComponent = () => {
             </Tabs.Content>
           )}
         </For>
+
+        <Show when={context.keyboard.dongle}>
+          <Tabs.Content value="dongle" class="flex flex-col gap-2 overflow-y-auto flex-1">
+            <ConfigDongle />
+          </Tabs.Content>
+        </Show>
       </Tabs>
       {/* <!-- /Config, Preview --> */}
       <div class="flex-3 flex flex-col">
