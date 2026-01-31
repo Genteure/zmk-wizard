@@ -13,8 +13,9 @@ import Move from "lucide-solid/icons/move";
 import MousePointer from "lucide-solid/icons/mouse-pointer";
 import RectangleHorizontal from "lucide-solid/icons/rectangle-horizontal";
 import RotateCw from "lucide-solid/icons/rotate-cw";
+import Settings from "lucide-solid/icons/settings";
 import X from "lucide-solid/icons/x";
-import { createMemo, createSignal, Show, type Accessor, type ParentComponent, type Setter, type VoidComponent } from "solid-js";
+import { createMemo, createSignal, For, Show, type Accessor, type ParentComponent, type Setter, type VoidComponent } from "solid-js";
 import { produce, unwrap } from "solid-js/store";
 import { ulid } from "ulidx";
 import { bboxCenter, getKeysBoundingBox, type Point } from "~/lib/geometry";
@@ -33,6 +34,35 @@ export type LayoutEditTool = "select" | "move" | "rotate" | "resize";
 export type RotateMode = "anchor" | "center";
 
 /**
+ * Snapping settings for movement and rotation
+ */
+export interface SnapSettings {
+  moveSnap: number;   // Snap to units (0.1, 0.25, 0.5, 1)
+  rotateSnap: number; // Snap to degrees (1, 5, 15)
+}
+
+/** Available movement snap options */
+export const MOVE_SNAP_OPTIONS = [
+  { value: 0.1, label: "0.1u" },
+  { value: 0.25, label: "0.25u" },
+  { value: 0.5, label: "0.5u" },
+  { value: 1, label: "1u" },
+];
+
+/** Available rotation snap options */
+export const ROTATE_SNAP_OPTIONS = [
+  { value: 1, label: "1°" },
+  { value: 5, label: "5°" },
+  { value: 15, label: "15°" },
+];
+
+/** Default snap settings */
+export const DEFAULT_SNAP_SETTINGS: SnapSettings = {
+  moveSnap: 0.25,
+  rotateSnap: 15,
+};
+
+/**
  * Layout editing state that lives at the graphics component level
  */
 export interface LayoutEditState {
@@ -42,6 +72,8 @@ export interface LayoutEditState {
   setRotateMode: Setter<RotateMode>;
   clipboard: Accessor<Key[] | null>;
   setClipboard: Setter<Key[] | null>;
+  snapSettings: Accessor<SnapSettings>;
+  setSnapSettings: Setter<SnapSettings>;
 }
 
 /**
@@ -51,6 +83,7 @@ export function createLayoutEditState(): LayoutEditState {
   const [tool, setTool] = createSignal<LayoutEditTool>("select");
   const [rotateMode, setRotateMode] = createSignal<RotateMode>("center");
   const [clipboard, setClipboard] = createSignal<Key[] | null>(null);
+  const [snapSettings, setSnapSettings] = createSignal<SnapSettings>(DEFAULT_SNAP_SETTINGS);
 
   return {
     tool,
@@ -59,6 +92,8 @@ export function createLayoutEditState(): LayoutEditState {
     setRotateMode,
     clipboard,
     setClipboard,
+    snapSettings,
+    setSnapSettings,
   };
 }
 
@@ -207,8 +242,8 @@ export const LayoutEditToolbar: VoidComponent<LayoutEditToolbarProps> = (props) 
     normalizeKeys(context);
   };
 
-  // Skip rendering toolbar if not in physical layout or not in layout tab
-  if (!props.isPhysicalLayout || context.nav.selectedTab !== "layout") {
+  // Skip rendering toolbar if not in layout tab (hide when in wiring mode)
+  if (context.nav.selectedTab !== "layout") {
     return null;
   }
 
@@ -217,95 +252,104 @@ export const LayoutEditToolbar: VoidComponent<LayoutEditToolbarProps> = (props) 
 
   return (
     <div class="absolute top-2 right-2 flex items-start gap-1 z-20" data-controls>
-      {/* Compact tool selection */}
-      <div class="flex items-center gap-0.5 bg-base-200/90 backdrop-blur-sm rounded-lg p-0.5 shadow-md">
-        <ToggleGroup
-          value={currentTool()}
-          onChange={(v) => v && editState().setTool(v as LayoutEditTool)}
-          class="flex gap-0.5"
-        >
-          <ToolbarTooltip content="Select (V)">
-            <ToggleGroup.Item
-              value="select"
-              class="btn btn-xs btn-square btn-ghost"
-              classList={{ "btn-active bg-primary/20": currentTool() === "select" }}
-            >
-              <MousePointer class="w-3.5 h-3.5" />
-            </ToggleGroup.Item>
-          </ToolbarTooltip>
+      {/* Snapping options (leftmost for minimal layout shift) */}
+      <Show when={props.isPhysicalLayout}>
+        <div class="flex items-center gap-0.5 bg-base-200/90 backdrop-blur-sm rounded-lg p-0.5 shadow-md">
+          <SnapSettingsPopover editState={editState()} />
+        </div>
+      </Show>
 
-          <ToolbarTooltip content="Move (M)">
-            <ToggleGroup.Item
-              value="move"
-              class="btn btn-xs btn-square btn-ghost"
-              classList={{ "btn-active bg-primary/20": currentTool() === "move" }}
-            >
-              <Move class="w-3.5 h-3.5" />
-            </ToggleGroup.Item>
-          </ToolbarTooltip>
-
-          <ToolbarTooltip content="Rotate (R)">
-            <ToggleGroup.Item
-              value="rotate"
-              class="btn btn-xs btn-square btn-ghost"
-              classList={{ "btn-active bg-primary/20": currentTool() === "rotate" }}
-            >
-              <RotateCw class="w-3.5 h-3.5" />
-            </ToggleGroup.Item>
-          </ToolbarTooltip>
-
-          <ToolbarTooltip content="Resize (S)">
-            <ToggleGroup.Item
-              value="resize"
-              class="btn btn-xs btn-square btn-ghost"
-              classList={{ "btn-active bg-primary/20": currentTool() === "resize" }}
-            >
-              <RectangleHorizontal class="w-3.5 h-3.5" />
-            </ToggleGroup.Item>
-          </ToolbarTooltip>
-        </ToggleGroup>
-
-        {/* Rotation mode (only when rotate tool is active) */}
-        <Show when={currentTool() === "rotate"}>
-          <div class="border-l border-base-300 h-4 mx-0.5" />
+      {/* Tool selection (only for physical layout) */}
+      <Show when={props.isPhysicalLayout}>
+        <div class="flex items-center gap-0.5 bg-base-200/90 backdrop-blur-sm rounded-lg p-0.5 shadow-md">
           <ToggleGroup
-            value={editState().rotateMode()}
-            onChange={(v) => v && editState().setRotateMode(v as RotateMode)}
+            value={currentTool()}
+            onChange={(v) => v && editState().setTool(v as LayoutEditTool)}
             class="flex gap-0.5"
           >
-            <ToolbarTooltip content="Center rotation">
+            <ToolbarTooltip content="Select (V)">
               <ToggleGroup.Item
-                value="center"
+                value="select"
                 class="btn btn-xs btn-square btn-ghost"
-                classList={{ "btn-active bg-amber-500/20": editState().rotateMode() === "center" }}
+                classList={{ "btn-active bg-primary/20": currentTool() === "select" }}
               >
-                <Circle class="w-3.5 h-3.5" />
+                <MousePointer class="w-3.5 h-3.5" />
               </ToggleGroup.Item>
             </ToolbarTooltip>
 
-            <ToolbarTooltip content="Anchor rotation">
+            <ToolbarTooltip content="Move (M)">
               <ToggleGroup.Item
-                value="anchor"
+                value="move"
                 class="btn btn-xs btn-square btn-ghost"
-                classList={{ "btn-active bg-amber-500/20": editState().rotateMode() === "anchor" }}
+                classList={{ "btn-active bg-primary/20": currentTool() === "move" }}
               >
-                <Anchor class="w-3.5 h-3.5" />
+                <Move class="w-3.5 h-3.5" />
+              </ToggleGroup.Item>
+            </ToolbarTooltip>
+
+            <ToolbarTooltip content="Rotate (R)">
+              <ToggleGroup.Item
+                value="rotate"
+                class="btn btn-xs btn-square btn-ghost"
+                classList={{ "btn-active bg-primary/20": currentTool() === "rotate" }}
+              >
+                <RotateCw class="w-3.5 h-3.5" />
+              </ToggleGroup.Item>
+            </ToolbarTooltip>
+
+            <ToolbarTooltip content="Resize (S)">
+              <ToggleGroup.Item
+                value="resize"
+                class="btn btn-xs btn-square btn-ghost"
+                classList={{ "btn-active bg-primary/20": currentTool() === "resize" }}
+              >
+                <RectangleHorizontal class="w-3.5 h-3.5" />
               </ToggleGroup.Item>
             </ToolbarTooltip>
           </ToggleGroup>
-        </Show>
 
-        {/* Tool-specific exact input button */}
-        <Show when={isEditingTool() && hasSelection()}>
-          <div class="border-l border-base-300 h-4 mx-0.5" />
-          <ToolExactDialog
-            tool={currentTool}
-            rotateMode={editState().rotateMode}
-          />
-        </Show>
-      </div>
+          {/* Rotation mode (only when rotate tool is active) */}
+          <Show when={currentTool() === "rotate"}>
+            <div class="border-l border-base-300 h-4 mx-0.5" />
+            <ToggleGroup
+              value={editState().rotateMode()}
+              onChange={(v) => v && editState().setRotateMode(v as RotateMode)}
+              class="flex gap-0.5"
+            >
+              <ToolbarTooltip content="Center rotation">
+                <ToggleGroup.Item
+                  value="center"
+                  class="btn btn-xs btn-square btn-ghost"
+                  classList={{ "btn-active bg-amber-500/20": editState().rotateMode() === "center" }}
+                >
+                  <Circle class="w-3.5 h-3.5" />
+                </ToggleGroup.Item>
+              </ToolbarTooltip>
 
-      {/* Actions (show for all tools, including select) */}
+              <ToolbarTooltip content="Anchor rotation">
+                <ToggleGroup.Item
+                  value="anchor"
+                  class="btn btn-xs btn-square btn-ghost"
+                  classList={{ "btn-active bg-amber-500/20": editState().rotateMode() === "anchor" }}
+                >
+                  <Anchor class="w-3.5 h-3.5" />
+                </ToggleGroup.Item>
+              </ToolbarTooltip>
+            </ToggleGroup>
+          </Show>
+
+          {/* Tool-specific exact input button */}
+          <Show when={isEditingTool() && hasSelection()}>
+            <div class="border-l border-base-300 h-4 mx-0.5" />
+            <ToolExactDialog
+              tool={currentTool}
+              rotateMode={editState().rotateMode}
+            />
+          </Show>
+        </div>
+      </Show>
+
+      {/* Actions (show for all tools, both physical and logical layouts) */}
       <Show when={hasSelection() || editState().clipboard()}>
         <div class="flex items-center gap-0.5 bg-base-200/90 backdrop-blur-sm rounded-lg p-0.5 shadow-md">
           <ToolbarTooltip content="Copy (Ctrl+C)">
@@ -352,6 +396,98 @@ export const LayoutEditToolbar: VoidComponent<LayoutEditToolbarProps> = (props) 
         </div>
       </Show>
     </div>
+  );
+};
+
+/**
+ * Snapping settings popover
+ */
+const SnapSettingsPopover: VoidComponent<{
+  editState: LayoutEditState;
+}> = (props) => {
+  const [isOpen, setIsOpen] = createSignal(false);
+  const snapSettings = () => props.editState.snapSettings();
+
+  const updateMoveSnap = (value: number) => {
+    props.editState.setSnapSettings(s => ({ ...s, moveSnap: value }));
+  };
+
+  const updateRotateSnap = (value: number) => {
+    props.editState.setSnapSettings(s => ({ ...s, rotateSnap: value }));
+  };
+
+  return (
+    <Dialog open={isOpen()} onOpenChange={setIsOpen}>
+      <ToolbarTooltip content="Snap settings">
+        <Dialog.Trigger class="btn btn-xs btn-square btn-ghost">
+          <Settings class="w-3.5 h-3.5" />
+        </Dialog.Trigger>
+      </ToolbarTooltip>
+      <Dialog.Portal>
+        <Dialog.Overlay class="fixed inset-0 bg-black/30 z-40" />
+        <Dialog.Content
+          class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 p-3 bg-base-200 rounded-lg shadow-xl border border-base-300 z-50"
+          onClick={(e: MouseEvent) => e.stopPropagation()}
+          onPointerDown={(e: PointerEvent) => e.stopPropagation()}
+          onMouseDown={(e: MouseEvent) => e.stopPropagation()}
+        >
+          <div class="flex items-center justify-between mb-3">
+            <Dialog.Title class="font-semibold text-sm">Snap Settings</Dialog.Title>
+            <Dialog.CloseButton class="btn btn-xs btn-circle btn-ghost">
+              <X class="w-4 h-4" />
+            </Dialog.CloseButton>
+          </div>
+
+          <div class="space-y-3">
+            {/* Movement snap */}
+            <div>
+              <label class="text-xs font-medium text-base-content/70 mb-1 block">Movement Snap</label>
+              <div class="flex gap-1">
+                <For each={MOVE_SNAP_OPTIONS}>
+                  {(option) => (
+                    <Button
+                      class="btn btn-xs flex-1"
+                      classList={{
+                        "btn-primary": snapSettings().moveSnap === option.value,
+                        "btn-ghost": snapSettings().moveSnap !== option.value,
+                      }}
+                      onClick={() => updateMoveSnap(option.value)}
+                    >
+                      {option.label}
+                    </Button>
+                  )}
+                </For>
+              </div>
+            </div>
+
+            {/* Rotation snap */}
+            <div>
+              <label class="text-xs font-medium text-base-content/70 mb-1 block">Rotation Snap</label>
+              <div class="flex gap-1">
+                <For each={ROTATE_SNAP_OPTIONS}>
+                  {(option) => (
+                    <Button
+                      class="btn btn-xs flex-1"
+                      classList={{
+                        "btn-primary": snapSettings().rotateSnap === option.value,
+                        "btn-ghost": snapSettings().rotateSnap !== option.value,
+                      }}
+                      onClick={() => updateRotateSnap(option.value)}
+                    >
+                      {option.label}
+                    </Button>
+                  )}
+                </For>
+              </div>
+            </div>
+
+            <p class="text-xs text-base-content/60">
+              Hold Shift to temporarily disable snapping
+            </p>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog>
   );
 };
 

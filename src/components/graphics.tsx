@@ -540,6 +540,7 @@ export const KeyboardPreview: VoidComponent<{
     context,
     tool: layoutEditState.tool,
     rotateMode: layoutEditState.rotateMode,
+    snapSettings: layoutEditState.snapSettings,
     setIsDragging: setIsLayoutDragging,
     setDragPreview,
   }) : null;
@@ -1216,13 +1217,19 @@ export const KeyboardPreview: VoidComponent<{
         />
       </Show>
 
-      {/* Layout editing toolbar (only for physical layout in layout tab) */}
-      <Show when={layoutEditState && props.isPhysicalLayout}>
-        <LayoutEditToolbar
-          editState={layoutEditState!}
-          keys={props.keys}
-          isPhysicalLayout={props.isPhysicalLayout}
-        />
+      {/* Layout editing toolbar */}
+      <Show when={layoutEditState || context.nav.selectedTab === "layout"}>
+        {(() => {
+          // Create a minimal edit state for logical layout if needed
+          const minimalEditState = layoutEditState || createLayoutEditState();
+          return (
+            <LayoutEditToolbar
+              editState={minimalEditState}
+              keys={props.keys}
+              isPhysicalLayout={props.isPhysicalLayout}
+            />
+          );
+        })()}
       </Show>
 
       {/* Screen reader live region for status updates */}

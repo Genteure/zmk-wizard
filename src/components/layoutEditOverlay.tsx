@@ -1,5 +1,5 @@
 import { createMemo, For, Show, type Accessor, type VoidComponent } from "solid-js";
-import { getKeysBoundingBox, keyCenter, keyToPolygon, type Point } from "~/lib/geometry";
+import { keyCenter, keyToPolygon, type Point } from "~/lib/geometry";
 import { useWizardContext } from "./context";
 import type { GraphicsKey } from "./graphics";
 import type { LayoutEditState, LayoutEditTool, RotateMode } from "./layoutEditing";
@@ -10,8 +10,8 @@ const KEY_SIZE = 70; // pixels per unit
 const HANDLE_SIZE = 10;
 const HANDLE_HALF = HANDLE_SIZE / 2;
 
-/** Rotation ring radius for center rotation mode */
-const ROTATION_RING_RADIUS = 35;
+/** Rotation ring radius for center rotation mode - larger for easier interaction */
+const ROTATION_RING_RADIUS = 55;
 
 /** Additional radius for common center rotation ring (multi-select) */
 const COMMON_ROTATION_RING_OFFSET = 10;
@@ -22,11 +22,20 @@ const ROTATION_ARROW_OFFSET = 5;
 /** Minimum radius in pixels to show rotation arc (avoid cluttered display for small rotations) */
 const MIN_ROTATION_ARC_RADIUS = 10;
 
-/** Rotation indicator stroke width for draggable rotation ring (visual) */
-const ROTATION_INDICATOR_STROKE = 8;
+/** Rotation indicator stroke width for draggable rotation ring (visual) - thicker for better visibility */
+const ROTATION_INDICATOR_STROKE = 4;
 
 /** Hit area stroke width for rotation ring (larger than visual for easier clicking) */
 const ROTATION_RING_HIT_AREA_STROKE = 20;
+
+/** Rotation ring opacity - higher for better visibility */
+const ROTATION_RING_OPACITY = 0.8;
+
+/** Rotation arc arrow size */
+const ROTATION_ARROW_SIZE = 8;
+
+/** Rotation arc start circle radius */
+const ROTATION_ARC_START_CIRCLE_RADIUS = 4;
 
 /** Color constants */
 const COLORS = {
@@ -63,13 +72,6 @@ export const LayoutEditOverlay: VoidComponent<LayoutEditOverlayProps> = (props) 
     return props.keys().filter(k => selectedIds.includes(k.key.id));
   });
 
-  // Get bounding box of selected keys in content coordinates
-  const selectionBbox = createMemo(() => {
-    const keys = selectedKeys();
-    if (keys.length === 0) return null;
-    return getKeysBoundingBox(keys);
-  });
-
   // Check if we should show the overlay based on tool and selection
   const shouldShowOverlay = createMemo(() => {
     const tool = props.editState.tool();
@@ -77,6 +79,7 @@ export const LayoutEditOverlay: VoidComponent<LayoutEditOverlayProps> = (props) 
   });
 
   // Calculate anchor point for rotation (in content coordinates)
+  // Only shows for anchor mode with a single key selected
   const rotationAnchor = createMemo((): Point | null => {
     if (props.editState.tool() !== "rotate") return null;
     
@@ -90,7 +93,8 @@ export const LayoutEditOverlay: VoidComponent<LayoutEditOverlayProps> = (props) 
       return null;
     }
 
-    // Anchor mode - use common anchor point
+    // Anchor mode - only show common anchor for single key
+    // For multiple keys, individual anchor points are shown per-key in KeyOverlay
     if (keys.length === 1) {
       const k = keys[0].key;
       // Use existing anchor if set (rx,ry != 0), otherwise key center
@@ -100,13 +104,9 @@ export const LayoutEditOverlay: VoidComponent<LayoutEditOverlayProps> = (props) 
       return keyCenter(keys[0]);
     }
 
-    // Multiple keys - use center of selection
-    const bbox = selectionBbox();
-    if (!bbox) return null;
-    return {
-      x: (bbox.min.x + bbox.max.x) / 2,
-      y: (bbox.min.y + bbox.max.y) / 2,
-    };
+    // Multiple keys in anchor mode - don't show common center point
+    // Each key shows its own anchor point in KeyOverlay instead
+    return null;
   });
 
   return (
@@ -177,7 +177,7 @@ export const LayoutEditOverlay: VoidComponent<LayoutEditOverlayProps> = (props) 
                     stroke={COLORS.rotationArc}
                     stroke-width={ROTATION_INDICATOR_STROKE}
                     stroke-dasharray="6,4"
-                    opacity={0.4}
+                    opacity={ROTATION_RING_OPACITY}
                     style={{ "pointer-events": "none" }}
                   />
                   {/* Center dot */}
@@ -371,7 +371,7 @@ const KeyOverlay: VoidComponent<{
                 fill={COLORS.ghostOutline}
                 class="select-none font-mono font-semibold"
               >
-                {props.gkey.key.id}
+                {props.keyIndex}
               </text>
             </g>
           );
@@ -447,7 +447,7 @@ const KeyOverlay: VoidComponent<{
             stroke={COLORS.rotationArc}
             stroke-width={ROTATION_INDICATOR_STROKE}
             stroke-dasharray="4,4"
-            opacity={0.4}
+            opacity={ROTATION_RING_OPACITY}
             style={{ "pointer-events": "none" }}
           />
           {/* Center dot */}
@@ -626,7 +626,7 @@ const RotationArc: VoidComponent<{
     // - For negative (counter-clockwise) rotation, arrow points counter-clockwise
     // This creates a visual "motion trail" effect showing the rotation direction
     const tangentAngle = currentAngle + (normalizedAngle > 0 ? -Math.PI / 2 : Math.PI / 2);
-    const arrowLen = 6;
+    const arrowLen = ROTATION_ARROW_SIZE;
     
     const ax1 = endX + arrowLen * Math.cos(tangentAngle - 0.5);
     const ay1 = endY + arrowLen * Math.sin(tangentAngle - 0.5);
@@ -634,6 +634,27 @@ const RotationArc: VoidComponent<{
     const ay2 = endY + arrowLen * Math.sin(tangentAngle + 0.5);
     
     return `M ${ax1} ${ay1} L ${endX} ${endY} L ${ax2} ${ay2}`;
+  });
+
+  // Calculate the start point of the arc for the start circle
+  const arcStartPoint = createMemo(() => {
+    const { x: cx, y: cy } = props.center;
+    const { x: sx, y: sy } = props.startPoint;
+    
+    const dx = sx - cx;
+    const dy = sy - cy;
+    const radius = Math.sqrt(dx * dx + dy * dy);
+    
+    if (radius < MIN_ROTATION_ARC_RADIUS) return null;
+    
+    const normalizedAngle = displayAngle();
+    const currentAngle = Math.atan2(dy, dx);
+    const originalAngle = currentAngle - (normalizedAngle * Math.PI / 180);
+    
+    return {
+      x: cx + radius * Math.cos(originalAngle),
+      y: cy + radius * Math.sin(originalAngle),
+    };
   });
 
   return (
@@ -646,6 +667,17 @@ const RotationArc: VoidComponent<{
           stroke-width={2}
           stroke-dasharray="4,2"
         />
+        {/* Circle at start of arc for better visibility */}
+        <Show when={arcStartPoint()}>
+          {(startPoint) => (
+            <circle
+              cx={startPoint().x}
+              cy={startPoint().y}
+              r={ROTATION_ARC_START_CIRCLE_RADIUS}
+              fill={COLORS.rotationArc}
+            />
+          )}
+        </Show>
         <path
           d={arrowPath()}
           fill="none"

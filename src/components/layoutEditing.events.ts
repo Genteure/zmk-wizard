@@ -11,14 +11,11 @@ import type { Key } from "../typedef";
 import type { WizardContextType } from "./context";
 import { normalizeKeys } from "./context";
 import type { GraphicsKey } from "./graphics";
-import type { LayoutEditTool, RotateMode } from "./layoutEditing";
+import type { LayoutEditTool, RotateMode, SnapSettings } from "./layoutEditing";
 import { angleFromPoints, roundTo, snapToGrid } from "./layoutEditing";
 
 /** Pixels of movement required before a drag operation starts */
 const DRAG_THRESHOLD_PX = 5;
-
-/** Rotation snapping increment in degrees */
-const ROTATION_SNAP_DEGREES = 15;
 
 /**
  * State interface for layout editing drag operations
@@ -30,6 +27,7 @@ export interface LayoutEditDragState {
   context: WizardContextType;
   tool: Accessor<LayoutEditTool>;
   rotateMode: Accessor<RotateMode>;
+  snapSettings: Accessor<SnapSettings>;
   setIsDragging: Setter<boolean>;
   setDragPreview: Setter<DragPreview | null>;
 }
@@ -149,8 +147,9 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
     let deltaY = dy / 70;
 
     if (snap) {
-      deltaX = snapToGrid(deltaX);
-      deltaY = snapToGrid(deltaY);
+      const snapSize = state.snapSettings().moveSnap;
+      deltaX = snapToGrid(deltaX, snapSize);
+      deltaY = snapToGrid(deltaY, snapSize);
     }
 
     state.context.setKeyboard("layout", produce(layout => {
@@ -208,7 +207,8 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
         let deltaAngle = currentAngle - startAngle;
 
         if (snap) {
-          deltaAngle = Math.round(deltaAngle / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES;
+          const rotateSnap = state.snapSettings().rotateSnap;
+          deltaAngle = Math.round(deltaAngle / rotateSnap) * rotateSnap;
         }
 
         // Apply rotation to each key around the common center VISUALLY
@@ -262,8 +262,9 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
             let newAnchorY = currentPos.y / KEY_SIZE;
             
             if (snap) {
-              newAnchorX = snapToGrid(newAnchorX);
-              newAnchorY = snapToGrid(newAnchorY);
+              const snapSize = state.snapSettings().moveSnap;
+              newAnchorX = snapToGrid(newAnchorX, snapSize);
+              newAnchorY = snapToGrid(newAnchorY, snapSize);
             }
             
             const newAnchor = { x: newAnchorX, y: newAnchorY };
@@ -295,7 +296,8 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
             let deltaAngle = currentAngle - startAngle;
 
             if (snap) {
-              deltaAngle = Math.round(deltaAngle / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES;
+              const rotateSnap = state.snapSettings().rotateSnap;
+              deltaAngle = Math.round(deltaAngle / rotateSnap) * rotateSnap;
             }
 
             // If rx,ry was not set before (both 0), initialize to key center
@@ -332,8 +334,9 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
             let newAnchorY = currentPos.y / KEY_SIZE;
             
             if (snap) {
-              newAnchorX = snapToGrid(newAnchorX);
-              newAnchorY = snapToGrid(newAnchorY);
+              const snapSize = state.snapSettings().moveSnap;
+              newAnchorX = snapToGrid(newAnchorX, snapSize);
+              newAnchorY = snapToGrid(newAnchorY, snapSize);
             }
             
             const newAnchor = { x: newAnchorX, y: newAnchorY };
@@ -356,7 +359,8 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
             let deltaAngle = currentAngle - startAngle;
 
             if (snap) {
-              deltaAngle = Math.round(deltaAngle / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES;
+              const rotateSnap = state.snapSettings().rotateSnap;
+              deltaAngle = Math.round(deltaAngle / rotateSnap) * rotateSnap;
             }
 
             // Get the current rotated center and anchor in units
@@ -394,8 +398,9 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
     let deltaH = dy / 70;
 
     if (snap) {
-      deltaW = snapToGrid(deltaW);
-      deltaH = snapToGrid(deltaH);
+      const snapSize = state.snapSettings().moveSnap;
+      deltaW = snapToGrid(deltaW, snapSize);
+      deltaH = snapToGrid(deltaH, snapSize);
     }
 
     state.context.setKeyboard("layout", produce(layout => {
