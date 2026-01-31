@@ -10,6 +10,12 @@ const KEY_SIZE = 70; // pixels per unit
 const HANDLE_SIZE = 8;
 const HANDLE_HALF = HANDLE_SIZE / 2;
 
+/** Edge handle inset - smaller than corner handles to visually distinguish them */
+const EDGE_HANDLE_INSET = 1;
+
+/** Minimum radius in pixels to show rotation arc (avoid cluttered display for small rotations) */
+const MIN_ROTATION_ARC_RADIUS = 10;
+
 /** Color constants */
 const COLORS = {
   handle: "#3b82f6", // blue-500
@@ -229,12 +235,14 @@ const KeyOverlay: VoidComponent<{
               const p2 = corners[(i + 1) % 4];
               return { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
             };
+            // Edge handles are slightly smaller than corner handles to visually distinguish them
+            const edgeHandleSize = HANDLE_SIZE - EDGE_HANDLE_INSET * 2;
             return (
               <rect
-                x={midpoint().x - HANDLE_HALF + 1}
-                y={midpoint().y - HANDLE_HALF + 1}
-                width={HANDLE_SIZE - 2}
-                height={HANDLE_SIZE - 2}
+                x={midpoint().x - edgeHandleSize / 2}
+                y={midpoint().y - edgeHandleSize / 2}
+                width={edgeHandleSize}
+                height={edgeHandleSize}
                 fill="white"
                 stroke={COLORS.handle}
                 stroke-width={1.5}
@@ -387,7 +395,7 @@ const RotationArc: VoidComponent<{
     const dy = sy - cy;
     const radius = Math.sqrt(dx * dx + dy * dy);
     
-    if (radius < 10) return ""; // Too small to show
+    if (radius < MIN_ROTATION_ARC_RADIUS) return ""; // Too small to show
     
     // Calculate start and end angles
     const startAngle = Math.atan2(dy, dx);
@@ -413,7 +421,7 @@ const RotationArc: VoidComponent<{
     const dy = sy - cy;
     const radius = Math.sqrt(dx * dx + dy * dy);
     
-    if (radius < 10) return "";
+    if (radius < MIN_ROTATION_ARC_RADIUS) return "";
     
     const startAngle = Math.atan2(dy, dx);
     const endAngle = startAngle + (props.angle * Math.PI / 180);
