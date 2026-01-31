@@ -8,6 +8,12 @@ import type { GraphicsKey } from "./graphics";
 import type { LayoutEditTool, RotateMode } from "./layoutEditing";
 import { angleFromPoints, roundTo, snapToGrid } from "./layoutEditing";
 
+/** Pixels of movement required before a drag operation starts */
+const DRAG_THRESHOLD_PX = 5;
+
+/** Rotation snapping increment in degrees */
+const ROTATION_SNAP_DEGREES = 15;
+
 /**
  * State interface for layout editing drag operations
  */
@@ -68,8 +74,6 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
     originalKeys: Map<string, { x: number; y: number; w: number; h: number; r: number; rx: number; ry: number }>;
     rotateAnchor?: Point;
   } | null = null;
-
-  const dragThreshold = 5; // pixels before drag starts
 
   /**
    * Get the virtual position with bounding box offset
@@ -191,7 +195,7 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
           let deltaAngle = currentAngle - startAngle;
 
           if (snap) {
-            deltaAngle = Math.round(deltaAngle / 15) * 15; // Snap to 15 degree increments
+            deltaAngle = Math.round(deltaAngle / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES;
           }
 
           k.r = roundTo(original.r + deltaAngle);
@@ -205,7 +209,7 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
           let deltaAngle = currentAngle - startAngle;
 
           if (snap) {
-            deltaAngle = Math.round(deltaAngle / 15) * 15;
+            deltaAngle = Math.round(deltaAngle / ROTATION_SNAP_DEGREES) * ROTATION_SNAP_DEGREES;
           }
 
           // Calculate new position by rotating key center around anchor
@@ -307,7 +311,7 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
     const dy = clientY - dragStart.clientY;
 
     // Check if we've moved enough to start dragging
-    if (Math.abs(dx) < dragThreshold && Math.abs(dy) < dragThreshold) {
+    if (Math.abs(dx) < DRAG_THRESHOLD_PX && Math.abs(dy) < DRAG_THRESHOLD_PX) {
       return;
     }
 
