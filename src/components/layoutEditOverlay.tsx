@@ -620,10 +620,11 @@ const RotationArc: VoidComponent<{
     const endX = cx + radius * Math.cos(currentAngle);
     const endY = cy + radius * Math.sin(currentAngle);
     
-    // Arrow direction: tangent to the arc at the end point, pointing in direction of rotation
-    // For clockwise (positive angle), arrow points in the direction the rotation went (+90° from radius toward end)
-    // For counter-clockwise (negative angle), arrow points the other way (-90° from radius toward end)
-    // We want the arrow to point backward along the arc (showing where it came from)
+    // Arrow direction: tangent to the arc at the end point
+    // The arrow shows the direction of rotation by pointing along the arc:
+    // - For positive (clockwise) rotation, arrow points clockwise (toward where the key came from)
+    // - For negative (counter-clockwise) rotation, arrow points counter-clockwise
+    // This creates a visual "motion trail" effect showing the rotation direction
     const tangentAngle = currentAngle + (normalizedAngle > 0 ? -Math.PI / 2 : Math.PI / 2);
     const arrowLen = 6;
     
