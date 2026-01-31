@@ -32,7 +32,7 @@ const AddDevicePanel: VoidComponent<{
    */
   type DeviceOption =
     | { kind: "single"; type: BusDeviceTypeName }
-    | { kind: "group"; group: DeviceGroup; variants: BusDeviceTypeName[] };
+    | { kind: "group"; groupKey: string; group: DeviceGroup; variants: BusDeviceTypeName[] };
 
   const [openOption, setOpenOption] = createSignal<DeviceOption | null>(null);
 
@@ -73,17 +73,16 @@ const AddDevicePanel: VoidComponent<{
     const seenGroups = new Set<string>();
 
     for (const type of availableTypes) {
-      const group = getDeviceGroup(type);
-      if (group) {
+      const groupInfo = getDeviceGroup(type);
+      if (groupInfo) {
         // Check if we've already processed this group
-        const groupKey = group.displayName;
-        if (seenGroups.has(groupKey)) continue;
-        seenGroups.add(groupKey);
+        if (seenGroups.has(groupInfo.key)) continue;
+        seenGroups.add(groupInfo.key);
 
         // Get all available variants of this group
-        const availableVariants = group.variants.filter((v) => availableTypes.includes(v));
+        const availableVariants = groupInfo.group.variants.filter((v) => availableTypes.includes(v));
         if (availableVariants.length > 0) {
-          options.push({ kind: "group", group, variants: availableVariants });
+          options.push({ kind: "group", groupKey: groupInfo.key, group: groupInfo.group, variants: availableVariants });
         }
       } else {
         options.push({ kind: "single", type });
@@ -227,7 +226,7 @@ const AddDevicePanel: VoidComponent<{
       return option.type === open.type;
     }
     if (option.kind === "group" && open.kind === "group") {
-      return option.group.displayName === open.group.displayName;
+      return option.groupKey === open.groupKey;
     }
     return false;
   };

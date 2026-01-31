@@ -1276,16 +1276,25 @@ export const deviceGroups: Readonly<Record<string, DeviceGroup>> = {
   },
 };
 
-/**
- * Get the group a device type belongs to, if any.
- */
-export function getDeviceGroup(type: BusDeviceTypeName): DeviceGroup | null {
-  for (const group of Object.values(deviceGroups)) {
-    if (group.variants.includes(type)) {
-      return group;
+// Build reverse lookup map: device type -> group key
+const deviceToGroupKey: Readonly<Record<BusDeviceTypeName, string>> = (() => {
+  const map: Record<string, string> = {};
+  for (const [groupKey, group] of Object.entries(deviceGroups)) {
+    for (const variant of group.variants) {
+      map[variant] = groupKey;
     }
   }
-  return null;
+  return map as Record<BusDeviceTypeName, string>;
+})();
+
+/**
+ * Get the group key and group data a device type belongs to, if any.
+ * Returns null if the device is not part of any group.
+ */
+export function getDeviceGroup(type: BusDeviceTypeName): { key: string; group: DeviceGroup } | null {
+  const groupKey = deviceToGroupKey[type];
+  if (!groupKey) return null;
+  return { key: groupKey, group: deviceGroups[groupKey] };
 }
 
 export function deviceOptionsForBus(busType: "i2c" | "spi"): readonly BusDeviceTypeName[] {
