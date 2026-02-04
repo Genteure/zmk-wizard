@@ -286,14 +286,27 @@ function shouldPreservePath(filePath: string): boolean {
 }
 
 /**
- * Push changes to a repository.
+ * GraphQL mutation for creating a commit on a branch.
+ * This is more efficient than the REST API as it performs all operations in a single request.
+ */
+const CREATE_COMMIT_ON_BRANCH_MUTATION = `
+  mutation CreateCommitOnBranch($input: CreateCommitOnBranchInput!) {
+    createCommitOnBranch(input: $input) {
+      commit {
+        oid
+        url
+      }
+    }
+  }
+`;
+
+/**
+ * Push changes to a repository using the GraphQL createCommitOnBranch mutation.
  * 
- * This function:
- * 1. Gets the current HEAD commit SHA
- * 2. Gets the current tree SHA
- * 3. Creates a new tree with the updated files
- * 4. Creates a new commit pointing to the new tree
- * 5. Updates the branch reference to point to the new commit
+ * This is more efficient than using the REST API because it:
+ * - Performs all operations in a single request
+ * - Reduces rate limiting issues (single API call vs 5+ calls)
+ * - Handles all file changes atomically
  */
 export async function pushChangesToRepository(
   accessToken: string,
@@ -306,61 +319,52 @@ export async function pushChangesToRepository(
   try {
     const octokit = createOctokit(accessToken);
 
-    // 1. Get current HEAD commit SHA
+    // First, get the current HEAD SHA (required for expectedHeadOid)
     const { data: refData } = await octokit.rest.git.getRef({
       owner,
       repo,
       ref: `heads/${branch}`,
     });
-    const headSha = refData.object.sha;
+    const expectedHeadOid = refData.object.sha;
 
-    // 2. Get current tree SHA
-    const { data: commitData } = await octokit.rest.git.getCommit({
-      owner,
-      repo,
-      commit_sha: headSha,
-    });
-    const baseTreeSha = commitData.tree.sha;
-
-    // 3. Create new tree with updated files (filter out preserved paths)
-    const treeItems = Object.entries(files)
+    // Convert files to FileAddition format with base64-encoded contents
+    // Filter out preserved paths that should not be overwritten
+    // Use TextEncoder + btoa for proper UTF-8 to base64 encoding
+    const additions = Object.entries(files)
       .filter(([path]) => !shouldPreservePath(path))
       .map(([path, content]) => ({
         path,
-        mode: '100644' as const,
-        type: 'blob' as const,
-        content,
+        // Convert UTF-8 string to base64: encode to UTF-8 bytes, then to binary string, then to base64
+        contents: btoa(String.fromCharCode(...new TextEncoder().encode(content))),
       }));
 
-    const { data: treeData } = await octokit.rest.git.createTree({
-      owner,
-      repo,
-      base_tree: baseTreeSha,
-      tree: treeItems,
-    });
-    const newTreeSha = treeData.sha;
-
-    // 4. Create new commit
-    const { data: newCommitData } = await octokit.rest.git.createCommit({
-      owner,
-      repo,
-      message: commitMessage,
-      tree: newTreeSha,
-      parents: [headSha],
-    });
-    const newCommitSha = newCommitData.sha;
-
-    // 5. Update branch reference
-    await octokit.rest.git.updateRef({
-      owner,
-      repo,
-      ref: `heads/${branch}`,
-      sha: newCommitSha,
+    // Execute the GraphQL mutation
+    const response = await octokit.graphql<{
+      createCommitOnBranch: {
+        commit: {
+          oid: string;
+          url: string;
+        };
+      };
+    }>(CREATE_COMMIT_ON_BRANCH_MUTATION, {
+      input: {
+        branch: {
+          repositoryNameWithOwner: `${owner}/${repo}`,
+          branchName: branch,
+        },
+        expectedHeadOid,
+        message: {
+          headline: commitMessage,
+        },
+        fileChanges: {
+          additions,
+        },
+      },
     });
 
     return {
-      commitSha: newCommitSha,
-      commitUrl: `https://github.com/${owner}/${repo}/commit/${newCommitSha}`,
+      commitSha: response.createCommitOnBranch.commit.oid,
+      commitUrl: response.createCommitOnBranch.commit.url,
     };
   } catch (error) {
     if (error instanceof GitHubApiError) {
