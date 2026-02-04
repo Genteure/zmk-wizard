@@ -16,7 +16,11 @@ import { clearGitHubToken, saveGitHubToken } from "./main";
 // GitHub OAuth scopes needed
 const GITHUB_SCOPES = "repo";
 
-// Generate a random state for OAuth CSRF protection
+/**
+ * Generate a random state parameter for OAuth CSRF protection.
+ * Uses 16 bytes (128 bits) of cryptographic randomness, which provides
+ * sufficient entropy to prevent state guessing attacks.
+ */
 function generateOAuthState(): string {
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);
@@ -470,9 +474,11 @@ export const RepoSelectDialog: VoidComponent = () => {
                 >
                   <For each={filteredRepos()}>
                     {(repo) => (
-                      <div 
-                        class="p-3 bg-base-200 rounded-lg hover:bg-base-300 transition-colors cursor-pointer flex items-center gap-3"
+                      <button 
+                        type="button"
+                        class="w-full p-3 bg-base-200 rounded-lg hover:bg-base-300 transition-colors flex items-center gap-3 text-left"
                         onClick={() => repo.hasShieldWizardConfig && selectRepository(repo)}
+                        disabled={!repo.hasShieldWizardConfig}
                         classList={{ 
                           'opacity-50 cursor-not-allowed': !repo.hasShieldWizardConfig,
                           'cursor-pointer': repo.hasShieldWizardConfig,
@@ -504,7 +510,7 @@ export const RepoSelectDialog: VoidComponent = () => {
                             <Loader2 class="w-4 h-4 animate-spin" />
                           </Show>
                         </div>
-                      </div>
+                      </button>
                     )}
                   </For>
                 </Show>

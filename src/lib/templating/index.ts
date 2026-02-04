@@ -25,10 +25,14 @@ export const SHIELD_WIZARD_CONFIG_PATH = '.github/shield-wizard.json';
 /**
  * Paths that should not be overwritten when updating an existing repository.
  * These paths are preserved to maintain user customizations.
+ * 
+ * Path matching behavior:
+ * - Paths ending with '/' are treated as directory prefixes (e.g., 'config/' matches 'config/foo.conf')
+ * - Paths without trailing '/' are exact file matches (e.g., 'build.yaml' only matches 'build.yaml')
  */
 export const PRESERVED_PATHS = [
-  'config/',      // User configuration directory
-  'build.yaml',   // User-customized build matrix
+  'config/',      // User configuration directory (prefix match)
+  'build.yaml',   // User-customized build matrix (exact match)
 ] as const;
 
 export function createZMKConfig(keyboard: Keyboard): VirtualTextFolder {

@@ -303,6 +303,9 @@ export async function loadKeyboardConfig(
     throw new GitHubApiError('Unexpected file encoding', 400);
   }
 
+  // Note: atob() handles ASCII correctly. Since our JSON config only contains
+  // ASCII-safe characters (keyboard names are limited to 16 bytes), this is safe.
+  // For arbitrary UTF-8 content, a more robust decoder would be needed.
   const content = atob(data.content);
   const parsed = JSON.parse(content);
   
