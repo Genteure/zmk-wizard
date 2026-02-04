@@ -155,6 +155,7 @@ describe("unibody", () => {
 
     expect(fileNames).toEqual([
       ".github/shield-wizard-layout.svg",
+      ".github/shield-wizard.json",
       ".github/workflows/build.yml",
       "README.md",
       "boards/shields/unittest/Kconfig.defconfig",
@@ -181,6 +182,7 @@ describe("unibody", () => {
 
     expect(fileNames).toEqual([
       ".github/shield-wizard-layout.svg",
+      ".github/shield-wizard.json",
       ".github/workflows/build.yml",
       "README.md",
       "boards/shields/unittest/Kconfig.defconfig",
@@ -222,6 +224,7 @@ describe("split", () => {
 
     expect(fileNames).toEqual([
       ".github/shield-wizard-layout.svg",
+      ".github/shield-wizard.json",
       ".github/workflows/build.yml",
       "README.md",
       "boards/shields/unittest/Kconfig.defconfig",
@@ -249,6 +252,7 @@ describe("split", () => {
 
     expect(fileNames).toEqual([
       ".github/shield-wizard-layout.svg",
+      ".github/shield-wizard.json",
       ".github/workflows/build.yml",
       "README.md",
       "boards/shields/unittest/Kconfig.defconfig",

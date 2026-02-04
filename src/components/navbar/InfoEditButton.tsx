@@ -1,6 +1,7 @@
 import { Dialog } from "@kobalte/core/dialog";
 import { Link } from "@kobalte/core/link";
 import { debounce } from "@solid-primitives/scheduled";
+import Github from "lucide-solid/icons/github";
 import PencilLine from "lucide-solid/icons/pencil-line";
 import { createMemo, createSignal, For, onMount, type VoidComponent } from "solid-js";
 import { produce } from "solid-js/store";
@@ -264,6 +265,25 @@ hover:border-accent bg-base-300 hover:bg-base-content/10 transition-colors durat
                   Continue to Editor
                 </Dialog.CloseButton>
               </div>
+
+              <div class="divider my-4">OR</div>
+
+              <div class="text-center">
+                <button
+                  class="btn btn-outline btn-sm md:btn-md"
+                  onClick={() => {
+                    context.setNav("dialog", "info", false);
+                    context.setNav("dialog", "githubAuth", true);
+                  }}
+                >
+                  <Github class="w-5 h-5" />
+                  Edit Existing Repository
+                </button>
+                <p class="text-xs text-base-content/60 mt-2">
+                  Load and edit a repository that was created with Shield Wizard
+                </p>
+              </div>
+
               <div class="mt-6">
                 <div class="text-xs text-base-content/50 select-none items-center justify-center flex gap-1">
                   <Link

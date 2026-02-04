@@ -5,9 +5,14 @@ import { Popover } from "@kobalte/core/popover";
 import { actions } from "astro:actions";
 import { PUBLIC_TURNSTILE_SITEKEY } from "astro:env/client";
 import JSZip from "jszip";
+import Check from "lucide-solid/icons/check";
+import ExternalLink from "lucide-solid/icons/external-link";
 import FolderArchive from "lucide-solid/icons/folder-archive";
 import FolderGit2 from "lucide-solid/icons/folder-git-2";
+import Github from "lucide-solid/icons/github";
+import Loader2 from "lucide-solid/icons/loader-2";
 import Package from "lucide-solid/icons/package";
+import Upload from "lucide-solid/icons/upload";
 import X from "lucide-solid/icons/x";
 import { createEffect, createMemo, createSignal, For, Show, type VoidComponent } from "solid-js";
 import { unwrap } from "solid-js/store";
@@ -224,7 +229,50 @@ export const BuildButton: VoidComponent = () => {
     setCaptchaToken(null);
     setSummaryData(null);
     setShowSummary(false);
+    setPushSuccess(null);
     validateKeyboardAndSetSnapshot();
+  };
+
+  // State for push to GitHub
+  const [isPushing, setIsPushing] = createSignal(false);
+  const [pushSuccess, setPushSuccess] = createSignal<{ commitUrl: string } | null>(null);
+
+  const isEditMode = () => !!context.nav.editRepository;
+
+  const pushToGitHub = async () => {
+    const editRepo = context.nav.editRepository;
+    const token = context.nav.githubAuth.accessToken;
+    const snapshot = context.snapshot();
+
+    if (!editRepo || !token || !snapshot) return;
+
+    setIsPushing(true);
+    setBuildErrorMessage(null);
+    setPushSuccess(null);
+
+    try {
+      const { data, error } = await actions.githubPushChanges({
+        accessToken: token,
+        owner: editRepo.owner,
+        repo: editRepo.name,
+        branch: editRepo.defaultBranch,
+        keyboard: snapshot.keyboard,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data?.commitUrl) {
+        setPushSuccess({ commitUrl: data.commitUrl });
+      }
+    } catch (err) {
+      console.error("Error pushing to GitHub:", err);
+      const message = err instanceof Error ? err.message : "Failed to push changes for unknown reasons.";
+      setBuildErrorMessage(message);
+    } finally {
+      setIsPushing(false);
+    }
   };
 
   const downloadZip = async () => {
@@ -423,130 +471,219 @@ export const BuildButton: VoidComponent = () => {
                   </Show>
 
                   <Show when={!showSummary()}>
-                    <Show
-                      when={context.nav.repoLink}
-                      fallback={
-                        <div class="my-8">
-                          <div class="flex flex-col justify-center items-center">
-                            <div style={{ width: "300px", height: "65px", position: "relative" }}>
-                              <span class="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center rounded-sm bg-base-300 text-base-content/80" style="z-index:0;">
-                                Loading Captcha...
-                              </span>
-                              <div
-                                class="absolute left-0 right-0 top-0 bottom-0" style="z-index:1;"
+                    {/* Edit Mode: Push to GitHub */}
+                    <Show when={isEditMode()}>
+                      <div class="my-8">
+                        <Show
+                          when={!pushSuccess()}
+                          fallback={
+                            <div class="text-center space-y-4">
+                              <div class="flex items-center justify-center gap-2 text-success">
+                                <Check class="w-8 h-8" />
+                                <span class="text-lg font-semibold">Changes Pushed Successfully!</span>
+                              </div>
+                              <p class="text-sm text-base-content/70">
+                                Your changes have been committed to the repository.
+                              </p>
+                              <Link
+                                href={pushSuccess()?.commitUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="btn btn-primary"
                               >
-                                <TurnstileCaptcha
-                                  sitekey={PUBLIC_TURNSTILE_SITEKEY}
-                                  onSuccess={(token) => {
-                                    setCaptchaToken(token);
-                                  }}
-                                  onExpire={() => {
-                                    setCaptchaToken(null);
-                                  }}
-                                />
+                                <ExternalLink class="w-4 h-4" />
+                                View Commit
+                              </Link>
+                              <div class="mt-4">
+                                <Button
+                                  class="btn btn-ghost btn-sm"
+                                  onClick={resetBuildState}
+                                >
+                                  Make More Changes
+                                </Button>
                               </div>
                             </div>
-
-                            <button
-                              class="btn btn-primary mt-2"
-                              onClick={submitToServer}
-                              disabled={!captchaToken() || isBuilding()}
-                            >
-                              Create Import Link
-                            </button>
-                          </div>
-                          <div class="text-center mt-4 text-sm">
-                            Repository link expires after 24 hours. <br />
-                            Creating hosted repository is captcha protected to prevent abuse.
-                          </div>
-                        </div>
-                      }
-                    >
-                      <div class="mt-8 space-y-3">
-                        <div class="text-center">
-                          <div class="join">
-                            <div>
-                              <label class="input join-item">
-                                <FolderGit2 class="inline" />
-                                <input
-                                  readonly
-                                  ref={setRepoLinkInput}
-                                  onFocus={e => {
-                                    const input = e.currentTarget;
-                                    if (input) {
-                                      input.setSelectionRange(0, input.value.length);
-                                    }
-                                  }}
-                                />
-                              </label>
+                          }
+                        >
+                          <div class="flex flex-col items-center gap-4">
+                            <div class="flex items-center gap-2 text-base-content/80">
+                              <Github class="w-5 h-5" />
+                              <span class="font-semibold">{context.nav.editRepository?.fullName}</span>
                             </div>
-                            <button
-                              class="btn btn-primary join-item"
-                              onClick={() => {
-                                navigator.clipboard.writeText(context.nav.repoLink);
-                              }}
-                            >Copy</button>
+                            <p class="text-sm text-center text-base-content/70">
+                              Push your changes directly to the repository.
+                            </p>
+                            <Button
+                              class="btn btn-primary"
+                              onClick={pushToGitHub}
+                              disabled={isPushing() || !context.nav.githubAuth.accessToken}
+                            >
+                              <Show when={isPushing()} fallback={<Upload class="w-5 h-5" />}>
+                                <Loader2 class="w-5 h-5 animate-spin" />
+                              </Show>
+                              {isPushing() ? 'Pushing...' : 'Push Changes'}
+                            </Button>
+                            <Show when={!context.nav.githubAuth.accessToken}>
+                              <p class="text-xs text-warning">
+                                GitHub authentication has expired. Please re-authenticate.
+                              </p>
+                              <Button
+                                class="btn btn-ghost btn-sm"
+                                onClick={() => {
+                                  context.setNav("dialog", "build", false);
+                                  context.setNav("dialog", "githubAuth", true);
+                                }}
+                              >
+                                Re-authenticate
+                              </Button>
+                            </Show>
                           </div>
-                        </div>
+                        </Show>
 
-                        <div class="text-center text-sm">
-                          Import at <Link href="https://github.com/new/import" class="link" target="_blank" rel="noopener noreferrer">
-                            https://github.com/new/import
-                          </Link><br /><br />
-                          Suggested repository name: <span class="font-semibold text-nowrap">zmk-config-{context.keyboard.shield}</span>
-                          <br />
-                          Leave credentials empty.
-                          Public repository is recommended.
-                        </div>
-
-                        <div class="text-center font-bold">
-                          <Link
-                            href="/next-steps"
-                            target="_blank"
-                            class="link"
-                          >
-                            What to do next?
-                          </Link>
-                        </div>
+                        <div class="divider my-6">OR</div>
 
                         <div class="text-center">
-                          <div class="mb-2 text-xs/snug text-center text-base-content/70">
-                            If you want to make changes to your keyboard
-                          </div>
-                          <Button
-                            class="btn btn-soft btn-sm"
-                            onClick={resetBuildState}
-                            disabled={isBuilding()}
+                          <p class="text-sm text-base-content/70 mb-2">
+                            Download as ZIP and push manually
+                          </p>
+                          <button
+                            class="btn btn-outline"
+                            onClick={downloadZip}
+                            disabled={isBuilding() || isPushing()}
                           >
-                            Try Again
-                          </Button>
+                            <FolderArchive class="inline" />
+                            Download
+                          </button>
                         </div>
                       </div>
                     </Show>
 
-                    <div class="divider"></div>
-                    <div class="my-4 text-center">
-                      <div class="text-sm">
-                        As an alternative, download the configuration.<br />
-                        You can push it to your GitHub repository using git client of your choice.
-                      </div>
-                      <Show when={context.nav.repoLink}>
-                        <div class="mt-2 text-xs/snug text-center text-base-content/70">
-                          Keyboard snapshot taken at {context.snapshot()?.time.toLocaleString() ?? "unknown"}.<br />
-                          Downloading will produce the same content as the linked repository.<br />
-                          Click "Try Again" to use latest config if you made changes after creating the repository.
+                    {/* Create Mode: Captcha & Import Link */}
+                    <Show when={!isEditMode()}>
+                      <Show
+                        when={context.nav.repoLink}
+                        fallback={
+                          <div class="my-8">
+                            <div class="flex flex-col justify-center items-center">
+                              <div style={{ width: "300px", height: "65px", position: "relative" }}>
+                                <span class="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center rounded-sm bg-base-300 text-base-content/80" style="z-index:0;">
+                                  Loading Captcha...
+                                </span>
+                                <div
+                                  class="absolute left-0 right-0 top-0 bottom-0" style="z-index:1;"
+                                >
+                                  <TurnstileCaptcha
+                                    sitekey={PUBLIC_TURNSTILE_SITEKEY}
+                                    onSuccess={(token) => {
+                                      setCaptchaToken(token);
+                                    }}
+                                    onExpire={() => {
+                                      setCaptchaToken(null);
+                                    }}
+                                  />
+                                </div>
+                              </div>
+
+                              <button
+                                class="btn btn-primary mt-2"
+                                onClick={submitToServer}
+                                disabled={!captchaToken() || isBuilding()}
+                              >
+                                Create Import Link
+                              </button>
+                            </div>
+                            <div class="text-center mt-4 text-sm">
+                              Repository link expires after 24 hours. <br />
+                              Creating hosted repository is captcha protected to prevent abuse.
+                            </div>
+                          </div>
+                        }
+                      >
+                        <div class="mt-8 space-y-3">
+                          <div class="text-center">
+                            <div class="join">
+                              <div>
+                                <label class="input join-item">
+                                  <FolderGit2 class="inline" />
+                                  <input
+                                    readonly
+                                    ref={setRepoLinkInput}
+                                    onFocus={e => {
+                                      const input = e.currentTarget;
+                                      if (input) {
+                                        input.setSelectionRange(0, input.value.length);
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                              <button
+                                class="btn btn-primary join-item"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(context.nav.repoLink);
+                                }}
+                              >Copy</button>
+                            </div>
+                          </div>
+
+                          <div class="text-center text-sm">
+                            Import at <Link href="https://github.com/new/import" class="link" target="_blank" rel="noopener noreferrer">
+                              https://github.com/new/import
+                            </Link><br /><br />
+                            Suggested repository name: <span class="font-semibold text-nowrap">zmk-config-{context.keyboard.shield}</span>
+                            <br />
+                            Leave credentials empty.
+                            Public repository is recommended.
+                          </div>
+
+                          <div class="text-center font-bold">
+                            <Link
+                              href="/next-steps"
+                              target="_blank"
+                              class="link"
+                            >
+                              What to do next?
+                            </Link>
+                          </div>
+
+                          <div class="text-center">
+                            <div class="mb-2 text-xs/snug text-center text-base-content/70">
+                              If you want to make changes to your keyboard
+                            </div>
+                            <Button
+                              class="btn btn-soft btn-sm"
+                              onClick={resetBuildState}
+                              disabled={isBuilding()}
+                            >
+                              Try Again
+                            </Button>
+                          </div>
                         </div>
                       </Show>
-                      <button
-                        class="btn btn-primary mt-2"
-                        onClick={downloadZip}
-                        disabled={isBuilding()}
-                      >
-                        <FolderArchive class="inline" />
-                        Download
-                      </button>
 
-                    </div>
+                      <div class="divider"></div>
+                      <div class="my-4 text-center">
+                        <div class="text-sm">
+                          As an alternative, download the configuration.<br />
+                          You can push it to your GitHub repository using git client of your choice.
+                        </div>
+                        <Show when={context.nav.repoLink}>
+                          <div class="mt-2 text-xs/snug text-center text-base-content/70">
+                            Keyboard snapshot taken at {context.snapshot()?.time.toLocaleString() ?? "unknown"}.<br />
+                            Downloading will produce the same content as the linked repository.<br />
+                            Click "Try Again" to use latest config if you made changes after creating the repository.
+                          </div>
+                        </Show>
+                        <button
+                          class="btn btn-primary mt-2"
+                          onClick={downloadZip}
+                          disabled={isBuilding()}
+                        >
+                          <FolderArchive class="inline" />
+                          Download
+                        </button>
+                      </div>
+                    </Show>
                   </Show>
                 </Show>
               </div>

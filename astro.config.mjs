@@ -27,6 +27,17 @@ export default defineConfig({
         access: 'secret',
         optional: true,
       }),
+      // GitHub OAuth configuration for editing existing repositories
+      PUBLIC_GITHUB_CLIENT_ID: envField.string({
+        context: 'client',
+        access: 'public',
+        optional: true,
+      }),
+      GITHUB_CLIENT_SECRET: envField.string({
+        context: 'server',
+        access: 'secret',
+        optional: true,
+      }),
     }
   },
 

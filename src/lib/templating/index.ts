@@ -16,6 +16,21 @@ export { config__json } from "./contents";
 export { physicalLayoutKeyboard } from "./shield";
 export { generateKeyboardSvg } from "./svg";
 
+/**
+ * Path to the Shield Wizard configuration file within the repository.
+ * This file stores the internal keyboard data model for editing existing repositories.
+ */
+export const SHIELD_WIZARD_CONFIG_PATH = '.github/shield-wizard.json';
+
+/**
+ * Paths that should not be overwritten when updating an existing repository.
+ * These paths are preserved to maintain user customizations.
+ */
+export const PRESERVED_PATHS = [
+  'config/',      // User configuration directory
+  'build.yaml',   // User-customized build matrix
+] as const;
+
 export function createZMKConfig(keyboard: Keyboard): VirtualTextFolder {
   if (keyboard.shield === 'throwerror') {
     throw new Error("Throwing error to test error handling in templating");
@@ -25,6 +40,7 @@ export function createZMKConfig(keyboard: Keyboard): VirtualTextFolder {
 
   files['.github/workflows/build.yml'] = workflows_build_yml;
   files['.github/shield-wizard-layout.svg'] = generateKeyboardSvg(keyboard);
+  files[SHIELD_WIZARD_CONFIG_PATH] = JSON.stringify(keyboard, null, 2) + '\n';
   files['config/west.yml'] = config_west_yml(keyboard);
   files['zephyr/module.yml'] = zephyr_module_yml(keyboard);
   files['build.yaml'] = build_yaml(keyboard);

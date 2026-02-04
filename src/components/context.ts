@@ -2,6 +2,29 @@ import { createContext, useContext, type Accessor, type Setter } from "solid-js"
 import { produce, type SetStoreFunction, type Store } from "solid-js/store";
 import type { Keyboard, KeyboardSnapshot } from "../typedef";
 
+/**
+ * Information about a GitHub repository being edited.
+ */
+export interface EditRepositoryInfo {
+  owner: string;
+  name: string;
+  fullName: string;
+  htmlUrl: string;
+  defaultBranch: string;
+}
+
+/**
+ * GitHub authentication state.
+ */
+export interface GitHubAuthState {
+  accessToken: string | null;
+  user: {
+    login: string;
+    avatarUrl: string;
+    name: string | null;
+  } | null;
+}
+
 export interface Navigation {
   dialog: {
     info: boolean;
@@ -11,6 +34,10 @@ export interface Navigation {
     importLayoutJson: boolean;
     importKleJson: boolean;
     exportTextboxContent: string | null;
+    /** GitHub authentication dialog */
+    githubAuth: boolean;
+    /** Repository selection dialog */
+    repoSelect: boolean;
   };
   repoLink: string;
   selectedTab: string;
@@ -20,6 +47,14 @@ export interface Navigation {
    * Currently selected controller pin for wiring interactions
    */
   activeWiringPin: string | null;
+  /**
+   * Information about the repository being edited (null if creating new).
+   */
+  editRepository: EditRepositoryInfo | null;
+  /**
+   * GitHub authentication state.
+   */
+  githubAuth: GitHubAuthState;
 }
 
 export interface WizardContextType {
@@ -76,4 +111,5 @@ export function normalizeKeys(context: WizardContextType) {
     draft.sort((a, b) => (a.row - b.row) || (a.col - b.col));
   }));
 }
+
 
