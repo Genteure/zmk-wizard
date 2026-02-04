@@ -6,13 +6,15 @@
  * - List user repositories containing shield-wizard.json
  * - Load keyboard configuration from a repository
  * - Commit and push changes to a repository
+ * 
+ * Uses the official Octokit library for GitHub API interactions.
  */
 
+import { Octokit } from 'octokit';
 import { SHIELD_WIZARD_CONFIG_PATH, PRESERVED_PATHS } from './templating';
 import type { Keyboard, VirtualTextFolder } from '../typedef';
 import { KeyboardSchema } from '../typedef';
 
-const GITHUB_API_BASE = 'https://api.github.com';
 const GITHUB_OAUTH_URL = 'https://github.com/login/oauth/access_token';
 
 export interface GitHubTokenResponse {
@@ -44,30 +46,6 @@ export interface GitHubRepository {
   };
 }
 
-export interface GitHubFileContent {
-  content: string;
-  encoding: string;
-  sha: string;
-}
-
-export interface GitHubTreeItem {
-  path: string;
-  mode: '100644' | '100755' | '040000' | '160000' | '120000';
-  type: 'blob' | 'tree' | 'commit';
-  sha?: string;
-  content?: string;
-}
-
-export interface GitHubCommit {
-  sha: string;
-  message: string;
-  author: {
-    name: string;
-    email: string;
-    date: string;
-  };
-}
-
 export class GitHubApiError extends Error {
   constructor(
     message: string,
@@ -92,7 +70,28 @@ export class GitHubApiError extends Error {
 }
 
 /**
+ * Create an Octokit instance with the given access token.
+ */
+function createOctokit(accessToken: string): Octokit {
+  return new Octokit({ auth: accessToken });
+}
+
+/**
+ * Convert Octokit errors to GitHubApiError for consistent error handling.
+ */
+function handleOctokitError(error: unknown, defaultMessage: string): never {
+  if (error && typeof error === 'object' && 'status' in error) {
+    const status = (error as { status: number }).status;
+    const message = 'message' in error ? String((error as { message: string }).message) : defaultMessage;
+    throw new GitHubApiError(message, status, error);
+  }
+  throw new GitHubApiError(defaultMessage, 500, error);
+}
+
+/**
  * Exchange an OAuth authorization code for an access token.
+ * Note: This uses fetch directly because Octokit's OAuth app authentication
+ * is designed for different use cases.
  */
 export async function exchangeCodeForToken(
   code: string,
@@ -136,106 +135,59 @@ export async function exchangeCodeForToken(
  * Verify an access token and get the authenticated user.
  */
 export async function getAuthenticatedUser(accessToken: string): Promise<GitHubUser> {
-  const response = await fetch(`${GITHUB_API_BASE}/user`, {
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Accept': 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
-  });
-
-  if (!response.ok) {
-    throw new GitHubApiError(
-      'Failed to get authenticated user',
-      response.status,
-      await response.json().catch(() => null)
-    );
+  try {
+    const octokit = createOctokit(accessToken);
+    const { data } = await octokit.rest.users.getAuthenticated();
+    
+    return {
+      login: data.login,
+      id: data.id,
+      avatar_url: data.avatar_url,
+      name: data.name,
+    };
+  } catch (error) {
+    handleOctokitError(error, 'Failed to get authenticated user');
   }
-
-  return response.json() as Promise<GitHubUser>;
 }
 
 /**
- * List repositories for the authenticated user that contain shield-wizard.json.
- */
-export async function listShieldWizardRepositories(
-  accessToken: string,
-  page = 1,
-  perPage = 30
-): Promise<{ repos: GitHubRepository[]; hasMore: boolean }> {
-  // First, search for repositories that contain the shield-wizard.json file
-  const query = `filename:${SHIELD_WIZARD_CONFIG_PATH.split('/').pop()} path:${SHIELD_WIZARD_CONFIG_PATH.replace(/\/[^/]+$/, '')}`;
-  
-  const response = await fetch(
-    `${GITHUB_API_BASE}/search/code?q=${encodeURIComponent(query)}+user:@me&per_page=${perPage}&page=${page}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    }
-  );
-
-  if (!response.ok) {
-    // If search fails, fall back to listing all repos
-    // (search may not work for private repos in some cases)
-    return listUserRepositories(accessToken, page, perPage);
-  }
-
-  const data = await response.json() as { 
-    items: Array<{ repository: GitHubRepository }>;
-    total_count: number;
-  };
-
-  // Deduplicate repositories
-  const repoMap = new Map<number, GitHubRepository>();
-  for (const item of data.items) {
-    if (!repoMap.has(item.repository.id)) {
-      repoMap.set(item.repository.id, item.repository);
-    }
-  }
-
-  return {
-    repos: Array.from(repoMap.values()),
-    hasMore: data.total_count > page * perPage,
-  };
-}
-
-/**
- * List all repositories for the authenticated user (fallback method).
+ * List all repositories for the authenticated user.
  */
 export async function listUserRepositories(
   accessToken: string,
   page = 1,
   perPage = 30
 ): Promise<{ repos: GitHubRepository[]; hasMore: boolean }> {
-  const response = await fetch(
-    `${GITHUB_API_BASE}/user/repos?sort=updated&per_page=${perPage}&page=${page}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
+  try {
+    const octokit = createOctokit(accessToken);
+    const { data, headers } = await octokit.rest.repos.listForAuthenticatedUser({
+      sort: 'updated',
+      per_page: perPage,
+      page,
+    });
+
+    const repos: GitHubRepository[] = data.map(repo => ({
+      id: repo.id,
+      name: repo.name,
+      full_name: repo.full_name,
+      private: repo.private,
+      description: repo.description,
+      html_url: repo.html_url,
+      default_branch: repo.default_branch,
+      owner: {
+        login: repo.owner.login,
+        avatar_url: repo.owner.avatar_url,
       },
-    }
-  );
+    }));
 
-  if (!response.ok) {
-    throw new GitHubApiError(
-      'Failed to list repositories',
-      response.status,
-      await response.json().catch(() => null)
-    );
+    // Check the Link header for pagination
+    const linkHeader = headers.link;
+    const hasMore = linkHeader?.includes('rel="next"') ?? false;
+
+    return { repos, hasMore };
+  } catch (error) {
+    handleOctokitError(error, 'Failed to list repositories');
   }
-
-  const repos = await response.json() as GitHubRepository[];
-  
-  // Check the Link header for pagination
-  const linkHeader = response.headers.get('Link');
-  const hasMore = linkHeader?.includes('rel="next"') ?? false;
-
-  return { repos, hasMore };
 }
 
 /**
@@ -247,18 +199,13 @@ export async function hasShieldWizardConfig(
   repo: string
 ): Promise<boolean> {
   try {
-    const response = await fetch(
-      `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${SHIELD_WIZARD_CONFIG_PATH}`,
-      {
-        method: 'HEAD',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-      }
-    );
-    return response.ok;
+    const octokit = createOctokit(accessToken);
+    await octokit.rest.repos.getContent({
+      owner,
+      repo,
+      path: SHIELD_WIZARD_CONFIG_PATH,
+    });
+    return true;
   } catch {
     return false;
   }
@@ -272,121 +219,61 @@ export async function loadKeyboardConfig(
   owner: string,
   repo: string
 ): Promise<{ keyboard: Keyboard; sha: string }> {
-  const response = await fetch(
-    `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${SHIELD_WIZARD_CONFIG_PATH}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    }
-  );
+  try {
+    const octokit = createOctokit(accessToken);
+    const { data } = await octokit.rest.repos.getContent({
+      owner,
+      repo,
+      path: SHIELD_WIZARD_CONFIG_PATH,
+    });
 
-  if (!response.ok) {
-    if (response.status === 404) {
+    // Ensure we got a file, not a directory or other content type
+    if (Array.isArray(data)) {
+      throw new GitHubApiError('Expected a file, got a directory', 400);
+    }
+    if (data.type !== 'file') {
+      throw new GitHubApiError(`Expected a file, got ${data.type}`, 400);
+    }
+
+    if (data.encoding !== 'base64') {
+      throw new GitHubApiError('Unexpected file encoding', 400);
+    }
+
+    // Note: atob() handles ASCII correctly. Since our JSON config only contains
+    // ASCII-safe characters (keyboard names are limited to 16 bytes), this is safe.
+    // For arbitrary UTF-8 content, a more robust decoder would be needed.
+    const content = atob(data.content);
+    const parsed = JSON.parse(content);
+    
+    // Validate the keyboard data
+    const result = KeyboardSchema.safeParse(parsed);
+    if (!result.success) {
       throw new GitHubApiError(
-        'Repository does not contain Shield Wizard configuration',
-        404
+        'Invalid keyboard configuration in repository',
+        400,
+        result.error.issues
       );
     }
-    throw new GitHubApiError(
-      'Failed to load configuration',
-      response.status,
-      await response.json().catch(() => null)
-    );
-  }
 
-  const data = await response.json() as GitHubFileContent;
-  
-  if (data.encoding !== 'base64') {
-    throw new GitHubApiError('Unexpected file encoding', 400);
-  }
-
-  // Note: atob() handles ASCII correctly. Since our JSON config only contains
-  // ASCII-safe characters (keyboard names are limited to 16 bytes), this is safe.
-  // For arbitrary UTF-8 content, a more robust decoder would be needed.
-  const content = atob(data.content);
-  const parsed = JSON.parse(content);
-  
-  // Validate the keyboard data
-  const result = KeyboardSchema.safeParse(parsed);
-  if (!result.success) {
-    throw new GitHubApiError(
-      'Invalid keyboard configuration in repository',
-      400,
-      result.error.issues
-    );
-  }
-
-  return {
-    keyboard: result.data,
-    sha: data.sha,
-  };
-}
-
-/**
- * Get the default branch ref SHA for a repository.
- */
-async function getDefaultBranchSha(
-  accessToken: string,
-  owner: string,
-  repo: string,
-  branch: string
-): Promise<string> {
-  const response = await fetch(
-    `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/ref/heads/${branch}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
+    return {
+      keyboard: result.data,
+      sha: data.sha,
+    };
+  } catch (error) {
+    if (error instanceof GitHubApiError) {
+      throw error;
     }
-  );
-
-  if (!response.ok) {
-    throw new GitHubApiError(
-      'Failed to get branch reference',
-      response.status,
-      await response.json().catch(() => null)
-    );
-  }
-
-  const data = await response.json() as { object: { sha: string } };
-  return data.object.sha;
-}
-
-/**
- * Get the tree SHA for a commit.
- */
-async function getCommitTreeSha(
-  accessToken: string,
-  owner: string,
-  repo: string,
-  commitSha: string
-): Promise<string> {
-  const response = await fetch(
-    `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/commits/${commitSha}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
+    if (error && typeof error === 'object' && 'status' in error) {
+      const status = (error as { status: number }).status;
+      if (status === 404) {
+        throw new GitHubApiError(
+          'Repository does not contain Shield Wizard configuration',
+          404
+        );
+      }
     }
-  );
-
-  if (!response.ok) {
-    throw new GitHubApiError(
-      'Failed to get commit',
-      response.status,
-      await response.json().catch(() => null)
-    );
+    handleOctokitError(error, 'Failed to load configuration');
   }
-
-  const data = await response.json() as { tree: { sha: string } };
-  return data.tree.sha;
 }
 
 /**
@@ -396,131 +283,6 @@ function shouldPreservePath(filePath: string): boolean {
   return PRESERVED_PATHS.some(preserved => 
     filePath === preserved || filePath.startsWith(preserved)
   );
-}
-
-/**
- * Create a new tree with updated files.
- */
-async function createTree(
-  accessToken: string,
-  owner: string,
-  repo: string,
-  baseTreeSha: string,
-  files: VirtualTextFolder
-): Promise<string> {
-  // Filter out preserved paths
-  const treeItems: GitHubTreeItem[] = Object.entries(files)
-    .filter(([path]) => !shouldPreservePath(path))
-    .map(([path, content]) => ({
-      path,
-      mode: '100644' as const,
-      type: 'blob' as const,
-      content,
-    }));
-
-  const response = await fetch(
-    `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        base_tree: baseTreeSha,
-        tree: treeItems,
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    throw new GitHubApiError(
-      'Failed to create tree',
-      response.status,
-      await response.json().catch(() => null)
-    );
-  }
-
-  const data = await response.json() as { sha: string };
-  return data.sha;
-}
-
-/**
- * Create a new commit.
- */
-async function createCommit(
-  accessToken: string,
-  owner: string,
-  repo: string,
-  message: string,
-  treeSha: string,
-  parentSha: string
-): Promise<string> {
-  const response = await fetch(
-    `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/commits`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message,
-        tree: treeSha,
-        parents: [parentSha],
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    throw new GitHubApiError(
-      'Failed to create commit',
-      response.status,
-      await response.json().catch(() => null)
-    );
-  }
-
-  const data = await response.json() as { sha: string };
-  return data.sha;
-}
-
-/**
- * Update a branch reference to point to a new commit.
- */
-async function updateBranchRef(
-  accessToken: string,
-  owner: string,
-  repo: string,
-  branch: string,
-  commitSha: string
-): Promise<void> {
-  const response = await fetch(
-    `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/refs/heads/${branch}`,
-    {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        sha: commitSha,
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    throw new GitHubApiError(
-      'Failed to update branch reference',
-      response.status,
-      await response.json().catch(() => null)
-    );
-  }
 }
 
 /**
@@ -541,32 +303,71 @@ export async function pushChangesToRepository(
   files: VirtualTextFolder,
   commitMessage: string
 ): Promise<{ commitSha: string; commitUrl: string }> {
-  // 1. Get current HEAD commit SHA
-  const headSha = await getDefaultBranchSha(accessToken, owner, repo, branch);
-  
-  // 2. Get current tree SHA
-  const baseTreeSha = await getCommitTreeSha(accessToken, owner, repo, headSha);
-  
-  // 3. Create new tree
-  const newTreeSha = await createTree(accessToken, owner, repo, baseTreeSha, files);
-  
-  // 4. Create new commit
-  const newCommitSha = await createCommit(
-    accessToken,
-    owner,
-    repo,
-    commitMessage,
-    newTreeSha,
-    headSha
-  );
-  
-  // 5. Update branch reference
-  await updateBranchRef(accessToken, owner, repo, branch, newCommitSha);
+  try {
+    const octokit = createOctokit(accessToken);
 
-  return {
-    commitSha: newCommitSha,
-    commitUrl: `https://github.com/${owner}/${repo}/commit/${newCommitSha}`,
-  };
+    // 1. Get current HEAD commit SHA
+    const { data: refData } = await octokit.rest.git.getRef({
+      owner,
+      repo,
+      ref: `heads/${branch}`,
+    });
+    const headSha = refData.object.sha;
+
+    // 2. Get current tree SHA
+    const { data: commitData } = await octokit.rest.git.getCommit({
+      owner,
+      repo,
+      commit_sha: headSha,
+    });
+    const baseTreeSha = commitData.tree.sha;
+
+    // 3. Create new tree with updated files (filter out preserved paths)
+    const treeItems = Object.entries(files)
+      .filter(([path]) => !shouldPreservePath(path))
+      .map(([path, content]) => ({
+        path,
+        mode: '100644' as const,
+        type: 'blob' as const,
+        content,
+      }));
+
+    const { data: treeData } = await octokit.rest.git.createTree({
+      owner,
+      repo,
+      base_tree: baseTreeSha,
+      tree: treeItems,
+    });
+    const newTreeSha = treeData.sha;
+
+    // 4. Create new commit
+    const { data: newCommitData } = await octokit.rest.git.createCommit({
+      owner,
+      repo,
+      message: commitMessage,
+      tree: newTreeSha,
+      parents: [headSha],
+    });
+    const newCommitSha = newCommitData.sha;
+
+    // 5. Update branch reference
+    await octokit.rest.git.updateRef({
+      owner,
+      repo,
+      ref: `heads/${branch}`,
+      sha: newCommitSha,
+    });
+
+    return {
+      commitSha: newCommitSha,
+      commitUrl: `https://github.com/${owner}/${repo}/commit/${newCommitSha}`,
+    };
+  } catch (error) {
+    if (error instanceof GitHubApiError) {
+      throw error;
+    }
+    handleOctokitError(error, 'Failed to push changes to repository');
+  }
 }
 
 /**
@@ -577,24 +378,27 @@ export async function getRepository(
   owner: string,
   repo: string
 ): Promise<GitHubRepository> {
-  const response = await fetch(
-    `${GITHUB_API_BASE}/repos/${owner}/${repo}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
+  try {
+    const octokit = createOctokit(accessToken);
+    const { data } = await octokit.rest.repos.get({
+      owner,
+      repo,
+    });
+
+    return {
+      id: data.id,
+      name: data.name,
+      full_name: data.full_name,
+      private: data.private,
+      description: data.description,
+      html_url: data.html_url,
+      default_branch: data.default_branch,
+      owner: {
+        login: data.owner.login,
+        avatar_url: data.owner.avatar_url,
       },
-    }
-  );
-
-  if (!response.ok) {
-    throw new GitHubApiError(
-      'Failed to get repository',
-      response.status,
-      await response.json().catch(() => null)
-    );
+    };
+  } catch (error) {
+    handleOctokitError(error, 'Failed to get repository');
   }
-
-  return response.json() as Promise<GitHubRepository>;
 }
