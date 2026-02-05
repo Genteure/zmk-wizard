@@ -77,13 +77,34 @@ function createOctokit(accessToken: string): Octokit {
 }
 
 /**
+ * Type guard to check if an error has the expected shape from Octokit.
+ */
+function isOctokitError(error: unknown): error is { status: number; message?: string; response?: unknown } {
+  return (
+    error !== null &&
+    typeof error === 'object' &&
+    'status' in error &&
+    typeof (error as { status: unknown }).status === 'number'
+  );
+}
+
+/**
  * Convert Octokit errors to GitHubApiError for consistent error handling.
+ * Also logs detailed error information for debugging purposes.
  */
 function handleOctokitError(error: unknown, defaultMessage: string): never {
-  if (error && typeof error === 'object' && 'status' in error) {
-    const status = (error as { status: number }).status;
-    const message = 'message' in error ? String((error as { message: string }).message) : defaultMessage;
-    throw new GitHubApiError(message, status, error);
+  // Log detailed error information for debugging
+  console.error('[GitHub API Error]', defaultMessage, {
+    error,
+    type: error?.constructor?.name,
+    message: isOctokitError(error) ? error.message : undefined,
+    status: isOctokitError(error) ? error.status : undefined,
+    response: isOctokitError(error) ? error.response : undefined,
+  });
+
+  if (isOctokitError(error)) {
+    const message = error.message ? String(error.message) : defaultMessage;
+    throw new GitHubApiError(message, error.status, error);
   }
   throw new GitHubApiError(defaultMessage, 500, error);
 }

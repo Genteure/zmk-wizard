@@ -13,8 +13,19 @@ import { createEffect, createSignal, For, on, Show, type VoidComponent } from "s
 import { useWizardContext } from "./context";
 import { clearGitHubToken, saveGitHubToken } from "./main";
 
-// GitHub OAuth scopes needed
-const GITHUB_SCOPES = "repo";
+/**
+ * GitHub OAuth scopes needed for editing repositories.
+ * 
+ * - `repo`: Full control of private repositories (includes public repos)
+ *   - Required for reading and writing repository contents
+ *   - Required for reading and writing `.github/workflows` files
+ * - `workflow`: Update GitHub Action workflows
+ *   - Required for pushing changes to `.github/workflows` directory
+ * 
+ * Note: For public repos only, `public_repo` scope would be sufficient,
+ * but we use `repo` to support both public and private repositories.
+ */
+const GITHUB_SCOPES = "repo workflow";
 
 /**
  * Generate a random state parameter for OAuth CSRF protection.

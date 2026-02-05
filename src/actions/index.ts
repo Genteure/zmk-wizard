@@ -122,12 +122,15 @@ export const server = {
           GITHUB_CLIENT_SECRET
         );
 
+        console.log('[GitHub OAuth] Token exchange successful, scope:', tokenResponse.scope);
+
         return {
           accessToken: tokenResponse.access_token,
           tokenType: tokenResponse.token_type,
           scope: tokenResponse.scope,
         };
       } catch (error) {
+        console.error('[GitHub OAuth] Token exchange failed:', error);
         if (error instanceof GitHubApiError) {
           throw new ActionError({
             code: "BAD_REQUEST",
@@ -152,6 +155,7 @@ export const server = {
     async handler(input) {
       try {
         const user = await getAuthenticatedUser(input.accessToken);
+        console.log('[GitHub API] User authenticated:', user.login);
         return {
           login: user.login,
           id: user.id,
@@ -159,6 +163,7 @@ export const server = {
           name: user.name,
         };
       } catch (error) {
+        console.error('[GitHub API] Failed to get user:', error);
         if (GitHubApiError.isUnauthorized(error)) {
           throw new ActionError({
             code: "UNAUTHORIZED",
@@ -190,6 +195,8 @@ export const server = {
           input.perPage
         );
 
+        console.log('[GitHub API] Listed repositories, count:', repos.length, 'hasMore:', hasMore);
+
         // Check each repo for shield-wizard.json file
         const reposWithConfig = await Promise.all(
           repos.map(async (repo) => {
@@ -220,6 +227,7 @@ export const server = {
           hasMore,
         };
       } catch (error) {
+        console.error('[GitHub API] Failed to list repositories:', error);
         if (GitHubApiError.isUnauthorized(error)) {
           throw new ActionError({
             code: "UNAUTHORIZED",
@@ -257,11 +265,15 @@ export const server = {
           input.repo
         );
 
+        console.log('[GitHub API] Loading config from:', input.owner + '/' + input.repo);
+
         const { keyboard } = await loadKeyboardConfig(
           input.accessToken,
           input.owner,
           input.repo
         );
+
+        console.log('[GitHub API] Loaded keyboard config:', keyboard.name);
 
         return {
           keyboard,
@@ -278,6 +290,7 @@ export const server = {
           },
         };
       } catch (error) {
+        console.error('[GitHub API] Failed to load config from ' + input.owner + '/' + input.repo + ':', error);
         if (GitHubApiError.isUnauthorized(error)) {
           throw new ActionError({
             code: "UNAUTHORIZED",
@@ -329,6 +342,8 @@ export const server = {
         // Generate the new configuration files
         const files = createZMKConfig(input.keyboard);
 
+        console.log('[GitHub API] Pushing changes to:', input.owner + '/' + input.repo + ' branch:', input.branch);
+
         // Push changes to the repository
         const result = await pushChangesToRepository(
           input.accessToken,
@@ -339,11 +354,14 @@ export const server = {
           "Update keyboard configuration via Shield Wizard"
         );
 
+        console.log('[GitHub API] Push successful, commit:', result.commitSha);
+
         return {
           commitSha: result.commitSha,
           commitUrl: result.commitUrl,
         };
       } catch (error) {
+        console.error('[GitHub API] Failed to push changes to ' + input.owner + '/' + input.repo + ':', error);
         if (GitHubApiError.isUnauthorized(error)) {
           throw new ActionError({
             code: "UNAUTHORIZED",
