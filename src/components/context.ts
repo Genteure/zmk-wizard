@@ -14,6 +14,21 @@ export interface EditRepositoryInfo {
 }
 
 /**
+ * Information about a GitHub App installation.
+ */
+export interface GitHubInstallationInfo {
+  id: number;
+  account: {
+    login: string;
+    id: number;
+    avatarUrl: string;
+    type: 'User' | 'Organization';
+  };
+  repositorySelection: 'all' | 'selected';
+  htmlUrl: string;
+}
+
+/**
  * GitHub authentication state.
  */
 export interface GitHubAuthState {
@@ -23,6 +38,12 @@ export interface GitHubAuthState {
     avatarUrl: string;
     name: string | null;
   } | null;
+  /**
+   * List of GitHub App installations accessible by the user.
+   * Empty array means user is authenticated but has no app installations.
+   * null means we haven't checked yet.
+   */
+  installations: GitHubInstallationInfo[] | null;
 }
 
 export interface Navigation {

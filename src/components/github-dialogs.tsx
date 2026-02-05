@@ -2,7 +2,8 @@ import { Button } from "@kobalte/core/button";
 import { Dialog } from "@kobalte/core/dialog";
 import { Link } from "@kobalte/core/link";
 import { actions } from "astro:actions";
-import { PUBLIC_GITHUB_CLIENT_ID } from "astro:env/client";
+import { PUBLIC_GITHUB_CLIENT_ID, PUBLIC_GITHUB_APP_NAME } from "astro:env/client";
+import AlertTriangle from "lucide-solid/icons/alert-triangle";
 import Check from "lucide-solid/icons/check";
 import ExternalLink from "lucide-solid/icons/external-link";
 import Github from "lucide-solid/icons/github";
@@ -14,20 +15,6 @@ import { useWizardContext } from "./context";
 import { clearGitHubToken, saveGitHubToken } from "./main";
 
 /**
- * GitHub OAuth scopes needed for editing repositories.
- * 
- * - `repo`: Full control of private repositories (includes public repos)
- *   - Required for reading and writing repository contents
- *   - Required for reading and writing `.github/workflows` files
- * - `workflow`: Update GitHub Action workflows
- *   - Required for pushing changes to `.github/workflows` directory
- * 
- * Note: For public repos only, `public_repo` scope would be sufficient,
- * but we use `repo` to support both public and private repositories.
- */
-const GITHUB_SCOPES = "repo workflow";
-
-/**
  * Generate a random state parameter for OAuth CSRF protection.
  * Uses 16 bytes (128 bits) of cryptographic randomness, which provides
  * sufficient entropy to prevent state guessing attacks.
@@ -36,6 +23,17 @@ function generateOAuthState(): string {
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);
   return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Get the GitHub App installation URL.
+ */
+function getInstallationUrl(): string {
+  if (!PUBLIC_GITHUB_APP_NAME) {
+    return 'https://github.com/apps';
+  }
+  const redirectUri = `${window.location.origin}${window.location.pathname}`;
+  return `https://github.com/apps/${PUBLIC_GITHUB_APP_NAME}/installations/new?state=${generateOAuthState()}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 }
 
 interface RepositoryInfo {
@@ -54,27 +52,37 @@ interface RepositoryInfo {
 }
 
 /**
- * Dialog for GitHub OAuth authentication.
+ * Dialog for GitHub App authentication and installation.
+ * 
+ * Flow:
+ * 1. User clicks "Connect to GitHub" to authorize the app
+ * 2. After authorization, we check if the app is installed
+ * 3. If not installed, user is prompted to install the app
+ * 4. After installation, user can proceed to select repositories
  */
 export const GitHubAuthDialog: VoidComponent = () => {
   const context = useWizardContext();
   const [isAuthenticating, setIsAuthenticating] = createSignal(false);
+  const [isCheckingInstallation, setIsCheckingInstallation] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
   const isAuthenticated = () => !!context.nav.githubAuth.accessToken;
+  const hasInstallations = () => (context.nav.githubAuth.installations?.length ?? 0) > 0;
 
-  // Handle OAuth callback from URL
+  // Handle OAuth callback and installation callback from URL
   createEffect(on(
     () => context.nav.dialog.githubAuth,
     (isOpen) => {
       if (!isOpen) return;
 
-      // Check if we're handling an OAuth callback
+      // Check if we're handling an OAuth callback or installation callback
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
       const state = urlParams.get('state');
+      const setupAction = urlParams.get('setup_action'); // Installation callback
       const storedState = sessionStorage.getItem('github_oauth_state');
 
+      // Handle OAuth callback
       if (code && state && storedState) {
         // Verify state matches
         if (state !== storedState) {
@@ -91,13 +99,31 @@ export const GitHubAuthDialog: VoidComponent = () => {
 
         // Exchange code for token
         handleOAuthCallback(code);
+        return;
+      }
+
+      // Handle installation callback (user just installed the app)
+      if (setupAction) {
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // If user is already authenticated, refresh installations
+        if (context.nav.githubAuth.accessToken) {
+          fetchInstallations(context.nav.githubAuth.accessToken);
+        }
+        return;
+      }
+
+      // If authenticated but haven't checked installations yet, check now
+      if (context.nav.githubAuth.accessToken && context.nav.githubAuth.installations === null) {
+        fetchInstallations(context.nav.githubAuth.accessToken);
       }
     }
   ));
 
   const handleOAuthCallback = async (code: string) => {
     if (!PUBLIC_GITHUB_CLIENT_ID) {
-      setError('GitHub OAuth is not configured.');
+      setError('GitHub App is not configured.');
       return;
     }
 
@@ -125,9 +151,8 @@ export const GitHubAuthDialog: VoidComponent = () => {
       // Get user info
       await fetchUserInfo(data.accessToken);
 
-      // Close auth dialog and open repo select dialog
-      context.setNav("dialog", "githubAuth", false);
-      context.setNav("dialog", "repoSelect", true);
+      // Check installations
+      await fetchInstallations(data.accessToken);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to authenticate');
     } finally {
@@ -160,9 +185,33 @@ export const GitHubAuthDialog: VoidComponent = () => {
     }
   };
 
+  const fetchInstallations = async (token: string) => {
+    setIsCheckingInstallation(true);
+    try {
+      const { data, error: actionError } = await actions.githubListInstallations({
+        accessToken: token,
+      });
+
+      if (actionError) {
+        throw new Error(actionError.message);
+      }
+
+      if (data) {
+        context.setNav("githubAuth", "installations", data.installations);
+        console.log('[GitHub Auth] Found', data.installations.length, 'installations');
+      }
+    } catch (err) {
+      console.error('[GitHub Auth] Failed to fetch installations:', err);
+      // Don't clear the token, just set empty installations
+      context.setNav("githubAuth", "installations", []);
+    } finally {
+      setIsCheckingInstallation(false);
+    }
+  };
+
   const startOAuth = () => {
     if (!PUBLIC_GITHUB_CLIENT_ID) {
-      setError('GitHub OAuth is not configured on this server.');
+      setError('GitHub App is not configured on this server.');
       return;
     }
 
@@ -174,10 +223,14 @@ export const GitHubAuthDialog: VoidComponent = () => {
     const authUrl = new URL('https://github.com/login/oauth/authorize');
     authUrl.searchParams.set('client_id', PUBLIC_GITHUB_CLIENT_ID);
     authUrl.searchParams.set('redirect_uri', redirectUri);
-    authUrl.searchParams.set('scope', GITHUB_SCOPES);
     authUrl.searchParams.set('state', state);
 
     window.location.href = authUrl.toString();
+  };
+
+  const startInstallation = () => {
+    // Redirect to GitHub App installation page
+    window.location.href = getInstallationUrl();
   };
 
   const handleLogout = () => {
@@ -185,6 +238,7 @@ export const GitHubAuthDialog: VoidComponent = () => {
     context.setNav("githubAuth", {
       accessToken: null,
       user: null,
+      installations: null,
     });
     context.setNav("editRepository", null);
     setError(null);
@@ -220,35 +274,37 @@ export const GitHubAuthDialog: VoidComponent = () => {
                 </div>
               </Show>
 
-              <Show 
-                when={isAuthenticated()}
-                fallback={
-                  <div class="text-center space-y-4">
-                    <p class="text-base-content/80">
-                      Connect your GitHub account to edit existing Shield Wizard configurations.
-                    </p>
-                    <p class="text-sm text-base-content/60">
-                      We'll request access to your repositories so you can load and save configurations.
-                    </p>
-                    <Button
-                      class="btn btn-primary btn-lg"
-                      onClick={startOAuth}
-                      disabled={isAuthenticating() || !PUBLIC_GITHUB_CLIENT_ID}
-                    >
-                      <Show when={isAuthenticating()} fallback={<Github class="w-5 h-5" />}>
-                        <Loader2 class="w-5 h-5 animate-spin" />
-                      </Show>
-                      {isAuthenticating() ? 'Authenticating...' : 'Sign in with GitHub'}
-                    </Button>
-                    <Show when={!PUBLIC_GITHUB_CLIENT_ID}>
-                      <p class="text-xs text-error">
-                        GitHub OAuth is not configured on this server.
-                      </p>
+              {/* Step 1: Not authenticated - show sign in button */}
+              <Show when={!isAuthenticated()}>
+                <div class="text-center space-y-4">
+                  <p class="text-base-content/80">
+                    Connect your GitHub account to edit existing Shield Wizard configurations.
+                  </p>
+                  <p class="text-sm text-base-content/60">
+                    You'll authorize the Shield Wizard app to access your repositories.
+                  </p>
+                  <Button
+                    class="btn btn-primary btn-lg"
+                    onClick={startOAuth}
+                    disabled={isAuthenticating() || !PUBLIC_GITHUB_CLIENT_ID}
+                  >
+                    <Show when={isAuthenticating()} fallback={<Github class="w-5 h-5" />}>
+                      <Loader2 class="w-5 h-5 animate-spin" />
                     </Show>
-                  </div>
-                }
-              >
+                    {isAuthenticating() ? 'Authenticating...' : 'Sign in with GitHub'}
+                  </Button>
+                  <Show when={!PUBLIC_GITHUB_CLIENT_ID}>
+                    <p class="text-xs text-error">
+                      GitHub App is not configured on this server.
+                    </p>
+                  </Show>
+                </div>
+              </Show>
+
+              {/* Authenticated - show user info and installation status */}
+              <Show when={isAuthenticated()}>
                 <div class="space-y-4">
+                  {/* User info card */}
                   <div class="flex items-center gap-4 p-4 bg-base-200 rounded-lg">
                     <img 
                       src={context.nav.githubAuth.user?.avatarUrl} 
@@ -266,19 +322,79 @@ export const GitHubAuthDialog: VoidComponent = () => {
                     <Check class="w-6 h-6 text-success" />
                   </div>
 
-                  <div class="flex gap-2">
+                  {/* Checking installation status */}
+                  <Show when={isCheckingInstallation()}>
+                    <div class="flex items-center justify-center py-4 text-base-content/70">
+                      <Loader2 class="w-5 h-5 animate-spin mr-2" />
+                      Checking app installation...
+                    </div>
+                  </Show>
+
+                  {/* Step 2: No installations - prompt to install */}
+                  <Show when={!isCheckingInstallation() && !hasInstallations()}>
+                    <div class="alert alert-warning">
+                      <AlertTriangle class="w-5 h-5" />
+                      <div>
+                        <p class="font-semibold">App installation required</p>
+                        <p class="text-sm">
+                          To access your repositories, you need to install the Shield Wizard app.
+                        </p>
+                      </div>
+                    </div>
                     <Button
-                      class="btn btn-primary flex-1"
+                      class="btn btn-primary w-full"
+                      onClick={startInstallation}
+                      disabled={!PUBLIC_GITHUB_APP_NAME}
+                    >
+                      <ExternalLink class="w-5 h-5" />
+                      Install Shield Wizard App
+                    </Button>
+                    <Show when={!PUBLIC_GITHUB_APP_NAME}>
+                      <p class="text-xs text-error text-center">
+                        GitHub App name is not configured on this server.
+                      </p>
+                    </Show>
+                  </Show>
+
+                  {/* Step 3: Has installations - show count and continue button */}
+                  <Show when={!isCheckingInstallation() && hasInstallations()}>
+                    <div class="alert alert-success">
+                      <Check class="w-5 h-5" />
+                      <div>
+                        <p class="font-semibold">App installed</p>
+                        <p class="text-sm">
+                          {context.nav.githubAuth.installations?.length === 1
+                            ? '1 account has the Shield Wizard app installed.'
+                            : `${context.nav.githubAuth.installations?.length} accounts have the Shield Wizard app installed.`
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      class="btn btn-primary w-full"
                       onClick={continueToRepoSelect}
                     >
                       Select Repository
                     </Button>
+                    <div class="text-center">
+                      <button
+                        type="button"
+                        class="text-sm text-base-content/60 hover:text-base-content underline"
+                        onClick={startInstallation}
+                      >
+                        Add more repositories
+                      </button>
+                    </div>
+                  </Show>
+
+                  {/* Logout button */}
+                  <div class="border-t border-base-300 pt-4 mt-4">
                     <Button
-                      class="btn btn-ghost"
+                      class="btn btn-ghost btn-sm w-full"
                       onClick={handleLogout}
-                      title="Sign out"
                     >
-                      <LogOut class="w-5 h-5" />
+                      <LogOut class="w-4 h-4" />
+                      Sign out
                     </Button>
                   </div>
                 </div>
@@ -293,70 +409,79 @@ export const GitHubAuthDialog: VoidComponent = () => {
 
 /**
  * Dialog for selecting a repository to edit.
+ * 
+ * This dialog shows repositories from all GitHub App installations.
+ * Users can filter to show only repositories with Shield Wizard configurations.
  */
 export const RepoSelectDialog: VoidComponent = () => {
   const context = useWizardContext();
   const [repositories, setRepositories] = createSignal<RepositoryInfo[]>([]);
   const [isLoading, setIsLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
-  const [page, setPage] = createSignal(1);
-  const [hasMore, setHasMore] = createSignal(false);
   const [loadingRepo, setLoadingRepo] = createSignal<string | null>(null);
   const [filter, setFilter] = createSignal<'all' | 'wizard'>('wizard');
+  const [failedInstallations, setFailedInstallations] = createSignal<string[]>([]);
 
   // Fetch repositories when dialog opens
   createEffect(on(
     () => context.nav.dialog.repoSelect,
     async (isOpen) => {
       if (isOpen && context.nav.githubAuth.accessToken) {
-        await fetchRepositories(true);
+        await fetchAllRepositories();
       }
     }
   ));
 
-  const fetchRepositories = async (reset = false) => {
+  /**
+   * Fetch repositories from all installations.
+   */
+  const fetchAllRepositories = async () => {
     const token = context.nav.githubAuth.accessToken;
-    if (!token) return;
+    const installations = context.nav.githubAuth.installations;
+    if (!token || !installations || installations.length === 0) return;
 
     setIsLoading(true);
     setError(null);
-
-    const pageNum = reset ? 1 : page();
-    if (reset) {
-      setPage(1);
-      setRepositories([]);
-    }
+    setRepositories([]);
+    setFailedInstallations([]);
 
     try {
-      const { data, error: actionError } = await actions.githubListRepositories({
-        accessToken: token,
-        page: pageNum,
-        perPage: 30,
-      });
+      // Fetch repositories from all installations
+      const allRepos: RepositoryInfo[] = [];
+      const failed: string[] = [];
+      
+      for (const installation of installations) {
+        const { data, error: actionError } = await actions.githubListInstallationRepositories({
+          accessToken: token,
+          installationId: installation.id,
+          page: 1,
+          perPage: 30, // Use consistent page size with other listings
+        });
 
-      if (actionError) {
-        throw new Error(actionError.message);
+        if (actionError) {
+          console.error('Failed to fetch repos for installation', installation.account.login, actionError);
+          failed.push(installation.account.login);
+          continue; // Skip this installation but continue with others
+        }
+
+        if (data) {
+          allRepos.push(...data.repos);
+        }
       }
 
-      if (data) {
-        if (reset) {
-          setRepositories(data.repos);
-        } else {
-          setRepositories(prev => [...prev, ...data.repos]);
-        }
-        setHasMore(data.hasMore);
-        setPage(pageNum + 1);
+      // Sort by full name
+      allRepos.sort((a, b) => a.fullName.localeCompare(b.fullName));
+      setRepositories(allRepos);
+      setFailedInstallations(failed);
+      
+      console.log('[GitHub] Loaded', allRepos.length, 'repositories from', installations.length, 'installation(s)');
+      if (failed.length > 0) {
+        console.warn('[GitHub] Failed to load repos from:', failed.join(', '));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load repositories');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const loadMore = () => {
-    if (!isLoading() && hasMore()) {
-      fetchRepositories(false);
     }
   };
 
@@ -436,6 +561,15 @@ export const RepoSelectDialog: VoidComponent = () => {
               <Show when={error()}>
                 <div class="alert alert-error mb-4">
                   {error()}
+                </div>
+              </Show>
+
+              <Show when={failedInstallations().length > 0}>
+                <div class="alert alert-warning mb-4">
+                  <AlertTriangle class="w-5 h-5" />
+                  <span class="text-sm">
+                    Could not load repositories from: {failedInstallations().join(', ')}
+                  </span>
                 </div>
               </Show>
 
@@ -532,17 +666,6 @@ export const RepoSelectDialog: VoidComponent = () => {
                     <span class="ml-2">Loading repositories...</span>
                   </div>
                 </Show>
-
-                <Show when={hasMore() && !isLoading()}>
-                  <div class="text-center">
-                    <Button
-                      class="btn btn-ghost btn-sm"
-                      onClick={loadMore}
-                    >
-                      Load More
-                    </Button>
-                  </div>
-                </Show>
               </div>
 
               <div class="mt-4 flex items-center justify-between">
@@ -553,12 +676,11 @@ export const RepoSelectDialog: VoidComponent = () => {
                   ← Back
                 </Button>
                 <Link
-                  href="https://github.com/new"
-                  target="_blank"
+                  href={getInstallationUrl()}
                   class="btn btn-ghost btn-sm"
                 >
                   <ExternalLink class="w-4 h-4" />
-                  Create New Repository
+                  Add More Repositories
                 </Link>
               </div>
             </Dialog.Description>

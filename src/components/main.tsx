@@ -19,21 +19,43 @@ export const Main: VoidComponent = () => {
 
   document.documentElement.dataset.theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 
-  // Restore GitHub token and handle OAuth callback on mount
+  // Restore GitHub token and handle OAuth/installation callbacks on mount
   onMount(async () => {
-    // Check for OAuth callback first
+    // Check for OAuth callback or installation callback
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     const state = urlParams.get('state');
+    const setupAction = urlParams.get('setup_action');
     const storedState = sessionStorage.getItem('github_oauth_state');
 
+    // Handle OAuth callback
     if (code && state && storedState) {
       // We have an OAuth callback - open the auth dialog to process it
       context.setNav("dialog", "githubAuth", true);
       return; // Let the dialog handle the callback
     }
 
-    // No OAuth callback, try to restore token from localStorage
+    // Handle installation callback
+    if (setupAction) {
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Try to restore token and open auth dialog
+      try {
+        const storedToken = localStorage.getItem(GITHUB_TOKEN_STORAGE_KEY);
+        if (storedToken) {
+          context.setNav("githubAuth", "accessToken", storedToken);
+          await fetchUserInfoOnMount(storedToken, context);
+          // Open auth dialog to show updated installations
+          context.setNav("dialog", "githubAuth", true);
+        }
+      } catch (err) {
+        console.warn('[GitHub Auth] Failed to restore session after installation:', err);
+      }
+      return;
+    }
+
+    // No callback, try to restore token from localStorage
     try {
       const storedToken = localStorage.getItem(GITHUB_TOKEN_STORAGE_KEY);
       if (storedToken) {
@@ -76,12 +98,40 @@ async function fetchUserInfoOnMount(token: string, context: WizardContextType): 
         name: data.name,
       });
       console.log('[GitHub Auth] Restored user session for:', data.login);
+      
+      // Also fetch installations
+      await fetchInstallationsOnMount(token, context);
     }
   } catch (err) {
     // If we can't get user info, clear the token
     console.warn('[GitHub Auth] Failed to validate stored token:', err);
     clearGitHubToken();
     context.setNav("githubAuth", "accessToken", null);
+  }
+}
+
+/**
+ * Fetch installations on mount.
+ */
+async function fetchInstallationsOnMount(token: string, context: WizardContextType): Promise<void> {
+  try {
+    const { data, error: actionError } = await actions.githubListInstallations({
+      accessToken: token,
+    });
+
+    if (actionError) {
+      console.warn('[GitHub Auth] Failed to fetch installations:', actionError);
+      context.setNav("githubAuth", "installations", []);
+      return;
+    }
+
+    if (data) {
+      context.setNav("githubAuth", "installations", data.installations);
+      console.log('[GitHub Auth] Found', data.installations.length, 'installations');
+    }
+  } catch (err) {
+    console.warn('[GitHub Auth] Failed to fetch installations:', err);
+    context.setNav("githubAuth", "installations", []);
   }
 }
 
@@ -129,6 +179,7 @@ function rootContextHelper(): WizardContextType {
     githubAuth: {
       accessToken: null,
       user: null,
+      installations: null,
     },
   });
   const [keyboard, setKeyboard] = createStore<Keyboard>({

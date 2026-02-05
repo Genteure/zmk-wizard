@@ -3,7 +3,8 @@
  * 
  * This module provides functions to:
  * - Exchange OAuth codes for access tokens
- * - List user repositories containing shield-wizard.json
+ * - List user's GitHub App installations
+ * - List repositories accessible through an installation
  * - Load keyboard configuration from a repository
  * - Commit and push changes to a repository
  * 
@@ -44,6 +45,21 @@ export interface GitHubRepository {
     login: string;
     avatar_url: string;
   };
+}
+
+/**
+ * Represents a GitHub App installation for a user/organization.
+ */
+export interface GitHubInstallation {
+  id: number;
+  account: {
+    login: string;
+    id: number;
+    avatar_url: string;
+    type: 'User' | 'Organization';
+  };
+  repository_selection: 'all' | 'selected';
+  html_url: string;
 }
 
 export class GitHubApiError extends Error {
@@ -168,6 +184,113 @@ export async function getAuthenticatedUser(accessToken: string): Promise<GitHubU
     };
   } catch (error) {
     handleOctokitError(error, 'Failed to get authenticated user');
+  }
+}
+
+/**
+ * List all GitHub App installations accessible by the authenticated user.
+ * 
+ * This returns installations where the user has authorized the app.
+ * Each installation represents an account (user or org) where the app is installed.
+ */
+export async function listUserInstallations(
+  accessToken: string
+): Promise<GitHubInstallation[]> {
+  try {
+    const octokit = createOctokit(accessToken);
+    const installations: GitHubInstallation[] = [];
+    
+    // Paginate through all installations
+    for await (const response of octokit.paginate.iterator(
+      octokit.rest.apps.listInstallationsForAuthenticatedUser
+    )) {
+      for (const installation of response.data) {
+        const account = installation.account;
+        
+        // Handle unexpected null/undefined account
+        if (!account) {
+          console.warn('[GitHub API] Installation', installation.id, 'has no account, skipping');
+          continue;
+        }
+        
+        // The account can be a User (SimpleUser) or an Enterprise
+        // Both have id, avatar_url but they have different structures for identifying name
+        // For User: login property
+        // For Enterprise: name or slug property
+        const accountLogin = 'login' in account ? account.login : 
+                            'slug' in account ? account.slug : null;
+        const accountType = 'type' in account ? 
+                            (account.type as 'User' | 'Organization') : 'User';
+        
+        // Skip installations with missing required account data
+        if (!accountLogin || !account.id) {
+          console.warn('[GitHub API] Installation', installation.id, 'has incomplete account data, skipping');
+          continue;
+        }
+        
+        installations.push({
+          id: installation.id,
+          account: {
+            login: accountLogin,
+            id: account.id,
+            avatar_url: account.avatar_url ?? '',
+            type: accountType,
+          },
+          repository_selection: installation.repository_selection ?? 'selected',
+          html_url: installation.html_url ?? '',
+        });
+      }
+    }
+    
+    console.log('[GitHub API] Found', installations.length, 'app installations');
+    return installations;
+  } catch (error) {
+    handleOctokitError(error, 'Failed to list app installations');
+  }
+}
+
+/**
+ * List repositories accessible through a specific GitHub App installation.
+ * 
+ * This returns only the repositories that the app has been granted access to
+ * for the specified installation.
+ */
+export async function listInstallationRepositories(
+  accessToken: string,
+  installationId: number,
+  page = 1,
+  perPage = 30
+): Promise<{ repos: GitHubRepository[]; hasMore: boolean }> {
+  try {
+    const octokit = createOctokit(accessToken);
+    const { data, headers } = await octokit.rest.apps.listInstallationReposForAuthenticatedUser({
+      installation_id: installationId,
+      per_page: perPage,
+      page,
+    });
+
+    const repos: GitHubRepository[] = data.repositories.map(repo => ({
+      id: repo.id,
+      name: repo.name,
+      full_name: repo.full_name,
+      private: repo.private,
+      description: repo.description,
+      html_url: repo.html_url,
+      default_branch: repo.default_branch,
+      owner: {
+        login: repo.owner.login,
+        avatar_url: repo.owner.avatar_url,
+      },
+    }));
+
+    // Check the Link header for pagination
+    const linkHeader = headers.link;
+    const hasMore = linkHeader?.includes('rel="next"') ?? false;
+
+    console.log('[GitHub API] Listed', repos.length, 'repos from installation', installationId);
+    return { repos, hasMore };
+  } catch (error) {
+    handleOctokitError(error, 'Failed to list installation repositories');
   }
 }
 

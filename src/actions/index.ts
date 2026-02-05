@@ -10,6 +10,8 @@ import {
   getRepository,
   GitHubApiError,
   hasShieldWizardConfig,
+  listInstallationRepositories,
+  listUserInstallations,
   listUserRepositories,
   loadKeyboardConfig,
   pushChangesToRepository,
@@ -179,7 +181,120 @@ export const server = {
   }),
 
   /**
+   * List GitHub App installations for the authenticated user.
+   * Returns all installations where the user has authorized the app.
+   */
+  githubListInstallations: defineAction({
+    input: z.object({
+      accessToken: z.string(),
+    }),
+    async handler(input) {
+      try {
+        const installations = await listUserInstallations(input.accessToken);
+        
+        return {
+          installations: installations.map(inst => ({
+            id: inst.id,
+            account: {
+              login: inst.account.login,
+              id: inst.account.id,
+              avatarUrl: inst.account.avatar_url,
+              type: inst.account.type,
+            },
+            repositorySelection: inst.repository_selection,
+            htmlUrl: inst.html_url,
+          })),
+        };
+      } catch (error) {
+        console.error('[GitHub API] Failed to list installations:', error);
+        if (GitHubApiError.isUnauthorized(error)) {
+          throw new ActionError({
+            code: "UNAUTHORIZED",
+            message: "GitHub access token is invalid or expired",
+          });
+        }
+        throw new ActionError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to list app installations",
+        });
+      }
+    }
+  }),
+
+  /**
+   * List repositories for a specific GitHub App installation.
+   * Only returns repositories that the app has been granted access to.
+   */
+  githubListInstallationRepositories: defineAction({
+    input: z.object({
+      accessToken: z.string(),
+      installationId: z.number(),
+      page: z.number().min(1).default(1),
+      perPage: z.number().min(1).max(100).default(30),
+    }),
+    async handler(input) {
+      try {
+        const { repos, hasMore } = await listInstallationRepositories(
+          input.accessToken,
+          input.installationId,
+          input.page,
+          input.perPage
+        );
+
+        // Check each repo for shield-wizard.json file
+        const reposWithConfig = await Promise.all(
+          repos.map(async (repo) => {
+            const hasConfig = await hasShieldWizardConfig(
+              input.accessToken,
+              repo.owner.login,
+              repo.name
+            );
+            return {
+              id: repo.id,
+              name: repo.name,
+              fullName: repo.full_name,
+              private: repo.private,
+              description: repo.description,
+              htmlUrl: repo.html_url,
+              defaultBranch: repo.default_branch,
+              owner: {
+                login: repo.owner.login,
+                avatarUrl: repo.owner.avatar_url,
+              },
+              hasShieldWizardConfig: hasConfig,
+            };
+          })
+        );
+
+        return {
+          repos: reposWithConfig,
+          hasMore,
+        };
+      } catch (error) {
+        console.error('[GitHub API] Failed to list installation repositories:', error);
+        if (GitHubApiError.isUnauthorized(error)) {
+          throw new ActionError({
+            code: "UNAUTHORIZED",
+            message: "GitHub access token is invalid or expired",
+          });
+        }
+        if (GitHubApiError.isRateLimited(error)) {
+          throw new ActionError({
+            code: "TOO_MANY_REQUESTS",
+            message: "GitHub API rate limit exceeded. Please try again later.",
+          });
+        }
+        throw new ActionError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to list installation repositories",
+        });
+      }
+    }
+  }),
+
+  /**
    * List repositories for the authenticated user.
+   * @deprecated Use githubListInstallationRepositories instead for GitHub App flow.
    */
   githubListRepositories: defineAction({
     input: z.object({
