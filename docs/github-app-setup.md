@@ -76,7 +76,7 @@ PUBLIC_GITHUB_CLIENT_ID=Iv1.abc123...
 GITHUB_CLIENT_SECRET=abc123...
 
 # GitHub App name (used for installation URL)
-PUBLIC_GITHUB_APP_NAME=shield-wizard
+PUBLIC_GITHUB_APP_SLUG=shield-wizard
 ```
 
 ### For Cloudflare Workers/Pages
@@ -86,7 +86,7 @@ Add these in your Cloudflare dashboard or `wrangler.toml`:
 ```toml
 [vars]
 PUBLIC_GITHUB_CLIENT_ID = "Iv1.abc123..."
-PUBLIC_GITHUB_APP_NAME = "shield-wizard"
+PUBLIC_GITHUB_APP_SLUG = "shield-wizard"
 
 # Add secret via CLI: wrangler secret put GITHUB_CLIENT_SECRET
 ```
@@ -98,7 +98,7 @@ Create a `.dev.vars` file (gitignored):
 ```env
 PUBLIC_GITHUB_CLIENT_ID=Iv1.abc123...
 GITHUB_CLIENT_SECRET=abc123...
-PUBLIC_GITHUB_APP_NAME=shield-wizard
+PUBLIC_GITHUB_APP_SLUG=shield-wizard
 ```
 
 ## Authentication Flow
@@ -131,7 +131,7 @@ This flow ensures users have fine-grained control over which repositories the ap
 
 ### "GitHub App is not configured on this server"
 - Ensure `PUBLIC_GITHUB_CLIENT_ID` is set
-- Ensure `PUBLIC_GITHUB_APP_NAME` is set
+- Ensure `PUBLIC_GITHUB_APP_SLUG` is set
 
 ### "App installation required"
 - User has authorized but hasn't installed the app

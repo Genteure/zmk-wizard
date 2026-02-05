@@ -2,7 +2,7 @@ import { Button } from "@kobalte/core/button";
 import { Dialog } from "@kobalte/core/dialog";
 import { Link } from "@kobalte/core/link";
 import { actions } from "astro:actions";
-import { PUBLIC_GITHUB_CLIENT_ID, PUBLIC_GITHUB_APP_NAME } from "astro:env/client";
+import { PUBLIC_GITHUB_CLIENT_ID, PUBLIC_GITHUB_APP_SLUG } from "astro:env/client";
 import AlertTriangle from "lucide-solid/icons/alert-triangle";
 import Check from "lucide-solid/icons/check";
 import ExternalLink from "lucide-solid/icons/external-link";
@@ -29,11 +29,11 @@ function generateOAuthState(): string {
  * Get the GitHub App installation URL.
  */
 function getInstallationUrl(): string {
-  if (!PUBLIC_GITHUB_APP_NAME) {
+  if (!PUBLIC_GITHUB_APP_SLUG) {
     return 'https://github.com/apps';
   }
   const redirectUri = `${window.location.origin}${window.location.pathname}`;
-  return `https://github.com/apps/${PUBLIC_GITHUB_APP_NAME}/installations/new?state=${generateOAuthState()}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+  return `https://github.com/apps/${PUBLIC_GITHUB_APP_SLUG}/installations/new?state=${generateOAuthState()}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 }
 
 interface RepositoryInfo {
@@ -344,12 +344,12 @@ export const GitHubAuthDialog: VoidComponent = () => {
                     <Button
                       class="btn btn-primary w-full"
                       onClick={startInstallation}
-                      disabled={!PUBLIC_GITHUB_APP_NAME}
+                      disabled={!PUBLIC_GITHUB_APP_SLUG}
                     >
                       <ExternalLink class="w-5 h-5" />
                       Install Shield Wizard App
                     </Button>
-                    <Show when={!PUBLIC_GITHUB_APP_NAME}>
+                    <Show when={!PUBLIC_GITHUB_APP_SLUG}>
                       <p class="text-xs text-error text-center">
                         GitHub App name is not configured on this server.
                       </p>

@@ -39,7 +39,7 @@ export default defineConfig({
         optional: true,
       }),
       // GitHub App name for installation URL (e.g., "shield-wizard")
-      PUBLIC_GITHUB_APP_NAME: envField.string({
+      PUBLIC_GITHUB_APP_SLUG: envField.string({
         context: 'client',
         access: 'public',
         optional: true,
