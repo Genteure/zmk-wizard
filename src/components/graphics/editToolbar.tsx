@@ -578,7 +578,7 @@ const ExactValuesDialog: VoidComponent<{
             <div class="space-y-2 mb-3">
               <div class="grid grid-cols-2 gap-2">
                 <label class="input input-sm input-bordered flex items-center gap-1">
-                  <span class="text-xs font-mono text-base-content/70 w-6" aria-label="X offset">ΔX</span>
+                  <span class="text-xs font-mono text-base-content/70 w-6" aria-label="X offset (delta X)">ΔX</span>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -589,7 +589,7 @@ const ExactValuesDialog: VoidComponent<{
                   />
                 </label>
                 <label class="input input-sm input-bordered flex items-center gap-1">
-                  <span class="text-xs font-mono text-base-content/70 w-6" aria-label="Y offset">ΔY</span>
+                  <span class="text-xs font-mono text-base-content/70 w-6" aria-label="Y offset (delta Y)">ΔY</span>
                   <input
                     type="text"
                     inputMode="decimal"

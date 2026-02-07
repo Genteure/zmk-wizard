@@ -462,6 +462,12 @@ const KeyOverlay: VoidComponent<{
 
 /**
  * Normalize angle to shortest path (-180 to 180)
+ * 
+ * Formula: ((angle % 360) + 540) % 360 - 180
+ * - First % 360 brings angle to -360..360 range
+ * - Adding 540 (180 + 360) shifts to 180..900 range for positive values
+ * - Second % 360 brings to 0..360 range
+ * - Subtracting 180 shifts to -180..180 range
  */
 function normalizeToShortestAngle(angle: number): number {
   return ((angle % 360) + 540) % 360 - 180;

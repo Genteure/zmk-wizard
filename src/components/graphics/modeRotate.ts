@@ -278,9 +278,15 @@ export function createRotateModeHandlers(
 
       if (selectedKeys.length === 0) return;
 
-      const type = handleType === "rotate-anchor" ? "rotate-anchor" 
-        : handleType === "rotate-center-common" ? "rotate-common" 
-        : "rotate-ring";
+      // Determine rotation drag type from handle
+      let type: "rotate-ring" | "rotate-anchor" | "rotate-common";
+      if (handleType === "rotate-anchor") {
+        type = "rotate-anchor";
+      } else if (handleType === "rotate-center-common") {
+        type = "rotate-common";
+      } else {
+        type = "rotate-ring";
+      }
 
       drag = {
         type,

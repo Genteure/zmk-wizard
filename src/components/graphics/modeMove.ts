@@ -180,6 +180,8 @@ export function createMoveModeHandlers(
     }
   };
 
+  // Note: _clientX and _clientY parameters are included for API consistency
+  // with modeRotate.ts, allowing future enhancements to use the end position
   const endDrag = (_clientX: number, _clientY: number, shiftKey: boolean, altKey: boolean) => {
     if (!drag) return;
 
