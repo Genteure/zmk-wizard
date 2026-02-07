@@ -657,7 +657,7 @@ const ToolExactDialog: VoidComponent<{
       </ToolbarTooltip>
       <Dialog.Portal>
         <Dialog.Overlay class="fixed inset-0 bg-black/30 z-40" />
-        <Dialog.Content 
+        <Dialog.Content
           class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 p-3 bg-base-200 rounded-lg shadow-xl border border-base-300 z-50"
           onClick={(e: MouseEvent) => e.stopPropagation()}
           onPointerDown={(e: PointerEvent) => e.stopPropagation()}

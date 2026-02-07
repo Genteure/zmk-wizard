@@ -23,31 +23,31 @@ import ZoomIn from "lucide-solid/icons/zoom-in";
 import ZoomOut from "lucide-solid/icons/zoom-out";
 
 import { Button } from "@kobalte/core/button";
-import { createTimer, makeTimer } from "@solid-primitives/timer";
 import ArrowBigUp from "lucide-solid/icons/arrow-big-up";
 import { produce } from "solid-js/store";
 import {
   getKeysBoundingBox,
   getKeyStyles,
   keyCenter,
-  keyToSvgPath,
   type KeyGeometry,
   type Point,
 } from "~/lib/geometry";
-import { swpBgClass, swpCssVar } from "~/lib/swpColors";
-import type { Key, KeyboardPart, SingleKeyWiring, WiringType } from "../typedef";
-import { normalizeKeys, useWizardContext } from "./context";
-import { controllerInfos } from "./controllerInfo";
+import { swpBgClass } from "~/lib/swpColors";
+import type { Key, KeyboardPart, SingleKeyWiring, WiringType } from "../../typedef";
+import { normalizeKeys, useWizardContext } from "../context";
+import { controllerInfos } from "../controllerInfo";
+import { createLayoutEditState, LayoutEditToolbar } from "../layoutEditing";
+import { createLayoutEditEventHandlers, type DragPreview } from "../layoutEditing.events";
+import { LayoutEditOverlay } from "../layoutEditOverlay";
+import { KeySvgPath } from "./KeySvgPath";
+import { createDragSelectEventHandlers } from "./modeDragSelect";
+import { createPanEventHandlers } from "./modePan";
+import { createWiringEventHandlers } from "./modeWiring";
 import {
-  createDragSelectEventHandlers,
-  createPanEventHandlers,
-  createWiringEventHandlers,
   type GraphicState,
   type InteractionEventHandlers
-} from "./graphics.events";
-import { createLayoutEditEventHandlers, type DragPreview } from "./layoutEditing.events";
-import { createLayoutEditState, LayoutEditToolbar } from "./layoutEditing";
-import { LayoutEditOverlay } from "./layoutEditOverlay";
+} from "./types";
+import { computeWiringLines, repeatTrigger } from "./utils";
 
 export type GraphicsKey = KeyGeometry & {
   index: number,
@@ -58,109 +58,12 @@ export type GraphicsKey = KeyGeometry & {
 /**
  * Represents a connection line between two keys sharing a wiring pin.
  */
-type WiringLine = {
+export type WiringLine = {
   from: Point;
   to: Point;
   type: 'input' | 'output';
   pinId: string;
 };
-
-/**
- * Compute connection lines for keys sharing the same wiring pins.
- * Uses minimum spanning tree approach to show minimum number of lines.
- */
-function computeWiringLines(
-  keys: GraphicsKey[],
-  parts: KeyboardPart[],
-  activeEditPart: number | null
-): WiringLine[] {
-  const lines: WiringLine[] = [];
-
-  // Group keys by their wiring pins (input and output separately)
-  const inputGroups = new Map<string, GraphicsKey[]>();
-  const outputGroups = new Map<string, GraphicsKey[]>();
-
-  for (const gkey of keys) {
-    // Only consider keys from the active edit part, or all if none selected
-    if (activeEditPart !== null && gkey.part !== activeEditPart) continue;
-
-    const wiring = parts[gkey.part]?.keys[gkey.key.id];
-    if (!wiring) continue;
-
-    if (wiring.input) {
-      const group = inputGroups.get(wiring.input) || [];
-      group.push(gkey);
-      inputGroups.set(wiring.input, group);
-    }
-
-    if (wiring.output) {
-      const group = outputGroups.get(wiring.output) || [];
-      group.push(gkey);
-      outputGroups.set(wiring.output, group);
-    }
-  }
-
-  // Helper function to create minimum spanning tree lines for a group of keys
-  const createMstLines = (
-    keysInGroup: GraphicsKey[],
-    type: 'input' | 'output',
-    pinId: string
-  ) => {
-    if (keysInGroup.length < 2) return;
-
-    // Get centers of all keys
-    const centers = keysInGroup.map(k => keyCenter(k));
-
-    // Simple MST using Prim's algorithm
-    const visited = new Set<number>([0]);
-    const remaining = new Set<number>(keysInGroup.map((_, i) => i).filter(i => i !== 0));
-
-    while (remaining.size > 0) {
-      let minDist = Infinity;
-      let minFrom = -1;
-      let minTo = -1;
-
-      for (const from of visited) {
-        for (const to of remaining) {
-          const dx = centers[to].x - centers[from].x;
-          const dy = centers[to].y - centers[from].y;
-          const dist = dx * dx + dy * dy; // squared distance for comparison
-
-          if (dist < minDist) {
-            minDist = dist;
-            minFrom = from;
-            minTo = to;
-          }
-        }
-      }
-
-      // minFrom and minTo will always be valid when remaining.size > 0
-      // but add defensive check just in case
-      if (minFrom === -1 || minTo === -1) break;
-
-      lines.push({
-        from: centers[minFrom],
-        to: centers[minTo],
-        type,
-        pinId,
-      });
-      visited.add(minTo);
-      remaining.delete(minTo);
-    }
-  };
-
-  // Create lines for each input group
-  for (const [pinId, keysInGroup] of inputGroups) {
-    createMstLines(keysInGroup, 'input', pinId);
-  }
-
-  // Create lines for each output group
-  for (const [pinId, keysInGroup] of outputGroups) {
-    createMstLines(keysInGroup, 'output', pinId);
-  }
-
-  return lines;
-}
 
 type KeyRendererProps = {
   keyData: GraphicsKey;
@@ -178,75 +81,6 @@ type KeyRendererProps = {
 
 const shiftRegisterPinLabels: Record<string, string> = Object.fromEntries(Array.from({ length: 32 }, (_, i) => [`shifter${i}`, `SR${i}`]))
 
-/**
- * Props for SVG key rendering.
- * State calculations (like pinActive) should be done outside this component.
- */
-type KeySvgProps = {
-  keyData: GraphicsKey;
-  isSelected: boolean;
-  isFocused: boolean;
-  activeEditPart: number | null;
-  pinActive: boolean;
-};
-
-/**
- * SVG component for rendering key background and border.
- * Rendered as a path element within the parent SVG.
- */
-const KeySvgPath: VoidComponent<KeySvgProps> = (props) => {
-  const keyData = () => props.keyData;
-  const keyPart = () => keyData().part;
-  const isCurrentPart = () => props.activeEditPart === null || props.activeEditPart === keyPart();
-  const isWiringMode = () => props.activeEditPart !== null;
-
-  // No offset needed - the container's position:relative offset handles coordinate transformation
-  const pathData = () => keyToSvgPath(keyData());
-
-  // Fill color: bg-base-300 for selected/pinActive/focused, bg-base-200 otherwise
-  const fill = () => (props.isSelected || props.pinActive || props.isFocused)
-    ? "var(--color-base-300)"
-    : "var(--color-base-200)";
-
-  // Stroke color based on state:
-  // - focused: sky-500 (focus ring color)
-  // - pinActive: amber
-  // - selected: base-content
-  // - layout mode (no active part): part color
-  // - wiring mode, current part: base-content (solid border)
-  // - wiring mode, other part: base-content with opacity (dashed)
-  const stroke = () => {
-    if (props.isFocused) return "var(--color-sky-500)";
-    if (props.pinActive) return "var(--color-amber-500)";
-    if (props.isSelected) return "var(--color-base-content)";
-    if (!isWiringMode()) return swpCssVar(keyPart());
-    return "var(--color-base-content)";
-  };
-
-  // Stroke width: 3 for focused, 2 for selected/pinActive, 1 otherwise
-  const strokeWidth = () => {
-    if (props.isFocused) return 3;
-    if (props.isSelected || props.pinActive) return 2;
-    return 1;
-  };
-
-  // Dashed pattern for inactive parts in wiring mode
-  const strokeDasharray = () => (isWiringMode() && !isCurrentPart()) ? "4 2" : undefined;
-
-  // Opacity: 50% for inactive parts in wiring mode
-  const strokeOpacity = () => (isWiringMode() && !isCurrentPart()) ? 0.5 : 1;
-
-  return (
-    <path
-      d={pathData()}
-      fill={fill()}
-      stroke={stroke()}
-      stroke-width={strokeWidth()}
-      stroke-dasharray={strokeDasharray()}
-      stroke-opacity={strokeOpacity()}
-    />
-  );
-};
 
 /**
  * HTML component for rendering key labels and interactive overlay.
@@ -385,7 +219,7 @@ export const KeyboardPreview: VoidComponent<{
 
   const [autoZoom, setAutoZoom] = createSignal(true);
   const [showConnectionLines, setShowConnectionLines] = createSignal(true);
-  
+
   // Keyboard navigation state: tracks which key has keyboard focus
   // null means no key is focused (container focus)
   const [focusedKeyIndex, setFocusedKeyIndex] = createSignal<number | null>(null);
@@ -394,7 +228,7 @@ export const KeyboardPreview: VoidComponent<{
   const layoutEditState = createLayoutEditState();
   const [isLayoutDragging, setIsLayoutDragging] = createSignal(false);
   const [dragPreview, setDragPreview] = createSignal<DragPreview | null>(null);
-  
+
   const activeMode = createMemo<"pan" | "select" | "wiring">(() => {
     if (effectiveIsPan()) return "pan";
     return (props.editMode?.() === "wiring") ? "wiring" : "select";
@@ -628,17 +462,17 @@ export const KeyboardPreview: VoidComponent<{
   ): number | null => {
     const keys = getNavigableKeys();
     if (keys.length === 0) return null;
-    
+
     const currentKey = keys.find(k => k.index === currentIndex);
     if (!currentKey) return keys[0]?.index ?? null;
-    
+
     const currentCenter = keyCenter(currentKey);
-    
+
     // Filter keys that are in the correct direction
     const candidates = keys.filter(k => {
       if (k.index === currentIndex) return false;
       const center = keyCenter(k);
-      
+
       switch (direction) {
         case 'up':
           return center.y < currentCenter.y - 5; // 5px threshold
@@ -650,15 +484,15 @@ export const KeyboardPreview: VoidComponent<{
           return center.x > currentCenter.x + 5;
       }
     });
-    
+
     if (candidates.length === 0) return null;
-    
+
     // Score candidates by combined distance, favoring keys closer to the primary axis
     const scored = candidates.map(k => {
       const center = keyCenter(k);
       const dx = center.x - currentCenter.x;
       const dy = center.y - currentCenter.y;
-      
+
       // Primary axis distance and perpendicular distance
       let primary: number, perpendicular: number;
       switch (direction) {
@@ -673,12 +507,12 @@ export const KeyboardPreview: VoidComponent<{
           perpendicular = Math.abs(dy);
           break;
       }
-      
+
       // Score: lower is better. Penalize perpendicular distance more.
       const score = primary + perpendicular * 2;
       return { key: k, score };
     });
-    
+
     // Sort by score and return the best match
     scored.sort((a, b) => a.score - b.score);
     return scored[0]?.key.index ?? null;
@@ -781,7 +615,7 @@ export const KeyboardPreview: VoidComponent<{
         scaleAtOrigin(true, (containerSize.width || 0) / 2, (containerSize.height || 0) / 2);
         return;
       }
-      
+
       case '-':
       case '_': {
         // Zoom out
@@ -789,7 +623,7 @@ export const KeyboardPreview: VoidComponent<{
         scaleAtOrigin(false, (containerSize.width || 0) / 2, (containerSize.height || 0) / 2);
         return;
       }
-      
+
       case '0': {
         // Reset zoom
         e.preventDefault();
@@ -871,7 +705,7 @@ export const KeyboardPreview: VoidComponent<{
     if (keys.length === 0) return;
 
     const currentFocused = focusedKeyIndex();
-    
+
     switch (e.key) {
       case 'ArrowUp':
       case 'ArrowDown':
@@ -879,7 +713,7 @@ export const KeyboardPreview: VoidComponent<{
       case 'ArrowRight': {
         e.preventDefault();
         const direction = e.key.replace('Arrow', '').toLowerCase() as 'up' | 'down' | 'left' | 'right';
-        
+
         if (e.shiftKey && activeMode() === 'select' && context.nav.selectedKeys.length > 0) {
           // Shift+Arrow: move selected keys (only if there are selected keys)
           switch (direction) {
@@ -902,7 +736,7 @@ export const KeyboardPreview: VoidComponent<{
         }
         break;
       }
-      
+
       case 'Enter':
       case ' ': {
         e.preventDefault();
@@ -914,7 +748,7 @@ export const KeyboardPreview: VoidComponent<{
         }
         break;
       }
-      
+
       case 'a':
       case 'A': {
         // Ctrl+A or Cmd+A: Select all keys
@@ -926,7 +760,7 @@ export const KeyboardPreview: VoidComponent<{
         }
         break;
       }
-      
+
       case 'Escape': {
         e.preventDefault();
         // Clear selection and focus
@@ -937,7 +771,7 @@ export const KeyboardPreview: VoidComponent<{
         }
         break;
       }
-      
+
       case 'Home': {
         e.preventDefault();
         // Focus first key
@@ -946,7 +780,7 @@ export const KeyboardPreview: VoidComponent<{
         }
         break;
       }
-      
+
       case 'End': {
         e.preventDefault();
         // Focus last key
@@ -999,7 +833,7 @@ export const KeyboardPreview: VoidComponent<{
     const focused = focusedKeyIndex();
     const selectedCount = context.nav.selectedKeys.length;
     const mode = activeMode();
-    
+
     const parts: string[] = [];
     parts.push(props.title);
     parts.push(`${mode} mode`);
@@ -1199,10 +1033,10 @@ export const KeyboardPreview: VoidComponent<{
           const mode = activeMode();
           const tool = layoutEditState.tool();
           // Show active tool when layout editing is available
-          const label = mode === "pan" ? "Pan" 
-            : mode === "wiring" ? "Wiring" 
-            : (tool && tool !== "select" && context.nav.selectedTab === "layout") ? tool.charAt(0).toUpperCase() + tool.slice(1)
-            : "Select";
+          const label = mode === "pan" ? "Pan"
+            : mode === "wiring" ? "Wiring"
+              : (tool && tool !== "select" && context.nav.selectedTab === "layout") ? tool.charAt(0).toUpperCase() + tool.slice(1)
+                : "Select";
           return `${props.title} • ${label} • ${(transform().s * 100).toFixed(0)}%`;
         })()}
       </div>
@@ -1398,48 +1232,6 @@ export const KeyboardPreview: VoidComponent<{
           </Button>
         </div>
       </div>
-    </div >
+    </div>
   );
-}
-
-function repeatTrigger(
-  callback: () => void,
-  delay: number = 500,
-  interval: number = 100
-): [
-    ((e?: Event) => void),
-    ((e?: Event) => void)
-  ] {
-  const [timer, setTimer] = createSignal<number | false>(false);
-  let failsafeCounter = 0;
-  let cancelDelay: VoidFunction | null = null;
-
-  createTimer(() => {
-    if (failsafeCounter++ > 25) {
-      stop();
-      return;
-    }
-    callback();
-  }, timer, setInterval);
-
-  const start = (e?: Event) => {
-    e?.preventDefault();
-
-    callback();
-    failsafeCounter = 0;
-    cancelDelay = makeTimer(() => {
-      callback();
-      setTimer(interval);
-    }, delay, setTimeout);
-  }
-
-  const stop = (e?: Event) => {
-    e?.preventDefault();
-
-    setTimer(false);
-    cancelDelay?.();
-    cancelDelay = null;
-  }
-
-  return [start, stop];
 }

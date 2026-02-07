@@ -170,7 +170,7 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
 
   /**
    * Apply rotation transformation during drag.
-   * 
+   *
    * Two modes:
    * - Center mode: Rotate each key around its own center. The user drags to change rotation angle.
    * - Anchor mode: The key center stays fixed. User drags the anchor point and key rotates to point away from it.
@@ -232,7 +232,7 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
           // The new key center (unrotated) should be at newRotatedCenterUnit since rx,ry = center
           const newX = newRotatedCenterUnit.x - original.w / 2;
           const newY = newRotatedCenterUnit.y - original.h / 2;
-          
+
           // Set rx,ry to the key's new center (each key has its own rotation origin)
           const newRx = newX + original.w / 2;
           const newRy = newY + original.h / 2;
@@ -257,26 +257,26 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
           // 1. User drags the anchor point -> move anchor based on centerAnchorMoveMode
           // 2. User drags the rotation ring -> rotate key around its rotation origin
           // 3. Multiple keys with common center ring -> handled above
-          
+
           if (handleType === "rotate-anchor") {
             // User is dragging the anchor point in center mode
             let newAnchorX = currentPos.x / KEY_SIZE;
             let newAnchorY = currentPos.y / KEY_SIZE;
-            
+
             if (snap) {
               const snapSize = state.snapSettings().moveSnap;
               newAnchorX = snapToGrid(newAnchorX, snapSize);
               newAnchorY = snapToGrid(newAnchorY, snapSize);
             }
-            
+
             const newAnchor = { x: newAnchorX, y: newAnchorY };
-            
+
             // Use the appropriate anchor move function based on mode
             const anchorMoveMode = state.centerAnchorMoveMode();
             const result = anchorMoveMode === "final"
               ? moveAnchorWithoutAffectingPosition(original, newAnchor)
               : moveAnchorKeepingOriginalPosition(original, newAnchor);
-            
+
             k.x = result.x;
             k.y = result.y;
             k.r = result.r;
@@ -285,19 +285,19 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
           } else {
             // User drags around the key to rotate it around its rotation origin
             // If rx,ry is not set, use key center as rotation origin
-            
+
             // ZMK data model: rx=0,ry=0 means "use x,y as rotation origin" (no explicit origin set)
             // This is the canonical way to represent "unset" in ZMK physical layouts.
             // Get the rotation origin (rx,ry if explicitly set, otherwise key center)
             const rotationOriginUnit = (original.rx !== 0 || original.ry !== 0)
               ? { x: original.rx, y: original.ry }
               : { x: original.x + original.w / 2, y: original.y + original.h / 2 };
-            
+
             const rotationOriginPx = {
               x: rotationOriginUnit.x * KEY_SIZE,
               y: rotationOriginUnit.y * KEY_SIZE
             };
-            
+
             // Calculate rotation delta from drag
             const startAngle = angleFromPoints(rotationOriginPx, dragStart!.virtualPos);
             const currentAngle = angleFromPoints(rotationOriginPx, currentPos);
@@ -321,7 +321,7 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
               // Key center position moves as we rotate around rx,ry
               const keyCenterUnit = { x: original.x + original.w / 2, y: original.y + original.h / 2 };
               const newKeyCenterUnit = rotatePoint(keyCenterUnit, rotationOriginUnit, deltaAngle);
-              
+
               k.x = roundTo(newKeyCenterUnit.x - original.w / 2);
               k.y = roundTo(newKeyCenterUnit.y - original.h / 2);
               k.r = roundTo(original.r + deltaAngle);
@@ -334,19 +334,19 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
           // ANCHOR MODE
           // User drags the anchor point (rx,ry), and key rotates to point away from it
           // Key center after rotation stays fixed
-          
+
           if (handleType === "rotate-anchor") {
             // User is dragging the anchor point itself
             // Convert current position from pixels to units
             let newAnchorX = currentPos.x / KEY_SIZE;
             let newAnchorY = currentPos.y / KEY_SIZE;
-            
+
             if (snap) {
               const snapSize = state.snapSettings().moveSnap;
               newAnchorX = snapToGrid(newAnchorX, snapSize);
               newAnchorY = snapToGrid(newAnchorY, snapSize);
             }
-            
+
             const newAnchor = { x: newAnchorX, y: newAnchorY };
             const result = applyAnchorRotation(original, newAnchor);
             k.x = result.x;
@@ -361,7 +361,7 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
               x: (original.rx || original.x) * KEY_SIZE,
               y: (original.ry || original.y) * KEY_SIZE
             };
-            
+
             const startAngle = angleFromPoints(anchorPx, dragStart!.virtualPos);
             const currentAngle = angleFromPoints(anchorPx, currentPos);
             let deltaAngle = currentAngle - startAngle;
@@ -374,15 +374,15 @@ export function createLayoutEditEventHandlers(state: LayoutEditDragState): {
             // Get the current rotated center and anchor in units
             const rotatedCenter = getKeyRotatedCenter(original);
             const anchorUnit = { x: original.rx || original.x, y: original.ry || original.y };
-            
+
             // Rotate the center around the anchor using the helper function
             const newCenter = rotatePoint(rotatedCenter, anchorUnit, deltaAngle);
-            
+
             // Calculate new x,y to place key such that after rotation its center is at newCenter
             // Inverse rotate newCenter around anchor to get unrotated center
             const newR = original.r + deltaAngle;
             const unrotatedCenter = rotatePoint(newCenter, anchorUnit, -newR);
-            
+
             k.x = roundTo(unrotatedCenter.x - original.w / 2);
             k.y = roundTo(unrotatedCenter.y - original.h / 2);
             k.r = roundTo(newR);

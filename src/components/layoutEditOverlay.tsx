@@ -65,7 +65,7 @@ interface LayoutEditOverlayProps {
  */
 export const LayoutEditOverlay: VoidComponent<LayoutEditOverlayProps> = (props) => {
   const context = useWizardContext();
-  
+
   // Get selected keys
   const selectedKeys = createMemo(() => {
     const selectedIds = context.nav.selectedKeys;
@@ -82,12 +82,12 @@ export const LayoutEditOverlay: VoidComponent<LayoutEditOverlayProps> = (props) 
   // Only shows for anchor mode with a single key selected
   const rotationAnchor = createMemo((): Point | null => {
     if (props.editState.tool() !== "rotate") return null;
-    
+
     const keys = selectedKeys();
     if (keys.length === 0) return null;
 
     const mode = props.editState.rotateMode();
-    
+
     if (mode === "center") {
       // Each key rotates around its own center - no single anchor
       return null;
@@ -191,7 +191,7 @@ export const LayoutEditOverlay: VoidComponent<LayoutEditOverlayProps> = (props) 
                   />
                   {/* Rotation direction indicator arrow */}
                   <path
-                    d={`M ${screenCenter().x + ROTATION_RING_RADIUS + COMMON_ROTATION_RING_OFFSET} ${screenCenter().y} 
+                    d={`M ${screenCenter().x + ROTATION_RING_RADIUS + COMMON_ROTATION_RING_OFFSET} ${screenCenter().y}
                         L ${screenCenter().x + ROTATION_RING_RADIUS + ROTATION_ARROW_OFFSET} ${screenCenter().y - ROTATION_ARROW_OFFSET}
                         M ${screenCenter().x + ROTATION_RING_RADIUS + COMMON_ROTATION_RING_OFFSET} ${screenCenter().y}
                         L ${screenCenter().x + ROTATION_RING_RADIUS + ROTATION_ARROW_OFFSET} ${screenCenter().y + ROTATION_ARROW_OFFSET}`}
@@ -302,7 +302,7 @@ const KeyOverlay: VoidComponent<{
   const screenRotationAnchor = createMemo(() => {
     const k = props.gkey.key;
     if (k.rx === 0 && k.ry === 0) return null;
-    
+
     const bbox = props.contentBbox();
     const anchorX = k.rx * KEY_SIZE;
     const anchorY = k.ry * KEY_SIZE;
@@ -314,7 +314,7 @@ const KeyOverlay: VoidComponent<{
   const rotationRingCenter = createMemo(() => {
     const k = props.gkey.key;
     const bbox = props.contentBbox();
-    
+
     if (k.rx !== 0 || k.ry !== 0) {
       // Use rotation anchor if explicitly set (non-zero)
       return props.v2c(k.rx * KEY_SIZE - bbox.min.x - bbox.width / 2, k.ry * KEY_SIZE - bbox.min.y - bbox.height / 2);
@@ -328,13 +328,13 @@ const KeyOverlay: VoidComponent<{
   const originalKeyOutline = createMemo(() => {
     const k = props.gkey.key;
     if (props.tool() !== "rotate" || k.r === 0) return null;
-    
+
     // Get the key's unrotated corners (at x,y position, before rotation)
     const x = k.x * KEY_SIZE;
     const y = k.y * KEY_SIZE;
     const w = k.w * KEY_SIZE;
     const h = k.h * KEY_SIZE;
-    
+
     // These are the corners before rotation
     const corners = [
       { x, y },
@@ -342,7 +342,7 @@ const KeyOverlay: VoidComponent<{
       { x: x + w, y: y + h },
       { x, y: y + h },
     ];
-    
+
     const bbox = props.contentBbox();
     return corners.map(p => props.v2c(p.x - bbox.min.x - bbox.width / 2, p.y - bbox.min.y - bbox.height / 2));
   });
@@ -461,7 +461,7 @@ const KeyOverlay: VoidComponent<{
           />
           {/* Rotation direction arrow on the ring */}
           <path
-            d={`M ${rotationRingCenter().x + ROTATION_RING_RADIUS} ${rotationRingCenter().y} 
+            d={`M ${rotationRingCenter().x + ROTATION_RING_RADIUS} ${rotationRingCenter().y}
                 L ${rotationRingCenter().x + ROTATION_RING_RADIUS - 5} ${rotationRingCenter().y - 5}
                 M ${rotationRingCenter().x + ROTATION_RING_RADIUS} ${rotationRingCenter().y}
                 L ${rotationRingCenter().x + ROTATION_RING_RADIUS - 5} ${rotationRingCenter().y + 5}`}
@@ -572,54 +572,54 @@ const RotationArc: VoidComponent<{
   const arcPath = createMemo(() => {
     const { x: cx, y: cy } = props.center;
     const { x: sx, y: sy } = props.startPoint;
-    
+
     // Calculate radius
     const dx = sx - cx;
     const dy = sy - cy;
     const radius = Math.sqrt(dx * dx + dy * dy);
-    
+
     if (radius < MIN_ROTATION_ARC_RADIUS) return ""; // Too small to show
-    
+
     const normalizedAngle = displayAngle();
-    
+
     // The arc shows the rotation path from the ORIGINAL position to the CURRENT position.
     // - currentAngle: where the key center is now (after rotation)
     // - originalAngle: where the key center was before rotation (computed by subtracting the rotation angle)
     // The arc starts at originalAngle and ends at currentAngle, showing the rotation direction.
     const currentAngle = Math.atan2(dy, dx);
     const originalAngle = currentAngle - (normalizedAngle * Math.PI / 180);
-    
+
     // Arc parameters - start from original position, end at current position
     const startX = cx + radius * Math.cos(originalAngle);
     const startY = cy + radius * Math.sin(originalAngle);
     const endX = cx + radius * Math.cos(currentAngle);
     const endY = cy + radius * Math.sin(currentAngle);
-    
+
     // For normalized angles, we always take the short way (largeArc = 0)
     const largeArc = 0;
     // In screen coords (Y down), positive angle = clockwise = sweep=1
     const sweep = normalizedAngle > 0 ? 1 : 0;
-    
+
     return `M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} ${sweep} ${endX} ${endY}`;
   });
 
   const arrowPath = createMemo(() => {
     const { x: cx, y: cy } = props.center;
     const { x: sx, y: sy } = props.startPoint;
-    
+
     const dx = sx - cx;
     const dy = sy - cy;
     const radius = Math.sqrt(dx * dx + dy * dy);
-    
+
     if (radius < MIN_ROTATION_ARC_RADIUS) return "";
-    
+
     const normalizedAngle = displayAngle();
-    
+
     // Arrow points at the current position (end of the arc)
     const currentAngle = Math.atan2(dy, dx);
     const endX = cx + radius * Math.cos(currentAngle);
     const endY = cy + radius * Math.sin(currentAngle);
-    
+
     // Arrow direction: tangent to the arc at the end point
     // The arrow shows the direction of rotation by pointing along the arc:
     // - For positive (clockwise) rotation, arrow points clockwise (toward where the key came from)
@@ -627,12 +627,12 @@ const RotationArc: VoidComponent<{
     // This creates a visual "motion trail" effect showing the rotation direction
     const tangentAngle = currentAngle + (normalizedAngle > 0 ? -Math.PI / 2 : Math.PI / 2);
     const arrowLen = ROTATION_ARROW_SIZE;
-    
+
     const ax1 = endX + arrowLen * Math.cos(tangentAngle - 0.5);
     const ay1 = endY + arrowLen * Math.sin(tangentAngle - 0.5);
     const ax2 = endX + arrowLen * Math.cos(tangentAngle + 0.5);
     const ay2 = endY + arrowLen * Math.sin(tangentAngle + 0.5);
-    
+
     return `M ${ax1} ${ay1} L ${endX} ${endY} L ${ax2} ${ay2}`;
   });
 
@@ -640,17 +640,17 @@ const RotationArc: VoidComponent<{
   const arcStartPoint = createMemo(() => {
     const { x: cx, y: cy } = props.center;
     const { x: sx, y: sy } = props.startPoint;
-    
+
     const dx = sx - cx;
     const dy = sy - cy;
     const radius = Math.sqrt(dx * dx + dy * dy);
-    
+
     if (radius < MIN_ROTATION_ARC_RADIUS) return null;
-    
+
     const normalizedAngle = displayAngle();
     const currentAngle = Math.atan2(dy, dx);
     const originalAngle = currentAngle - (normalizedAngle * Math.PI / 180);
-    
+
     return {
       x: cx + radius * Math.cos(originalAngle),
       y: cy + radius * Math.sin(originalAngle),
