@@ -36,12 +36,14 @@ import { swpBgClass } from "~/lib/swpColors";
 import type { Key, KeyboardPart, SingleKeyWiring, WiringType } from "../../typedef";
 import { normalizeKeys, useWizardContext } from "../context";
 import { controllerInfos } from "../controllerInfo";
-import { createLayoutEditState, LayoutEditToolbar } from "../layoutEditing";
-import { createLayoutEditEventHandlers, type DragPreview } from "../layoutEditing.events";
-import { LayoutEditOverlay } from "../layoutEditOverlay";
 import { KeySvgPath } from "./KeySvgPath";
+import { createLayoutEditState } from "./editState";
+import { LayoutEditOverlay } from "./editOverlay";
+import { LayoutEditToolbar } from "./editToolbar";
 import { createDragSelectEventHandlers } from "./modeDragSelect";
+import { createMoveModeHandlers } from "./modeMove";
 import { createPanEventHandlers } from "./modePan";
+import { createRotateModeHandlers } from "./modeRotate";
 import { createWiringEventHandlers } from "./modeWiring";
 import {
   type GraphicState,
@@ -227,11 +229,14 @@ export const KeyboardPreview: VoidComponent<{
   // Layout editing state (used for both physical and logical layouts for toolbar actions)
   const layoutEditState = createLayoutEditState();
   const [isLayoutDragging, setIsLayoutDragging] = createSignal(false);
-  const [dragPreview, setDragPreview] = createSignal<DragPreview | null>(null);
 
-  const activeMode = createMemo<"pan" | "select" | "wiring">(() => {
+  const activeMode = createMemo<"pan" | "select" | "wiring" | "move" | "rotate">(() => {
     if (effectiveIsPan()) return "pan";
-    return (props.editMode?.() === "wiring") ? "wiring" : "select";
+    if (props.editMode?.() === "wiring") return "wiring";
+    if (layoutEditState.isEditingEnabled() && context.nav.selectedTab === "layout") {
+      return layoutEditState.mode();
+    }
+    return "select";
   });
 
   // Auto zoom effect - disabled while layout editing drag is in progress
@@ -367,33 +372,21 @@ export const KeyboardPreview: VoidComponent<{
   const wiringHandler: InteractionEventHandlers = createWiringEventHandlers(eventHandlerStates);
 
   // Layout edit handlers (only for physical layout)
-  const layoutEditHandler = props.isPhysicalLayout ? createLayoutEditEventHandlers({
-    c2v: eventHandlerStates.c2v,
-    contentBbox: eventHandlerStates.contentBbox,
-    keys: props.keys,
-    context,
-    tool: layoutEditState.tool,
-    rotateMode: layoutEditState.rotateMode,
-    centerAnchorMoveMode: layoutEditState.centerAnchorMoveMode,
-    snapSettings: layoutEditState.snapSettings,
-    setIsDragging: setIsLayoutDragging,
-    setDragPreview,
-  }) : null;
-
-  // Check if we should use layout edit handlers
-  const isLayoutEditToolActive = createMemo(() => {
-    const tool = layoutEditState.tool();
-    return tool !== "select" && context.nav.selectedTab === "layout";
-  });
+  const moveHandler = props.isPhysicalLayout 
+    ? createMoveModeHandlers(eventHandlerStates, layoutEditState, setIsLayoutDragging)
+    : null;
+  const rotateHandler = props.isPhysicalLayout
+    ? createRotateModeHandlers(eventHandlerStates, layoutEditState, setIsLayoutDragging)
+    : null;
 
   // Current active handlers based on mode
   const activeHandlers = createMemo<InteractionEventHandlers>(() => {
-    // Layout editing tools take precedence when active in physical layout
-    if (isLayoutEditToolActive() && layoutEditHandler && !effectiveIsPan()) {
-      return layoutEditHandler;
-    }
-    if (effectiveIsPan()) return panHandler;
-    return (props.editMode?.() === "wiring") ? wiringHandler : selectionHandler;
+    const mode = activeMode();
+    if (mode === "pan") return panHandler;
+    if (mode === "wiring") return wiringHandler;
+    if (mode === "move" && moveHandler) return moveHandler;
+    if (mode === "rotate" && rotateHandler) return rotateHandler;
+    return selectionHandler;
   });
 
   // Reset previous handler state when switching modes
@@ -542,14 +535,17 @@ export const KeyboardPreview: VoidComponent<{
     };
 
     // Layout editing tool shortcuts (only in physical layout view with layout tab selected)
-    if (context.nav.selectedTab === "layout") {
+    if (context.nav.selectedTab === "layout" && props.isPhysicalLayout) {
       switch (e.key.toLowerCase()) {
-        case 'v': {
+        case 'e': {
           if (!e.ctrlKey && !e.metaKey) {
             e.preventDefault();
-            layoutEditState.setTool("select");
+            layoutEditState.setIsEditingEnabled(!layoutEditState.isEditingEnabled());
             return;
           }
+          break;
+        }
+        case 'v': {
           // Ctrl+V for paste
           if (e.ctrlKey || e.metaKey) {
             e.preventDefault();
@@ -578,7 +574,8 @@ export const KeyboardPreview: VoidComponent<{
         case 'm': {
           if (!e.ctrlKey && !e.metaKey) {
             e.preventDefault();
-            layoutEditState.setTool("move");
+            layoutEditState.setIsEditingEnabled(true);
+            layoutEditState.setMode("move");
             return;
           }
           break;
@@ -586,7 +583,8 @@ export const KeyboardPreview: VoidComponent<{
         case 'r': {
           if (!e.ctrlKey && !e.metaKey) {
             e.preventDefault();
-            layoutEditState.setTool("rotate");
+            layoutEditState.setIsEditingEnabled(true);
+            layoutEditState.setMode("rotate");
             return;
           }
           break;
@@ -1031,12 +1029,12 @@ export const KeyboardPreview: VoidComponent<{
       <div class="absolute top-2 left-2 bg-base-200/50 backdrop-blur-sm px-2 py-0.5 select-none rounded-lg text-xs md:text-sm font-medium shadow-md">
         {(() => {
           const mode = activeMode();
-          const tool = layoutEditState.tool();
-          // Show active tool when layout editing is available
+          // Show active mode label
           const label = mode === "pan" ? "Pan"
             : mode === "wiring" ? "Wiring"
-              : (tool && tool !== "select" && context.nav.selectedTab === "layout") ? tool.charAt(0).toUpperCase() + tool.slice(1)
-                : "Select";
+              : mode === "move" ? "Move"
+                : mode === "rotate" ? "Rotate"
+                  : "Select";
           return `${props.title} • ${label} • ${(transform().s * 100).toFixed(0)}%`;
         })()}
       </div>
@@ -1096,14 +1094,24 @@ export const KeyboardPreview: VoidComponent<{
             <div>Click or drag on keys to assign a pin</div>
             <div>Select a pin in the controller panel</div>
           </Match>
+          <Match when={activeMode() === "move"}>
+            <div>{context.nav.selectedKeys.length} selected</div>
+            <div>Drag center to move, corner to resize</div>
+            <div>Drag elsewhere to box-select</div>
+          </Match>
+          <Match when={activeMode() === "rotate"}>
+            <div>{context.nav.selectedKeys.length} selected</div>
+            <div>Drag ring to rotate, anchor to move</div>
+            <div>Drag elsewhere to box-select</div>
+          </Match>
           <Match when={activeMode() === "select"}>
             <div>{context.nav.selectedKeys.length} selected</div>
             <div>Drag to box-select keys</div>
             <div>Shift: Add • Alt: Toggle</div>
           </Match>
-          <Match when={true}>
+          <Match when={activeMode() === "pan"}>
             <div>Scroll to zoom in/out</div>
-            <div>Drag, pinch to pan and zoom</div>
+            <div>Drag to pan, pinch to zoom</div>
             <div>Hold Ctrl to temporarily switch modes</div>
           </Match>
         </Switch>
