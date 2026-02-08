@@ -1,23 +1,13 @@
 /**
  * Layout editing state management for the graphics component.
  * 
- * This module defines the editing modes and state for layout manipulation:
- * - Move mode: Move and resize keys
- * - Rotate mode: Rotate keys with different sub-modes
- * 
- * Box selection is available in both Move and Rotate modes when not clicking on handles.
+ * This module provides rotation settings and clipboard for layout manipulation.
+ * The unified mode signal is managed by the parent component.
  */
 
 import { createSignal, type Accessor, type Setter } from "solid-js";
 import type { Key } from "../../typedef";
-
-/**
- * Layout editing modes available in the layout tab.
- * 
- * - "move": Click handles to move/resize keys, click elsewhere to box select
- * - "rotate": Click handles to rotate keys, click elsewhere to box select
- */
-export type LayoutEditMode = "move" | "rotate";
+import type { GraphicsMode } from "./types";
 
 /**
  * Rotation sub-modes for the rotate tool
@@ -68,9 +58,9 @@ export const DEFAULT_SNAP_SETTINGS: SnapSettings = {
  * Layout editing state that lives at the graphics component level
  */
 export interface LayoutEditState {
-  // Current editing mode
-  mode: Accessor<LayoutEditMode>;
-  setMode: Setter<LayoutEditMode>;
+  // Unified graphics mode
+  mode: Accessor<GraphicsMode>;
+  setMode: Setter<GraphicsMode>;
   
   // Rotation sub-mode (only relevant when mode is "rotate")
   rotateSubMode: Accessor<RotateSubMode>;
@@ -87,22 +77,18 @@ export interface LayoutEditState {
   // Snapping settings
   snapSettings: Accessor<SnapSettings>;
   setSnapSettings: Setter<SnapSettings>;
-  
-  // Whether editing mode is enabled (false = select/pan only)
-  isEditingEnabled: Accessor<boolean>;
-  setIsEditingEnabled: Setter<boolean>;
 }
 
 /**
  * Create layout editing state
+ * @param initialMode - Initial graphics mode (default: "select")
  */
-export function createLayoutEditState(): LayoutEditState {
-  const [mode, setMode] = createSignal<LayoutEditMode>("move");
+export function createLayoutEditState(initialMode: GraphicsMode = "select"): LayoutEditState {
+  const [mode, setMode] = createSignal<GraphicsMode>(initialMode);
   const [rotateSubMode, setRotateSubMode] = createSignal<RotateSubMode>("center");
   const [centerAnchorMoveMode, setCenterAnchorMoveMode] = createSignal<CenterAnchorMoveMode>("final");
   const [clipboard, setClipboard] = createSignal<Key[] | null>(null);
   const [snapSettings, setSnapSettings] = createSignal<SnapSettings>(DEFAULT_SNAP_SETTINGS);
-  const [isEditingEnabled, setIsEditingEnabled] = createSignal(false);
 
   return {
     mode,
@@ -115,8 +101,6 @@ export function createLayoutEditState(): LayoutEditState {
     setClipboard,
     snapSettings,
     setSnapSettings,
-    isEditingEnabled,
-    setIsEditingEnabled,
   };
 }
 

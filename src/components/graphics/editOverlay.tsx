@@ -10,7 +10,8 @@ import { createMemo, For, Show, type Accessor, type VoidComponent } from "solid-
 import { keyCenter, keyToPolygon, type Point } from "~/lib/geometry";
 import { useWizardContext } from "../context";
 import type { GraphicsKey } from "./index";
-import type { LayoutEditState, LayoutEditMode, RotateSubMode } from "./editState";
+import type { LayoutEditState, RotateSubMode } from "./editState";
+import type { GraphicsMode } from "./types";
 
 const KEY_SIZE = 70;
 
@@ -71,7 +72,8 @@ export const LayoutEditOverlay: VoidComponent<LayoutEditOverlayProps> = (props) 
   });
 
   const shouldShowOverlay = createMemo(() => {
-    return props.editState.isEditingEnabled() && context.nav.selectedKeys.length > 0;
+    const mode = props.editState.mode();
+    return (mode === "move" || mode === "rotate") && context.nav.selectedKeys.length > 0;
   });
 
   const mode = () => props.editState.mode();
@@ -204,7 +206,7 @@ const CommonCenterRotationRing: VoidComponent<{
  */
 const KeyOverlay: VoidComponent<{
   gkey: GraphicsKey;
-  mode: Accessor<LayoutEditMode>;
+  mode: Accessor<GraphicsMode>;
   rotateSubMode: Accessor<RotateSubMode>;
   v2c: (x: number, y: number) => { x: number; y: number };
   contentBbox: () => { min: { x: number; y: number }; width: number; height: number };

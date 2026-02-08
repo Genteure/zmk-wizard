@@ -14,8 +14,6 @@ import {
 } from "solid-js";
 
 import Check from "lucide-solid/icons/check";
-import Move from "lucide-solid/icons/move";
-import Pencil from "lucide-solid/icons/pencil";
 import RotateCcw from "lucide-solid/icons/rotate-ccw";
 import Zap from "lucide-solid/icons/zap";
 import ZapOff from "lucide-solid/icons/zap-off";
@@ -211,13 +209,9 @@ export const KeyboardPreview: VoidComponent<{
   const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
   const containerSize = createElementSize(containerRef);
 
-  // Local toggle between Pan and Edit (Select/Wiring)
-  const [panMode, setPanMode] = createSignal(false);
   const [isPanning, setIsPanning] = createSignal(false);
   const [isWiringDragging, setIsWiringDragging] = createSignal(false);
   const ctrlHeld = createKeyHold("Control", { preventDefault: false });
-  // if control is held, flip the edit mode
-  const effectiveIsPan = createMemo(() => ctrlHeld() ? !panMode() : panMode())
 
   const [autoZoom, setAutoZoom] = createSignal(true);
   const [showConnectionLines, setShowConnectionLines] = createSignal(true);
@@ -226,17 +220,34 @@ export const KeyboardPreview: VoidComponent<{
   // null means no key is focused (container focus)
   const [focusedKeyIndex, setFocusedKeyIndex] = createSignal<number | null>(null);
 
-  // Layout editing state (used for both physical and logical layouts for toolbar actions)
-  const layoutEditState = createLayoutEditState();
+  // Determine initial mode based on context
+  const initialMode = () => {
+    if (props.editMode?.() === "wiring") return "wiring" as const;
+    return "select" as const;
+  };
+
+  // Layout editing state with unified mode signal
+  const layoutEditState = createLayoutEditState(initialMode());
   const [isLayoutDragging, setIsLayoutDragging] = createSignal(false);
 
-  const activeMode = createMemo<"pan" | "select" | "wiring" | "move" | "rotate">(() => {
-    if (effectiveIsPan()) return "pan";
-    if (props.editMode?.() === "wiring") return "wiring";
-    if (layoutEditState.isEditingEnabled() && context.nav.selectedTab === "layout") {
-      return layoutEditState.mode();
+  // Sync mode with parent editMode when in wiring mode
+  createEffect(() => {
+    if (props.editMode?.() === "wiring") {
+      layoutEditState.setMode("wiring");
+    } else if (layoutEditState.mode() === "wiring") {
+      // When leaving wiring mode, go back to select
+      layoutEditState.setMode("select");
     }
-    return "select";
+  });
+
+  // Computed active mode - ctrl toggles between current mode and pan
+  const activeMode = createMemo(() => {
+    const currentMode = layoutEditState.mode();
+    // Ctrl key toggles pan mode
+    if (ctrlHeld()) {
+      return currentMode === "pan" ? "select" : "pan";
+    }
+    return currentMode;
   });
 
   // Auto zoom effect - disabled while layout editing drag is in progress
@@ -537,10 +548,18 @@ export const KeyboardPreview: VoidComponent<{
     // Layout editing tool shortcuts (only in physical layout view with layout tab selected)
     if (context.nav.selectedTab === "layout" && props.isPhysicalLayout) {
       switch (e.key.toLowerCase()) {
-        case 'e': {
+        case 'p': {
           if (!e.ctrlKey && !e.metaKey) {
             e.preventDefault();
-            layoutEditState.setIsEditingEnabled(!layoutEditState.isEditingEnabled());
+            layoutEditState.setMode("pan");
+            return;
+          }
+          break;
+        }
+        case 's': {
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            layoutEditState.setMode("select");
             return;
           }
           break;
@@ -574,7 +593,6 @@ export const KeyboardPreview: VoidComponent<{
         case 'm': {
           if (!e.ctrlKey && !e.metaKey) {
             e.preventDefault();
-            layoutEditState.setIsEditingEnabled(true);
             layoutEditState.setMode("move");
             return;
           }
@@ -583,7 +601,6 @@ export const KeyboardPreview: VoidComponent<{
         case 'r': {
           if (!e.ctrlKey && !e.metaKey) {
             e.preventDefault();
-            layoutEditState.setIsEditingEnabled(true);
             layoutEditState.setMode("rotate");
             return;
           }
@@ -856,10 +873,10 @@ export const KeyboardPreview: VoidComponent<{
       tabIndex={0}
       class="keyboard-editor w-full h-full relative overflow-clip focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-inset"
       classList={{
-        "cursor-grab": effectiveIsPan() && !isPanning(),
-        "cursor-grabbing": effectiveIsPan() && isPanning(),
-        "cursor-crosshair": !effectiveIsPan() && (props.editMode?.() !== "wiring"),
-        "cursor-cell": !effectiveIsPan() && (props.editMode?.() === "wiring"),
+        "cursor-grab": activeMode() === "pan" && !isPanning(),
+        "cursor-grabbing": activeMode() === "pan" && isPanning(),
+        "cursor-crosshair": activeMode() !== "pan" && activeMode() !== "wiring",
+        "cursor-cell": activeMode() === "wiring",
       }}
       onWheel={onWheelHandler}
       onKeyDown={onKeyDown}
@@ -906,7 +923,7 @@ export const KeyboardPreview: VoidComponent<{
             // inherit cursor by default
             '[&>button]:cursor-[inherit]': true,
             // use pointer when wiring tool is active AND we're not dragging
-            '[&>button]:cursor-pointer': !effectiveIsPan() && (props.editMode?.() === "wiring") && !isWiringDragging(),
+            '[&>button]:cursor-pointer': activeMode() === "wiring" && !isWiringDragging(),
           }}
         >
           {/* SVG layer for key backgrounds and borders */}
@@ -1206,15 +1223,6 @@ export const KeyboardPreview: VoidComponent<{
           </div>
         </Show>
         <div class="flex items-center gap-1 pointer-coarse:gap-2 rounded">
-          <Button
-            aria-label="Toggle Mode"
-            aria-description={`Current mode: ${effectiveIsPan() ? "Pan" : (props.editMode?.() === "wiring" ? "Wiring" : "Select")}. Hold Ctrl to temporarily switch modes.`}
-            class="rounded-sm text-base-600 bg-base-200/60 hover:text-primary cursor-pointer border border-zinc-600/50 hover:border-primary/30 backdrop-blur-sm"
-            title={`Toggle Mode (current: ${effectiveIsPan() ? "Pan" : (props.editMode?.() === "wiring" ? "Wiring" : "Select")}, hold Ctrl to temporarily switch)`}
-            onClick={() => setPanMode(!panMode())}
-          >
-            {effectiveIsPan() ? <Move aria-hidden class="w-6 h-6" /> : <Pencil aria-hidden class="w-6 h-6" />}
-          </Button>
           <Button
             aria-label="Zoom In"
             class="rounded-sm text-base-600 bg-base-200/60 hover:text-primary cursor-pointer border border-zinc-600/50 hover:border-primary/30 backdrop-blur-sm"

@@ -3,6 +3,17 @@ import type { Point } from "~/lib/geometry";
 import type { GraphicsKey } from ".";
 import type { WizardContextType } from "../context";
 
+/**
+ * Unified graphics mode type for all interaction modes.
+ * 
+ * - "pan": Pan and zoom the view
+ * - "select": Box-select keys (default non-editing mode)
+ * - "wiring": Assign pins to keys (wiring tab)
+ * - "move": Move and resize keys (layout editing)
+ * - "rotate": Rotate keys (layout editing)
+ */
+export type GraphicsMode = "pan" | "select" | "wiring" | "move" | "rotate";
+
 export interface InteractionEventHandlers {
   onMouseDown: JSX.EventHandler<HTMLDivElement, MouseEvent>;
   onMouseMove: JSX.EventHandler<HTMLDivElement, MouseEvent>;

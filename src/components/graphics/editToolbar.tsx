@@ -2,7 +2,7 @@
  * Layout editing toolbar component.
  * 
  * Displays tools and actions for layout editing:
- * - Mode toggle (Move/Rotate)
+ * - Mode toggle (Pan/Select/Move/Rotate)
  * - Mode-specific options (rotation sub-mode, snap settings)
  * - Actions (Copy, Paste, Mirror)
  */
@@ -18,10 +18,10 @@ import Copy from "lucide-solid/icons/copy";
 import Crosshair from "lucide-solid/icons/crosshair";
 import FlipHorizontal2 from "lucide-solid/icons/flip-horizontal-2";
 import FlipVertical2 from "lucide-solid/icons/flip-vertical-2";
+import Hand from "lucide-solid/icons/hand";
 import Hash from "lucide-solid/icons/hash";
+import MousePointer2 from "lucide-solid/icons/mouse-pointer-2";
 import Move from "lucide-solid/icons/move";
-import Pencil from "lucide-solid/icons/pencil";
-import PencilOff from "lucide-solid/icons/pencil-off";
 import Pin from "lucide-solid/icons/pin";
 import RotateCw from "lucide-solid/icons/rotate-cw";
 import Settings from "lucide-solid/icons/settings";
@@ -42,13 +42,13 @@ import type { Key } from "../../typedef";
 import { normalizeKeys, useWizardContext } from "../context";
 import type { GraphicsKey } from "./index";
 import {
-  type LayoutEditMode,
   type LayoutEditState,
   type RotateSubMode,
   type CenterAnchorMoveMode,
   MOVE_SNAP_OPTIONS,
   ROTATE_SNAP_OPTIONS,
 } from "./editState";
+import type { GraphicsMode } from "./types";
 
 /**
  * Tooltip wrapper for toolbar buttons
@@ -177,44 +177,40 @@ export const LayoutEditToolbar: VoidComponent<LayoutEditToolbarProps> = (props) 
     return null;
   }
 
-  const isEditingEnabled = editState().isEditingEnabled;
   const currentMode = editState().mode;
+  const isEditMode = createMemo(() => currentMode() === "move" || currentMode() === "rotate");
 
   return (
     <div class="absolute top-2 right-2 flex items-start gap-1 z-20" data-controls>
-      {/* Edit mode toggle (only for physical layout) */}
+      {/* Mode selector (multi-way toggle) - only for physical layout */}
       <Show when={props.isPhysicalLayout}>
         <div class="flex items-center gap-0.5 bg-base-200/90 backdrop-blur-sm rounded-lg p-0.5 shadow-md">
-          <ToolbarTooltip content={isEditingEnabled() ? "Disable editing (E)" : "Enable editing (E)"}>
-            <Button
-              class="btn btn-xs btn-square"
-              classList={{
-                "btn-primary": isEditingEnabled(),
-                "btn-ghost": !isEditingEnabled(),
-              }}
-              onClick={() => editState().setIsEditingEnabled(!isEditingEnabled())}
-            >
-              {isEditingEnabled() ? <Pencil class="w-3.5 h-3.5" /> : <PencilOff class="w-3.5 h-3.5" />}
-            </Button>
-          </ToolbarTooltip>
-        </div>
-      </Show>
-
-      {/* Mode selection and options (only when editing is enabled) */}
-      <Show when={props.isPhysicalLayout && isEditingEnabled()}>
-        <div class="flex items-center gap-0.5 bg-base-200/90 backdrop-blur-sm rounded-lg p-0.5 shadow-md">
-          {/* Snap settings */}
-          <SnapSettingsPopover editState={editState()} />
-
-          <div class="border-l border-base-300 h-4 mx-0.5" />
-
-          {/* Mode toggle */}
           <ToggleGroup
             value={currentMode()}
-            onChange={(v) => v && editState().setMode(v as LayoutEditMode)}
+            onChange={(v) => v && editState().setMode(v as GraphicsMode)}
             class="flex gap-0.5"
           >
-            <ToolbarTooltip content="Move mode (M)">
+            <ToolbarTooltip content="Pan mode (P)" shortcut="P">
+              <ToggleGroup.Item
+                value="pan"
+                class="btn btn-xs btn-square btn-ghost"
+                classList={{ "btn-active bg-primary/20": currentMode() === "pan" }}
+              >
+                <Hand class="w-3.5 h-3.5" />
+              </ToggleGroup.Item>
+            </ToolbarTooltip>
+
+            <ToolbarTooltip content="Select mode (S)" shortcut="S">
+              <ToggleGroup.Item
+                value="select"
+                class="btn btn-xs btn-square btn-ghost"
+                classList={{ "btn-active bg-primary/20": currentMode() === "select" }}
+              >
+                <MousePointer2 class="w-3.5 h-3.5" />
+              </ToggleGroup.Item>
+            </ToolbarTooltip>
+
+            <ToolbarTooltip content="Move mode (M)" shortcut="M">
               <ToggleGroup.Item
                 value="move"
                 class="btn btn-xs btn-square btn-ghost"
@@ -224,7 +220,7 @@ export const LayoutEditToolbar: VoidComponent<LayoutEditToolbarProps> = (props) 
               </ToggleGroup.Item>
             </ToolbarTooltip>
 
-            <ToolbarTooltip content="Rotate mode (R)">
+            <ToolbarTooltip content="Rotate mode (R)" shortcut="R">
               <ToggleGroup.Item
                 value="rotate"
                 class="btn btn-xs btn-square btn-ghost"
@@ -234,6 +230,14 @@ export const LayoutEditToolbar: VoidComponent<LayoutEditToolbarProps> = (props) 
               </ToggleGroup.Item>
             </ToolbarTooltip>
           </ToggleGroup>
+        </div>
+      </Show>
+
+      {/* Mode-specific options (only when in edit modes) */}
+      <Show when={props.isPhysicalLayout && isEditMode()}>
+        <div class="flex items-center gap-0.5 bg-base-200/90 backdrop-blur-sm rounded-lg p-0.5 shadow-md">
+          {/* Snap settings */}
+          <SnapSettingsPopover editState={editState()} />
 
           {/* Rotation sub-mode options (only in rotate mode) */}
           <Show when={currentMode() === "rotate"}>
@@ -447,7 +451,7 @@ const SnapSettingsPopover: VoidComponent<{
  * Exact values dialog for precise input
  */
 const ExactValuesDialog: VoidComponent<{
-  mode: Accessor<LayoutEditMode>;
+  mode: Accessor<GraphicsMode>;
   rotateSubMode: Accessor<RotateSubMode>;
 }> = (props) => {
   const context = useWizardContext();
@@ -484,7 +488,7 @@ const ExactValuesDialog: VoidComponent<{
         setWValue(sameW ? selectedKeys[0].w.toString() : "");
         setHValue(sameH ? selectedKeys[0].h.toString() : "");
       }
-    } else {
+    } else if (mode === "rotate") {
       if (selectedKeys.length === 1) {
         const k = selectedKeys[0];
         setRValue(k.r.toString());
@@ -529,7 +533,7 @@ const ExactValuesDialog: VoidComponent<{
           if (k.ry !== 0 && !isNaN(dy)) k.ry = roundTo(k.ry + dy);
           if (!isNaN(w) && w > 0) k.w = w;
           if (!isNaN(h) && h > 0) k.h = h;
-        } else {
+        } else if (mode === "rotate") {
           const r = parseFloat(rValue());
           const rx = parseFloat(rxValue());
           const ry = parseFloat(ryValue());
