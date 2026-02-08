@@ -55,6 +55,7 @@
     "jszip": "^3.10.1",
     "lucide-solid": "^0.532.0",
     "nanotar": "^0.2.0",
+    "octokit": "^5.0.5",
     "solid-js": "^1.9.10",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",

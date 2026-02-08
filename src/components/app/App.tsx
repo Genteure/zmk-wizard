@@ -12,6 +12,7 @@ import LucideKeyboard from "lucide-solid/icons/keyboard";
 import { swpBgClass } from "~/lib/swpColors";
 import type { Key } from "../../typedef";
 import { useWizardContext } from "../context";
+import { GitHubDialog } from "../GitHubDialog";
 import { KeyboardPreview, type GraphicsKey } from "../graphics";
 import { BuildButton, HelpButton, InfoEditButton } from "../navbar";
 import { ConfigKeyboard } from "./ConfigKeyboard";
@@ -82,6 +83,9 @@ export const App: VoidComponent = () => {
   };
 
   return (<div id="app" class="flex flex-col h-screen isolate">
+    {/* GitHub Dialog (unified auth, install, repo select) */}
+    <GitHubDialog />
+
     <div
       // class="p-2 bg-base-200 flex flex-col gap-2 md:flex-row items-center justify-between"
       class="p-2 bg-base-200 flex gap-2 items-center justify-between"
