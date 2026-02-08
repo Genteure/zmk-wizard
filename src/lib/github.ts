@@ -421,12 +421,58 @@ export async function loadKeyboardConfig(
 }
 
 /**
- * Check if a path should be preserved (not overwritten).
+ * Check if a path should be preserved (not overwritten or deleted).
  */
 function shouldPreservePath(filePath: string): boolean {
   return PRESERVED_PATHS.some(preserved => 
     filePath === preserved || filePath.startsWith(preserved)
   );
+}
+
+/**
+ * List all files in a repository tree recursively.
+ * Returns an array of file paths (not directories).
+ */
+export async function listRepositoryFiles(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  branch: string
+): Promise<string[]> {
+  try {
+    const octokit = createOctokit(accessToken);
+    
+    // Get the tree SHA for the branch
+    const { data: refData } = await octokit.rest.git.getRef({
+      owner,
+      repo,
+      ref: `heads/${branch}`,
+    });
+    
+    const { data: commitData } = await octokit.rest.git.getCommit({
+      owner,
+      repo,
+      commit_sha: refData.object.sha,
+    });
+    
+    // Get the full tree recursively
+    const { data: treeData } = await octokit.rest.git.getTree({
+      owner,
+      repo,
+      tree_sha: commitData.tree.sha,
+      recursive: 'true',
+    });
+    
+    // Filter to only files (blobs), not directories (trees)
+    const files = treeData.tree
+      .filter(item => item.type === 'blob' && item.path)
+      .map(item => item.path as string);
+    
+    console.log('[GitHub API] Found', files.length, 'files in repository');
+    return files;
+  } catch (error) {
+    handleOctokitError(error, 'Failed to list repository files');
+  }
 }
 
 /**
@@ -451,6 +497,14 @@ const CREATE_COMMIT_ON_BRANCH_MUTATION = `
  * - Performs all operations in a single request
  * - Reduces rate limiting issues (single API call vs 5+ calls)
  * - Handles all file changes atomically
+ * 
+ * This function will:
+ * 1. Add/update all files from the new configuration
+ * 2. Delete files that exist in the repository but are not in the new configuration
+ *    (except for preserved paths like config/ and build.yaml)
+ * 
+ * Deleting obsolete files is essential to prevent broken configurations when
+ * files are renamed or removed between updates.
  */
 export async function pushChangesToRepository(
   accessToken: string,
@@ -482,6 +536,27 @@ export async function pushChangesToRepository(
         contents: btoa(String.fromCharCode(...new TextEncoder().encode(content))),
       }));
 
+    // Get existing files and calculate deletions
+    // Files that exist in repo but not in new generation (and not preserved) should be deleted
+    const existingFiles = await listRepositoryFiles(accessToken, owner, repo, branch);
+    const newFilePaths = new Set(Object.keys(files));
+    
+    const deletions = existingFiles
+      .filter(path => !newFilePaths.has(path) && !shouldPreservePath(path))
+      .map(path => ({ path }));
+    
+    if (deletions.length > 0) {
+      console.log('[GitHub API] Deleting', deletions.length, 'obsolete files:', deletions.map(d => d.path));
+    }
+
+    // Build fileChanges object
+    const fileChanges: { additions: typeof additions; deletions?: typeof deletions } = {
+      additions,
+    };
+    if (deletions.length > 0) {
+      fileChanges.deletions = deletions;
+    }
+
     // Execute the GraphQL mutation
     const response = await octokit.graphql<{
       createCommitOnBranch: {
@@ -500,9 +575,7 @@ export async function pushChangesToRepository(
         message: {
           headline: commitMessage,
         },
-        fileChanges: {
-          additions,
-        },
+        fileChanges,
       },
     });
 

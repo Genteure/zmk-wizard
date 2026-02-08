@@ -311,10 +311,26 @@ export const BuildButton: VoidComponent = () => {
 
   return (
     <Dialog open={context.nav.dialog.build} onOpenChange={v => context.setNav("dialog", "build", v)}>
-      <Dialog.Trigger class="btn btn-primary btn-sm md:btn-md md:text-lg ui-disabled:btn-disabled"
+      <Dialog.Trigger 
+        class="btn btn-primary btn-sm md:btn-md ui-disabled:btn-disabled flex items-center gap-2"
       >
-        <Package aria-hidden class="inline-block w-5 h-5" />
-        Build
+        <Show 
+          when={isEditMode()}
+          fallback={
+            <>
+              <Package aria-hidden class="inline-block w-5 h-5" />
+              <span class="text-lg">Build</span>
+            </>
+          }
+        >
+          <Upload aria-hidden class="inline-block w-5 h-5" />
+          <div class="flex flex-col items-start">
+            <span class="text-sm font-semibold leading-tight">Push</span>
+            <span class="text-xs leading-tight opacity-80 font-mono max-w-32 md:max-w-40 truncate">
+              {context.nav.editRepository?.fullName}
+            </span>
+          </div>
+        </Show>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay class="dialog--overlay" />

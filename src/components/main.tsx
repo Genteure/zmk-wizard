@@ -168,7 +168,6 @@ function rootContextHelper(): WizardContextType {
       importKleJson: false,
       exportTextboxContent: null,
       githubAuth: false,
-      repoSelect: false,
     },
     selectedTab: "layout",
     activeEditPart: null,

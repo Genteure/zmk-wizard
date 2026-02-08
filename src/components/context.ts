@@ -55,10 +55,8 @@ export interface Navigation {
     importLayoutJson: boolean;
     importKleJson: boolean;
     exportTextboxContent: string | null;
-    /** GitHub authentication dialog */
+    /** GitHub dialog (unified: auth, install, repo select) */
     githubAuth: boolean;
-    /** Repository selection dialog */
-    repoSelect: boolean;
   };
   repoLink: string;
   selectedTab: string;

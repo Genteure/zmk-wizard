@@ -1,4 +1,4 @@
-import { createMemo, For, Show, type VoidComponent } from "solid-js";
+import { createMemo, For, type VoidComponent } from "solid-js";
 import { produce } from "solid-js/store";
 
 import { Link } from "@kobalte/core/link";
@@ -6,16 +6,13 @@ import { Popover } from "@kobalte/core/popover";
 import { Tabs } from "@kobalte/core/tabs";
 import { ulid } from "ulidx";
 
-import ExternalLink from "lucide-solid/icons/external-link";
-import Github from "lucide-solid/icons/github";
 import LayoutDashboard from "lucide-solid/icons/layout-dashboard";
 import LucideKeyboard from "lucide-solid/icons/keyboard";
-import X from "lucide-solid/icons/x";
 
 import { swpBgClass } from "~/lib/swpColors";
 import type { Key } from "../../typedef";
 import { useWizardContext } from "../context";
-import { GitHubAuthDialog, RepoSelectDialog } from "../github-dialogs";
+import { GitHubDialog } from "../GitHubDialog";
 import { KeyboardPreview, type GraphicsKey } from "../graphics";
 import { BuildButton, HelpButton, InfoEditButton } from "../navbar";
 import { ConfigKeyboard } from "./ConfigKeyboard";
@@ -85,42 +82,9 @@ export const App: VoidComponent = () => {
     }));
   };
 
-  const exitEditMode = () => {
-    context.setNav("editRepository", null);
-  };
-
   return (<div id="app" class="flex flex-col h-screen isolate">
-    {/* GitHub Dialogs */}
-    <GitHubAuthDialog />
-    <RepoSelectDialog />
-
-    {/* Edit Mode Banner */}
-    <Show when={context.nav.editRepository}>
-      <div class="bg-primary text-primary-content px-4 py-2 flex items-center justify-between gap-2">
-        <div class="flex items-center gap-2 min-w-0">
-          <Github class="w-5 h-5 shrink-0" />
-          <span class="text-sm font-medium truncate">
-            Editing: {context.nav.editRepository?.fullName}
-          </span>
-          <Link
-            href={context.nav.editRepository?.htmlUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="btn btn-ghost btn-xs btn-circle"
-            title="Open in GitHub"
-          >
-            <ExternalLink class="w-4 h-4" />
-          </Link>
-        </div>
-        <button
-          class="btn btn-ghost btn-xs btn-circle"
-          onClick={exitEditMode}
-          title="Exit edit mode"
-        >
-          <X class="w-4 h-4" />
-        </button>
-      </div>
-    </Show>
+    {/* GitHub Dialog (unified auth, install, repo select) */}
+    <GitHubDialog />
 
     <div
       // class="p-2 bg-base-200 flex flex-col gap-2 md:flex-row items-center justify-between"

@@ -460,6 +460,7 @@ export const server = {
         console.log('[GitHub API] Pushing changes to:', input.owner + '/' + input.repo + ' branch:', input.branch);
 
         // Push changes to the repository
+        // Always delete obsolete files to prevent broken configurations
         const result = await pushChangesToRepository(
           input.accessToken,
           input.owner,
