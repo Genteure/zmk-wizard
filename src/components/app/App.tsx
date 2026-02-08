@@ -208,6 +208,7 @@ export const App: VoidComponent = () => {
             editMode={() => (context.nav.selectedTab.startsWith("part-")) ? "wiring" : "select"}
             onKeySetWiring={keyWiringSetter}
             moveSelectedKey="physical"
+            isPhysicalLayout={true}
           />
         </div>
         <div class="flex-1">

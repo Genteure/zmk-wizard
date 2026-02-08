@@ -14,8 +14,6 @@ import {
 } from "solid-js";
 
 import Check from "lucide-solid/icons/check";
-import Move from "lucide-solid/icons/move";
-import Pencil from "lucide-solid/icons/pencil";
 import RotateCcw from "lucide-solid/icons/rotate-ccw";
 import Zap from "lucide-solid/icons/zap";
 import ZapOff from "lucide-solid/icons/zap-off";
@@ -23,28 +21,33 @@ import ZoomIn from "lucide-solid/icons/zoom-in";
 import ZoomOut from "lucide-solid/icons/zoom-out";
 
 import { Button } from "@kobalte/core/button";
-import { createTimer, makeTimer } from "@solid-primitives/timer";
 import ArrowBigUp from "lucide-solid/icons/arrow-big-up";
 import { produce } from "solid-js/store";
 import {
   getKeysBoundingBox,
   getKeyStyles,
   keyCenter,
-  keyToSvgPath,
   type KeyGeometry,
   type Point,
 } from "~/lib/geometry";
-import { swpBgClass, swpCssVar } from "~/lib/swpColors";
-import type { Key, KeyboardPart, SingleKeyWiring, WiringType } from "../typedef";
-import { normalizeKeys, useWizardContext } from "./context";
-import { controllerInfos } from "./controllerInfo";
+import { swpBgClass } from "~/lib/swpColors";
+import type { Key, KeyboardPart, SingleKeyWiring, WiringType } from "../../typedef";
+import { normalizeKeys, useWizardContext } from "../context";
+import { controllerInfos } from "../controllerInfo";
+import { KeySvgPath } from "./KeySvgPath";
+import { createLayoutEditState } from "./editState";
+import { LayoutEditOverlay } from "./editOverlay";
+import { LayoutEditToolbar } from "./editToolbar";
+import { createDragSelectEventHandlers } from "./modeDragSelect";
+import { createMoveModeHandlers } from "./modeMove";
+import { createPanEventHandlers } from "./modePan";
+import { createRotateModeHandlers } from "./modeRotate";
+import { createWiringEventHandlers } from "./modeWiring";
 import {
-  createDragSelectEventHandlers,
-  createPanEventHandlers,
-  createWiringEventHandlers,
   type GraphicState,
   type InteractionEventHandlers
-} from "./graphics.events";
+} from "./types";
+import { computeWiringLines, repeatTrigger } from "./utils";
 
 export type GraphicsKey = KeyGeometry & {
   index: number,
@@ -55,109 +58,12 @@ export type GraphicsKey = KeyGeometry & {
 /**
  * Represents a connection line between two keys sharing a wiring pin.
  */
-type WiringLine = {
+export type WiringLine = {
   from: Point;
   to: Point;
   type: 'input' | 'output';
   pinId: string;
 };
-
-/**
- * Compute connection lines for keys sharing the same wiring pins.
- * Uses minimum spanning tree approach to show minimum number of lines.
- */
-function computeWiringLines(
-  keys: GraphicsKey[],
-  parts: KeyboardPart[],
-  activeEditPart: number | null
-): WiringLine[] {
-  const lines: WiringLine[] = [];
-
-  // Group keys by their wiring pins (input and output separately)
-  const inputGroups = new Map<string, GraphicsKey[]>();
-  const outputGroups = new Map<string, GraphicsKey[]>();
-
-  for (const gkey of keys) {
-    // Only consider keys from the active edit part, or all if none selected
-    if (activeEditPart !== null && gkey.part !== activeEditPart) continue;
-
-    const wiring = parts[gkey.part]?.keys[gkey.key.id];
-    if (!wiring) continue;
-
-    if (wiring.input) {
-      const group = inputGroups.get(wiring.input) || [];
-      group.push(gkey);
-      inputGroups.set(wiring.input, group);
-    }
-
-    if (wiring.output) {
-      const group = outputGroups.get(wiring.output) || [];
-      group.push(gkey);
-      outputGroups.set(wiring.output, group);
-    }
-  }
-
-  // Helper function to create minimum spanning tree lines for a group of keys
-  const createMstLines = (
-    keysInGroup: GraphicsKey[],
-    type: 'input' | 'output',
-    pinId: string
-  ) => {
-    if (keysInGroup.length < 2) return;
-
-    // Get centers of all keys
-    const centers = keysInGroup.map(k => keyCenter(k));
-
-    // Simple MST using Prim's algorithm
-    const visited = new Set<number>([0]);
-    const remaining = new Set<number>(keysInGroup.map((_, i) => i).filter(i => i !== 0));
-
-    while (remaining.size > 0) {
-      let minDist = Infinity;
-      let minFrom = -1;
-      let minTo = -1;
-
-      for (const from of visited) {
-        for (const to of remaining) {
-          const dx = centers[to].x - centers[from].x;
-          const dy = centers[to].y - centers[from].y;
-          const dist = dx * dx + dy * dy; // squared distance for comparison
-
-          if (dist < minDist) {
-            minDist = dist;
-            minFrom = from;
-            minTo = to;
-          }
-        }
-      }
-
-      // minFrom and minTo will always be valid when remaining.size > 0
-      // but add defensive check just in case
-      if (minFrom === -1 || minTo === -1) break;
-
-      lines.push({
-        from: centers[minFrom],
-        to: centers[minTo],
-        type,
-        pinId,
-      });
-      visited.add(minTo);
-      remaining.delete(minTo);
-    }
-  };
-
-  // Create lines for each input group
-  for (const [pinId, keysInGroup] of inputGroups) {
-    createMstLines(keysInGroup, 'input', pinId);
-  }
-
-  // Create lines for each output group
-  for (const [pinId, keysInGroup] of outputGroups) {
-    createMstLines(keysInGroup, 'output', pinId);
-  }
-
-  return lines;
-}
 
 type KeyRendererProps = {
   keyData: GraphicsKey;
@@ -175,75 +81,6 @@ type KeyRendererProps = {
 
 const shiftRegisterPinLabels: Record<string, string> = Object.fromEntries(Array.from({ length: 32 }, (_, i) => [`shifter${i}`, `SR${i}`]))
 
-/**
- * Props for SVG key rendering.
- * State calculations (like pinActive) should be done outside this component.
- */
-type KeySvgProps = {
-  keyData: GraphicsKey;
-  isSelected: boolean;
-  isFocused: boolean;
-  activeEditPart: number | null;
-  pinActive: boolean;
-};
-
-/**
- * SVG component for rendering key background and border.
- * Rendered as a path element within the parent SVG.
- */
-const KeySvgPath: VoidComponent<KeySvgProps> = (props) => {
-  const keyData = () => props.keyData;
-  const keyPart = () => keyData().part;
-  const isCurrentPart = () => props.activeEditPart === null || props.activeEditPart === keyPart();
-  const isWiringMode = () => props.activeEditPart !== null;
-
-  // No offset needed - the container's position:relative offset handles coordinate transformation
-  const pathData = () => keyToSvgPath(keyData());
-
-  // Fill color: bg-base-300 for selected/pinActive/focused, bg-base-200 otherwise
-  const fill = () => (props.isSelected || props.pinActive || props.isFocused)
-    ? "var(--color-base-300)"
-    : "var(--color-base-200)";
-
-  // Stroke color based on state:
-  // - focused: sky-500 (focus ring color)
-  // - pinActive: amber
-  // - selected: base-content
-  // - layout mode (no active part): part color
-  // - wiring mode, current part: base-content (solid border)
-  // - wiring mode, other part: base-content with opacity (dashed)
-  const stroke = () => {
-    if (props.isFocused) return "var(--color-sky-500)";
-    if (props.pinActive) return "var(--color-amber-500)";
-    if (props.isSelected) return "var(--color-base-content)";
-    if (!isWiringMode()) return swpCssVar(keyPart());
-    return "var(--color-base-content)";
-  };
-
-  // Stroke width: 3 for focused, 2 for selected/pinActive, 1 otherwise
-  const strokeWidth = () => {
-    if (props.isFocused) return 3;
-    if (props.isSelected || props.pinActive) return 2;
-    return 1;
-  };
-
-  // Dashed pattern for inactive parts in wiring mode
-  const strokeDasharray = () => (isWiringMode() && !isCurrentPart()) ? "4 2" : undefined;
-
-  // Opacity: 50% for inactive parts in wiring mode
-  const strokeOpacity = () => (isWiringMode() && !isCurrentPart()) ? 0.5 : 1;
-
-  return (
-    <path
-      d={pathData()}
-      fill={fill()}
-      stroke={stroke()}
-      stroke-width={strokeWidth()}
-      stroke-dasharray={strokeDasharray()}
-      stroke-opacity={strokeOpacity()}
-    />
-  );
-};
 
 /**
  * HTML component for rendering key labels and interactive overlay.
@@ -365,34 +202,59 @@ export const KeyboardPreview: VoidComponent<{
   // Parent controls which edit tool is active when not in Pan mode
   editMode?: Accessor<"select" | "wiring">,
   moveSelectedKey: "physical" | "logical",
+  /** If true, this is the physical layout view (enables layout editing toolbar) */
+  isPhysicalLayout?: boolean,
 }> = (props) => {
   const context = useWizardContext();
   const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
   const containerSize = createElementSize(containerRef);
 
-  // Local toggle between Pan and Edit (Select/Wiring)
-  const [panMode, setPanMode] = createSignal(false);
   const [isPanning, setIsPanning] = createSignal(false);
   const [isWiringDragging, setIsWiringDragging] = createSignal(false);
   const ctrlHeld = createKeyHold("Control", { preventDefault: false });
-  // if control is held, flip the edit mode
-  const effectiveIsPan = createMemo(() => ctrlHeld() ? !panMode() : panMode())
 
   const [autoZoom, setAutoZoom] = createSignal(true);
   const [showConnectionLines, setShowConnectionLines] = createSignal(true);
-  
+
   // Keyboard navigation state: tracks which key has keyboard focus
   // null means no key is focused (container focus)
   const [focusedKeyIndex, setFocusedKeyIndex] = createSignal<number | null>(null);
-  
-  const activeMode = createMemo<"pan" | "select" | "wiring">(() => {
-    if (effectiveIsPan()) return "pan";
-    return (props.editMode?.() === "wiring") ? "wiring" : "select";
+
+  // Determine initial mode based on context
+  const initialMode = () => {
+    if (props.editMode?.() === "wiring") return "wiring" as const;
+    return "select" as const;
+  };
+
+  // Layout editing state with unified mode signal
+  const layoutEditState = createLayoutEditState(initialMode());
+  const [isLayoutDragging, setIsLayoutDragging] = createSignal(false);
+
+  // Sync mode with parent editMode when in wiring mode
+  createEffect(() => {
+    if (props.editMode?.() === "wiring") {
+      layoutEditState.setMode("wiring");
+    } else if (layoutEditState.mode() === "wiring") {
+      // When leaving wiring mode, go back to select
+      layoutEditState.setMode("select");
+    }
   });
 
-  // Auto zoom effect
+  // Computed active mode - ctrl toggles between current mode and pan
+  const activeMode = createMemo(() => {
+    const currentMode = layoutEditState.mode();
+    // Ctrl key toggles pan mode
+    if (ctrlHeld()) {
+      return currentMode === "pan" ? "select" : "pan";
+    }
+    return currentMode;
+  });
+
+  // Auto zoom effect - disabled while layout editing drag is in progress
   createEffect(() => {
     if (!autoZoom()) return;
+    // Lock view during layout editing drag to prevent layout shift
+    if (isLayoutDragging()) return;
 
     const bbox = contentBbox();
     if (bbox.keyCount === 0) {
@@ -520,10 +382,22 @@ export const KeyboardPreview: VoidComponent<{
   const selectionHandler: InteractionEventHandlers = createDragSelectEventHandlers(eventHandlerStates);
   const wiringHandler: InteractionEventHandlers = createWiringEventHandlers(eventHandlerStates);
 
+  // Layout edit handlers (only for physical layout)
+  const moveHandler = props.isPhysicalLayout 
+    ? createMoveModeHandlers(eventHandlerStates, layoutEditState, setIsLayoutDragging)
+    : null;
+  const rotateHandler = props.isPhysicalLayout
+    ? createRotateModeHandlers(eventHandlerStates, layoutEditState, setIsLayoutDragging)
+    : null;
+
   // Current active handlers based on mode
   const activeHandlers = createMemo<InteractionEventHandlers>(() => {
-    if (effectiveIsPan()) return panHandler;
-    return (props.editMode?.() === "wiring") ? wiringHandler : selectionHandler;
+    const mode = activeMode();
+    if (mode === "pan") return panHandler;
+    if (mode === "wiring") return wiringHandler;
+    if (mode === "move" && moveHandler) return moveHandler;
+    if (mode === "rotate" && rotateHandler) return rotateHandler;
+    return selectionHandler;
   });
 
   // Reset previous handler state when switching modes
@@ -592,17 +466,17 @@ export const KeyboardPreview: VoidComponent<{
   ): number | null => {
     const keys = getNavigableKeys();
     if (keys.length === 0) return null;
-    
+
     const currentKey = keys.find(k => k.index === currentIndex);
     if (!currentKey) return keys[0]?.index ?? null;
-    
+
     const currentCenter = keyCenter(currentKey);
-    
+
     // Filter keys that are in the correct direction
     const candidates = keys.filter(k => {
       if (k.index === currentIndex) return false;
       const center = keyCenter(k);
-      
+
       switch (direction) {
         case 'up':
           return center.y < currentCenter.y - 5; // 5px threshold
@@ -614,15 +488,15 @@ export const KeyboardPreview: VoidComponent<{
           return center.x > currentCenter.x + 5;
       }
     });
-    
+
     if (candidates.length === 0) return null;
-    
+
     // Score candidates by combined distance, favoring keys closer to the primary axis
     const scored = candidates.map(k => {
       const center = keyCenter(k);
       const dx = center.x - currentCenter.x;
       const dy = center.y - currentCenter.y;
-      
+
       // Primary axis distance and perpendicular distance
       let primary: number, perpendicular: number;
       switch (direction) {
@@ -637,12 +511,12 @@ export const KeyboardPreview: VoidComponent<{
           perpendicular = Math.abs(dy);
           break;
       }
-      
+
       // Score: lower is better. Penalize perpendicular distance more.
       const score = primary + perpendicular * 2;
       return { key: k, score };
     });
-    
+
     // Sort by score and return the best match
     scored.sort((a, b) => a.score - b.score);
     return scored[0]?.key.index ?? null;
@@ -651,7 +525,7 @@ export const KeyboardPreview: VoidComponent<{
   /**
    * Handle keyboard navigation and actions
    */
-  const onKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = (e) => {
+  const onKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = async (e) => {
     // Don't handle if target is an input or inside controls
     const target = e.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.closest('[data-controls]')) {
@@ -671,6 +545,82 @@ export const KeyboardPreview: VoidComponent<{
       }));
     };
 
+    // Layout editing tool shortcuts (only in physical layout view with layout tab selected)
+    if (context.nav.selectedTab === "layout" && props.isPhysicalLayout) {
+      switch (e.key.toLowerCase()) {
+        case 'p': {
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            layoutEditState.setMode("pan");
+            return;
+          }
+          break;
+        }
+        case 's': {
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            layoutEditState.setMode("select");
+            return;
+          }
+          break;
+        }
+        case 'v': {
+          // Ctrl+V for paste
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            const clipboardKeys = layoutEditState.clipboard();
+            if (clipboardKeys && clipboardKeys.length > 0) {
+              const { ulid } = await import("ulidx");
+              const pasteOffset = 0.5;
+              const newKeys = clipboardKeys.map(k => ({
+                ...k,
+                id: ulid(),
+                x: k.x + pasteOffset,
+                y: k.y + pasteOffset,
+                rx: k.rx !== 0 ? k.rx + pasteOffset : 0,
+                ry: k.ry !== 0 ? k.ry + pasteOffset : 0,
+              }));
+              context.setKeyboard("layout", produce(layout => {
+                layout.push(...newKeys);
+              }));
+              context.setNav("selectedKeys", newKeys.map(k => k.id));
+              normalizeKeys(context);
+            }
+            return;
+          }
+          break;
+        }
+        case 'm': {
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            layoutEditState.setMode("move");
+            return;
+          }
+          break;
+        }
+        case 'r': {
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            layoutEditState.setMode("rotate");
+            return;
+          }
+          break;
+        }
+        case 'c': {
+          // Ctrl+C for copy
+          if (e.ctrlKey || e.metaKey) {
+            const selectedIds = context.nav.selectedKeys;
+            if (selectedIds.length > 0) {
+              e.preventDefault();
+              const selectedKeys = context.keyboard.layout.filter(k => selectedIds.includes(k.id));
+              layoutEditState.setClipboard(structuredClone(selectedKeys));
+            }
+          }
+          break;
+        }
+      }
+    }
+
     // Handle zoom shortcuts first (these work even when no keys are present)
     switch (e.key) {
       case '+':
@@ -680,7 +630,7 @@ export const KeyboardPreview: VoidComponent<{
         scaleAtOrigin(true, (containerSize.width || 0) / 2, (containerSize.height || 0) / 2);
         return;
       }
-      
+
       case '-':
       case '_': {
         // Zoom out
@@ -688,7 +638,7 @@ export const KeyboardPreview: VoidComponent<{
         scaleAtOrigin(false, (containerSize.width || 0) / 2, (containerSize.height || 0) / 2);
         return;
       }
-      
+
       case '0': {
         // Reset zoom
         e.preventDefault();
@@ -770,7 +720,7 @@ export const KeyboardPreview: VoidComponent<{
     if (keys.length === 0) return;
 
     const currentFocused = focusedKeyIndex();
-    
+
     switch (e.key) {
       case 'ArrowUp':
       case 'ArrowDown':
@@ -778,7 +728,7 @@ export const KeyboardPreview: VoidComponent<{
       case 'ArrowRight': {
         e.preventDefault();
         const direction = e.key.replace('Arrow', '').toLowerCase() as 'up' | 'down' | 'left' | 'right';
-        
+
         if (e.shiftKey && activeMode() === 'select' && context.nav.selectedKeys.length > 0) {
           // Shift+Arrow: move selected keys (only if there are selected keys)
           switch (direction) {
@@ -801,7 +751,7 @@ export const KeyboardPreview: VoidComponent<{
         }
         break;
       }
-      
+
       case 'Enter':
       case ' ': {
         e.preventDefault();
@@ -813,7 +763,7 @@ export const KeyboardPreview: VoidComponent<{
         }
         break;
       }
-      
+
       case 'a':
       case 'A': {
         // Ctrl+A or Cmd+A: Select all keys
@@ -825,7 +775,7 @@ export const KeyboardPreview: VoidComponent<{
         }
         break;
       }
-      
+
       case 'Escape': {
         e.preventDefault();
         // Clear selection and focus
@@ -836,7 +786,7 @@ export const KeyboardPreview: VoidComponent<{
         }
         break;
       }
-      
+
       case 'Home': {
         e.preventDefault();
         // Focus first key
@@ -845,7 +795,7 @@ export const KeyboardPreview: VoidComponent<{
         }
         break;
       }
-      
+
       case 'End': {
         e.preventDefault();
         // Focus last key
@@ -898,7 +848,7 @@ export const KeyboardPreview: VoidComponent<{
     const focused = focusedKeyIndex();
     const selectedCount = context.nav.selectedKeys.length;
     const mode = activeMode();
-    
+
     const parts: string[] = [];
     parts.push(props.title);
     parts.push(`${mode} mode`);
@@ -923,10 +873,10 @@ export const KeyboardPreview: VoidComponent<{
       tabIndex={0}
       class="keyboard-editor w-full h-full relative overflow-clip focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-inset"
       classList={{
-        "cursor-grab": effectiveIsPan() && !isPanning(),
-        "cursor-grabbing": effectiveIsPan() && isPanning(),
-        "cursor-crosshair": !effectiveIsPan() && (props.editMode?.() !== "wiring"),
-        "cursor-cell": !effectiveIsPan() && (props.editMode?.() === "wiring"),
+        "cursor-grab": activeMode() === "pan" && !isPanning(),
+        "cursor-grabbing": activeMode() === "pan" && isPanning(),
+        "cursor-crosshair": activeMode() !== "pan" && activeMode() !== "wiring",
+        "cursor-cell": activeMode() === "wiring",
       }}
       onWheel={onWheelHandler}
       onKeyDown={onKeyDown}
@@ -973,7 +923,7 @@ export const KeyboardPreview: VoidComponent<{
             // inherit cursor by default
             '[&>button]:cursor-[inherit]': true,
             // use pointer when wiring tool is active AND we're not dragging
-            '[&>button]:cursor-pointer': !effectiveIsPan() && (props.editMode?.() === "wiring") && !isWiringDragging(),
+            '[&>button]:cursor-pointer': activeMode() === "wiring" && !isWiringDragging(),
           }}
         >
           {/* SVG layer for key backgrounds and borders */}
@@ -1096,10 +1046,34 @@ export const KeyboardPreview: VoidComponent<{
       <div class="absolute top-2 left-2 bg-base-200/50 backdrop-blur-sm px-2 py-0.5 select-none rounded-lg text-xs md:text-sm font-medium shadow-md">
         {(() => {
           const mode = activeMode();
-          const label = mode === "pan" ? "Pan" : mode === "wiring" ? "Wiring" : "Select";
+          // Show active mode label
+          const label = mode === "pan" ? "Pan"
+            : mode === "wiring" ? "Wiring"
+              : mode === "move" ? "Move"
+                : mode === "rotate" ? "Rotate"
+                  : "Select";
           return `${props.title} • ${label} • ${(transform().s * 100).toFixed(0)}%`;
         })()}
       </div>
+
+      {/* Layout editing overlay (SVG handles, indicators) */}
+      <Show when={props.isPhysicalLayout && context.nav.selectedTab === "layout"}>
+        <LayoutEditOverlay
+          keys={props.keys}
+          editState={layoutEditState}
+          v2c={v2c}
+          contentBbox={contentBbox}
+        />
+      </Show>
+
+      {/* Layout editing toolbar */}
+      <Show when={context.nav.selectedTab === "layout"}>
+        <LayoutEditToolbar
+          editState={layoutEditState}
+          keys={props.keys}
+          isPhysicalLayout={props.isPhysicalLayout}
+        />
+      </Show>
 
       {/* Screen reader live region for status updates */}
       <div
@@ -1137,14 +1111,24 @@ export const KeyboardPreview: VoidComponent<{
             <div>Click or drag on keys to assign a pin</div>
             <div>Select a pin in the controller panel</div>
           </Match>
+          <Match when={activeMode() === "move"}>
+            <div>{context.nav.selectedKeys.length} selected</div>
+            <div>Drag center to move, corner to resize</div>
+            <div>Drag elsewhere to box-select</div>
+          </Match>
+          <Match when={activeMode() === "rotate"}>
+            <div>{context.nav.selectedKeys.length} selected</div>
+            <div>Drag ring to rotate, anchor to move</div>
+            <div>Drag elsewhere to box-select</div>
+          </Match>
           <Match when={activeMode() === "select"}>
             <div>{context.nav.selectedKeys.length} selected</div>
             <div>Drag to box-select keys</div>
             <div>Shift: Add • Alt: Toggle</div>
           </Match>
-          <Match when={true}>
+          <Match when={activeMode() === "pan"}>
             <div>Scroll to zoom in/out</div>
-            <div>Drag, pinch to pan and zoom</div>
+            <div>Drag to pan, pinch to zoom</div>
             <div>Hold Ctrl to temporarily switch modes</div>
           </Match>
         </Switch>
@@ -1240,15 +1224,6 @@ export const KeyboardPreview: VoidComponent<{
         </Show>
         <div class="flex items-center gap-1 pointer-coarse:gap-2 rounded">
           <Button
-            aria-label="Toggle Mode"
-            aria-description={`Current mode: ${effectiveIsPan() ? "Pan" : (props.editMode?.() === "wiring" ? "Wiring" : "Select")}. Hold Ctrl to temporarily switch modes.`}
-            class="rounded-sm text-base-600 bg-base-200/60 hover:text-primary cursor-pointer border border-zinc-600/50 hover:border-primary/30 backdrop-blur-sm"
-            title={`Toggle Mode (current: ${effectiveIsPan() ? "Pan" : (props.editMode?.() === "wiring" ? "Wiring" : "Select")}, hold Ctrl to temporarily switch)`}
-            onClick={() => setPanMode(!panMode())}
-          >
-            {effectiveIsPan() ? <Move aria-hidden class="w-6 h-6" /> : <Pencil aria-hidden class="w-6 h-6" />}
-          </Button>
-          <Button
             aria-label="Zoom In"
             class="rounded-sm text-base-600 bg-base-200/60 hover:text-primary cursor-pointer border border-zinc-600/50 hover:border-primary/30 backdrop-blur-sm"
             title="Zoom In"
@@ -1273,48 +1248,6 @@ export const KeyboardPreview: VoidComponent<{
           </Button>
         </div>
       </div>
-    </div >
+    </div>
   );
-}
-
-function repeatTrigger(
-  callback: () => void,
-  delay: number = 500,
-  interval: number = 100
-): [
-    ((e?: Event) => void),
-    ((e?: Event) => void)
-  ] {
-  const [timer, setTimer] = createSignal<number | false>(false);
-  let failsafeCounter = 0;
-  let cancelDelay: VoidFunction | null = null;
-
-  createTimer(() => {
-    if (failsafeCounter++ > 25) {
-      stop();
-      return;
-    }
-    callback();
-  }, timer, setInterval);
-
-  const start = (e?: Event) => {
-    e?.preventDefault();
-
-    callback();
-    failsafeCounter = 0;
-    cancelDelay = makeTimer(() => {
-      callback();
-      setTimer(interval);
-    }, delay, setTimeout);
-  }
-
-  const stop = (e?: Event) => {
-    e?.preventDefault();
-
-    setTimer(false);
-    cancelDelay?.();
-    cancelDelay = null;
-  }
-
-  return [start, stop];
 }
