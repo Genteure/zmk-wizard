@@ -16,6 +16,12 @@ pnpm test
 
 If you're having trouble installing tree-sitter with the error `.../include/node/v8config.h:13:2: error: #error "C++20 or later required."`, `export CXXFLAGS="-std=c++20"` then run `pnpm rb` to rebuild.
 
+### Environment Variables
+
+- `PUBLIC_SITE_URL` - The base URL of the site (defaults to `https://placeholder.example.com`). Used for generating canonical URLs and Open Graph metadata.
+- `PUBLIC_TURNSTILE_SITEKEY` - Cloudflare Turnstile site key for CAPTCHA verification (defaults to test key).
+- `TURNSTILE_SECRET` - Cloudflare Turnstile secret key for server-side verification (optional).
+
 ## Contributing
 
 Contributions are welcome!
