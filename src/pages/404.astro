@@ -1,5 +1,8 @@
 ---
+import { PUBLIC_SITE_URL } from "astro:env/client";
 import "~/styles/global.css";
+
+const canonicalURL = new URL(Astro.url.pathname, PUBLIC_SITE_URL).href;
 ---
 
 <!doctype html>
@@ -7,6 +10,7 @@ import "~/styles/global.css";
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="canonical" href={canonicalURL} />
     <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
     <title>404</title>
     <meta http-equiv="refresh" content="3;url=/" />

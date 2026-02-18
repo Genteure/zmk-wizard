@@ -27,6 +27,11 @@ export default defineConfig({
         access: 'secret',
         optional: true,
       }),
+      PUBLIC_SITE_URL: envField.string({
+        context: 'client',
+        access: 'public',
+        default: 'https://placeholder.example.com',
+      }),
     }
   },
 
