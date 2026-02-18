@@ -5,6 +5,9 @@ import { PUBLIC_SITE_URL } from "astro:env/client";
 import "~/styles/global.css";
 
 const canonicalURL = new URL(Astro.url.pathname, PUBLIC_SITE_URL).href;
+const title = "Shield Wizard for ZMK";
+const description = "A web-based graphical tool for creating custom ZMK shield configurations. Configure ZMK for your custom keyboard without writing code.";
+const ogImage = new URL("/favicon.svg", PUBLIC_SITE_URL).href;
 ---
 
 <!doctype html>
@@ -16,7 +19,23 @@ const canonicalURL = new URL(Astro.url.pathname, PUBLIC_SITE_URL).href;
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <link rel="canonical" href={canonicalURL} />
-    <title>Shield Wizard for ZMK</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:url" content={canonicalURL} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
   </head>
   <body>
     <Main client:only="solid-js">

@@ -3,6 +3,8 @@ import { PUBLIC_SITE_URL } from "astro:env/client";
 import "~/styles/global.css";
 
 const canonicalURL = new URL(Astro.url.pathname, PUBLIC_SITE_URL).href;
+const title = "404 - Page Not Found | Shield Wizard for ZMK";
+const description = "Page not found. Redirecting to Shield Wizard for ZMK homepage.";
 ---
 
 <!doctype html>
@@ -11,8 +13,10 @@ const canonicalURL = new URL(Astro.url.pathname, PUBLIC_SITE_URL).href;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="canonical" href={canonicalURL} />
-    <link rel="shortcut icon" href="favicon.svg" type="image/svg+xml" />
-    <title>404</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content="noindex, nofollow" />
     <meta http-equiv="refresh" content="3;url=/" />
   </head>
   <body class="flex items-center justify-center h-screen text-center">
