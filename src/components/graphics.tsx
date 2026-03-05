@@ -278,7 +278,7 @@ const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
     const pName = partName();
     if (pName) parts.push(`part ${pName}`);
     if (props.isSelected) parts.push('selected');
-    if (props.showKeymapCodes) parts.push(`keycode ${keymapCode()}`);
+    if (props.showKeymapCodes) parts.push(`default keycode ${keymapCode()}`);
     if (props.showWiringPins) {
       const inputPin = props.wiring?.input;
       const outputPin = props.wiring?.output;
