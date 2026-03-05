@@ -95,6 +95,22 @@ export const ConfigKeyboard: VoidComponent = () => {
 
   return (
     <>
+      {/* Keymap information */}
+      <div class="p-4 border border-base-300 rounded-lg bg-base-200">
+        <div class="text-lg font-semibold mb-3">
+          Keymap
+        </div>
+        <p class="text-sm text-base-content/70 mb-2">
+          Shield Wizard will generate a default keymap (<code class="font-mono text-xs bg-base-300 px-1 py-0.5 rounded">&kp A &kp B &kp C …</code>, looping after Z) for you to test the keyboard.
+        </p>
+        <p class="text-sm text-base-content/70 mb-2">
+          Keymap bindings follow the same order as the keys, which is determined by the logical layout. Make sure the logical layout matches how you think of the keys. The logical layout does not have to match how the keys are electrically wired.
+        </p>
+        <p class="text-sm text-base-content/70">
+          Please create your own keymap <em>after</em> creating the repository, either by editing the <code class="font-mono text-xs bg-base-300 px-1 py-0.5 rounded">name.keymap</code> file or by using third-party tools like Keymap Editor. Shield Wizard does not support editing keymaps.
+        </p>
+      </div>
+
       {/* Module configuration card */}
       <div class="p-4 border border-base-300 rounded-lg bg-base-200">
         <div class="text-lg font-semibold mb-3">

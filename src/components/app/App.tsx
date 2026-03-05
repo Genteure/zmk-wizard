@@ -205,7 +205,7 @@ export const App: VoidComponent = () => {
         <div class="flex-1 border-b border-base-300">
           <KeyboardPreview title="Physical Layout"
             keys={physicalLayoutKeys}
-            editMode={() => (context.nav.selectedTab.startsWith("part-")) ? "wiring" : "select"}
+            editMode={() => context.nav.selectedTab.startsWith("part-") ? "wiring" : context.nav.selectedTab === "keyboard" ? "keymap" : "select"}
             onKeySetWiring={keyWiringSetter}
             moveSelectedKey="physical"
           />
@@ -213,7 +213,7 @@ export const App: VoidComponent = () => {
         <div class="flex-1">
           <KeyboardPreview title="Logical Layout"
             keys={logicalLayoutKeys}
-            editMode={() => (context.nav.selectedTab.startsWith("part-")) ? "wiring" : "select"}
+            editMode={() => context.nav.selectedTab.startsWith("part-") ? "wiring" : context.nav.selectedTab === "keyboard" ? "keymap" : "select"}
             onKeySetWiring={keyWiringSetter}
             moveSelectedKey="logical"
           />

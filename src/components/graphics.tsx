@@ -169,6 +169,7 @@ type KeyRendererProps = {
   wiring?: SingleKeyWiring;
   wiringType?: WiringType;
   showWiringPins: boolean;
+  showKeymapCodes: boolean;
   onClick?: ((key: GraphicsKey) => void) | undefined;
   onFocus?: ((key: GraphicsKey) => void) | undefined;
 };
@@ -269,12 +270,15 @@ const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
     return info.pins[pinId]?.displayName || pinId;
   };
 
+  const keymapCode = () => String.fromCharCode(65 + (keyData().index % 26));
+
   // Build descriptive ARIA label
   const ariaLabel = () => {
     const parts: string[] = [`Key ${keyData().index}`];
     const pName = partName();
     if (pName) parts.push(`part ${pName}`);
     if (props.isSelected) parts.push('selected');
+    if (props.showKeymapCodes) parts.push(`default keycode ${keymapCode()}`);
     if (props.showWiringPins) {
       const inputPin = props.wiring?.input;
       const outputPin = props.wiring?.output;
@@ -305,9 +309,9 @@ const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
         classList={{
           "absolute font-mono z-[2]": true,
           "transition-all duration-200 ease-out": true,
-          "top-0.5 left-0.5 text-sm/tight": props.activeEditPart === keyData().part,
-          "top-2/5 left-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl font-bold": props.activeEditPart === null,
-          "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl font-bold opacity-25": props.activeEditPart !== null && props.activeEditPart !== keyData().part,
+          "top-0.5 left-0.5 text-sm/tight": props.showKeymapCodes || props.activeEditPart === keyData().part,
+          "top-2/5 left-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl font-bold": !props.showKeymapCodes && props.activeEditPart === null,
+          "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl font-bold opacity-25": !props.showKeymapCodes && props.activeEditPart !== null && props.activeEditPart !== keyData().part,
         }}
       >
         {keyData().index}
@@ -318,6 +322,13 @@ const KeyRenderer: VoidComponent<KeyRendererProps> = (props) => {
         <div class="absolute top-0 right-0 w-7 h-7 pointer-events-none overflow-clip rounded-sm z-2">
           <div class="absolute top-0 right-0 rotate-45 bg-success w-7 h-7 -translate-y-1/2 translate-x-1/2"></div>
           <Check strokeWidth="4" class="w-2 h-2 absolute top-0.5 right-0.5 text-success-content" />
+        </div>
+      </Show>
+
+      {/* Keymap code */}
+      <Show when={props.showKeymapCodes}>
+        <div class="absolute top-2/5 left-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl font-bold font-mono z-[2]">
+          {keymapCode()}
         </div>
       </Show>
 
@@ -363,7 +374,7 @@ export const KeyboardPreview: VoidComponent<{
   keys: Accessor<GraphicsKey[]>,
   onKeySetWiring?: (key: GraphicsKey) => void,
   // Parent controls which edit tool is active when not in Pan mode
-  editMode?: Accessor<"select" | "wiring">,
+  editMode?: Accessor<"select" | "wiring" | "keymap">,
   moveSelectedKey: "physical" | "logical",
 }> = (props) => {
   const context = useWizardContext();
@@ -1051,6 +1062,7 @@ export const KeyboardPreview: VoidComponent<{
                 wiring={context.keyboard.parts[gkey.part]?.keys[gkey.key.id]}
                 wiringType={context.keyboard.parts[gkey.part]?.wiring}
                 showWiringPins={(props.editMode?.() === "wiring") && context.nav.activeEditPart === gkey.part}
+                showKeymapCodes={props.editMode?.() === "keymap"}
                 onClick={onEachKeyClicked}
                 onFocus={onKeyFocused}
               />
@@ -1096,7 +1108,7 @@ export const KeyboardPreview: VoidComponent<{
       <div class="absolute top-2 left-2 bg-base-200/50 backdrop-blur-sm px-2 py-0.5 select-none rounded-lg text-xs md:text-sm font-medium shadow-md">
         {(() => {
           const mode = activeMode();
-          const label = mode === "pan" ? "Pan" : mode === "wiring" ? "Wiring" : "Select";
+          const label = mode === "pan" ? "Pan" : mode === "wiring" ? "Wiring" : props.editMode?.() === "keymap" ? "Keymap" : "Select";
           return `${props.title} • ${label} • ${(transform().s * 100).toFixed(0)}%`;
         })()}
       </div>
@@ -1241,9 +1253,9 @@ export const KeyboardPreview: VoidComponent<{
         <div class="flex items-center gap-1 pointer-coarse:gap-2 rounded">
           <Button
             aria-label="Toggle Mode"
-            aria-description={`Current mode: ${effectiveIsPan() ? "Pan" : (props.editMode?.() === "wiring" ? "Wiring" : "Select")}. Hold Ctrl to temporarily switch modes.`}
+            aria-description={`Current mode: ${effectiveIsPan() ? "Pan" : (props.editMode?.() === "wiring" ? "Wiring" : props.editMode?.() === "keymap" ? "Keymap" : "Select")}. Hold Ctrl to temporarily switch modes.`}
             class="rounded-sm text-base-600 bg-base-200/60 hover:text-primary cursor-pointer border border-zinc-600/50 hover:border-primary/30 backdrop-blur-sm"
-            title={`Toggle Mode (current: ${effectiveIsPan() ? "Pan" : (props.editMode?.() === "wiring" ? "Wiring" : "Select")}, hold Ctrl to temporarily switch)`}
+            title={`Toggle Mode (current: ${effectiveIsPan() ? "Pan" : (props.editMode?.() === "wiring" ? "Wiring" : props.editMode?.() === "keymap" ? "Keymap" : "Select")}, hold Ctrl to temporarily switch)`}
             onClick={() => setPanMode(!panMode())}
           >
             {effectiveIsPan() ? <Move aria-hidden class="w-6 h-6" /> : <Pencil aria-hidden class="w-6 h-6" />}
