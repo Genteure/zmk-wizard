@@ -2,6 +2,8 @@
 import { Main } from "~/components/main";
 
 import "~/styles/global.css";
+
+const cononicalUrl = Astro.site ? new URL("/", Astro.site).href : null;
 ---
 
 <!doctype html>
@@ -13,6 +15,8 @@ import "~/styles/global.css";
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <title>Shield Wizard for ZMK</title>
+    <link rel="canonical" href={cononicalUrl} />
+    <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
   </head>
   <body>
     <Main client:only="solid-js">
