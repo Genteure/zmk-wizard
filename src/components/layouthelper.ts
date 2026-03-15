@@ -126,6 +126,8 @@ export function parsePhysicalLayoutDts(dts: string): Key[] | null {
   keyRegex.lastIndex = 0;
   while ((match = keyRegex.exec(searchTarget)) !== null) {
     const [w, h, x, y, r, rx, ry] = match.slice(1).map(Number);
+    const finalRx = rx === x ? 0 : rx;
+    const finalRy = ry === y ? 0 : ry;
     keys.push({
       id: ulid(),
       w: w / 100,
@@ -133,8 +135,8 @@ export function parsePhysicalLayoutDts(dts: string): Key[] | null {
       x: x / 100,
       y: y / 100,
       r: r / 100,
-      rx: rx / 100,
-      ry: ry / 100,
+      rx: finalRx / 100,
+      ry: finalRy / 100,
       part: 0,
       row: 0,
       col: 0,

@@ -530,7 +530,9 @@ export function physicalLayoutKeyboard(keyboard: Keyboard): string {
     return text.padStart(pad);
   }
   const keys = keyboard.layout.map((key) => {
-    return `<&key_physical_attrs${num(key.w, 4)}${num(key.h, 4)}${num(key.x, 5)}${num(key.y, 5)}${num(key.r, 8)}${num(key.rx, 6)}${num(key.ry, 6)}>`;
+    const rx = key.rx === 0 ? key.x : key.rx;
+    const ry = key.ry === 0 ? key.y : key.ry;
+    return `<&key_physical_attrs${num(key.w, 4)}${num(key.h, 4)}${num(key.x, 5)}${num(key.y, 5)}${num(key.r, 8)}${num(rx, 6)}${num(ry, 6)}>`;
   }).join("\n            , ");
 
   return `#include <physical_layouts.dtsi>
