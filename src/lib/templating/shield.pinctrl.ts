@@ -486,7 +486,7 @@ endif # LVGL
         status = "okay";
         compatible = "cirque,pinnacle";
         reg = <0x${addressHex}>;
-        dr-gpios = <${controllerInfo.pins[device.dr || '']?.dtsRef} (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;${rotate90}${invx}${invy}${sleep}${noSecondaryTap}${noTaps}
+        dr-gpios = <${controllerInfo.pins[device.dr || '']?.dtsRef} (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;${rotate90}${invx}${invy}${sleep}${noSecondaryTap}${noTaps}
         sensitivity = "${device.sensitivity}";
     };
 };
@@ -646,7 +646,7 @@ config PAW3395
         compatible = "cirque,pinnacle";
         reg = <${index}>;
         spi-max-frequency = <2000000>;
-        dr-gpios = <${controllerInfo.pins[device.dr || '']?.dtsRef} (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;${rotate90}${invx}${invy}${sleep}${noSecondaryTap}${noTaps}
+        dr-gpios = <${controllerInfo.pins[device.dr || '']?.dtsRef} (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;${rotate90}${invx}${invy}${sleep}${noSecondaryTap}${noTaps}
         sensitivity = "${device.sensitivity}";
     };
 };
