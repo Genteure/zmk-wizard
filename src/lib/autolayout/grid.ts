@@ -322,39 +322,6 @@ function assignSplitIndices(
   const edgeSrc = new Map<string, number>();
   const edgeTgt = new Map<string, number>();
 
-  /**
-   * Assign each minor-side edge to a dominant-side slot while preserving order.
-   * This guarantees monotonic slot indices (no crossing assignment), which avoids
-   * creating contradictory clone-order constraints that can induce cycles.
-   */
-  function assignMonotoneNearest(minorCoords: number[], dominantCoords: number[]): number[] {
-    const m = minorCoords.length;
-    const n = dominantCoords.length;
-    if (m === 0) return [];
-    if (n === 0) return new Array(m).fill(0);
-
-    const result: number[] = [];
-    let prev = -1;
-
-    for (let j = 0; j < m; j++) {
-      const minIdx = prev + 1;
-      const maxIdx = n - (m - j);
-      let bestIdx = minIdx;
-      let bestDist = Infinity;
-      for (let i = minIdx; i <= maxIdx; i++) {
-        const d = Math.abs(dominantCoords[i] - minorCoords[j]);
-        if (d < bestDist) {
-          bestDist = d;
-          bestIdx = i;
-        }
-      }
-      result.push(bestIdx);
-      prev = bestIdx;
-    }
-
-    return result;
-  }
-
   for (const n of entities) {
     const kIn = adjIn.get(n)!.length;
     const kOut = adjOut.get(n)!.length;
@@ -385,24 +352,33 @@ function assignSplitIndices(
       for (let i = 0; i < kIn; i++) {
         edgeTgt.set(edgeKey(sortedIn[i][0], n), i);
       }
-      // Map out-edges to dominant slots monotonically (sorted by target coordinate)
-      const dominantCoords = sortedIn.map(([source]) => approx.get(source) ?? 0);
-      const minorCoords = sortedOut.map(([, target]) => approx.get(target) ?? 0);
-      const assignedSlots = assignMonotoneNearest(minorCoords, dominantCoords);
+      // Merge out-edges by sorted target coordinate order (no distance-based matching)
+      // so slot assignment remains monotonic and cannot introduce crossing constraints.
       for (let i = 0; i < sortedOut.length; i++) {
-        edgeSrc.set(edgeKey(n, sortedOut[i][1]), assignedSlots[i]);
+        edgeSrc.set(edgeKey(n, sortedOut[i][1]), i);
       }
     } else {
       // Out-edges are dominant: assign slots 0..kOut-1 in order
       for (let i = 0; i < kOut; i++) {
         edgeSrc.set(edgeKey(n, sortedOut[i][1]), i);
       }
-      // Map in-edges to dominant slots monotonically (sorted by source coordinate)
-      const dominantCoords = sortedOut.map(([, target]) => approx.get(target) ?? 0);
-      const minorCoords = sortedIn.map(([source]) => approx.get(source) ?? 0);
-      const assignedSlots = assignMonotoneNearest(minorCoords, dominantCoords);
-      for (let i = 0; i < sortedIn.length; i++) {
-        edgeTgt.set(edgeKey(sortedIn[i][0], n), assignedSlots[i]);
+      // Greedily merge in-edges into the nearest free dominant slot
+      const used = new Set<number>();
+      for (const [source] of sortedIn) {
+        const sCoord = approx.get(source) ?? 0;
+        let bestIdx = -1;
+        let bestDist = Infinity;
+        for (let i = 0; i < numClones; i++) {
+          if (used.has(i)) continue;
+          const refCoord = approx.get(sortedOut[i][1]) ?? 0;
+          const d = Math.abs(refCoord - sCoord);
+          if (d < bestDist) {
+            bestDist = d;
+            bestIdx = i;
+          }
+        }
+        edgeTgt.set(edgeKey(source, n), bestIdx);
+        used.add(bestIdx);
       }
     }
   }
