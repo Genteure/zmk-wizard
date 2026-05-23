@@ -52,6 +52,7 @@
     "@tailwindcss/vite": "^4.1.18",
     "@types/cloudflare-turnstile": "^0.2.2",
     "astro": "^5.16.6",
+    "delaunator": "^5.1.0",
     "driver.js": "^1.4.0",
     "jszip": "^3.10.1",
     "lucide-solid": "^0.532.0",

@@ -1,10 +1,71 @@
 import { ulid } from "ulidx";
-import { keyCenter, type Point } from "~/lib/geometry";
+import { bbox, getKeysBoundingBox, keyCenter, type Point } from "~/lib/geometry";
 import type { Key } from "../typedef";
 import { Serial } from "./kle-serial";
 import { Keyboard as KLEKeyboard, Key as KLEKey } from "./kle-serial";
+import { type EntityLayoutPreferenceCallback, type Rect, gridfit } from "~/lib/autolayout";
 
-export function physicalToLogical(keys: Key[], ignoreOrder: boolean): void {
+export function physicalToLogical(keys: Key[], _ignoreOrder: boolean): void {
+  if (keys.length === 0) return;
+
+  // normalize Key into Rect for layout processing
+
+  // Key uses the local top-left as origin, with rx/ry as rotation center.
+  // Auto layout processing uses the Rect center as origin, with rotation around the center.
+
+  const rects: Rect[] = keys.map(k => {
+    const kc = keyCenter(k, { keySize: 1 });
+    return {
+      id: k.id,
+      x: kc.x,
+      y: kc.y,
+      width: k.w,
+      height: k.h,
+      degree: k.r,
+    };
+  });
+
+  const rectCenter: Record<string, Point> = Object.fromEntries(rects.map(r => [r.id, { x: r.x, y: r.y }]));
+
+  // Get the quadruant bounds (center lines) of the entire layout for use in layout preference.
+  // Each key would prefer to be placed away from the middle point,
+  // meaning keys on the top-left quadrant would prefer be placed top-left, and
+  // keys on the bottom-right would prefer to be placed bottom-right, etc.
+
+  const bboxForAllKeys = getKeysBoundingBox(keys);
+  const centerX = bboxForAllKeys.min.x + bboxForAllKeys.max.x / 2;
+  const centerY = bboxForAllKeys.min.y + bboxForAllKeys.max.y / 2;
+
+  const layoutPreference: EntityLayoutPreferenceCallback = (id) => {
+    const center = rectCenter[id];
+    if (!center) return null;
+
+    const verticalPref: 'top' | 'bottom' = center.y < centerY ? 'top' : 'bottom';
+    const horizontalPref: 'left' | 'right' = center.x < centerX ? 'left' : 'right';
+
+    return [verticalPref, horizontalPref];
+  };
+
+  // run grid fitting to assign row/col based on physical positions
+  const fitted = gridfit({
+    objects: rects,
+    threshold: 0.8,
+    layoutPreference
+  });
+
+  // assign row/col back to keys
+  for (const key of keys) {
+    key.row = 0;
+    key.col = 0;
+    const pos = fitted.positions.get(key.id);
+    if (pos) {
+      key.row = pos.row;
+      key.col = pos.col;
+    }
+  }
+}
+
+export function physicalToLogicalOld(keys: Key[], ignoreOrder: boolean): void {
   if (keys.length === 0) return;
 
   // use center point as key position
