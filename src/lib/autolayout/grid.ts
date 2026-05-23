@@ -329,11 +329,15 @@ function assignSplitIndices(
 
     if (numClones <= 1) continue;
 
-    // Sort neighbors by approximate coordinate.
-    // In-edges: ascending by source coordinate (natural order).
-    // Out-edges: ascending by |target coord - own coord| so the most-aligned
-    //   neighbor is assigned the lowest slot index (i.e. the representative clone).
-    const nApprox = approx.get(n) ?? 0;
+    // Sort neighbors by approximate coordinate (ascending).
+    // In-edges: ascending by source coordinate.
+    // Out-edges: ascending by target coordinate.
+    // Both use natural spatial order so that slot index 0 corresponds to the
+    // smallest coordinate, ensuring clone chains (0 → 1 → 2 → ...) align
+    // with the actual spatial ordering of connected neighbors. Sorting by
+    // distance (|target − own|) would mis-assign slots when a node is closer
+    // to a cross-row/col neighbor than its same-row/col neighbor, creating
+    // contradictory ordering constraints (cycles) in the final DAG.
     const sortedIn = adjIn
       .get(n)!
       .slice()
@@ -341,10 +345,7 @@ function assignSplitIndices(
     const sortedOut = adjOut
       .get(n)!
       .slice()
-      .sort((a, b) =>
-        Math.abs((approx.get(a[1]) ?? 0) - nApprox) -
-        Math.abs((approx.get(b[1]) ?? 0) - nApprox)
-      );
+      .sort((a, b) => (approx.get(a[1]) ?? 0) - (approx.get(b[1]) ?? 0));
 
     if (kIn >= kOut) {
       // In-edges are dominant: assign slots 0..kIn-1 in order
