@@ -1,10 +1,12 @@
 import { test } from "vitest";
 import { findNeighbors } from "~/lib/autolayout/neighbor";
 import { bridgeSets } from "~/lib/autolayout/bridging";
+import { filterDiagonalEdges } from "~/lib/autolayout/gridfit";
+import { layout } from "~/lib/autolayout/grid";
 import { layouts } from "~/lib/physicalLayouts";
 import { keyCenter } from "~/lib/geometry";
 
-test("trace the cycle cause", () => {
+test("debug ferris bridging", () => {
   let counter = 0;
   const generateId = () => `keyId${(counter++).toString().padStart(3, '0')}AA`;
 
@@ -33,60 +35,45 @@ test("trace the cycle cause", () => {
     objects: rects,
     threshold: 0.8,
   });
-  const bridging = bridgeSets(neighborOutput, rects);
 
-  const allH = [...neighborOutput.horizontal, ...bridging.horizontal];
-  const allV = [...neighborOutput.vertical, ...bridging.vertical];
+  const filtered = filterDiagonalEdges(
+    neighborOutput.horizontal,
+    neighborOutput.vertical,
+    neighborOutput.nodes
+  );
 
-  // Find "diagonal" horizontal edges - where both endpoints are also vertically related
-  // to the same column of nodes
-  console.log("=== Diagonal H edges (where V edge exists between the H neighbors) ===");
-  const vSet = new Set(allV.map(([a, b]) => `${a}|${b}`));
-  
-  // For each pair of H edges from the same source going to the same direction
-  const hBySource = new Map<string, string[]>();
-  for (const [a, b] of allH) {
-    if (!hBySource.has(a)) hBySource.set(a, []);
-    hBySource.get(a)!.push(b);
-  }
-  
-  for (const [src, targets] of hBySource) {
-    if (targets.length <= 1) continue;
-    const srcRect = rects.find(r => r.id === src)!;
-    for (let i = 0; i < targets.length; i++) {
-      for (let j = i + 1; j < targets.length; j++) {
-        const t1 = targets[i], t2 = targets[j];
-        const hasVert = vSet.has(`${t1}|${t2}`) || vSet.has(`${t2}|${t1}`);
-        if (hasVert) {
-          const r1 = rects.find(r => r.id === t1)!;
-          const r2 = rects.find(r => r.id === t2)!;
-          console.log(`  ${src}(y=${srcRect.y.toFixed(2)}) -> [${t1}(y=${r1.y.toFixed(2)}), ${t2}(y=${r2.y.toFixed(2)})] (V: ${vSet.has(`${t1}|${t2}`) ? `${t1}->${t2}` : `${t2}->${t1}`})`);
-        }
-      }
-    }
-  }
+  const filteredOutput = {
+    ...neighborOutput,
+    horizontal: filtered.horizontal,
+    vertical: filtered.vertical,
+  };
 
-  // Same for H edges by target
-  const hByTarget = new Map<string, string[]>();
-  for (const [a, b] of allH) {
-    if (!hByTarget.has(b)) hByTarget.set(b, []);
-    hByTarget.get(b)!.push(a);
-  }
+  const bridging = bridgeSets(filteredOutput, rects);
+  console.log("=== Bridging edges ===");
+  console.log("Horizontal:", bridging.horizontal.map(([a,b]) => {
+    const ar = rects.find(r => r.id === a)!;
+    const br = rects.find(r => r.id === b)!;
+    return `${a}(x=${ar.x.toFixed(2)},y=${ar.y.toFixed(2)}) -> ${b}(x=${br.x.toFixed(2)},y=${br.y.toFixed(2)})`;
+  }));
+  console.log("Vertical:", bridging.vertical.map(([a,b]) => {
+    const ar = rects.find(r => r.id === a)!;
+    const br = rects.find(r => r.id === b)!;
+    return `${a}(x=${ar.x.toFixed(2)},y=${ar.y.toFixed(2)}) -> ${b}(x=${br.x.toFixed(2)},y=${br.y.toFixed(2)})`;
+  }));
+
+  // Now run layout
+  const allH = [...filtered.horizontal, ...bridging.horizontal];
+  const allV = [...filtered.vertical, ...bridging.vertical];
   
-  console.log("\n=== Diagonal H edges (same target, sources vertically related) ===");
-  for (const [tgt, sources] of hByTarget) {
-    if (sources.length <= 1) continue;
-    const tgtRect = rects.find(r => r.id === tgt)!;
-    for (let i = 0; i < sources.length; i++) {
-      for (let j = i + 1; j < sources.length; j++) {
-        const s1 = sources[i], s2 = sources[j];
-        const hasVert = vSet.has(`${s1}|${s2}`) || vSet.has(`${s2}|${s1}`);
-        if (hasVert) {
-          const r1 = rects.find(r => r.id === s1)!;
-          const r2 = rects.find(r => r.id === s2)!;
-          console.log(`  [${s1}(y=${r1.y.toFixed(2)}), ${s2}(y=${r2.y.toFixed(2)})] -> ${tgt}(y=${tgtRect.y.toFixed(2)}) (V: ${vSet.has(`${s1}|${s2}`) ? `${s1}->${s2}` : `${s2}->${s1}`})`);
-        }
-      }
-    }
+  const result = layout({
+    nodes: neighborOutput.nodes,
+    horizontal: allH,
+    vertical: allV,
+  });
+
+  console.log("\n=== Layout result ===");
+  for (const r of rects) {
+    const pos = result.positions.get(r.id)!;
+    console.log(`  ${r.id}(x=${r.x.toFixed(2)},y=${r.y.toFixed(2)}): row=${pos.row}, col=${pos.col}`);
   }
 });
