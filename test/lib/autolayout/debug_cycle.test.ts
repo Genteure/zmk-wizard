@@ -1,7 +1,6 @@
 import { test } from "vitest";
 import { findNeighbors } from "~/lib/autolayout/neighbor";
 import { bridgeSets } from "~/lib/autolayout/bridging";
-import { filterDiagonalEdges } from "~/lib/autolayout/gridfit";
 import { layout } from "~/lib/autolayout/grid";
 import { layouts } from "~/lib/physicalLayouts";
 import { keyCenter } from "~/lib/geometry";
@@ -36,19 +35,7 @@ test("debug ferris bridging", () => {
     threshold: 0.8,
   });
 
-  const filtered = filterDiagonalEdges(
-    neighborOutput.horizontal,
-    neighborOutput.vertical,
-    neighborOutput.nodes
-  );
-
-  const filteredOutput = {
-    ...neighborOutput,
-    horizontal: filtered.horizontal,
-    vertical: filtered.vertical,
-  };
-
-  const bridging = bridgeSets(filteredOutput, rects);
+  const bridging = bridgeSets(neighborOutput, rects);
   console.log("=== Bridging edges ===");
   console.log("Horizontal:", bridging.horizontal.map(([a,b]) => {
     const ar = rects.find(r => r.id === a)!;
@@ -62,8 +49,8 @@ test("debug ferris bridging", () => {
   }));
 
   // Now run layout
-  const allH = [...filtered.horizontal, ...bridging.horizontal];
-  const allV = [...filtered.vertical, ...bridging.vertical];
+  const allH = [...neighborOutput.horizontal, ...bridging.horizontal];
+  const allV = [...neighborOutput.vertical, ...bridging.vertical];
   
   const result = layout({
     nodes: neighborOutput.nodes,
