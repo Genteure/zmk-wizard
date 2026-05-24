@@ -231,9 +231,13 @@ function printCycleDiagnostics(nodes: string[], edges: Edge[], rectById: Map<str
     });
 }
 
-test("debug ferris bridging", () => {
+function debugIdFactory() {
   let counter = 0;
-  const generateId = () => `debugKey${(counter++).toString().padStart(3, '0')}`;
+  return () => `debugKey${(counter++).toString().padStart(3, '0')}`;
+}
+
+test("debug ferris bridging", () => {
+  const generateId = debugIdFactory();
 
   const ferrisLayout = layouts["Popular Layouts"]
     .find(l => l.name === "Ferris");
@@ -299,7 +303,11 @@ test("debug ferris bridging", () => {
 
     console.log("\n=== Layout result ===");
     for (const r of rects) {
-      const pos = result.positions.get(r.id)!;
+      const pos = result.positions.get(r.id);
+      if (!pos) {
+        console.log(`  ${r.id}(x=${r.x.toFixed(2)},y=${r.y.toFixed(2)}): <missing position>`);
+        continue;
+      }
       console.log(`  ${r.id}(x=${r.x.toFixed(2)},y=${r.y.toFixed(2)}): row=${pos.row}, col=${pos.col}`);
     }
   } catch (error) {
