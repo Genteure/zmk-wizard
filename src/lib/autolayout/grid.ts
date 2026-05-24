@@ -335,7 +335,7 @@ function assignSplitIndices(
     // Both use natural spatial order so that slot index 0 corresponds to the
     // smallest coordinate, ensuring clone chains (0 → 1 → 2 → ...) align
     // with the actual spatial ordering of connected neighbors. Sorting by
-    // distance (|target − own|) would mis-assign slots when a node is closer
+    // distance (|target - own|) would mis-assign slots when a node is closer
     // to a cross-row/col neighbor than its same-row/col neighbor, creating
     // contradictory ordering constraints (cycles) in the final DAG.
     const sortedIn = adjIn

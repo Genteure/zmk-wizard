@@ -240,7 +240,7 @@ test("debug ferris bridging", () => {
   const generateId = debugIdFactory();
 
   const ferrisLayout = layouts["Popular Layouts"]
-    .find(l => l.name === "Ferris");
+    .find(layout => layout.name === "Ferris");
   if (!ferrisLayout) {
     throw new Error("Debug test requires 'Ferris' layout in layouts['Popular Layouts'].");
   }
