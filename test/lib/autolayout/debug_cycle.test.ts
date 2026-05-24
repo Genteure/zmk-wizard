@@ -236,16 +236,16 @@ function debugIdFactory() {
   return () => `debugKey${(counter++).toString().padStart(3, '0')}`;
 }
 
-test("debug ferris bridging", () => {
+test("debug TKL 87 Key ANSI", () => {
   const generateId = debugIdFactory();
 
-  const ferrisLayout = layouts["Popular Layouts"]
-    .find(layout => layout.name === "Ferris");
-  if (!ferrisLayout) {
-    throw new Error("Debug test requires 'Ferris' layout in layouts['Popular Layouts'].");
+  const tklLayout = layouts["TKL"]
+    .find(layout => layout.name === "TKL 87 Key ANSI");
+  if (!tklLayout) {
+    throw new Error("Debug test requires 'TKL 87 Key ANSI' layout in layouts['TKL'].");
   }
 
-  const ferrisLayoutKeys = ferrisLayout.keys
+  const ferrisLayoutKeys = tklLayout.keys
     .map((k) => ({
       ...k,
       id: generateId(),
@@ -315,5 +315,41 @@ test("debug ferris bridging", () => {
     console.log(`\nLayout failed: ${message}`);
     printCycleDiagnostics(neighborOutput.nodes, edgeObjects, rectById);
     throw error;
+  }
+});
+
+test("diag TKL cycle keys", () => {
+  const cycleKeys = new Set(["debugKey010","debugKey011","debugKey012","debugKey013","debugKey014","debugKey015","debugKey075","debugKey084","debugKey086"]);
+  const generateId = debugIdFactory();
+  const tklLayout = layouts["TKL"].find(l => l.name === "TKL 87 Key ANSI")!;
+  const keys = tklLayout.keys.map(k => ({ ...k, id: generateId(), row: -1, col: -1 }));
+  const rects = keys.map(k => { const kc = keyCenter(k, { keySize: 1 }); return { id: k.id, x: kc.x, y: kc.y, width: k.w, height: k.h, degree: k.r }; });
+  const rectById = new Map(rects.map(r => [r.id, r]));
+  const neighborOutput = findNeighbors({ objects: rects, threshold: 0.8 });
+  const bridging = bridgeSets(neighborOutput, rects);
+  const allH = [...neighborOutput.horizontal, ...bridging.horizontal];
+  const allV = [...neighborOutput.vertical, ...bridging.vertical];
+
+  console.log("=== Vertical edges involving cycle keys ===");
+  for (const [a, b] of allV) {
+    if (cycleKeys.has(a) || cycleKeys.has(b)) {
+      const ar = rectById.get(a)!, br = rectById.get(b)!;
+      console.log(`V: ${a}(x=${ar.x.toFixed(2)},y=${ar.y.toFixed(2)}) → ${b}(x=${br.x.toFixed(2)},y=${br.y.toFixed(2)})`);
+    }
+  }
+  console.log("\n=== Horizontal edges involving cycle keys ===");
+  for (const [a, b] of allH) {
+    if (cycleKeys.has(a) || cycleKeys.has(b)) {
+      const ar = rectById.get(a)!, br = rectById.get(b)!;
+      console.log(`H: ${a}(x=${ar.x.toFixed(2)},y=${ar.y.toFixed(2)}) → ${b}(x=${br.x.toFixed(2)},y=${br.y.toFixed(2)})`);
+    }
+  }
+  for (const id of [...cycleKeys].sort()) {
+    const r = rectById.get(id)!;
+    const vOut = allV.filter(([a]) => a===id).map(([,b])=>b);
+    const vIn = allV.filter(([,b]) => b===id).map(([a])=>a);
+    const hOut = allH.filter(([a]) => a===id).map(([,b])=>b);
+    const hIn = allH.filter(([,b]) => b===id).map(([a])=>a);
+    console.log(`\nKey ${id} (x=${r.x.toFixed(2)}, y=${r.y.toFixed(2)}): V-in=[${vIn}] V-out=[${vOut}] H-in=[${hIn}] H-out=[${hOut}]`);
   }
 });
