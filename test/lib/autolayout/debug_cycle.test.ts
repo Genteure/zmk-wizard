@@ -233,10 +233,15 @@ function printCycleDiagnostics(nodes: string[], edges: Edge[], rectById: Map<str
 
 test("debug ferris bridging", () => {
   let counter = 0;
-  const generateId = () => `keyId${(counter++).toString().padStart(3, '0')}AA`;
+  const generateId = () => `debugKey${(counter++).toString().padStart(3, '0')}`;
 
-  const ferrisLayoutKeys = layouts["Popular Layouts"]
-    .find(l => l.name === "Ferris")!.keys
+  const ferrisLayout = layouts["Popular Layouts"]
+    .find(l => l.name === "Ferris");
+  if (!ferrisLayout) {
+    throw new Error("Debug test requires 'Ferris' layout in layouts['Popular Layouts'].");
+  }
+
+  const ferrisLayoutKeys = ferrisLayout.keys
     .map((k) => ({
       ...k,
       id: generateId(),
@@ -265,13 +270,13 @@ test("debug ferris bridging", () => {
   const bridging = bridgeSets(neighborOutput, rects);
   console.log("=== Bridging edges ===");
   console.log("Horizontal:", bridging.horizontal.map(([a,b]) => {
-    const ar = rects.find(r => r.id === a)!;
-    const br = rects.find(r => r.id === b)!;
+    const ar = rectById.get(a)!;
+    const br = rectById.get(b)!;
     return `${a}(x=${ar.x.toFixed(2)},y=${ar.y.toFixed(2)}) -> ${b}(x=${br.x.toFixed(2)},y=${br.y.toFixed(2)})`;
   }));
   console.log("Vertical:", bridging.vertical.map(([a,b]) => {
-    const ar = rects.find(r => r.id === a)!;
-    const br = rects.find(r => r.id === b)!;
+    const ar = rectById.get(a)!;
+    const br = rectById.get(b)!;
     return `${a}(x=${ar.x.toFixed(2)},y=${ar.y.toFixed(2)}) -> ${b}(x=${br.x.toFixed(2)},y=${br.y.toFixed(2)})`;
   }));
 
