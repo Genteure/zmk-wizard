@@ -149,10 +149,17 @@ class UnionFind {
  * source in each component gets the same initial distance 0, which causes coordinate
  * collisions (the caller is responsible for ensuring connectivity).
  *
+ * **Cycle handling:** If the graph contains a cycle (which can occur for keyboards
+ * whose neighbor graph cannot be perfectly embedded in a rectilinear 2-D grid),
+ * the algorithm breaks the deadlock by force-enqueueing the stuck node with the
+ * smallest current distance, then continues normally. This produces a best-effort
+ * coordinate assignment for the cyclic nodes; some ordering constraints involving
+ * the cycle may not be fully respected, but the result remains a valid grid (the
+ * collision handler in {@link buildAndFold} resolves any resulting cell conflicts).
+ *
  * @param nodes - All nodes in the graph (additional nodes in `edges` are merged in).
  * @param edges - Directed edges `[u, v]` where `u` must precede `v`.
  * @returns Map from node id to its longest-path distance from any source node.
- * @throws If a cycle is detected, throws with the names of the affected nodes.
  */
 function topoLongestPath(
   nodes: Iterable<string>,
@@ -181,7 +188,10 @@ function topoLongestPath(
     inDeg.set(v, inDeg.get(v)! + 1);
   }
 
-  // Kahn's topological sort + longest-path dynamic programming
+  // Kahn's topological sort + longest-path dynamic programming.
+  // When the queue drains before all nodes are processed, a cycle is present.
+  // Break the deadlock by force-enqueueing the remaining node with the smallest
+  // current distance, then continue normally.
   const dist = new Map<string, number>();
   for (const n of allNodes) dist.set(n, 0);
 
@@ -191,7 +201,25 @@ function topoLongestPath(
   }
 
   let processed = 0;
-  while (queue.length > 0) {
+  while (processed < allNodes.size) {
+    if (queue.length === 0) {
+      // Cycle detected: find the unprocessed node with the smallest dist and
+      // force-enqueue it to break the cycle.
+      let cycleNode: string | null = null;
+      let minDist = Infinity;
+      for (const n of allNodes) {
+        if ((inDeg.get(n) ?? 0) > 0) {
+          const d = dist.get(n) ?? 0;
+          if (d < minDist) {
+            minDist = d;
+            cycleNode = n;
+          }
+        }
+      }
+      if (cycleNode === null) break; // All nodes accounted for; safety exit.
+      inDeg.set(cycleNode, 0);
+      queue.push(cycleNode);
+    }
     const u = queue.shift()!;
     processed++;
     for (const v of adj.get(u)!) {
@@ -203,14 +231,6 @@ function topoLongestPath(
     }
   }
 
-  if (processed < allNodes.size) {
-    const remaining = [...allNodes].filter(
-      (n) => (inDeg.get(n) ?? 0) > 0
-    );
-    throw new Error(
-      `Cyclic dependency detected in layout constraints, nodes with unsatisfied dependencies: ${remaining.join(', ')}`
-    );
-  }
   return dist;
 }
 
@@ -799,6 +819,204 @@ function buildAndFold(
 }
 
 // ======================== Main function ========================
+
+// ======================== Debug export ========================
+
+/**
+ * Description of one split entity produced by {@link debugLayoutPipeline}.
+ * @internal
+ */
+export interface SplitEntityDebugInfo {
+  /** Original entity id. */
+  entity: string;
+  /** Number of column-direction clones (1 = not column-split). */
+  numColClones: number;
+  /** Number of row-direction clones (1 = not row-split). */
+  numRowClones: number;
+  /** Serialised sub-entity keys for every clone, in creation order. */
+  cloneKeys: string[];
+  /** For each vertical in-edge [src, entity]: which clone index (subCol) was assigned. */
+  vInAssignments: Array<{ from: string; tgtSubCol: number }>;
+  /** For each vertical out-edge [entity, tgt]: which clone index (subCol) was assigned. */
+  vOutAssignments: Array<{ to: string; srcSubCol: number }>;
+  /** For each horizontal in-edge [src, entity]: which clone index (subRow) was assigned. */
+  hInAssignments: Array<{ from: string; tgtSubRow: number }>;
+  /** For each horizontal out-edge [entity, tgt]: which clone index (subRow) was assigned. */
+  hOutAssignments: Array<{ to: string; srcSubRow: number }>;
+}
+
+/**
+ * Complete intermediate-state snapshot returned by {@link debugLayoutPipeline}.
+ * @internal
+ */
+export interface LayoutPipelineDebugInfo {
+  /** Approximate column coordinate estimate for every entity. */
+  approxCols: Map<string, number>;
+  /** Approximate row coordinate estimate for every entity. */
+  approxRows: Map<string, number>;
+  /** Entities that received more than one sub-entity clone. */
+  splitEntities: SplitEntityDebugInfo[];
+  /** All sub-entity vertical edges as [fromKey, toKey] pairs. */
+  subVertical: [string, string][];
+  /** All sub-entity horizontal edges as [fromKey, toKey] pairs. */
+  subHorizontal: [string, string][];
+  /**
+   * Column assignment groups: maps each sub-entity key to the canonical
+   * root key of its column group (formed by union-find over subVertical).
+   */
+  colGroupOf: Map<string, string>;
+  /**
+   * Column ordering: inter-group DAG edges derived from subHorizontal,
+   * after merging groups.  Edges run from the left group to the right group.
+   */
+  colGroupEdges: [string, string][];
+  /** Row assignment groups (symmetric: formed by union-find over subHorizontal). */
+  rowGroupOf: Map<string, string>;
+  /** Row ordering: inter-group DAG edges derived from subVertical. */
+  rowGroupEdges: [string, string][];
+}
+
+/**
+ * Run the layout pipeline up through the split-nodes phase and return detailed
+ * intermediate state, primarily for debugging cycle issues in
+ * {@link assignDimension}.
+ *
+ * This function intentionally exposes internal algorithm state and is
+ * **not** part of the public API — it is exported only for use in tests.
+ *
+ * @internal
+ */
+export function debugLayoutPipeline(input: LayoutInput): LayoutPipelineDebugInfo {
+  const { nodes, horizontal, vertical } = input;
+
+  const nodeSet = new Set<Entity>(nodes);
+  for (const [a, b] of horizontal) { nodeSet.add(a); nodeSet.add(b); }
+  for (const [a, b] of vertical) { nodeSet.add(a); nodeSet.add(b); }
+  const allEntities = [...nodeSet];
+
+  const approxCols = estimateCoordinate(allEntities, vertical, horizontal);
+  const approxRows = estimateCoordinate(allEntities, horizontal, vertical);
+  const split = splitNodes(allEntities, horizontal, vertical, approxCols, approxRows);
+
+  // --- Build split-entity info ---
+  // Re-derive per-edge subCol/subRow assignments by mirroring splitNodes phase B logic.
+  // We do this by inspecting the subVertical / subHorizontal edge lists and tracing
+  // which clone each original edge maps to.
+
+  // Build lookup: original vertical edge vertEdgeKey(a,b) → [srcSubCol, tgtSubCol]
+  const vEdgeColMap = new Map<string, [number, number]>();
+  for (const [a, b] of split.subVertical) {
+    if (a[0] !== b[0]) { // skip intra-entity chain edges (phase C1)
+      const k = `${a[0]}${KEY_SEP}${b[0]}`;
+      vEdgeColMap.set(k, [a[2], b[2]]);
+    }
+  }
+  // Build lookup: original horizontal edge → [srcSubRow, tgtSubRow]
+  const hEdgeRowMap = new Map<string, [number, number]>();
+  for (const [a, b] of split.subHorizontal) {
+    if (a[0] !== b[0]) { // skip intra-entity chain edges (phase D)
+      const k = `H${KEY_SEP}${a[0]}${KEY_SEP}${b[0]}`;
+      hEdgeRowMap.set(k, [a[1], b[1]]);
+    }
+  }
+
+  const splitEntities: SplitEntityDebugInfo[] = [];
+  for (const [entity, clones] of split.cloneGroups) {
+    const lastClone = clones[clones.length - 1];
+    const numColClones = lastClone[2] + 1;
+    const numRowClones = lastClone[1] + 1;
+    if (numColClones <= 1 && numRowClones <= 1) continue;
+
+    // Vertical in/out assignments
+    const vInAssignments = vertical
+      .filter(([, b]) => b === entity)
+      .map(([a]) => {
+        const cols = vEdgeColMap.get(`${a}${KEY_SEP}${entity}`);
+        return { from: a, tgtSubCol: cols?.[1] ?? 0 };
+      });
+    const vOutAssignments = vertical
+      .filter(([a]) => a === entity)
+      .map(([, b]) => {
+        const cols = vEdgeColMap.get(`${entity}${KEY_SEP}${b}`);
+        return { to: b, srcSubCol: cols?.[0] ?? 0 };
+      });
+    // Horizontal in/out assignments
+    const hInAssignments = horizontal
+      .filter(([, b]) => b === entity)
+      .map(([a]) => {
+        const rows = hEdgeRowMap.get(`H${KEY_SEP}${a}${KEY_SEP}${entity}`);
+        return { from: a, tgtSubRow: rows?.[1] ?? 0 };
+      });
+    const hOutAssignments = horizontal
+      .filter(([a]) => a === entity)
+      .map(([, b]) => {
+        const rows = hEdgeRowMap.get(`H${KEY_SEP}${entity}${KEY_SEP}${b}`);
+        return { to: b, srcSubRow: rows?.[0] ?? 0 };
+      });
+
+    splitEntities.push({
+      entity,
+      numColClones,
+      numRowClones,
+      cloneKeys: clones.map(seKey),
+      vInAssignments,
+      vOutAssignments,
+      hInAssignments,
+      hOutAssignments,
+    });
+  }
+
+  // --- Column groups (union-find over subVertical) ---
+  const colKeys = split.subEntities.map(seKey);
+  const colUF = new UnionFind(colKeys);
+  for (const [a, b] of split.subVertical) {
+    colUF.union(seKey(a), seKey(b));
+  }
+  const colGroupOf = new Map<string, string>();
+  for (const k of colKeys) colGroupOf.set(k, colUF.find(k));
+
+  const colGroupEdges: [string, string][] = [];
+  const colSeen = new Set<string>();
+  for (const [a, b] of split.subHorizontal) {
+    const ga = colUF.find(seKey(a));
+    const gb = colUF.find(seKey(b));
+    if (ga !== gb) {
+      const edgeKey = `${ga}${KEY_SEP}${gb}`;
+      if (!colSeen.has(edgeKey)) { colSeen.add(edgeKey); colGroupEdges.push([ga, gb]); }
+    }
+  }
+
+  // --- Row groups (union-find over subHorizontal) ---
+  const rowUF = new UnionFind(colKeys);
+  for (const [a, b] of split.subHorizontal) {
+    rowUF.union(seKey(a), seKey(b));
+  }
+  const rowGroupOf = new Map<string, string>();
+  for (const k of colKeys) rowGroupOf.set(k, rowUF.find(k));
+
+  const rowGroupEdges: [string, string][] = [];
+  const rowSeen = new Set<string>();
+  for (const [a, b] of split.subVertical) {
+    const ga = rowUF.find(seKey(a));
+    const gb = rowUF.find(seKey(b));
+    if (ga !== gb) {
+      const edgeKey = `${ga}${KEY_SEP}${gb}`;
+      if (!rowSeen.has(edgeKey)) { rowSeen.add(edgeKey); rowGroupEdges.push([ga, gb]); }
+    }
+  }
+
+  return {
+    approxCols,
+    approxRows,
+    splitEntities,
+    subVertical: split.subVertical.map(([a, b]) => [seKey(a), seKey(b)]),
+    subHorizontal: split.subHorizontal.map(([a, b]) => [seKey(a), seKey(b)]),
+    colGroupOf,
+    colGroupEdges,
+    rowGroupOf,
+    rowGroupEdges,
+  };
+}
 
 /**
  * Arrange a set of nodes into a compact 2-D grid that respects directional
