@@ -1,9 +1,9 @@
 ---
 title: About Layouts
-description: The purpose and differences between Physical and Logical layouts in Shield Wizard.
+description: The purpose and differences between Physical and Keymap layouts in Shield Wizard.
 ---
 
-There are two layouts in Shield Wizard: Physical and Logical.
+There are two layouts in Shield Wizard: Physical and Keymap.
 
 ## Physical Layout
 
@@ -17,12 +17,12 @@ It's used by both ZMK Studio and Keymap Editor to render the keymap.
 - <https://zmk.studio/>
 - <https://nickcoutsos.github.io/keymap-editor/>
 
-## Logical Layout
+## Keymap Layout
 
-TLDR: Logical layout is for keymap, NOT electrical wiring.
+TLDR: Keymap layout is for keymap, NOT electrical wiring.
 
-Logical layout is the way you would represent the keys in a grid. It's the way you think about the logical relationship between the keys.
+Keymap layout is the way you would represent the keys in a grid. It's the way you think about the logical relationship between the keys.
 
-Logical layout determines the order of the keys in the keymap file, and it's used by Shield Wizard to construct the matrix transform.
+Keymap layout determines the order of the keys in the keymap file, and it's used by Shield Wizard to construct the matrix transform.
 
-Logical layout rows and columns are sometimes the same as the electrical wiring but not always. You should not try to force the logical layout to match the electrical wiring.
+Keymap layout rows and columns are sometimes the same as the electrical wiring but not always. You should not try to force the keymap layout to match the electrical wiring.
