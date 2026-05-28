@@ -482,10 +482,11 @@ function buildCharlieplexPart(keyboard: Keyboard, part: number): KscanSinglePart
         throw new Error(`Key ${index} (drive: ${drivePin}, sense: ${sensePin}) not found in charlieplex pins`);
       }
 
-      // Adjust column index: skip the drive pin position
-      if (col > row) {
-        col = col - 1;
-      }
+      // Adjust column index: in charlieplex, a pin cannot sense itself,
+      // so the column space skips the drive pin's position. When the sense
+      // pin index is greater than the drive pin index, subtract 1 to account
+      // for this gap in the (n-1)-column address space.
+      col = charlieplexColIndex(col, row);
 
       return {
         pinIndex: index,
@@ -502,6 +503,17 @@ function buildCharlieplexPart(keyboard: Keyboard, part: number): KscanSinglePart
     mtRows: numRows,
     mtMapping,
   };
+}
+
+/**
+ * Adjust column index for charlieplex addressing.
+ * In charlieplex, a pin cannot sense itself, so the column space (n-1 columns)
+ * skips the drive pin's position. When the sense pin's index in the pin list
+ * is greater than the drive pin's index, subtract 1 to map into the reduced
+ * column address space.
+ */
+function charlieplexColIndex(sensePinIndex: number, drivePinIndex: number): number {
+  return sensePinIndex > drivePinIndex ? sensePinIndex - 1 : sensePinIndex;
 }
 
 /**
@@ -824,7 +836,7 @@ function buildSubKscan(
       const row = cpPins.indexOf(wiring.output);
       let col = cpPins.indexOf(wiring.input);
       if (row === -1 || col === -1) return;
-      if (col > row) col = col - 1;
+      col = charlieplexColIndex(col, row);
 
       mtMapping.push({
         pinIndex: index,

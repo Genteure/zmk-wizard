@@ -646,14 +646,14 @@ const Validators: Record<string, ValidatorFunction> = {
           ensurePartRecord(key.part);
           missingPinsByPart[key.part].input.push(index);
         } else if (part.pins[inputPin] !== "kscan" && part.pins[inputPin] !== "input") {
-          errors.push({ part: key.part, message: `Key ${index} uses sense pin "${inputPin}" which is not configured as kscan` });
+          errors.push({ part: key.part, message: `Key ${index} uses sense pin "${inputPin}" which is not configured as kscan or input` });
         }
 
         if (!hasOutput) {
           ensurePartRecord(key.part);
           missingPinsByPart[key.part].output.push(index);
         } else if (part.pins[outputPin] !== "kscan" && part.pins[outputPin] !== "output") {
-          errors.push({ part: key.part, message: `Key ${index} uses drive pin "${outputPin}" which is not configured as kscan` });
+          errors.push({ part: key.part, message: `Key ${index} uses drive pin "${outputPin}" which is not configured as kscan or output` });
         }
 
         // Drive and sense pins must be different
