@@ -38,10 +38,7 @@ jobs:
         with:
           cache: "pnpm"
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies and Playwright Browsers
+        run: pnpm install --frozen-lockfile && pnpm exec playwright install --with-deps
         env:
           CXXFLAGS: "-std=c++20"
-
-      - name: Install Playwright Browsers
-        run: pnpm exec playwright install --with-deps
