@@ -77,6 +77,14 @@ export const App: VoidComponent = () => {
       const current = keys[keyId] || {};
       if (mode === "input") current.input = pinId;
       else if (mode === "output") current.output = pinId;
+      else if (mode === "kscan") {
+        // For charlieplex: kscan pins serve as both drive (output) and sense (input).
+        // First click assigns drive pin, second click assigns sense pin.
+        // If both are already set, overwrite drive pin (most recent assignment wins).
+        if (!current.output) current.output = pinId;
+        else if (!current.input) current.input = pinId;
+        else current.output = pinId;
+      }
       keys[keyId] = current;
     }));
   };
