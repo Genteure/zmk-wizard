@@ -211,7 +211,7 @@ export const App: VoidComponent = () => {
           />
         </div>
         <div class="flex-1">
-          <KeyboardPreview title="Logical Layout"
+          <KeyboardPreview title="Keymap Layout"
             keys={logicalLayoutKeys}
             editMode={() => context.nav.selectedTab.startsWith("part-") ? "wiring" : context.nav.selectedTab === "keyboard" ? "keymap" : "select"}
             onKeySetWiring={keyWiringSetter}

@@ -73,7 +73,7 @@ const Validators: Record<string, ValidatorFunction> = {
       return [{ part: null, message: "Do you really have more than 256 keys?" }];
     }
 
-    // check for valid logical layout
+    // check for valid keymap layout
     // 1. all keys must have unique rows and cols
     // 2. key must be sorted by row then col
 

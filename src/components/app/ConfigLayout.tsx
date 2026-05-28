@@ -127,11 +127,11 @@ export const ConfigLayout: Component = () => {
                       <Menubar.Item
                         as="li"
                         onSelect={() => context.setKeyboard("layout", produce(keys => physicalToLogical(keys, false)))}
-                      ><button>Generate Logical Layout from Physical</button></Menubar.Item>
+                      ><button>Generate Keymap Layout from Physical</button></Menubar.Item>
                       <Menubar.Item
                         as="li"
                         onSelect={() => context.setKeyboard("layout", produce(keys => physicalToLogical(keys, true)))}
-                      ><button>Generate Logical Layout from Physical (allow reordering)</button></Menubar.Item>
+                      ><button>Generate Keymap Layout from Physical (allow reordering)</button></Menubar.Item>
                     </Menubar.Content>
                   </Menubar.Portal>
                 </Menubar.Sub>
