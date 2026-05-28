@@ -211,10 +211,11 @@ export const WiringTypeSchema = z.enum([
   "matrix_no_diode",
   "direct_gnd",
   "direct_vcc",
+  "charlieplex",
 ]);
 export type WiringType = z.infer<typeof WiringTypeSchema>;
 
-export const PinModeSchema = z.enum(["input", "output", "bus", "encoder"]);
+export const PinModeSchema = z.enum(["input", "output", "bus", "encoder", "kscan"]);
 export type PinMode = z.infer<typeof PinModeSchema>;
 
 export const PinSelectionSchema = z.record(PinIdSchema, PinModeSchema.optional());
@@ -238,6 +239,75 @@ export const EncoderSchema = z.object({
 });
 export type Encoder = z.infer<typeof EncoderSchema>;
 
+// ----------------
+// Kscan configuration types (for charlieplex and composite support)
+
+export const KscanTypeSchema = z.enum([
+  "matrix_diode",
+  "matrix_no_diode",
+  "direct_gnd",
+  "direct_vcc",
+  "charlieplex",
+]);
+export type KscanType = z.infer<typeof KscanTypeSchema>;
+
+/**
+ * Pin role within a kscan configuration.
+ * - "row": matrix row pin (input in col2row, output in row2col)
+ * - "col": matrix column pin (output in col2row, input in row2col)
+ * - "direct": direct pin (for direct wiring)
+ * - "charlieplex": charlieplex pin (acts as both input and output)
+ * - "interrupt": interrupt/wakeup pin (for charlieplex)
+ */
+export const KscanPinRoleSchema = z.enum(["row", "col", "direct", "charlieplex", "interrupt"]);
+export type KscanPinRole = z.infer<typeof KscanPinRoleSchema>;
+
+export const KscanPinSchema = z.object({
+  pin: PinIdSchema,
+  role: KscanPinRoleSchema,
+});
+export type KscanPin = z.infer<typeof KscanPinSchema>;
+
+/**
+ * A single kscan definition within a keyboard part.
+ * Multiple kscans can be combined via the composite driver.
+ */
+export const KscanDefinitionSchema = z.object({
+  /**
+   * Unique identifier for this kscan within the part.
+   */
+  id: z.string().min(1).max(32).default("kscan0"),
+  /**
+   * The type of kscan driver to use.
+   */
+  type: KscanTypeSchema,
+  /**
+   * Pins and their roles for this kscan.
+   */
+  pins: z.array(KscanPinSchema).default([]),
+  /**
+   * Optional interrupt pin for charlieplex kscan.
+   */
+  interruptPin: PinIdSchema.optional(),
+});
+export type KscanDefinition = z.infer<typeof KscanDefinitionSchema>;
+
+/**
+ * Kscan configuration for a keyboard part.
+ * When multiple kscans are defined, they are composed using zmk,kscan-composite.
+ */
+export const KscanConfigSchema = z.object({
+  /**
+   * List of kscan definitions.
+   * If there's only one, it's used directly.
+   * If multiple, they're composed using the composite driver.
+   */
+  kscans: z.array(KscanDefinitionSchema).default([]),
+});
+export type KscanConfig = z.infer<typeof KscanConfigSchema>;
+
+// ----------------
+
 export const KeyboardPartSchema = z.object({
   name: z.string()
     .min(1, "Part name cannot be empty")
@@ -255,6 +325,12 @@ export const KeyboardPartSchema = z.object({
   keys: z.record(z.string(), SingleKeyWiringSchema.optional()), // key id to wiring
   encoders: z.array(EncoderSchema).default([]),
   buses: z.array(AnyBusSchema).default([]),
+  /**
+   * Advanced kscan configuration for charlieplex and composite support.
+   * When present, this takes priority over the legacy wiring/pins/keys fields
+   * for kscan generation.
+   */
+  kscanConfig: KscanConfigSchema.optional(),
 });
 export type KeyboardPart = z.infer<typeof KeyboardPartSchema>;
 

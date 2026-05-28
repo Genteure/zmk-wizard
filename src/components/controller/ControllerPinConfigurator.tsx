@@ -17,7 +17,7 @@ const ControllerPin: VoidComponent<{
   left: boolean,
   usage?: PinMode,
   current?: boolean,
-  setPinUsage?: (usage: 'input' | 'output' | 'none') => void,
+  setPinUsage?: (usage: 'input' | 'output' | 'kscan' | 'none') => void,
   activateCurrentPin?: () => void,
   wiringType?: WiringType,
 }> = (props) => {
@@ -62,9 +62,11 @@ const ControllerPin: VoidComponent<{
               "text-cyan-500/80": props.pin.type === "ui" && props.pin.ui === "rst",
               "cursor-pointer bg-red-500/10 text-red-500 border-red-500": props.usage === "output",
               "cursor-pointer bg-emerald-500/10 text-emerald-500 border-emerald-500": props.usage === "input",
+              "cursor-pointer bg-amber-500/10 text-amber-500 border-amber-500": props.usage === "kscan",
               "underline": props.current,
               "outline-2 outline-solid dark:outline-emerald-700 outline-emerald-300 drop-shadow-sm dark:drop-shadow-neutral-500": props.current && props.usage === "input",
               "outline-2 outline-solid dark:outline-red-700 outline-red-300 drop-shadow-sm dark:drop-shadow-neutral-500": props.current && props.usage === "output",
+              "outline-2 outline-solid dark:outline-amber-700 outline-amber-300 drop-shadow-sm dark:drop-shadow-neutral-500": props.current && props.usage === "kscan",
             }}
 
             onClick={() => {
@@ -72,7 +74,7 @@ const ControllerPin: VoidComponent<{
               if (!props.usage) {
                 // currently not used, open popover to select usage
                 setOpen(true)
-              } else if (props.usage === 'input' || props.usage === 'output') {
+              } else if (props.usage === 'input' || props.usage === 'output' || props.usage === 'kscan') {
                 props.activateCurrentPin?.();
               }
             }}
@@ -87,18 +89,20 @@ const ControllerPin: VoidComponent<{
             <div>Use pin <span class="font-bold">{pinLabel()}</span> as</div>
 
             {/* input */}
-            <Button
-              // TODO fix button colors
-              class="btn btn-md text-emerald-500 bg-emerald-500/10 border-emerald-500"
-              onClick={() => {
-                if (props.pin.type === 'gpio') {
-                  props.setPinUsage?.('input');
-                }
-                setOpen(false);
-              }}
-            >
-              Input
-            </Button>
+            <Show when={props.wiringType !== 'charlieplex'}>
+              <Button
+                // TODO fix button colors
+                class="btn btn-md text-emerald-500 bg-emerald-500/10 border-emerald-500"
+                onClick={() => {
+                  if (props.pin.type === 'gpio') {
+                    props.setPinUsage?.('input');
+                  }
+                  setOpen(false);
+                }}
+              >
+                Input
+              </Button>
+            </Show>
             {/* output */}
             <Show when={props.wiringType === 'matrix_diode' || props.wiringType === 'matrix_no_diode'}>
               <Button
@@ -112,6 +116,20 @@ const ControllerPin: VoidComponent<{
                 }}
               >
                 Output
+              </Button>
+            </Show>
+            {/* kscan (charlieplex) */}
+            <Show when={props.wiringType === 'charlieplex'}>
+              <Button
+                class="btn btn-md text-amber-500 bg-amber-500/10 border-amber-500"
+                onClick={() => {
+                  if (props.pin.type === 'gpio') {
+                    props.setPinUsage?.('kscan');
+                  }
+                  setOpen(false);
+                }}
+              >
+                Charlieplex
               </Button>
             </Show>
             <Show when={pinAka().length}>
@@ -155,7 +173,7 @@ const ControllerPin: VoidComponent<{
           <Popover.Anchor class="flex justify-center items-center">
             <Button
               class="text-red-500/50 hover:text-red-500 hover:bg-red-500/20 cursor-pointer rounded-full p-1 transition-colors ui-disabled:bg-transparent ui-disabled:text-transparent ui-disabled:pointer-events-none"
-              disabled={props.usage !== 'input' && props.usage !== 'output'}
+              disabled={props.usage !== 'input' && props.usage !== 'output' && props.usage !== 'kscan'}
               onClick={e => {
                 // Release pin button clicked
                 // Release a pin from keyboard keys (input/output)
@@ -230,7 +248,7 @@ export const ControllerPinConfigurator: VoidComponent<{
     }
   };
 
-  const setPinUsage = (pinId: string, usage: 'input' | 'output' | 'none') => {
+  const setPinUsage = (pinId: string, usage: 'input' | 'output' | 'kscan' | 'none') => {
     if (usage === 'none') {
       clearPinUsage(pinId);
       return;

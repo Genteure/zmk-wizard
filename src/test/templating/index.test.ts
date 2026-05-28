@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { createZMKConfig } from "~/lib/templating";
 import { loadBusesForController } from "~/components/controllerInfo";
-import type { Keyboard, VirtualTextFolder, Controller, WiringType, SingleKeyWiring, PinSelection } from "~/typedef";
+import type { Keyboard, VirtualTextFolder, Controller, WiringType, SingleKeyWiring, PinSelection, KscanConfig } from "~/typedef";
 
 import Parser from 'tree-sitter';
 
@@ -272,3 +272,170 @@ describe("split", () => {
     validateFileSyntax(files);
   })
 })
+
+describe("charlieplex", () => {
+  // 3 pins → 3*(3-1) = 6 keys
+  // Pins: d1, d2, d3
+  // For charlieplex: output=drive pin, input=sense pin
+  const charlieplexConfig: Keyboard = {
+    name: "CPTest",
+    shield: "cptest",
+    dongle: false,
+    modules: [],
+    layout: [
+      { id: "k0", part: 0, row: 0, col: 0, w: 1, h: 1, x: 0, y: 0, r: 0, rx: 0, ry: 0 },
+      { id: "k1", part: 0, row: 0, col: 1, w: 1, h: 1, x: 1, y: 0, r: 0, rx: 0, ry: 0 },
+      { id: "k2", part: 0, row: 1, col: 0, w: 1, h: 1, x: 0, y: 1, r: 0, rx: 0, ry: 0 },
+      { id: "k3", part: 0, row: 1, col: 1, w: 1, h: 1, x: 1, y: 1, r: 0, rx: 0, ry: 0 },
+      { id: "k4", part: 0, row: 2, col: 0, w: 1, h: 1, x: 0, y: 2, r: 0, rx: 0, ry: 0 },
+      { id: "k5", part: 0, row: 2, col: 1, w: 1, h: 1, x: 1, y: 2, r: 0, rx: 0, ry: 0 },
+    ],
+    parts: [{
+      name: "unibody",
+      controller: "nice_nano_v2",
+      wiring: "charlieplex",
+      pins: {
+        "d1": "kscan",
+        "d2": "kscan",
+        "d3": "kscan",
+      },
+      keys: {
+        // Pins ordered: d1(0), d2(1), d3(2)
+        // Row 0 (drive d1): sense d2 → col 0, sense d3 → col 1
+        // Row 1 (drive d2): sense d1 → col 0, sense d3 → col 1
+        // Row 2 (drive d3): sense d1 → col 0, sense d2 → col 1
+        "k0": { output: "d1", input: "d2" },
+        "k1": { output: "d1", input: "d3" },
+        "k2": { output: "d2", input: "d1" },
+        "k3": { output: "d2", input: "d3" },
+        "k4": { output: "d3", input: "d1" },
+        "k5": { output: "d3", input: "d2" },
+      },
+      encoders: [],
+      buses: loadBusesForController("nice_nano_v2"),
+    }],
+  };
+
+  test("generates valid charlieplex config", () => {
+    const files = createZMKConfig(charlieplexConfig);
+    validateFileSyntax(files);
+
+    // Check the overlay contains the charlieplex kscan
+    const overlayPath = Object.keys(files).find(f => f.endsWith(".overlay"));
+    expect(overlayPath).toBeDefined();
+    const overlay = files[overlayPath!];
+    expect(overlay).toContain("zmk,kscan-gpio-charlieplex");
+    expect(overlay).toContain("gpios");
+  });
+
+  test("generates correct matrix transform for charlieplex", () => {
+    const files = createZMKConfig(charlieplexConfig);
+    const dtsiPath = Object.keys(files).find(f => f.endsWith(".dtsi") && !f.includes("layouts"));
+    expect(dtsiPath).toBeDefined();
+    const dtsi = files[dtsiPath!];
+    // Should have 3 rows x 2 columns
+    expect(dtsi).toContain("columns = <2>");
+    expect(dtsi).toContain("rows = <3>");
+    expect(dtsi).toContain("RC(0,0)");
+    expect(dtsi).toContain("RC(0,1)");
+    expect(dtsi).toContain("RC(1,0)");
+    expect(dtsi).toContain("RC(1,1)");
+    expect(dtsi).toContain("RC(2,0)");
+    expect(dtsi).toContain("RC(2,1)");
+  });
+});
+
+describe("composite kscan", () => {
+  // A keyboard part with 2 kscans:
+  // 1. A 2x2 matrix (4 keys)
+  // 2. A 2-pin direct (2 keys)
+  const compositeConfig: Keyboard = {
+    name: "CompTest",
+    shield: "comptest",
+    dongle: false,
+    modules: [],
+    layout: [
+      // Matrix keys (2x2)
+      { id: "k0", part: 0, row: 0, col: 0, w: 1, h: 1, x: 0, y: 0, r: 0, rx: 0, ry: 0 },
+      { id: "k1", part: 0, row: 0, col: 1, w: 1, h: 1, x: 1, y: 0, r: 0, rx: 0, ry: 0 },
+      { id: "k2", part: 0, row: 1, col: 0, w: 1, h: 1, x: 0, y: 1, r: 0, rx: 0, ry: 0 },
+      { id: "k3", part: 0, row: 1, col: 1, w: 1, h: 1, x: 1, y: 1, r: 0, rx: 0, ry: 0 },
+      // Direct keys
+      { id: "k4", part: 0, row: 2, col: 0, w: 1, h: 1, x: 0, y: 2, r: 0, rx: 0, ry: 0 },
+      { id: "k5", part: 0, row: 2, col: 1, w: 1, h: 1, x: 1, y: 2, r: 0, rx: 0, ry: 0 },
+    ],
+    parts: [{
+      name: "unibody",
+      controller: "nice_nano_v2",
+      wiring: "matrix_diode",
+      pins: {
+        "d1": "input",
+        "d2": "input",
+        "d3": "output",
+        "d4": "output",
+        "d5": "kscan",
+        "d6": "kscan",
+      },
+      keys: {
+        "k0": { input: "d1", output: "d3" },
+        "k1": { input: "d1", output: "d4" },
+        "k2": { input: "d2", output: "d3" },
+        "k3": { input: "d2", output: "d4" },
+        "k4": { input: "d5" },
+        "k5": { input: "d6" },
+      },
+      encoders: [],
+      buses: loadBusesForController("nice_nano_v2"),
+      kscanConfig: {
+        kscans: [
+          {
+            id: "kscan_matrix",
+            type: "matrix_diode",
+            pins: [
+              { pin: "d1", role: "row" },
+              { pin: "d2", role: "row" },
+              { pin: "d3", role: "col" },
+              { pin: "d4", role: "col" },
+            ],
+          },
+          {
+            id: "kscan_direct",
+            type: "direct_gnd",
+            pins: [
+              { pin: "d5", role: "direct" },
+              { pin: "d6", role: "direct" },
+            ],
+          },
+        ],
+      },
+    }],
+  };
+
+  test("generates valid composite config", () => {
+    const files = createZMKConfig(compositeConfig);
+    validateFileSyntax(files);
+
+    const overlayPath = Object.keys(files).find(f => f.endsWith(".overlay"));
+    expect(overlayPath).toBeDefined();
+    const overlay = files[overlayPath!];
+    expect(overlay).toContain("zmk,kscan-composite");
+    expect(overlay).toContain("zmk,kscan-gpio-matrix");
+    expect(overlay).toContain("zmk,kscan-gpio-direct");
+    expect(overlay).toContain("kscan_matrix");
+    expect(overlay).toContain("kscan_direct");
+  });
+
+  test("composite sorts by row count descending", () => {
+    const files = createZMKConfig(compositeConfig);
+    const overlayPath = Object.keys(files).find(f => f.endsWith(".overlay"));
+    const overlay = files[overlayPath!];
+
+    // Matrix (2 rows) should come before direct (1 row)
+    const matrixPos = overlay.indexOf("kscan_matrix");
+    const directPos = overlay.indexOf("kscan_direct");
+    expect(matrixPos).toBeLessThan(directPos);
+
+    // Direct should have col-offset = 2 (matrix has 2 cols)
+    expect(overlay).toContain("col-offset = <2>");
+  });
+});

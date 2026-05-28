@@ -25,6 +25,7 @@ const wiringLabelMap = {
   "matrix_no_diode": "Matrix without diodes",
   "direct_gnd": "Direct to GND",
   "direct_vcc": "Direct to VCC",
+  "charlieplex": "Charlieplex",
 };
 const wiringLabel = (id: WiringType) => wiringLabelMap[id] ?? id;
 

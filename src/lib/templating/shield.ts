@@ -45,11 +45,18 @@ export function createShieldOverlayFiles(keyboard: Keyboard): VirtualTextFolder 
 
   // Build per-part kscan and local matrix transform data
   const partResults: KscanSinglePartResult[] = keyboard.parts.map((part, idx) => {
+    // If kscanConfig has multiple kscans, use composite builder
+    if (part.kscanConfig && part.kscanConfig.kscans.length > 1) {
+      return buildCompositePart(keyboard, idx);
+    }
+
     const wiring = part.wiring;
     if (wiring === "direct_gnd" || wiring === "direct_vcc") {
       return buildDirectPart(keyboard, idx);
     } else if (wiring === "matrix_diode" || wiring === "matrix_no_diode") {
       return buildMatrixPart(keyboard, idx);
+    } else if (wiring === "charlieplex") {
+      return buildCharlieplexPart(keyboard, idx);
     }
     throw new Error(`Unsupported wiring type: ${wiring}`);
   });
@@ -378,6 +385,155 @@ function buildDirectPart(keyboard: Keyboard, part: number): KscanSinglePartResul
 }
 
 // ----------------
+//   Charlieplex
+// ----------------
+
+function buildCharlieplexPart(keyboard: Keyboard, part: number): KscanSinglePartResult {
+  const thisPart = keyboard.parts[part];
+  const kscanConfig = thisPart.kscanConfig;
+
+  // Collect charlieplex pins - they are stored in kscanConfig if available,
+  // otherwise fall back to pins marked as "kscan" in the pin selection
+  let charlieplexPins: string[] = [];
+  let interruptPin: string | undefined;
+
+  if (kscanConfig && kscanConfig.kscans.length > 0) {
+    const cpKscan = kscanConfig.kscans.find(k => k.type === "charlieplex");
+    if (cpKscan) {
+      charlieplexPins = cpKscan.pins
+        .filter(p => p.role === "charlieplex")
+        .map(p => p.pin);
+      interruptPin = cpKscan.interruptPin;
+    }
+  }
+
+  // Fallback: use all "kscan" pins from pin selection
+  if (charlieplexPins.length === 0) {
+    charlieplexPins = Object.entries(thisPart.pins)
+      .filter(([_, mode]) => mode === "kscan")
+      .map(([pin]) => pin);
+  }
+
+  if (charlieplexPins.length < 2) {
+    throw new Error(`Charlieplex wiring requires at least 2 pins, got ${charlieplexPins.length}`);
+  }
+
+  // Sort charlieplex pins by their associated key indices for deterministic output
+  const pinsForPart = getCharlieplexPinsForPart(keyboard, part, charlieplexPins);
+  const sortedPins = Object.entries(pinsForPart)
+    .sort((a, b) => {
+      const aMin = Math.min(...a[1].keys);
+      const bMin = Math.min(...b[1].keys);
+      return aMin - bMin;
+    })
+    .map(([pin]) => pin);
+
+  // If sorting didn't produce all pins (e.g. some pins have no keys yet), include remaining
+  const orderedPins = [
+    ...sortedPins,
+    ...charlieplexPins.filter(p => !sortedPins.includes(p)),
+  ];
+
+  let kscanDts = `/ {
+    kscan0: kscan0 {
+        compatible = "zmk,kscan-gpio-charlieplex";
+        wakeup-source;
+
+        gpios
+            = ${orderedPins
+    .map(pin => `<${dtsPinHandle(thisPart.controller, pin)} GPIO_ACTIVE_HIGH>`)
+    .join("\n            , ")}
+            ;
+    };
+};
+`;
+
+  if (interruptPin) {
+    kscanDts = kscanDts.replace(
+      "wakeup-source;",
+      `wakeup-source;\n        interrupt-gpios = <${dtsPinHandle(thisPart.controller, interruptPin)} (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;`
+    );
+  }
+
+  // For charlieplex with n pins, we can have n*(n-1) keys
+  // The matrix is organized as n rows × (n-1) columns
+  // Row i, Col j means: drive pin i, sense pin j (where j >= i means j+1 in actual pin index)
+  const numPins = orderedPins.length;
+  const numRows = numPins;
+  const numCols = numPins - 1;
+
+  const mtMapping: MatrixTransformEntry[] = keyboard.layout
+    .map((key, index) => {
+      if (key.part !== part) return null;
+      const wiring = (keyboard.parts[key.part].keys[key.id] ?? {});
+
+      // For charlieplex: input is the sense pin, output is the drive pin
+      const drivePin = wiring.output;
+      const sensePin = wiring.input;
+
+      if (!drivePin || !sensePin) {
+        throw new Error(`Key ${index} is missing charlieplex wiring (drive/sense pins)`);
+      }
+
+      const row = orderedPins.indexOf(drivePin);
+      let col = orderedPins.indexOf(sensePin);
+
+      if (row === -1 || col === -1) {
+        throw new Error(`Key ${index} (drive: ${drivePin}, sense: ${sensePin}) not found in charlieplex pins`);
+      }
+
+      // Adjust column index: skip the drive pin position
+      if (col > row) {
+        col = col - 1;
+      }
+
+      return {
+        pinIndex: index,
+        logicalRow: key.row,
+        kscanRow: row,
+        kscanCol: col,
+      } satisfies MatrixTransformEntry;
+    })
+    .filter((entry) => entry !== null);
+
+  return {
+    kscanDts,
+    mtCols: numCols,
+    mtRows: numRows,
+    mtMapping,
+  };
+}
+
+/**
+ * Get pin info for charlieplex part.
+ * Since charlieplex pins serve as both input and output,
+ * we track which keys reference each pin.
+ */
+function getCharlieplexPinsForPart(
+  keyboard: Keyboard,
+  partIndex: number,
+  charlieplexPins: string[]
+): Record<string, { keys: number[] }> {
+  const pins: Record<string, { keys: number[] }> = {};
+  const pinSet = new Set(charlieplexPins);
+  const part = keyboard.parts[partIndex];
+
+  keyboard.layout.forEach((key, index) => {
+    if (key.part !== partIndex) return;
+    const wiring = part.keys[key.id] ?? {};
+    if (wiring.input && pinSet.has(wiring.input)) {
+      if (!pins[wiring.input]) pins[wiring.input] = { keys: [] };
+      pins[wiring.input].keys.push(index);
+    }
+    if (wiring.output && pinSet.has(wiring.output)) {
+      if (!pins[wiring.output]) pins[wiring.output] = { keys: [] };
+      pins[wiring.output].keys.push(index);
+    }
+  });
+  return pins;
+}
+
+// ----------------
 //     Matrix
 // ----------------
 
@@ -441,6 +597,247 @@ function buildMatrixPart(keyboard: Keyboard, part: number): KscanSinglePartResul
     mtRows: kscan.rowPins.length,
     mtMapping,
   };
+}
+
+// ----------------
+//    Composite
+// ----------------
+
+/**
+ * Build a composite kscan from multiple kscan definitions in kscanConfig.
+ * Sorts kscans by row count descending (direct pins last with 1 row).
+ * Composes by shifting columns: height = max row count of all kscans.
+ */
+function buildCompositePart(keyboard: Keyboard, partIndex: number): KscanSinglePartResult {
+  const thisPart = keyboard.parts[partIndex];
+  const kscanConfig = thisPart.kscanConfig!;
+  const kscans = kscanConfig.kscans;
+
+  // Build individual kscan results for each sub-kscan
+  interface SubKscanResult {
+    kscanDef: typeof kscans[number];
+    label: string;
+    dts: string;
+    rows: number;
+    cols: number;
+    mtMapping: MatrixTransformEntry[];
+  }
+
+  const subResults: SubKscanResult[] = kscans.map((kscanDef, kscanIdx) => {
+    const label = kscanDef.id || `kscan_sub${kscanIdx}`;
+    const result = buildSubKscan(keyboard, partIndex, kscanDef, label);
+    return {
+      kscanDef,
+      label,
+      ...result,
+    };
+  });
+
+  // Sort by row count descending (direct/1-row kscans last per issue #22)
+  subResults.sort((a, b) => b.rows - a.rows);
+
+  // Compute composite dimensions:
+  // Height = max row count, compose by shifting columns
+  const compositeRows = Math.max(...subResults.map(r => r.rows));
+  let colOffset = 0;
+  const compositeMtMapping: MatrixTransformEntry[] = [];
+
+  const childDtsNodes: string[] = [];
+  subResults.forEach((sub) => {
+    // Shift each sub-kscan's column positions
+    sub.mtMapping.forEach(entry => {
+      compositeMtMapping.push({
+        ...entry,
+        kscanRow: entry.kscanRow,
+        kscanCol: entry.kscanCol + colOffset,
+      });
+    });
+
+    childDtsNodes.push(`        ${sub.label} {
+            kscan = <&${sub.label}>;
+            row-offset = <0>;
+            col-offset = <${colOffset}>;
+        };`);
+
+    colOffset += sub.cols;
+  });
+
+  const compositeCols = colOffset;
+
+  // Build composite DTS
+  const subKscanDts = subResults.map(sub => sub.dts).join("\n");
+
+  const compositeDts = `/ {
+${subKscanDts}
+
+    kscan0: kscan0 {
+        compatible = "zmk,kscan-composite";
+        rows = <${compositeRows}>;
+        columns = <${compositeCols}>;
+
+${childDtsNodes.join("\n\n")}
+    };
+};
+`;
+
+  return {
+    kscanDts: compositeDts,
+    mtCols: compositeCols,
+    mtRows: compositeRows,
+    mtMapping: compositeMtMapping,
+  };
+}
+
+/**
+ * Build a single sub-kscan's DTS and matrix transform for use within a composite.
+ */
+function buildSubKscan(
+  keyboard: Keyboard,
+  partIndex: number,
+  kscanDef: { type: string; pins: { pin: string; role: string }[]; interruptPin?: string },
+  label: string
+): { dts: string; rows: number; cols: number; mtMapping: MatrixTransformEntry[] } {
+  const thisPart = keyboard.parts[partIndex];
+  const controller = thisPart.controller;
+
+  if (kscanDef.type === "direct_gnd" || kscanDef.type === "direct_vcc") {
+    const pinFlag = kscanDef.type === "direct_gnd"
+      ? "(GPIO_ACTIVE_LOW | GPIO_PULL_UP)"
+      : "(GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)";
+
+    const directPins = kscanDef.pins
+      .filter(p => p.role === "direct")
+      .map(p => p.pin);
+
+    const dts = `    ${label}: ${label} {
+        compatible = "zmk,kscan-gpio-direct";
+        wakeup-source;
+
+        input-gpios
+            = ${directPins
+      .map(pin => `<${dtsPinHandle(controller, pin)} ${pinFlag}>`)
+      .join("\n            , ")}
+            ;
+    };`;
+
+    // Find keys associated with these direct pins
+    const mtMapping: MatrixTransformEntry[] = [];
+    keyboard.layout.forEach((key, index) => {
+      if (key.part !== partIndex) return;
+      const wiring = thisPart.keys[key.id] ?? {};
+      if (!wiring.input) return;
+      const col = directPins.indexOf(wiring.input);
+      if (col === -1) return;
+
+      mtMapping.push({
+        pinIndex: index,
+        logicalRow: key.row,
+        kscanRow: 0,
+        kscanCol: col,
+      });
+    });
+
+    return { dts, rows: 1, cols: directPins.length, mtMapping };
+  }
+
+  if (kscanDef.type === "matrix_diode" || kscanDef.type === "matrix_no_diode") {
+    const inputPinFlag = "(GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)";
+    const outputPinFlag = kscanDef.type === "matrix_diode" ? "GPIO_ACTIVE_HIGH" : "GPIO_OPEN_SOURCE";
+
+    const rowPins = kscanDef.pins.filter(p => p.role === "row").map(p => p.pin);
+    const colPins = kscanDef.pins.filter(p => p.role === "col").map(p => p.pin);
+
+    // Determine diode direction: assume col2row (rows are input/sense, cols are output/drive)
+    // In col2row: row-gpios get input flags, col-gpios get output flags
+    const dts = `    ${label}: ${label} {
+        compatible = "zmk,kscan-gpio-matrix";
+        diode-direction = "col2row";
+        wakeup-source;
+
+        col-gpios
+            = ${colPins
+      .map(pin => `<${dtsPinHandle(controller, pin)} ${outputPinFlag}>`)
+      .join("\n            , ")}
+            ;
+
+        row-gpios
+            = ${rowPins
+      .map(pin => `<${dtsPinHandle(controller, pin)} ${inputPinFlag}>`)
+      .join("\n            , ")}
+            ;
+    };`;
+
+    const mtMapping: MatrixTransformEntry[] = [];
+    keyboard.layout.forEach((key, index) => {
+      if (key.part !== partIndex) return;
+      const wiring = thisPart.keys[key.id] ?? {};
+      if (!wiring.input || !wiring.output) return;
+
+      const row = rowPins.indexOf(wiring.input);
+      const col = colPins.indexOf(wiring.output);
+      if (row === -1 || col === -1) return;
+
+      mtMapping.push({
+        pinIndex: index,
+        logicalRow: key.row,
+        kscanRow: row,
+        kscanCol: col,
+      });
+    });
+
+    return { dts, rows: rowPins.length, cols: colPins.length, mtMapping };
+  }
+
+  if (kscanDef.type === "charlieplex") {
+    const cpPins = kscanDef.pins
+      .filter(p => p.role === "charlieplex")
+      .map(p => p.pin);
+
+    const numPins = cpPins.length;
+    const numRows = numPins;
+    const numCols = numPins - 1;
+
+    let dts = `    ${label}: ${label} {
+        compatible = "zmk,kscan-gpio-charlieplex";
+        wakeup-source;
+
+        gpios
+            = ${cpPins
+      .map(pin => `<${dtsPinHandle(controller, pin)} GPIO_ACTIVE_HIGH>`)
+      .join("\n            , ")}
+            ;
+    };`;
+
+    if (kscanDef.interruptPin) {
+      dts = dts.replace(
+        "wakeup-source;",
+        `wakeup-source;\n        interrupt-gpios = <${dtsPinHandle(controller, kscanDef.interruptPin)} (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;`
+      );
+    }
+
+    const mtMapping: MatrixTransformEntry[] = [];
+    keyboard.layout.forEach((key, index) => {
+      if (key.part !== partIndex) return;
+      const wiring = thisPart.keys[key.id] ?? {};
+      if (!wiring.output || !wiring.input) return;
+
+      const row = cpPins.indexOf(wiring.output);
+      let col = cpPins.indexOf(wiring.input);
+      if (row === -1 || col === -1) return;
+      if (col > row) col = col - 1;
+
+      mtMapping.push({
+        pinIndex: index,
+        logicalRow: key.row,
+        kscanRow: row,
+        kscanCol: col,
+      });
+    });
+
+    return { dts, rows: numRows, cols: numCols, mtMapping };
+  }
+
+  throw new Error(`Unsupported sub-kscan type: ${kscanDef.type}`);
 }
 
 function dtsPinHandle(controller: Controller, pinId: string): string {
