@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadBusesForController } from "~/components/controllerInfo";
+import { makeKscanPinUsage } from "~/lib/pinUsage";
 import { copyWiringBetweenParts } from "../../src/lib/wiringMapping";
 import type { Key, KeyboardPart, SingleKeyWiring } from "../../src/typedef";
 
@@ -43,7 +44,7 @@ describe("copyWiringBetweenParts", () => {
       "left",
       "nice_nano_v2",
       "matrix_diode",
-      { p1: "input", p2: "output" },
+      { p1: makeKscanPinUsage("input"), p2: makeKscanPinUsage("output") },
       {
         s1: { input: "p1" },
         s2: { input: "p1", output: "p2" },
@@ -63,7 +64,7 @@ describe("copyWiringBetweenParts", () => {
 
     expect(result.controller).toBe("nice_nano_v2");
     expect(result.wiring).toBe("matrix_diode");
-    expect(result.pins).toEqual({ p1: "input", p2: "output" });
+    expect(result.pins).toEqual({ p1: makeKscanPinUsage("input"), p2: makeKscanPinUsage("output") });
     expect(result.keys).toEqual({
       t1: { input: "p1" },
       t2: { input: "p1", output: "p2" },
@@ -84,7 +85,7 @@ describe("copyWiringBetweenParts", () => {
       "left",
       "nice_nano_v2",
       "matrix_diode",
-      { p1: "input" },
+      { p1: makeKscanPinUsage("input") },
       {
         s_left: { input: "p1" },
         s_right: { input: "p1", output: "p1" },
@@ -121,7 +122,7 @@ describe("copyWiringBetweenParts", () => {
       "source",
       "nice_nano_v2",
       "matrix_diode",
-      { a: "input" },
+      { a: makeKscanPinUsage("input") },
       {
         s1: { input: "a" },
         s2: { input: "a" },

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { createZMKConfig } from "~/lib/templating";
+import { makeKscanPinUsage } from "~/lib/pinUsage";
 import { loadBusesForController } from "~/components/controllerInfo";
 import type { Keyboard, VirtualTextFolder, Controller, WiringType, SingleKeyWiring, PinSelection } from "~/typedef";
 
@@ -65,7 +66,7 @@ interface LegacyKeyboardData {
   wiringType: WiringType;
   dongle: boolean;
   layout: LegacyTemplatingKey[];
-  pinouts: PinSelection[];
+  pinouts: Record<string, "input" | "output">[];
   keyWiring: SingleKeyWiring[];
 }
 
@@ -86,15 +87,21 @@ function makeKeyboard(data: LegacyKeyboardData): Keyboard {
     ry: key.ry,
   }));
 
-  const parts = data.pinouts.map((pins, index) => ({
-    name: partNames[index] ?? `part-${index + 1}`,
-    controller: data.controller,
-    wiring: data.wiringType,
-    pins,
-    keys: {} as Record<string, SingleKeyWiring>,
-    encoders: [],
-    buses: loadBusesForController(data.controller),
-  }));
+  const parts = data.pinouts.map((legacyPins, index) => {
+    const pins: PinSelection = {};
+    for (const [pinId, mode] of Object.entries(legacyPins)) {
+      pins[pinId] = makeKscanPinUsage(mode);
+    }
+    return {
+      name: partNames[index] ?? `part-${index + 1}`,
+      controller: data.controller,
+      wiring: data.wiringType,
+      pins,
+      keys: {} as Record<string, SingleKeyWiring>,
+      encoders: [],
+      buses: loadBusesForController(data.controller),
+    };
+  });
 
   if (parts.length === 1) {
     parts[0].name = "unibody";

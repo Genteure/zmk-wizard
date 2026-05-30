@@ -291,7 +291,7 @@ export const PinUsageDeviceSchema = z.object({
   usage: z.literal("device"),
   bus: BusNameSchema,
   deviceId: z.string(), // TODO ADD ULID for each device to associate pins with specific devices
-  role: string, // e.g. "cs", "irq", "dr", etc. Specific to the device type.
+  role: z.string(), // e.g. "cs", "irq", "dr", etc. Specific to the device type.
 });
 export type PinUsageDevice = z.infer<typeof PinUsageDeviceSchema>;
 
@@ -362,7 +362,7 @@ export const KeyboardPartSchema = z.object({
   /**
    * Kscans
    */
-  kscans: z.array(KscanDriverSchema).default([]),
+  kscans: z.array(KscanDriverSchema).optional(),
   /**
    * Key wiring
    */

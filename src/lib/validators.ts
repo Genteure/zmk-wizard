@@ -3,6 +3,7 @@ import type { BusDeviceTypeName } from "~/typedef";
 import { BusNameSchema, ShieldNameSchema, type Keyboard } from "~/typedef";
 import { isI2cBus, isSpiBus } from "~/typehelper";
 import { CommonShieldNames } from "./shieldNames";
+import { isBusPinUsage, isEncoderPinUsage, pinModeFromUsage } from "./pinUsage";
 
 export type ValidationError = { part: number | null; message: string };
 type ValidatorResult = ValidationError[] | null;
@@ -213,9 +214,9 @@ const Validators: Record<string, ValidatorFunction> = {
           errors.push({ part: partIndex, message: `Pin "${pinId}" for ${label} does not exist on controller "${part.controller}"` });
         }
 
-        const mode = part.pins?.[pinId];
-        if (mode && mode !== "bus") {
-          errors.push({ part: partIndex, message: `Pin "${pinId}" for ${label} is marked as "${mode}" instead of "bus"` });
+        const mode = pinModeFromUsage(part.pins?.[pinId]);
+        if (part.pins?.[pinId] && !isBusPinUsage(part.pins?.[pinId])) {
+          errors.push({ part: partIndex, message: `Pin "${pinId}" for ${label} is marked as "${mode ?? "unknown"}" instead of "bus"` });
         }
 
         recordPinUsage(pinId, { label, ...usage });
@@ -487,9 +488,9 @@ const Validators: Record<string, ValidatorFunction> = {
           errors.push({ part: partIndex, message: `Pin "${pinId}" for ${label} does not exist on controller "${part.controller}"` });
         }
 
-        const mode = part.pins?.[pinId];
-        if (mode && mode !== "encoder") {
-          errors.push({ part: partIndex, message: `Pin "${pinId}" for ${label} is marked as "${mode}" instead of "encoder"` });
+        const mode = pinModeFromUsage(part.pins?.[pinId]);
+        if (part.pins?.[pinId] && !isEncoderPinUsage(part.pins?.[pinId])) {
+          errors.push({ part: partIndex, message: `Pin "${pinId}" for ${label} is marked as "${mode ?? "unknown"}" instead of "encoder"` });
         }
 
         recordEncoderPin(pinId, label);
@@ -588,14 +589,14 @@ const Validators: Record<string, ValidatorFunction> = {
         if (!hasInput) {
           ensurePartRecord(key.part);
           missingPinsByPart[key.part].input.push(index);
-        } else if (part.pins[inputPin] !== "input") {
+        } else if (pinModeFromUsage(part.pins[inputPin]) !== "input") {
           errors.push({ part: key.part, message: `Key ${index} uses input pin "${inputPin}" which is not configured as input` });
         }
 
         if (!hasOutput) {
           ensurePartRecord(key.part);
           missingPinsByPart[key.part].output.push(index);
-        } else if (!isValidShifterOutput && part.pins[outputPin] !== "output") {
+        } else if (!isValidShifterOutput && pinModeFromUsage(part.pins[outputPin]) !== "output") {
           errors.push({ part: key.part, message: `Key ${index} uses output pin "${outputPin}" which is not configured as output` });
         }
 
@@ -617,7 +618,7 @@ const Validators: Record<string, ValidatorFunction> = {
           missingPinsByPart[key.part].input.push(index);
         } else if (!part.pins[inputPin]) {
           errors.push({ part: key.part, message: `Key ${index} references unknown pin "${inputPin}"` });
-        } else if (part.pins[inputPin] !== "input") {
+        } else if (pinModeFromUsage(part.pins[inputPin]) !== "input") {
           errors.push({ part: key.part, message: `Key ${index} uses pin "${inputPin}" which is not configured as input` });
         }
         // If someone set output for direct, warn as error to avoid confusion
