@@ -343,7 +343,8 @@ export const EncoderSchema = z.object({
    * Optional pin for button press functionality, in case
    * the push button is wired as direct pin in a matrix keyboard.
    */
-  pinS: PinIdSchema.optional(), // TODO: Remove this and instruct users configure them as direct kscan keys manually.
+  // Kept for backwards compatibility with existing saved configs.
+  pinS: PinIdSchema.optional(),
   // TODO configure rotation steps?
 });
 export type Encoder = z.infer<typeof EncoderSchema>;
@@ -362,7 +363,7 @@ export const KeyboardPartSchema = z.object({
   /**
    * Kscans
    */
-  kscans: z.array(KscanDriverSchema).optional(),
+  kscans: z.array(KscanDriverSchema).default([]),
   /**
    * Key wiring
    */

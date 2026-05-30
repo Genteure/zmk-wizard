@@ -14,6 +14,7 @@ function makePart(name: string): KeyboardPart {
     pins: {},
     keys: {},
     encoders: [],
+    kscans: [],
     buses: [],
   };
 }

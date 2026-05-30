@@ -99,6 +99,7 @@ function makeKeyboard(data: LegacyKeyboardData): Keyboard {
       pins,
       keys: {} as Record<string, SingleKeyWiring>,
       encoders: [],
+      kscans: [],
       buses: loadBusesForController(data.controller),
     };
   });

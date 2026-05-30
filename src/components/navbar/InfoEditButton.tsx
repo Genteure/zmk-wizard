@@ -221,6 +221,7 @@ hover:border-accent bg-base-300 hover:bg-base-content/10 transition-colors durat
                       wiring: "matrix_diode",
                       keys: {},
                       encoders: [],
+                      kscans: [],
                       pins: {},
                       buses: loadBusesForController("nice_nano_v2"),
                     } satisfies KeyboardPart)));

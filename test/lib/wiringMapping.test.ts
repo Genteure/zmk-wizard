@@ -27,6 +27,7 @@ function makePart(name: string, controller: KeyboardPart["controller"], wiring: 
     pins,
     keys,
     encoders: [],
+    kscans: [],
     buses: loadBusesForController(controller),
   };
 }

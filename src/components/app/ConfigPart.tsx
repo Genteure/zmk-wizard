@@ -155,12 +155,12 @@ export const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) =>
       const encoders = structuredClone(unwrap(source.encoders) || []);
       p.encoders = encoders;
 
-      for (const enc of encoders) {
+      encoders.forEach((enc, encIndex) => {
+        const encoderId = `encoder_${encIndex}`;
         p.pins = p.pins || {};
-        if (enc.pinA) p.pins[enc.pinA] = makeEncoderPinUsage(`encoder_${props.partIndex()}_${sourceIndex}`, "pinA");
-        if (enc.pinB) p.pins[enc.pinB] = makeEncoderPinUsage(`encoder_${props.partIndex()}_${sourceIndex}`, "pinB");
-        if (enc.pinS) p.pins[enc.pinS] = makeEncoderPinUsage(`encoder_${props.partIndex()}_${sourceIndex}`, "pinB");
-      }
+        if (enc.pinA) p.pins[enc.pinA] = makeEncoderPinUsage(encoderId, "pinA");
+        if (enc.pinB) p.pins[enc.pinB] = makeEncoderPinUsage(encoderId, "pinB");
+      });
     }));
   };
 

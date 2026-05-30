@@ -271,8 +271,11 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
   const clearBusPins = (bus: AnyBus, partPins?: PinSelection) => {
     const unset = (pinId: string | undefined, role: "sda" | "scl" | "mosi" | "miso" | "sck") => {
       if (!pinId) return;
-      if (partPins?.[pinId]?.usage === "bus" && partPins[pinId].bus === bus.name && partPins[pinId].role === role) {
-        delete partPins[pinId];
+      const usage = partPins?.[pinId];
+      if (usage?.usage === "bus" && usage.bus === bus.name && usage.role === role) {
+        if (partPins) {
+          delete partPins[pinId];
+        }
       }
     };
 

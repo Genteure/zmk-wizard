@@ -32,6 +32,11 @@ export const EncoderConfigurator: VoidComponent<{ partIndex: Accessor<number> }>
       const enc = p.encoders[encoderIndex];
       if (!enc) return;
 
+      if (key === "pinS") {
+        enc.pinS = undefined;
+        return;
+      }
+
       const prev = enc[key];
       if (prev && prev !== value && isEncoderPinUsage(p.pins?.[prev])) {
         const stillUsed = p.encoders.some((other, idx) => idx !== encoderIndex && (other.pinA === prev || other.pinB === prev || other.pinS === prev));
@@ -44,8 +49,9 @@ export const EncoderConfigurator: VoidComponent<{ partIndex: Accessor<number> }>
 
       if (value) {
         p.pins = p.pins || {};
-        const role = key === "pinA" ? "pinA" : "pinB";
-        p.pins[value] = makeEncoderPinUsage(`encoder_${encoderIndex}`, role);
+        if (key === "pinA" || key === "pinB") {
+          p.pins[value] = makeEncoderPinUsage(`encoder_${encoderIndex}`, key);
+        }
       }
     }));
   };

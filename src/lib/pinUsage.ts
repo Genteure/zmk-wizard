@@ -7,6 +7,7 @@ export function pinModeFromUsage(usage: PinUsage | undefined): PinMode | undefin
   if (usage.usage === "kscan") {
     if (usage.role === "input") return "input";
     if (usage.role === "output") return "output";
+    // Interrupt is not exposed as a selectable UI pin mode.
     return undefined;
   }
   if (usage.usage === "encoder") return "encoder";
