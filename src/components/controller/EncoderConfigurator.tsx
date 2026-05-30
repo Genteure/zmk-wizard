@@ -1,6 +1,7 @@
 import { Button } from "@kobalte/core/button";
 import { createMemo, For, Show, type Accessor, type VoidComponent } from "solid-js";
 import { produce } from "solid-js/store";
+import { isEncoderPinUsage, makeEncoderPinUsage } from "~/lib/pinUsage";
 import { useWizardContext } from "../context";
 import { controllerInfos } from "../controllerInfo";
 
@@ -32,7 +33,7 @@ export const EncoderConfigurator: VoidComponent<{ partIndex: Accessor<number> }>
       if (!enc) return;
 
       const prev = enc[key];
-      if (prev && prev !== value && p.pins?.[prev] === "encoder") {
+      if (prev && prev !== value && isEncoderPinUsage(p.pins?.[prev])) {
         const stillUsed = p.encoders.some((other, idx) => idx !== encoderIndex && (other.pinA === prev || other.pinB === prev || other.pinS === prev));
         if (!stillUsed) {
           delete p.pins[prev];
@@ -43,7 +44,8 @@ export const EncoderConfigurator: VoidComponent<{ partIndex: Accessor<number> }>
 
       if (value) {
         p.pins = p.pins || {};
-        p.pins[value] = "encoder";
+        const role = key === "pinA" ? "pinA" : "pinB";
+        p.pins[value] = makeEncoderPinUsage(`encoder_${encoderIndex}`, role);
       }
     }));
   };
@@ -58,7 +60,7 @@ export const EncoderConfigurator: VoidComponent<{ partIndex: Accessor<number> }>
       const pinsToClear = [removed.pinA, removed.pinB, removed.pinS].filter(Boolean) as string[];
       pinsToClear.forEach((pinId) => {
         const stillUsed = p.encoders.some((enc) => enc.pinA === pinId || enc.pinB === pinId || enc.pinS === pinId);
-        if (!stillUsed && p.pins?.[pinId] === "encoder") {
+        if (!stillUsed && isEncoderPinUsage(p.pins?.[pinId])) {
           delete p.pins[pinId];
         }
       });

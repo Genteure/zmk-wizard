@@ -1,4 +1,5 @@
 import type { AnyBus, Controller, Key, KeyboardPart, PinSelection, ShiftRegisterDevice, SingleKeyWiring, WiringType } from "../typedef";
+import { isBusPinUsage, makeBusPinUsage, makeDevicePinUsage, pinModeFromUsage } from "./pinUsage";
 
 // Copy and map wiring between two parts based on key layout and wiring configuration
 // Allow for transformations like flipping vertically/horizontally to make wiring split parts easier
@@ -158,14 +159,15 @@ export function copyWiringBetweenParts(params: WiringCopyParams): WiringCopyResu
 
   // Filter out bus pin usage; only carry over input/output pins
   const resultPins: PinSelection = {};
-  for (const [pinId, mode] of Object.entries(sourcePart.pins || {})) {
-    if (mode === "input" || mode === "output") {
-      resultPins[pinId] = mode;
+  for (const [pinId, usage] of Object.entries(sourcePart.pins || {})) {
+    const mode = pinModeFromUsage(usage);
+    if (usage && usage.usage === "kscan" && (mode === "input" || mode === "output")) {
+      resultPins[pinId] = { ...usage };
     }
   }
 
   // Carry over shift register only; drop other bus devices and bus pin usage.
-  const busPinsToMark = new Set<string>();
+  const busPinsToMark = new Map<string, PinSelection[string]>();
   const resultBuses: AnyBus[] = (sourcePart.buses || []).map((bus): AnyBus => {
     if (bus.type === "spi") {
       const shifter = (bus.devices || []).find((d): d is ShiftRegisterDevice => d.type === "74hc595");
@@ -175,10 +177,10 @@ export function copyWiringBetweenParts(params: WiringCopyParams): WiringCopyResu
       const sck = shifter ? bus.sck : undefined;
 
       if (shifter) {
-        if (mosi) busPinsToMark.add(mosi);
-        if (miso) busPinsToMark.add(miso);
-        if (sck) busPinsToMark.add(sck);
-        if (shifter.cs) busPinsToMark.add(shifter.cs);
+        if (mosi) busPinsToMark.set(mosi, makeBusPinUsage(bus.name, "mosi"));
+        if (miso) busPinsToMark.set(miso, makeBusPinUsage(bus.name, "miso"));
+        if (sck) busPinsToMark.set(sck, makeBusPinUsage(bus.name, "sck"));
+        if (shifter.cs) busPinsToMark.set(shifter.cs, makeDevicePinUsage(bus.name, `${bus.name}:0:74hc595`, "cs"));
       }
 
       return {
@@ -201,8 +203,10 @@ export function copyWiringBetweenParts(params: WiringCopyParams): WiringCopyResu
   });
 
   // Mark shift-register bus pins as bus usage
-  for (const pinId of busPinsToMark) {
-    resultPins[pinId] = "bus";
+  for (const [pinId, usage] of busPinsToMark) {
+    if (!isBusPinUsage(resultPins[pinId])) {
+      resultPins[pinId] = usage;
+    }
   }
 
   return {

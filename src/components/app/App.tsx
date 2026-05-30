@@ -9,6 +9,7 @@ import { ulid } from "ulidx";
 import LayoutDashboard from "lucide-solid/icons/layout-dashboard";
 import LucideKeyboard from "lucide-solid/icons/keyboard";
 
+import { pinModeFromUsage } from "~/lib/pinUsage";
 import { swpBgClass } from "~/lib/swpColors";
 import type { Key } from "../../typedef";
 import { useWizardContext } from "../context";
@@ -65,7 +66,7 @@ export const App: VoidComponent = () => {
     if (!pinId) return;
 
     const isShifterPin = pinId.startsWith("shifter");
-    const mode = isShifterPin ? "output" : context.keyboard.parts[partIdx].pins[pinId];
+    const mode = isShifterPin ? "output" : pinModeFromUsage(context.keyboard.parts[partIdx].pins[pinId]);
     if (!mode) return;
 
     const wiringType = context.keyboard.parts[partIdx].wiring;

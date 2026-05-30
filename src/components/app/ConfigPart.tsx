@@ -12,6 +12,7 @@ import TriangleAlert from "lucide-solid/icons/triangle-alert";
 import Undo2 from "lucide-solid/icons/undo-2";
 import { createEffect, createMemo, createSignal, For, Show, type Accessor, type Component } from "solid-js";
 import { produce, unwrap } from "solid-js/store";
+import { makeEncoderPinUsage } from "~/lib/pinUsage";
 import { swpBgClass } from "~/lib/swpColors";
 import { copyWiringBetweenParts, type WiringTransform } from "~/lib/wiringMapping";
 import type { Controller, WiringType } from "../../typedef";
@@ -156,9 +157,9 @@ export const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) =>
 
       for (const enc of encoders) {
         p.pins = p.pins || {};
-        if (enc.pinA) p.pins[enc.pinA] = "encoder";
-        if (enc.pinB) p.pins[enc.pinB] = "encoder";
-        if (enc.pinS) p.pins[enc.pinS] = "encoder";
+        if (enc.pinA) p.pins[enc.pinA] = makeEncoderPinUsage(`encoder_${props.partIndex()}_${sourceIndex}`, "pinA");
+        if (enc.pinB) p.pins[enc.pinB] = makeEncoderPinUsage(`encoder_${props.partIndex()}_${sourceIndex}`, "pinB");
+        if (enc.pinS) p.pins[enc.pinS] = makeEncoderPinUsage(`encoder_${props.partIndex()}_${sourceIndex}`, "pinB");
       }
     }));
   };

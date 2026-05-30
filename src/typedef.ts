@@ -206,16 +206,19 @@ export const ControllerSchema = z.enum([
 ]);
 export type Controller = z.infer<typeof ControllerSchema>;
 
-// export const WiringTypeSchema = z.enum([
-//   "matrix_diode",
-//   "matrix_no_diode",
-//   "direct_gnd",
-//   "direct_vcc",
-// ]);
-// export type WiringType = z.infer<typeof WiringTypeSchema>;
+export const WiringTypes = [
+  "matrix_diode",
+  "matrix_no_diode",
+  "direct_gnd",
+  "direct_vcc",
+] as const;
+export type WiringType = typeof WiringTypes[number];
 
-// export const PinModeSchema = z.enum(["kscan", "bus", "encoder"]);
-// export type PinMode = z.infer<typeof PinModeSchema>;
+/**
+ * UI-facing pin mode categories derived from `PinUsage`.
+ */
+export const PinModeSchema = z.enum(["input", "output", "bus", "encoder"]);
+export type PinMode = z.infer<typeof PinModeSchema>;
 
 export const KscanDriverKindSchema = z.enum(["matrix", "direct", "charlieplex"]);
 export type KscanDriverKind = z.infer<typeof KscanDriverKindSchema>;
@@ -340,7 +343,7 @@ export const EncoderSchema = z.object({
    * Optional pin for button press functionality, in case
    * the push button is wired as direct pin in a matrix keyboard.
    */
-  // pinS: PinIdSchema.optional(), // TODO: Remove this and instruct users configure them as direct kscan keys manually.
+  pinS: PinIdSchema.optional(), // TODO: Remove this and instruct users configure them as direct kscan keys manually.
   // TODO configure rotation steps?
 });
 export type Encoder = z.infer<typeof EncoderSchema>;
@@ -351,7 +354,7 @@ export const KeyboardPartSchema = z.object({
     .max(16, "Part name cannot be longer than 16 characters")
     .regex(/^[a-z0-9]+$/, "Part name must contain only lowercase letters and numbers"),
   controller: ControllerSchema,
-  wiring: WiringTypeSchema,
+  wiring: z.enum(WiringTypes),
   /**
    * Pin modes
    */

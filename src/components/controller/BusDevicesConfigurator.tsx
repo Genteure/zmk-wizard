@@ -5,6 +5,7 @@ import Info from "lucide-solid/icons/info";
 import { createMemo, createSignal, For, Show, type Accessor, type VoidComponent } from "solid-js";
 import { produce } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
+import { isBusPinUsage, makeBusPinUsage, makeDevicePinUsage } from "~/lib/pinUsage";
 import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, I2cBus, ModuleId, PinSelection, SpiBus } from "~/typedef";
 import { AnyBusDeviceSchema } from "~/typedef";
 import { addDeviceToBus, isI2cBus, isSpiBus } from "~/typehelper";
@@ -241,7 +242,7 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
   const isPinUsedInPart = (partState: { buses?: AnyBus[]; pins?: PinSelection }, pinId: string, skip: SkipUsage[] = []) => {
     // pin used for non-bus purpose on this part
     const usage = partState.pins?.[pinId];
-    if (usage && usage !== "bus") return true;
+    if (usage && !isBusPinUsage(usage)) return true;
 
     const shouldSkip = (idx: number, key: BusPinKey) => skip.some((s) => s.busIndex === idx && s.key === key);
 
@@ -268,20 +269,20 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
 
   // TODO validate what is this doing
   const clearBusPins = (bus: AnyBus, partPins?: PinSelection) => {
-    const unset = (pinId?: string) => {
+    const unset = (pinId: string | undefined, role: "sda" | "scl" | "mosi" | "miso" | "sck") => {
       if (!pinId) return;
-      if (partPins && partPins[pinId] === "bus") {
+      if (partPins?.[pinId]?.usage === "bus" && partPins[pinId].bus === bus.name && partPins[pinId].role === role) {
         delete partPins[pinId];
       }
     };
 
     if (isI2cBus(bus)) {
-      unset(bus.sda); bus.sda = undefined;
-      unset(bus.scl); bus.scl = undefined;
+      unset(bus.sda, "sda"); bus.sda = undefined;
+      unset(bus.scl, "scl"); bus.scl = undefined;
     } else if (isSpiBus(bus)) {
-      unset(bus.mosi); bus.mosi = undefined;
-      unset(bus.miso); bus.miso = undefined;
-      unset(bus.sck); bus.sck = undefined;
+      unset(bus.mosi, "mosi"); bus.mosi = undefined;
+      unset(bus.miso, "miso"); bus.miso = undefined;
+      unset(bus.sck, "sck"); bus.sck = undefined;
     }
   };
 
@@ -293,7 +294,7 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
       if (isI2cBus(bus) && (key === "sda" || key === "scl")) {
         // const prev = key === "sda" ? bus.sda : bus.scl;
         const prev = bus[key];
-        if (prev && prev !== value && part.pins?.[prev] === "bus") {
+        if (prev && prev !== value && isBusPinUsage(part.pins?.[prev])) {
           const stillUsed = isPinUsedInPart(part, prev, [{ busIndex, key }]);
           if (!stillUsed) {
             delete part.pins[prev];
@@ -303,7 +304,7 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
       } else if (isSpiBus(bus) && (key === "mosi" || key === "miso" || key === "sck")) {
         // const prev = key === "mosi" ? bus.mosi : key === "miso" ? bus.miso : bus.sck;
         const prev = bus[key];
-        if (prev && prev !== value && part.pins?.[prev] === "bus") {
+        if (prev && prev !== value && isBusPinUsage(part.pins?.[prev])) {
           const stillUsed = isPinUsedInPart(part, prev, [{ busIndex, key }]);
           if (!stillUsed) {
             delete part.pins[prev];
@@ -317,7 +318,7 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
 
       if (value) {
         part.pins = part.pins || {};
-        part.pins[value] = "bus";
+        part.pins[value] = makeBusPinUsage(bus.name, key);
       }
 
       if (!bus.devices || bus.devices.length === 0) {
@@ -342,13 +343,13 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
       if (prop.widget === "pin") {
         const prev = deviceRecord[key] as string | undefined;
         const next = typeof value === "string" && value.length > 0 ? value : undefined;
-        if (prev && prev !== next && part.pins?.[prev] === "bus") {
+        if (prev && prev !== next && isBusPinUsage(part.pins?.[prev])) {
           delete part.pins[prev];
         }
         deviceRecord[key] = next;
         if (next) {
           part.pins = part.pins || {};
-          part.pins[next] = "bus";
+          part.pins[next] = makeDevicePinUsage(bus.name, `${bus.name}:${deviceIndex}:${device.type}`, key);
         }
         return;
       }
@@ -373,7 +374,7 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
         const pinProps = pinPropKeysForDevice(removed.type);
         pinProps.forEach((propKey) => {
           const pinId = (removed as Record<string, string | undefined>)[propKey];
-          if (pinId && part.pins?.[pinId] === "bus") {
+          if (pinId && isBusPinUsage(part.pins?.[pinId])) {
             delete part.pins[pinId];
           }
         });

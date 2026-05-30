@@ -7,6 +7,7 @@ import { default as TriangleAlert } from "lucide-solid/icons/triangle-alert";
 import { createMemo, createSignal, For, Match, onCleanup, Show, Switch, type Accessor, type VoidComponent } from "solid-js";
 import { produce } from "solid-js/store";
 import type { PinMode, WiringType } from "~/typedef";
+import { makeKscanPinUsage, pinModeFromUsage } from "~/lib/pinUsage";
 import { useWizardContext } from "../context";
 import type { ControllerInfo, VisualPin } from "../controllerInfo";
 import { controllerInfos } from "../controllerInfo";
@@ -236,7 +237,7 @@ export const ControllerPinConfigurator: VoidComponent<{
       return;
     }
 
-    context.setKeyboard("parts", props.partIndex(), "pins", pinId, usage);
+    context.setKeyboard("parts", props.partIndex(), "pins", pinId, makeKscanPinUsage(usage));
     context.setNav("activeWiringPin", pinId);
   };
 
@@ -258,7 +259,7 @@ export const ControllerPinConfigurator: VoidComponent<{
             <For each={info().visual.left}>
               {(pin) => {
                 const usage = (() => pin.type === 'gpio'
-                  ? (keyboardPins()[pin.id])
+                  ? pinModeFromUsage(keyboardPins()[pin.id])
                   : undefined);
 
                 return <ControllerPin
@@ -282,7 +283,7 @@ export const ControllerPinConfigurator: VoidComponent<{
             <For each={info().visual.right}>
               {(pin) => {
                 const usage = (() => pin.type === 'gpio'
-                  ? (keyboardPins()[pin.id])
+                  ? pinModeFromUsage(keyboardPins()[pin.id])
                   : undefined);
 
                 return <ControllerPin
