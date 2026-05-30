@@ -206,22 +206,129 @@ export const ControllerSchema = z.enum([
 ]);
 export type Controller = z.infer<typeof ControllerSchema>;
 
-export const WiringTypeSchema = z.enum([
-  "matrix_diode",
-  "matrix_no_diode",
-  "direct_gnd",
-  "direct_vcc",
+// export const WiringTypeSchema = z.enum([
+//   "matrix_diode",
+//   "matrix_no_diode",
+//   "direct_gnd",
+//   "direct_vcc",
+// ]);
+// export type WiringType = z.infer<typeof WiringTypeSchema>;
+
+// export const PinModeSchema = z.enum(["kscan", "bus", "encoder"]);
+// export type PinMode = z.infer<typeof PinModeSchema>;
+
+export const KscanDriverKindSchema = z.enum(["matrix", "direct", "charlieplex"]);
+export type KscanDriverKind = z.infer<typeof KscanDriverKindSchema>;
+
+export const KscanIdSchema = z.string() // ULID string
+// TODO add ulid validation here
+export type KscanId = z.infer<typeof KscanIdSchema>;
+
+export const KscanMatrixDriverSchema = z.object({
+  kind: z.literal("matrix"),
+  id: KscanIdSchema,
+  diodes: z.boolean().default(true),
+});
+export type KscanMatrixDriver = z.infer<typeof KscanMatrixDriverSchema>;
+
+export const KscanDirectDriverSchema = z.object({
+  kind: z.literal("direct"),
+  id: KscanIdSchema,
+  mode: z.enum(["gnd", "vcc"]),
+});
+export type KscanDirectDriver = z.infer<typeof KscanDirectDriverSchema>;
+
+export const KscanCharlieplexDriverSchema = z.object({
+  kind: z.literal("charlieplex"),
+  id: KscanIdSchema,
+});
+export type KscanCharlieplexDriver = z.infer<typeof KscanCharlieplexDriverSchema>;
+
+export const KscanDriverSchema = z.discriminatedUnion("kind", [
+  KscanMatrixDriverSchema,
+  KscanDirectDriverSchema,
+  KscanCharlieplexDriverSchema,
 ]);
-export type WiringType = z.infer<typeof WiringTypeSchema>;
+export type KscanDriver = z.infer<typeof KscanDriverSchema>;
 
-export const PinModeSchema = z.enum(["input", "output", "bus", "encoder"]);
-export type PinMode = z.infer<typeof PinModeSchema>;
+// kscan end
 
-export const PinSelectionSchema = z.record(PinIdSchema, PinModeSchema.optional());
+export const PinUsageKscanSchema = z.object({
+  usage: z.literal("kscan"),
+  kscan: KscanIdSchema,
+  /**
+   * - interrupt: only used for charlieplex
+   * - output: only used for matrix driver, driving the line
+   * - input: used for all drivers.
+   *   - for matrix driver, sensing voltage change on the line.
+   *   - for direct driver, sensing voltage change on the pin, the other side is GND or VCC.
+   *   - for charlieplex driver, dual purpose since it technically is both input and output.
+   */
+  role: z.enum(["input", "output", "interrupt"]),
+});
+export type PinUsageKscan = z.infer<typeof PinUsageKscanSchema>;
+
+export const PinUsageBusSchema = z.object({
+  usage: z.literal("bus"),
+  bus: BusNameSchema,
+  role: z.enum([
+    // I2C
+    "sda", "scl",
+    // SPI
+    "mosi", "miso", "sck",
+    /**
+     * Both MISO and MOSI on this pin, for half-duplex SPI bus.
+     */
+    "miso-mosi",
+  ]),
+});
+export type PinUsageBus = z.infer<typeof PinUsageBusSchema>;
+
+export const PinUsageDeviceSchema = z.object({
+  usage: z.literal("device"),
+  bus: BusNameSchema,
+  deviceId: z.string(), // TODO ADD ULID for each device to associate pins with specific devices
+  role: string, // e.g. "cs", "irq", "dr", etc. Specific to the device type.
+});
+export type PinUsageDevice = z.infer<typeof PinUsageDeviceSchema>;
+
+export const PinUsageEncoderSchema = z.object({
+  usage: z.literal("encoder"),
+  encoderId: z.string(), // TODO ADD ULID for each encoder to associate pins with specific encoders
+  role: z.enum(["pinA", "pinB"]),
+});
+export type PinUsageEncoder = z.infer<typeof PinUsageEncoderSchema>;
+
+export const PinUsageSchema = z.discriminatedUnion("usage", [
+  PinUsageKscanSchema,
+  PinUsageBusSchema,
+  PinUsageDeviceSchema,
+  PinUsageEncoderSchema,
+]);
+export type PinUsage = z.infer<typeof PinUsageSchema>;
+
+// Note: In UI, loop over metadata of the selected controller to get all pins,
+// then for each pin you can get its usage, availability, and other info from this record.
+export const PinSelectionSchema = z.record(PinIdSchema, PinUsageSchema.optional());
 export type PinSelection = z.infer<typeof PinSelectionSchema>;
 
+/**
+ * The kscan pins associated with each key. The actual meaning of input/output depends on the kscan driver type.
+ */
 export const SingleKeyWiringSchema = z.object({
+  /**
+   * - Matrix kscan: matrix input pin, sensing voltage change.
+   * - Direct kscan: input pin, sensing voltage change.
+   * - Charlieplex kscan: dual use but it's sensing pin for this key.
+   *   For charlieplex kscan driver, column is always the sensing pin.
+   */
   input: PinIdSchema.optional(),
+  /**
+   * - Matrix kscan: matrix output pin, driving the line.
+   * - Direct kscan: not used.
+   * - Charlieplex kscan: dual use but it's driving pin for this key.
+   *   For charlieplex kscan driver, row is always the driving pin.
+   */
   output: PinIdSchema.optional(),
 });
 export type SingleKeyWiring = z.infer<typeof SingleKeyWiringSchema>;
@@ -233,8 +340,8 @@ export const EncoderSchema = z.object({
    * Optional pin for button press functionality, in case
    * the push button is wired as direct pin in a matrix keyboard.
    */
-  pinS: PinIdSchema.optional(),
-  // TODO configure steps?
+  // pinS: PinIdSchema.optional(), // TODO: Remove this and instruct users configure them as direct kscan keys manually.
+  // TODO configure rotation steps?
 });
 export type Encoder = z.infer<typeof EncoderSchema>;
 
@@ -250,10 +357,16 @@ export const KeyboardPartSchema = z.object({
    */
   pins: PinSelectionSchema,
   /**
+   * Kscans
+   */
+  kscans: z.array(KscanDriverSchema).default([]),
+  /**
    * Key wiring
    */
   keys: z.record(z.string(), SingleKeyWiringSchema.optional()), // key id to wiring
+  /** Encoders */
   encoders: z.array(EncoderSchema).default([]),
+  /** Buses (I2C/SPI) */
   buses: z.array(AnyBusSchema).default([]),
 });
 export type KeyboardPart = z.infer<typeof KeyboardPartSchema>;
