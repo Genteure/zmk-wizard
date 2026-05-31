@@ -1,4 +1,5 @@
 import type { AnyBus, Controller, Key, KeyboardPart, PinSelection, ShiftRegisterDevice, SingleKeyWiring, WiringType } from "../typedef";
+import { getPinMode, kscanPinUsage, busPinUsage } from "../typedef";
 
 // Copy and map wiring between two parts based on key layout and wiring configuration
 // Allow for transformations like flipping vertically/horizontally to make wiring split parts easier
@@ -156,11 +157,12 @@ export function copyWiringBetweenParts(params: WiringCopyParams): WiringCopyResu
     }
   }
 
-  // Filter out bus pin usage; only carry over input/output pins
+  // Filter out bus pin usage; only carry over kscan pins (input/output)
   const resultPins: PinSelection = {};
-  for (const [pinId, mode] of Object.entries(sourcePart.pins || {})) {
+  for (const [pinId, usage] of Object.entries(sourcePart.pins || {})) {
+    const mode = getPinMode(usage);
     if (mode === "input" || mode === "output") {
-      resultPins[pinId] = mode;
+      resultPins[pinId] = usage;
     }
   }
 
@@ -200,9 +202,15 @@ export function copyWiringBetweenParts(params: WiringCopyParams): WiringCopyResu
     } satisfies AnyBus;
   });
 
-  // Mark shift-register bus pins as bus usage
+  // Mark shift-register bus pins as bus usage, preserving the original usage from source
   for (const pinId of busPinsToMark) {
-    resultPins[pinId] = "bus";
+    const sourceUsage = sourcePart.pins?.[pinId];
+    if (sourceUsage && (sourceUsage.usage === "bus" || sourceUsage.usage === "device")) {
+      resultPins[pinId] = sourceUsage;
+    } else {
+      // Fallback: mark as generic bus usage
+      resultPins[pinId] = busPinUsage("spi0", "mosi");
+    }
   }
 
   return {

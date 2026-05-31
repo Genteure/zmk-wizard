@@ -1,6 +1,6 @@
 import { controllerInfos, deviceClassRules, getBusDeviceMetadata, modulesConflict, requiredBusPinsForDevice, socBusData, ZmkModules } from "~/components/controllerInfo";
 import type { BusDeviceTypeName } from "~/typedef";
-import { BusNameSchema, ShieldNameSchema, type Keyboard } from "~/typedef";
+import { BusNameSchema, getPinMode, ShieldNameSchema, type Keyboard } from "~/typedef";
 import { isI2cBus, isSpiBus } from "~/typehelper";
 import { CommonShieldNames } from "./shieldNames";
 
@@ -213,7 +213,7 @@ const Validators: Record<string, ValidatorFunction> = {
           errors.push({ part: partIndex, message: `Pin "${pinId}" for ${label} does not exist on controller "${part.controller}"` });
         }
 
-        const mode = part.pins?.[pinId];
+        const mode = getPinMode(part.pins?.[pinId]);
         if (mode && mode !== "bus") {
           errors.push({ part: partIndex, message: `Pin "${pinId}" for ${label} is marked as "${mode}" instead of "bus"` });
         }
@@ -487,7 +487,7 @@ const Validators: Record<string, ValidatorFunction> = {
           errors.push({ part: partIndex, message: `Pin "${pinId}" for ${label} does not exist on controller "${part.controller}"` });
         }
 
-        const mode = part.pins?.[pinId];
+        const mode = getPinMode(part.pins?.[pinId]);
         if (mode && mode !== "encoder") {
           errors.push({ part: partIndex, message: `Pin "${pinId}" for ${label} is marked as "${mode}" instead of "encoder"` });
         }
@@ -499,12 +499,6 @@ const Validators: Record<string, ValidatorFunction> = {
         const baseLabel = `encoder ${idx + 1}`;
         validatePin(enc.pinA, `${baseLabel} A`);
         validatePin(enc.pinB, `${baseLabel} B`);
-
-        if (enc.pinS) {
-          // validatePin(enc.pinS, `${baseLabel} button`);
-          // data structure exists but Shield Wizard does not support configuring it yet
-          errors.push({ part: partIndex, message: `Push button pin for ${baseLabel} cannot be set here; it must be wired into the key matrix.` });
-        }
 
         if (enc.pinA && enc.pinB && enc.pinA === enc.pinB) {
           errors.push({ part: partIndex, message: `Encoder ${idx + 1} must use different pins for A and B` });
@@ -588,14 +582,14 @@ const Validators: Record<string, ValidatorFunction> = {
         if (!hasInput) {
           ensurePartRecord(key.part);
           missingPinsByPart[key.part].input.push(index);
-        } else if (part.pins[inputPin] !== "input") {
+        } else if (getPinMode(part.pins[inputPin]) !== "input") {
           errors.push({ part: key.part, message: `Key ${index} uses input pin "${inputPin}" which is not configured as input` });
         }
 
         if (!hasOutput) {
           ensurePartRecord(key.part);
           missingPinsByPart[key.part].output.push(index);
-        } else if (!isValidShifterOutput && part.pins[outputPin] !== "output") {
+        } else if (!isValidShifterOutput && getPinMode(part.pins[outputPin]) !== "output") {
           errors.push({ part: key.part, message: `Key ${index} uses output pin "${outputPin}" which is not configured as output` });
         }
 
@@ -617,7 +611,7 @@ const Validators: Record<string, ValidatorFunction> = {
           missingPinsByPart[key.part].input.push(index);
         } else if (!part.pins[inputPin]) {
           errors.push({ part: key.part, message: `Key ${index} references unknown pin "${inputPin}"` });
-        } else if (part.pins[inputPin] !== "input") {
+        } else if (getPinMode(part.pins[inputPin]) !== "input") {
           errors.push({ part: key.part, message: `Key ${index} uses pin "${inputPin}" which is not configured as input` });
         }
         // If someone set output for direct, warn as error to avoid confusion

@@ -7,6 +7,7 @@ import { default as TriangleAlert } from "lucide-solid/icons/triangle-alert";
 import { createMemo, createSignal, For, Match, onCleanup, Show, Switch, type Accessor, type VoidComponent } from "solid-js";
 import { produce } from "solid-js/store";
 import type { PinMode, WiringType } from "~/typedef";
+import { getPinMode, kscanPinUsage } from "~/typedef";
 import { useWizardContext } from "../context";
 import type { ControllerInfo, VisualPin } from "../controllerInfo";
 import { controllerInfos } from "../controllerInfo";
@@ -206,7 +207,14 @@ export const ControllerPinConfigurator: VoidComponent<{
 }> = (props) => {
   const context = useWizardContext();
   const info = createMemo(() => controllerInfos[props.controllerId] || null);
-  const keyboardPins = createMemo(() => context.keyboard.parts[props.partIndex()].pins || {});
+  const keyboardPins = createMemo(() => {
+    const pins = context.keyboard.parts[props.partIndex()]?.pins || {};
+    const result: Record<string, PinMode | undefined> = {};
+    for (const [pinId, usage] of Object.entries(pins)) {
+      result[pinId] = getPinMode(usage);
+    }
+    return result;
+  });
 
   const clearPinUsage = (pinId: string) => {
     const partIdx = props.partIndex();
@@ -236,7 +244,12 @@ export const ControllerPinConfigurator: VoidComponent<{
       return;
     }
 
-    context.setKeyboard("parts", props.partIndex(), "pins", pinId, usage);
+    // Use the first kscan's ID if available, otherwise "default".
+    // When multiple kscans are supported, the UI will let users pick which kscan a pin belongs to.
+    const part = context.keyboard.parts[props.partIndex()];
+    const defaultKscanId = part.kscans?.[0]?.id || "default";
+    const pinUsage = kscanPinUsage(defaultKscanId, usage);
+    context.setKeyboard("parts", props.partIndex(), "pins", pinId, pinUsage);
     context.setNav("activeWiringPin", pinId);
   };
 

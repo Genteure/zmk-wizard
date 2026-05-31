@@ -15,6 +15,7 @@ import { produce, unwrap } from "solid-js/store";
 import { swpBgClass } from "~/lib/swpColors";
 import { copyWiringBetweenParts, type WiringTransform } from "~/lib/wiringMapping";
 import type { Controller, WiringType } from "../../typedef";
+import { encoderPinUsage, getPinMode } from "../../typedef";
 import { useWizardContext } from "../context";
 import { BusDevicesConfigurator, ControllerPinConfigurator, EncoderConfigurator, ShiftRegisterPinConfigurator } from "../controller";
 import { controllerInfos, loadBusesForController, socCapabilities } from "../controllerInfo";
@@ -154,11 +155,11 @@ export const ConfigPart: Component<{ partIndex: Accessor<number> }> = (props) =>
       const encoders = structuredClone(unwrap(source.encoders) || []);
       p.encoders = encoders;
 
-      for (const enc of encoders) {
+      for (const [idx, enc] of encoders.entries()) {
         p.pins = p.pins || {};
-        if (enc.pinA) p.pins[enc.pinA] = "encoder";
-        if (enc.pinB) p.pins[enc.pinB] = "encoder";
-        if (enc.pinS) p.pins[enc.pinS] = "encoder";
+        const encoderId = `encoder_${idx}`;
+        if (enc.pinA) p.pins[enc.pinA] = encoderPinUsage(encoderId, "pinA");
+        if (enc.pinB) p.pins[enc.pinB] = encoderPinUsage(encoderId, "pinB");
       }
     }));
   };

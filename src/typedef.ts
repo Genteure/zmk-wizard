@@ -206,16 +206,19 @@ export const ControllerSchema = z.enum([
 ]);
 export type Controller = z.infer<typeof ControllerSchema>;
 
-// export const WiringTypeSchema = z.enum([
-//   "matrix_diode",
-//   "matrix_no_diode",
-//   "direct_gnd",
-//   "direct_vcc",
-// ]);
-// export type WiringType = z.infer<typeof WiringTypeSchema>;
+export const WiringTypeSchema = z.enum([
+  "matrix_diode",
+  "matrix_no_diode",
+  "direct_gnd",
+  "direct_vcc",
+]);
+export type WiringType = z.infer<typeof WiringTypeSchema>;
 
-// export const PinModeSchema = z.enum(["kscan", "bus", "encoder"]);
-// export type PinMode = z.infer<typeof PinModeSchema>;
+/**
+ * @deprecated Use PinUsage discriminated union instead.
+ * Kept for backward compatibility during migration.
+ */
+export type PinMode = "input" | "output" | "bus" | "encoder";
 
 export const KscanDriverKindSchema = z.enum(["matrix", "direct", "charlieplex"]);
 export type KscanDriverKind = z.infer<typeof KscanDriverKindSchema>;
@@ -288,7 +291,7 @@ export const PinUsageDeviceSchema = z.object({
   usage: z.literal("device"),
   bus: BusNameSchema,
   deviceId: z.string(), // TODO ADD ULID for each device to associate pins with specific devices
-  role: string, // e.g. "cs", "irq", "dr", etc. Specific to the device type.
+  role: z.string(), // e.g. "cs", "irq", "dr", etc. Specific to the device type.
 });
 export type PinUsageDevice = z.infer<typeof PinUsageDeviceSchema>;
 
@@ -311,6 +314,52 @@ export type PinUsage = z.infer<typeof PinUsageSchema>;
 // then for each pin you can get its usage, availability, and other info from this record.
 export const PinSelectionSchema = z.record(PinIdSchema, PinUsageSchema.optional());
 export type PinSelection = z.infer<typeof PinSelectionSchema>;
+
+/**
+ * Get the legacy PinMode string from a PinUsage object.
+ * Used for backward compatibility with UI components and validators.
+ */
+export function getPinMode(usage: PinUsage | undefined): PinMode | undefined {
+  if (!usage) return undefined;
+  switch (usage.usage) {
+    case "kscan":
+      return usage.role === "output" ? "output" : "input";
+    case "bus":
+      return "bus";
+    case "device":
+      return "bus";
+    case "encoder":
+      return "encoder";
+  }
+}
+
+/**
+ * Create a PinUsage for kscan usage with a given role.
+ */
+export function kscanPinUsage(kscanId: string, role: "input" | "output" | "interrupt"): PinUsageKscan {
+  return { usage: "kscan", kscan: kscanId, role };
+}
+
+/**
+ * Create a PinUsage for bus usage.
+ */
+export function busPinUsage(busName: string, role: PinUsageBus["role"]): PinUsageBus {
+  return { usage: "bus", bus: busName, role };
+}
+
+/**
+ * Create a PinUsage for device usage (cs, irq, etc.).
+ */
+export function devicePinUsage(busName: string, deviceId: string, role: string): PinUsageDevice {
+  return { usage: "device", bus: busName, deviceId, role };
+}
+
+/**
+ * Create a PinUsage for encoder usage.
+ */
+export function encoderPinUsage(encoderId: string, role: "pinA" | "pinB"): PinUsageEncoder {
+  return { usage: "encoder", encoderId, role };
+}
 
 /**
  * The kscan pins associated with each key. The actual meaning of input/output depends on the kscan driver type.
