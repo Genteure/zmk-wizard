@@ -244,7 +244,8 @@ export const ControllerPinConfigurator: VoidComponent<{
       return;
     }
 
-    // Get or create a default kscan ID for this part
+    // Use the first kscan's ID if available, otherwise "default".
+    // When multiple kscans are supported, the UI will let users pick which kscan a pin belongs to.
     const part = context.keyboard.parts[props.partIndex()];
     const defaultKscanId = part.kscans?.[0]?.id || "default";
     const pinUsage = kscanPinUsage(defaultKscanId, usage);
