@@ -6,7 +6,7 @@ import { createMemo, createSignal, For, Show, type Accessor, type VoidComponent 
 import { produce } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
 import type { AnyBus, AnyBusDevice, BusDeviceTypeName, BusName, I2cBus, ModuleId, PinSelection, SpiBus } from "~/typedef";
-import { AnyBusDeviceSchema } from "~/typedef";
+import { AnyBusDeviceSchema, busPinUsage, devicePinUsage, getPinMode } from "~/typedef";
 import { addDeviceToBus, isI2cBus, isSpiBus } from "~/typehelper";
 import { useWizardContext } from "../context";
 import { busDeviceMetadata, busDeviceTypes, controllerInfos, deviceClassRules, getBusDeviceMetadata, pinPropKeysForDevice, requiredBusPinsForDevice, socBusData, ZmkModules, type AllDeviceDataTypes, type BusDeviceClass, type ControllerInfo, type DevicePropDefinition, type PinctrlI2cPinChoices, type PinctrlSpiPinChoices } from "../controllerInfo";
@@ -241,7 +241,7 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
   const isPinUsedInPart = (partState: { buses?: AnyBus[]; pins?: PinSelection }, pinId: string, skip: SkipUsage[] = []) => {
     // pin used for non-bus purpose on this part
     const usage = partState.pins?.[pinId];
-    if (usage && usage !== "bus") return true;
+    if (usage && getPinMode(usage) !== "bus") return true;
 
     const shouldSkip = (idx: number, key: BusPinKey) => skip.some((s) => s.busIndex === idx && s.key === key);
 
@@ -270,7 +270,7 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
   const clearBusPins = (bus: AnyBus, partPins?: PinSelection) => {
     const unset = (pinId?: string) => {
       if (!pinId) return;
-      if (partPins && partPins[pinId] === "bus") {
+      if (partPins && partPins[pinId] && getPinMode(partPins[pinId]) === "bus") {
         delete partPins[pinId];
       }
     };
@@ -293,7 +293,7 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
       if (isI2cBus(bus) && (key === "sda" || key === "scl")) {
         // const prev = key === "sda" ? bus.sda : bus.scl;
         const prev = bus[key];
-        if (prev && prev !== value && part.pins?.[prev] === "bus") {
+        if (prev && prev !== value && part.pins?.[prev] && getPinMode(part.pins[prev]) === "bus") {
           const stillUsed = isPinUsedInPart(part, prev, [{ busIndex, key }]);
           if (!stillUsed) {
             delete part.pins[prev];
@@ -303,7 +303,7 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
       } else if (isSpiBus(bus) && (key === "mosi" || key === "miso" || key === "sck")) {
         // const prev = key === "mosi" ? bus.mosi : key === "miso" ? bus.miso : bus.sck;
         const prev = bus[key];
-        if (prev && prev !== value && part.pins?.[prev] === "bus") {
+        if (prev && prev !== value && part.pins?.[prev] && getPinMode(part.pins[prev]) === "bus") {
           const stillUsed = isPinUsedInPart(part, prev, [{ busIndex, key }]);
           if (!stillUsed) {
             delete part.pins[prev];
@@ -317,7 +317,7 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
 
       if (value) {
         part.pins = part.pins || {};
-        part.pins[value] = "bus";
+        part.pins[value] = busPinUsage(bus.name, key as any);
       }
 
       if (!bus.devices || bus.devices.length === 0) {
@@ -342,13 +342,13 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
       if (prop.widget === "pin") {
         const prev = deviceRecord[key] as string | undefined;
         const next = typeof value === "string" && value.length > 0 ? value : undefined;
-        if (prev && prev !== next && part.pins?.[prev] === "bus") {
+        if (prev && prev !== next && part.pins?.[prev] && getPinMode(part.pins[prev]) === "bus") {
           delete part.pins[prev];
         }
         deviceRecord[key] = next;
         if (next) {
           part.pins = part.pins || {};
-          part.pins[next] = "bus";
+          part.pins[next] = devicePinUsage(bus.name, `device_${deviceIndex}`, key);
         }
         return;
       }
@@ -373,7 +373,7 @@ export const BusDevicesConfigurator: VoidComponent<{ partIndex: Accessor<number>
         const pinProps = pinPropKeysForDevice(removed.type);
         pinProps.forEach((propKey) => {
           const pinId = (removed as Record<string, string | undefined>)[propKey];
-          if (pinId && part.pins?.[pinId] === "bus") {
+          if (pinId && part.pins?.[pinId] && getPinMode(part.pins[pinId]) === "bus") {
             delete part.pins[pinId];
           }
         });

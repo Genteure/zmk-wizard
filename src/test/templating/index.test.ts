@@ -1,7 +1,8 @@
 import { describe, expect, test } from "vitest";
 import { createZMKConfig } from "~/lib/templating";
 import { loadBusesForController } from "~/components/controllerInfo";
-import type { Keyboard, VirtualTextFolder, Controller, WiringType, SingleKeyWiring, PinSelection } from "~/typedef";
+import type { Keyboard, VirtualTextFolder, Controller, WiringType, SingleKeyWiring, PinSelection, PinUsage } from "~/typedef";
+import { kscanPinUsage } from "~/typedef";
 
 import Parser from 'tree-sitter';
 
@@ -65,8 +66,19 @@ interface LegacyKeyboardData {
   wiringType: WiringType;
   dongle: boolean;
   layout: LegacyTemplatingKey[];
-  pinouts: PinSelection[];
+  pinouts: Record<string, "input" | "output" | "bus" | "encoder">[];
   keyWiring: SingleKeyWiring[];
+}
+
+function convertLegacyPins(pins: Record<string, "input" | "output" | "bus" | "encoder">): PinSelection {
+  const result: PinSelection = {};
+  for (const [pinId, mode] of Object.entries(pins)) {
+    if (mode === "input" || mode === "output") {
+      result[pinId] = kscanPinUsage("default", mode);
+    }
+    // bus/encoder would need more context; for tests these are kscan pins
+  }
+  return result;
 }
 
 function makeKeyboard(data: LegacyKeyboardData): Keyboard {
@@ -90,7 +102,8 @@ function makeKeyboard(data: LegacyKeyboardData): Keyboard {
     name: partNames[index] ?? `part-${index + 1}`,
     controller: data.controller,
     wiring: data.wiringType,
-    pins,
+    pins: convertLegacyPins(pins),
+    kscans: [],
     keys: {} as Record<string, SingleKeyWiring>,
     encoders: [],
     buses: loadBusesForController(data.controller),

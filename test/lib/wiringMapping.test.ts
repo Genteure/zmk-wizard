@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { loadBusesForController } from "~/components/controllerInfo";
 import { copyWiringBetweenParts } from "../../src/lib/wiringMapping";
-import type { Key, KeyboardPart, SingleKeyWiring } from "../../src/typedef";
+import type { Key, KeyboardPart, PinSelection, SingleKeyWiring } from "../../src/typedef";
+import { kscanPinUsage } from "../../src/typedef";
 
 type KeyOverrides = Partial<Pick<Key, "x" | "y" | "w" | "h" | "r" | "rx" | "ry">>;
 
@@ -18,12 +19,21 @@ function makeKey(id: string, part: number, row: number, col: number, overrides: 
   } as Key;
 }
 
-function makePart(name: string, controller: KeyboardPart["controller"], wiring: KeyboardPart["wiring"], pins: KeyboardPart["pins"], keys: Record<string, SingleKeyWiring | undefined> = {}): KeyboardPart {
+function convertPins(pins: Record<string, "input" | "output">): PinSelection {
+  const result: PinSelection = {};
+  for (const [pinId, mode] of Object.entries(pins)) {
+    result[pinId] = kscanPinUsage("default", mode);
+  }
+  return result;
+}
+
+function makePart(name: string, controller: KeyboardPart["controller"], wiring: KeyboardPart["wiring"], pins: Record<string, "input" | "output">, keys: Record<string, SingleKeyWiring | undefined> = {}): KeyboardPart {
   return {
     name,
     controller,
     wiring,
-    pins,
+    pins: convertPins(pins),
+    kscans: [],
     keys,
     encoders: [],
     buses: loadBusesForController(controller),
@@ -63,7 +73,7 @@ describe("copyWiringBetweenParts", () => {
 
     expect(result.controller).toBe("nice_nano_v2");
     expect(result.wiring).toBe("matrix_diode");
-    expect(result.pins).toEqual({ p1: "input", p2: "output" });
+    expect(result.pins).toEqual(convertPins({ p1: "input", p2: "output" }));
     expect(result.keys).toEqual({
       t1: { input: "p1" },
       t2: { input: "p1", output: "p2" },

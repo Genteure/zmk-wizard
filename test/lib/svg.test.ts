@@ -12,6 +12,7 @@ function makePart(name: string): KeyboardPart {
     controller: "nice_nano_v2",
     wiring: "direct_gnd",
     pins: {},
+    kscans: [],
     keys: {},
     encoders: [],
     buses: [],

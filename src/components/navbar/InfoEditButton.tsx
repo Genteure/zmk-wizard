@@ -220,6 +220,7 @@ hover:border-accent bg-base-300 hover:bg-base-content/10 transition-colors durat
                       controller: "nice_nano_v2",
                       wiring: "matrix_diode",
                       keys: {},
+                      kscans: [],
                       encoders: [],
                       pins: {},
                       buses: loadBusesForController("nice_nano_v2"),

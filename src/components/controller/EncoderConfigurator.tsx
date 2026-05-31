@@ -1,6 +1,7 @@
 import { Button } from "@kobalte/core/button";
 import { createMemo, For, Show, type Accessor, type VoidComponent } from "solid-js";
 import { produce } from "solid-js/store";
+import { encoderPinUsage, getPinMode } from "~/typedef";
 import { useWizardContext } from "../context";
 import { controllerInfos } from "../controllerInfo";
 
@@ -21,20 +22,21 @@ export const EncoderConfigurator: VoidComponent<{ partIndex: Accessor<number> }>
   const addEncoder = () => {
     context.setKeyboard("parts", props.partIndex(), produce((p) => {
       p.encoders = p.encoders || [];
-      p.encoders.push({ pinA: undefined, pinB: undefined, pinS: undefined });
+      p.encoders.push({ pinA: undefined, pinB: undefined });
     }));
   };
 
-  const setEncoderPin = (encoderIndex: number, key: "pinA" | "pinB" | "pinS", value?: string) => {
+  const setEncoderPin = (encoderIndex: number, key: "pinA" | "pinB", value?: string) => {
     context.setKeyboard("parts", props.partIndex(), produce((p) => {
       p.encoders = p.encoders || [];
       const enc = p.encoders[encoderIndex];
       if (!enc) return;
 
       const prev = enc[key];
-      if (prev && prev !== value && p.pins?.[prev] === "encoder") {
-        const stillUsed = p.encoders.some((other, idx) => idx !== encoderIndex && (other.pinA === prev || other.pinB === prev || other.pinS === prev));
-        if (!stillUsed) {
+      if (prev && prev !== value) {
+        // Check if the previous pin is still used by another encoder
+        const stillUsed = p.encoders.some((other, idx) => idx !== encoderIndex && (other.pinA === prev || other.pinB === prev));
+        if (!stillUsed && p.pins?.[prev] && getPinMode(p.pins[prev]) === "encoder") {
           delete p.pins[prev];
         }
       }
@@ -43,7 +45,9 @@ export const EncoderConfigurator: VoidComponent<{ partIndex: Accessor<number> }>
 
       if (value) {
         p.pins = p.pins || {};
-        p.pins[value] = "encoder";
+        const encoderId = `encoder_${encoderIndex}`;
+        const role = key as "pinA" | "pinB";
+        p.pins[value] = encoderPinUsage(encoderId, role);
       }
     }));
   };
@@ -55,10 +59,10 @@ export const EncoderConfigurator: VoidComponent<{ partIndex: Accessor<number> }>
       const removed = p.encoders.splice(encoderIndex, 1)?.[0];
       if (!removed) return;
 
-      const pinsToClear = [removed.pinA, removed.pinB, removed.pinS].filter(Boolean) as string[];
+      const pinsToClear = [removed.pinA, removed.pinB].filter(Boolean) as string[];
       pinsToClear.forEach((pinId) => {
-        const stillUsed = p.encoders.some((enc) => enc.pinA === pinId || enc.pinB === pinId || enc.pinS === pinId);
-        if (!stillUsed && p.pins?.[pinId] === "encoder") {
+        const stillUsed = p.encoders.some((enc) => enc.pinA === pinId || enc.pinB === pinId);
+        if (!stillUsed && p.pins?.[pinId] && getPinMode(p.pins[pinId]) === "encoder") {
           delete p.pins[pinId];
         }
       });
@@ -144,26 +148,16 @@ export const EncoderConfigurator: VoidComponent<{ partIndex: Accessor<number> }>
                       disabled
                     >
                       {/*
-                        This in current state will not work since even we do custom composite kscan
-                        for encoder push pins, the key will not be in the key layout thus missing in
-                        matrix transform and physical layout. We need to actually support composite
-                        kscan from the start to do custom encoder push buttons here.
-                        TODO Add cmposite kscan support
-                        value={encoder.pinS || ""}
-                        onChange={(e) => setEncoderPin(idx(), "pinS", e.currentTarget.value || undefined)}
+                        TODO: Add composite kscan support.
+                        Encoder push pins must be wired into the key matrix for now.
                       */}
                       <option value="">Part of matrix</option>
-                      {/* <For each={availablePins()}>{(pin) => (
-                        <option value={pin} disabled={isPinBusy(pin, encoder.pinS)}>
-                          {pinLabelForPinId(pin) + (isPinBusy(pin, encoder.pinS) ? " (in use)" : "")}
-                        </option>
-                      )}</For> */}
                     </select>
                   </label>
                   <label class="flex flex-col gap-1 text-sm">
                     <span class="text-xs uppercase text-base-content/70">Pin S2</span>
                     <select class="select select-bordered select-sm w-full" value="" disabled>
-                      <option value="">{encoder.pinS ? "GND" : "Part of matrix"}</option>
+                      <option value="">Part of matrix</option>
                     </select>
                   </label>
                 </div>

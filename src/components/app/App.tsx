@@ -11,6 +11,7 @@ import LucideKeyboard from "lucide-solid/icons/keyboard";
 
 import { swpBgClass } from "~/lib/swpColors";
 import type { Key } from "../../typedef";
+import { getPinMode } from "../../typedef";
 import { useWizardContext } from "../context";
 import { KeyboardPreview, type GraphicsKey } from "../graphics";
 import { BuildButton, HelpButton, InfoEditButton } from "../navbar";
@@ -65,7 +66,7 @@ export const App: VoidComponent = () => {
     if (!pinId) return;
 
     const isShifterPin = pinId.startsWith("shifter");
-    const mode = isShifterPin ? "output" : context.keyboard.parts[partIdx].pins[pinId];
+    const mode = isShifterPin ? "output" : getPinMode(context.keyboard.parts[partIdx].pins[pinId]);
     if (!mode) return;
 
     const wiringType = context.keyboard.parts[partIdx].wiring;
