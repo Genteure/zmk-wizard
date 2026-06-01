@@ -570,6 +570,7 @@ const Validators: Record<string, ValidatorFunction> = {
       const wiringType = part.wiring;
       const isMatrix = wiringType === "matrix_diode" || wiringType === "matrix_no_diode";
       const isDirect = wiringType === "direct_gnd" || wiringType === "direct_vcc";
+      const isCharlieplex = wiringType === "charlieplex";
 
       const wiring = part.keys[key.id];
       const inputPin = wiring?.input;
@@ -630,6 +631,40 @@ const Validators: Record<string, ValidatorFunction> = {
         if (hasInput) {
           ensureSigMap(key.part);
           const sig = JSON.stringify({ t: "d", i: inputPin });
+          const map = wiringSigsByPart[key.part];
+          const list = map.get(sig) ?? [];
+          list.push(index);
+          map.set(sig, list);
+        }
+      } else if (isCharlieplex) {
+        // Charlieplex wiring requires both input (sense) and output (drive) pins
+        // Both pins should be marked as "kscan" since they serve dual roles
+        const hasInput = typeof inputPin === "string" && inputPin !== "";
+        const hasOutput = typeof outputPin === "string" && outputPin !== "";
+
+        if (!hasInput) {
+          ensurePartRecord(key.part);
+          missingPinsByPart[key.part].input.push(index);
+        } else if (part.pins[inputPin] !== "kscan" && part.pins[inputPin] !== "input") {
+          errors.push({ part: key.part, message: `Key ${index} uses sense pin "${inputPin}" which is not configured as kscan or input` });
+        }
+
+        if (!hasOutput) {
+          ensurePartRecord(key.part);
+          missingPinsByPart[key.part].output.push(index);
+        } else if (part.pins[outputPin] !== "kscan" && part.pins[outputPin] !== "output") {
+          errors.push({ part: key.part, message: `Key ${index} uses drive pin "${outputPin}" which is not configured as kscan or output` });
+        }
+
+        // Drive and sense pins must be different
+        if (hasInput && hasOutput && inputPin === outputPin) {
+          errors.push({ part: key.part, message: `Key ${index} has same pin "${inputPin}" for both drive and sense` });
+        }
+
+        // Record signature for duplicate detection
+        if (hasInput && hasOutput) {
+          ensureSigMap(key.part);
+          const sig = JSON.stringify({ t: "c", i: inputPin, o: outputPin });
           const map = wiringSigsByPart[key.part];
           const list = map.get(sig) ?? [];
           list.push(index);
