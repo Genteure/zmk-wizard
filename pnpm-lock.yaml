@@ -115,8 +115,8 @@ importers:
         specifier: ^0.25.0
         version: 0.25.0
       tree-sitter-devicetree:
-        specifier: ^0.14.1
-        version: 0.14.1(tree-sitter@0.25.0)
+        specifier: ^0.15.0
+        version: 0.15.0(tree-sitter@0.25.0)
       tree-sitter-json:
         specifier: ^0.24.8
         version: 0.24.8(tree-sitter@0.25.0)
@@ -2499,6 +2499,7 @@ packages:
 
   glob@10.4.5:
     resolution: {integrity: sha512-7Bv8RF0k6xjo7d4A/PxYLbUCfb6c+Vpd2/mB2yRDlew7Jb5hEXiCD9ibfO7wpk8i4sevK6DFny9h7EYbM3/sHg==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   graceful-fs@4.2.11:
@@ -3719,10 +3720,10 @@ packages:
     resolution: {integrity: sha512-bLVMLPtstlZ4iMQHpFHTR7GAGj2jxi8Dg0s2h2MafAE4uSWF98FC/3MomU51iQAMf8/qDUbKWf5GxuvvVcXEhw==}
     engines: {node: '>=20'}
 
-  tree-sitter-devicetree@0.14.1:
-    resolution: {integrity: sha512-k7PYbuIXok5dphKZk+mL1yMPOcoBHfDdyqBLe20vDWAS928/enNxfEny7rmrrvpuc0JIAZ36SmFe4ueA8huDaw==}
+  tree-sitter-devicetree@0.15.0:
+    resolution: {integrity: sha512-O+Wpo+3WZCvDgspXYpqRfU0euy5yMB6rV+nRF0Ytm+jbUldIf7rFtBqv7XweB/gkSLl/pbqLD1IVis+MTuOQKA==}
     peerDependencies:
-      tree-sitter: ^0.22.4
+      tree-sitter: ^0.25.0
       tree_sitter: '*'
     peerDependenciesMeta:
       tree_sitter:
@@ -8386,7 +8387,7 @@ snapshots:
       punycode: 2.3.1
     optional: true
 
-  tree-sitter-devicetree@0.14.1(tree-sitter@0.25.0):
+  tree-sitter-devicetree@0.15.0(tree-sitter@0.25.0):
     dependencies:
       node-addon-api: 8.8.0
       node-gyp-build: 4.8.4
