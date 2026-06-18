@@ -1252,6 +1252,51 @@ export const busDeviceMetadata: DeviceMetadata = {
 
 export const busDeviceTypes = Object.keys(busDeviceMetadata) as readonly BusDeviceTypeName[];
 
+/**
+ * Groups of device types that represent the same device on different buses.
+ * Each group has a display name and an array of device types (variants).
+ * When a group has multiple variants, the UI shows a single button that
+ * lets users choose which bus to add the device to.
+ */
+export interface DeviceGroup {
+  /** Display name for the grouped device button */
+  readonly displayName: string;
+  /** Device type variants in this group */
+  readonly variants: readonly BusDeviceTypeName[];
+}
+
+/**
+ * Registry of device groups for devices that work on multiple buses.
+ * Key is a unique group identifier, value is the group definition.
+ */
+export const deviceGroups: Readonly<Record<string, DeviceGroup>> = {
+  pinnacle: {
+    displayName: "Pinnacle",
+    variants: ["pinnacle_i2c", "pinnacle_spi"],
+  },
+};
+
+// Build reverse lookup map: device type -> group key
+const deviceToGroupKey: Readonly<Record<BusDeviceTypeName, string>> = (() => {
+  const map: Record<string, string> = {};
+  for (const [groupKey, group] of Object.entries(deviceGroups)) {
+    for (const variant of group.variants) {
+      map[variant] = groupKey;
+    }
+  }
+  return map as Record<BusDeviceTypeName, string>;
+})();
+
+/**
+ * Get the group key and group data a device type belongs to, if any.
+ * Returns null if the device is not part of any group.
+ */
+export function getDeviceGroup(type: BusDeviceTypeName): { key: string; group: DeviceGroup } | null {
+  const groupKey = deviceToGroupKey[type];
+  if (!groupKey) return null;
+  return { key: groupKey, group: deviceGroups[groupKey] };
+}
+
 export function deviceOptionsForBus(busType: "i2c" | "spi"): readonly BusDeviceTypeName[] {
   return busDeviceTypes.filter((name) => busDeviceMetadata[name].bus === busType);
 }
