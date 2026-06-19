@@ -1,11 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "shield-wizard",
-  "main": "./dist/_worker.js/index.js",
+  "main": "@astrojs/cloudflare/entrypoints/server",
   "compatibility_date": "2025-08-15",
   "vars": {},
   "compatibility_flags": [
-    // "nodejs_compat"
+    "nodejs_compat"
   ],
   "assets": {
     "binding": "ASSETS",

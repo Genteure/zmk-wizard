@@ -2,17 +2,25 @@
   "extends": "astro/tsconfigs/strict",
   "include": [
     ".astro/types.d.ts",
-    "**/*"
+    "src/**/*",
+    "worker-configuration.d.ts",
+    "auto-imports.d.ts",
+    "components.d.ts"
   ],
   "exclude": [
-    "dist"
+    "dist",
+    "node_modules",
+    "**/node_modules/**"
   ],
   "compilerOptions": {
     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
+    "jsxImportSource": "vue",
     "paths": {
       "~/*": [
         "./src/*"
+      ],
+      "#build/ui/*": [
+        "./node_modules/.nuxt-ui/ui/*"
       ]
     }
   }

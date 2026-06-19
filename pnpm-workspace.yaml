@@ -1,9 +1,8 @@
-onlyBuiltDependencies:
-  - '@tailwindcss/oxide'
-  - '@tree-sitter-grammars/tree-sitter-yaml'
-  - esbuild
-  - sharp
-  - tree-sitter
-  - tree-sitter-devicetree
-  - tree-sitter-json
-  - tree-sitter-kconfig
+allowBuilds:
+  esbuild: true
+  sharp: true
+  vue-demi: true
+  workerd: true
+minimumReleaseAgeExclude:
+  - miniflare@4.20260603.0
+  - wrangler@4.98.0

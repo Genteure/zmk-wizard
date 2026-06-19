@@ -2,7 +2,7 @@
 
 ## Overview
 
-- Purpose: a Solid + Astro web app that generates a ZMK keyboard user config git repository (packed as a tar.gz) and stores it in a Cloudflare Workers KV binding for later download.
+- Purpose: a Vue + Astro web app that generates a ZMK keyboard user config git repository (packed as a tar.gz) and stores it in a Cloudflare Workers KV binding for later download.
 
 - About ZMK: ZMK Firmware is a modern, open source keyboard firmware powered by Zephyr RTOS.
 
@@ -11,46 +11,42 @@
 - Intended audience: Users who want to create custom keyboard layouts and configurations for ZMK-powered keyboards without manually writing configuration files.
 
 - High-level architecture (what to read first):
-
-  - `src/typedef.ts` — shared types/interfaces for keyboard model.
-  - `src/components/context.ts` — SolidJS context provider for UI state management.
-  - `src/components/*` — UI built with SolidJS components (entry point: `src/components/main.tsx`).
-  - `src/pages/*.astro` — Astro pages; `src/pages/index.astro` mounts the client `Main` component.
-  - `src/actions/index.ts` — server-side Astro Actions; `buildRepository` validates captcha, creates ZMK files, packages a git repo and writes a tar.gz to KV via `getRepoKV`.
-  - `src/lib/gitrepo.ts` — builds a virtual git repo (objects, commit, tree) in-memory and returns a map of paths→Uint8Array. Key: `createGitRepository(files)`.
-  - `src/lib/templating/*` — creates ZMK config files from the keyboard model (see `src/lib/templating/index.ts`).
-  - `src/lib/kv.ts` and `wrangler.jsonc` — Cloudflare Workers KV integration (`GIT_REPOS` binding). Actions use `getRepoKV(locals)` to get getData/setData wrappers.
-  - `scripts/updatePhysicalLayouts.ts` → generates `src/lib/physicalLayouts.json` from a local ZMK repo; invoked via `pnpm layouts <path-to-zmk>`.
-
-- Important workflows / commands:
-
-  - Install: `pnpm i` (this repo uses pnpm)
-  - Dev server: `pnpm dev`
-  - Build: `pnpm build`
-  - Astro static checks: `pnpm astro check` (for Astro/TypeScript issues)
-  - Tests (non-interactive, node, for `lib`): `pnpm test run`
-  - Tests (non-interactive, playwright, for UI components): `pnpm test e2e --reporter=line`
+  - `src/types/keyboard.ts` — Zod schemas for the keyboard model (Keyboard, Key, KeyboardPart, KscanDriver, PinUsage, Encoder, etc).
+  - `src/types/devices.ts` — Zod schemas for bus devices (I2C/SPI based peripherals) that can be added to the keyboard.
+  - `src/types/` — also includes `geometry.ts`, `git.ts`, `utils.ts` (ULID validation).
+  - `src/components/stores.ts` — three Pinia stores: `useKeyboardStore` (keyboard model), `useNavigationStore` (UI state), `useSelectionStore` (key selection).
+  - `src/components/app.vue` — shell layout: UHeader + UMain split between Editors and Graphics panels.
+  - `src/components/editor/` — tabbed editors: `layout.vue`, `keyboard.vue`, `part.vue`.
+  - `src/components/graphic/` — physical/keymap layout visualization (WIP).
+  - `src/components/utils/KeyboardNameDialog.vue` — initial modal for keyboard name, shield name, split config.
+  - `src/_entrypoint.ts` — Vue app bootstrap: registers Nuxt UI plugin, Pinia, Fluent i18n.
+  - `src/pages/index.astro` — Astro entry page; mounts `<Main client:only='vue'>`.
 
 - For frontend/UI libraries:
-  - SolidJS: https://www.solidjs.com/, NOT React. The syntax is similar but there are important differences. We are NOT using React. All JSX/TSX files are Solid components.
-  - TailwindCSS: https://tailwindcss.com/
-  - daisyUI: https://daisyui.com/ (TailwindCSS component library, for styles). See https://daisyui.com/components/
-  - Kobalte: https://kobalte.dev/ (SolidJS component library, unstyled). Commonly used components are:
-    - Dialog: https://kobalte.dev/docs/core/components/dialog
-    - Popover: https://kobalte.dev/docs/core/components/popover
+  - Vue 3: https://vuejs.org/ — we use `<script setup>` SFCs.
+  - Nuxt UI v4: https://ui.nuxt.com/ — used standalone (without Nuxt). Provides UApp, UHeader, UTable, UModal, UButton, USelect, etc. See component docs for props/slots. Raw markdown and MCP is available, prefer those instead of fectching HTML from the docs site.
+  - TailwindCSS v4: https://tailwindcss.com/
+  - Pinia: https://pinia.vuejs.org/ — state management via `defineStore`.
+  - Fluent (fluent-vue): https://fluent-vue.demivan.me/ — i18n; locale bundles in `src/components/locales.ts`, inline `<ftl>` blocks in SFCs.
 
 ## Development notes
 
-### Solid.js reactivity
+### Tools and commands
 
-- SolidJS uses fine-grained reactivity based on signals. Unlike React, components do not re-render when state changes; instead, only the parts of the DOM that depend on changed signals are updated.
-- SolidJS uses JSX syntax similar to React, but with key differences in how state and effects are managed. Make sure we are not using React patterns.
-- State management is typically done using `createSignal`, `createEffect`, and `createMemo` from `solid-js`.
-- Signals are created with `createSignal(initialValue)`, which returns a getter and setter function. Always evoke the getter function to access the value. Do not destructure signals. Do not access signals prematurely outside of reactive contexts.
-- Do not destructure props in SolidJS components, as this breaks reactivity. Always access props directly via `props.propName`.
-- Use `createMemo` for derived/computed values that depend on other signals. Simple multi-stage data access can be done without `createMemo`, for example: `const value = () => props.obj().nested.value`.
-- Use `createEffect` for side effects that should run when signals change. Avoid putting non-side-effect code inside `createEffect`.
-- Use SolidJS built-in control flow components like `<For>`, `<Show>`, and `<Switch>` for conditional rendering and lists, instead of JavaScript control flow.
-- Do not destructure stores created with `createStore`. Always access store properties directly via `store.propName` to maintain reactivity.
-- Use `mergeProps` from `solid-js` to provide default prop values in components. Use `splitProps` to separate props into local and passthrough groups when needed.
-- There's no `useCallback` in SolidJS.
+- Use `pnpm` for package management. Never use `npm` or `yarn` commands in this repo.
+- For global npm tools, DO NOT USE `npx`. Use `pnpm dlx` instead. For local tools use `pnpm <tool>` (e.g. `pnpm vitest`).
+- Dev server: `pnpm dev`; Build: `pnpm build`
+- Syntax validation: `pnpm check`. Do NOT use `tsc` or other tsc-like commands directly, as they may not use the correct config or paths.
+- Tests: `pnpm test` (vitest), add `--reporter=agent` for LLM-friendly test results; `pnpm test:e2e` (playwright).
+- Layout generation: `pnpm layouts <path-to-zmk>` (invokes `scripts/updatePhysicalLayouts.ts`)
+
+### Vue reactivity
+
+- Vue 3 uses a proxy-based reactivity system. State is managed with `ref()`, `reactive()`, and `computed()`.
+- Use `<script setup>` for all components — it is the standard syntax. TypeScript is expected (`<script setup lang="ts">`).
+- Prefer composables (functions starting with `use*`) for reusable logic. Pinia stores are the primary way to share state across components.
+- Do NOT use Options API. All components use Composition API with `<script setup>`.
+
+### Styling
+
+- The default sizing should never be `xs`, they're way way way too small. At very minimum, use `sm` for badges, buttons, and form controls. `md` should be the default for most things.

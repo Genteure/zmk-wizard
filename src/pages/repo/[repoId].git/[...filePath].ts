@@ -1,4 +1,4 @@
-import { type APIRoute } from "astro";
+import type { APIRoute } from "astro";
 import { parseTarGzip } from "nanotar";
 import { decodeTime, isValid } from "ulidx";
 import { ExpirationTtlSeconds, getRepoKV } from "~/lib/kv";
@@ -6,7 +6,7 @@ import { ExpirationTtlSeconds, getRepoKV } from "~/lib/kv";
 export const prerender = false;
 
 export const GET: APIRoute = async (context) => {
-  const { params, locals } = context;
+  const { params } = context;
   const { repoId = '', filePath = '' } = params;
 
   if (!isValid(repoId)) {
@@ -65,7 +65,7 @@ export const GET: APIRoute = async (context) => {
     }
   }
 
-  const kv = getRepoKV(locals);
+  const kv = getRepoKV();
   const tarBytes = await kv.getData(repoId);
   if (!tarBytes) {
     return new Response("[Shield Wizard] Repository does not exist", {
@@ -74,7 +74,7 @@ export const GET: APIRoute = async (context) => {
     });
   }
 
-  const files = await parseTarGzip(tarBytes)
+  const files = await parseTarGzip(tarBytes);
 
   const fileContent = (files.filter(file => file.name === filePath))[0]?.data;
   if (!fileContent) {

@@ -1,4 +1,10 @@
-import { type VirtualBinaryFolder, type VirtualFolder } from "../typedef";
+// ─────────────────────────────────────────────────────────────
+// Git Repository Creation — Pack flat files into a git pack
+//
+// Ported directly from main branch src/lib/gitrepo.ts
+// Converts a flat Record<path, string|Uint8Array> into a
+// minimal git repository pack (SHA-1, deflate-compressed).
+// ─────────────────────────────────────────────────────────────
 
 type VirtualTreeItem = VirtualTreeFolder | VirtualTreeFile;
 
@@ -12,13 +18,13 @@ type VirtualTreeFile = {
   content: string | Uint8Array;
 };
 
-function convertFlatToTree(vfs: VirtualFolder): VirtualTreeFolder {
+function convertFlatToTree(vfs: Record<string, string | Uint8Array>): VirtualTreeFolder {
   const root: VirtualTreeFolder = {
     type: 'folder',
     items: {}
   };
 
-  for (const [filePath, content] of Object.entries(vfs) as [string, string | Uint8Array][]) {
+  for (const [filePath, content] of Object.entries(vfs)) {
     const parts = filePath.split('/');
     let currentFolder: VirtualTreeFolder = root;
 
@@ -123,7 +129,9 @@ async function deflateData(data: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(await new Response(stream.readable).arrayBuffer());
 }
 
-export async function createGitRepository(files: VirtualFolder): Promise<VirtualBinaryFolder> {
+export async function createGitRepository(
+  files: Record<string, string | Uint8Array>
+): Promise<Record<string, Uint8Array>> {
   const allObjects = new Map<string, Uint8Array>();
   const fileTree = convertFlatToTree(files);
 
@@ -152,8 +160,6 @@ export async function createGitRepository(files: VirtualFolder): Promise<Virtual
 
   const rootTreeHash = await processTree(fileTree);
 
-  // TODO update author?
-  // TODO update commit message
   const author = "Shield Wizard for ZMK <helpfulguy@zmkwizard.genteure.com>";
   const { hash: commitHash, content: commitContent } = await createGitCommit(
     rootTreeHash,
@@ -162,7 +168,7 @@ export async function createGitRepository(files: VirtualFolder): Promise<Virtual
   );
   allObjects.set(commitHash, commitContent);
 
-  const repo: VirtualBinaryFolder = Object.fromEntries([
+  const repo: Record<string, Uint8Array> = Object.fromEntries([
     ['HEAD', 'ref: refs/heads/main\n'],
     ['refs/heads/main', `${commitHash}\n`],
     ['info/refs', `${commitHash}\trefs/heads/main\n`],

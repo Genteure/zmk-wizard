@@ -153,3 +153,7 @@ worker-configuration.d.ts
 /playwright/.auth/
 
 smokeDist/
+
+# Auto-generated type declarations
+auto-imports.d.ts
+components.d.ts

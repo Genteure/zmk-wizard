@@ -1,7 +1,10 @@
 ---
-import { Main } from "~/components/main";
+import Main from "~/components/main.vue";
+import { localeMap } from "~/components/locales";
 
 import "~/styles/global.css";
+
+const supportedLocales = Object.keys(localeMap);
 
 const cononicalUrl = Astro.site ? new URL("/", Astro.site).href : null;
 ---
@@ -16,10 +19,15 @@ const cononicalUrl = Astro.site ? new URL("/", Astro.site).href : null;
     />
     <title>Shield Wizard for ZMK</title>
     <link rel="canonical" href={cononicalUrl} />
+    {
+      supportedLocales.map((locale) => (
+        <link rel="alternate" hreflang={locale} href={cononicalUrl} />
+      ))
+    }
     <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
   </head>
   <body>
-    <Main client:only="solid-js">
+    <Main client:only="vue">
       <div
         slot="fallback"
         class="flex flex-col items-center justify-center h-screen"

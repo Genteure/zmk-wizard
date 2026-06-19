@@ -1,13 +1,17 @@
 // @ts-check
 import { defineConfig, envField } from 'astro/config';
 
-import solidJs from '@astrojs/solid-js';
-import tailwindcss from '@tailwindcss/vite';
+import starlight from '@astrojs/starlight';
 import versionPlugin from './scripts/vite-plugin-version.js';
 
-import cloudflare from '@astrojs/cloudflare';
+import vue from '@astrojs/vue';
+import ui from '@nuxt/ui/vite';
+import tailwindcss from '@tailwindcss/vite';
+import {
+  SFCFluentPlugin,
+} from 'unplugin-fluent-vue/vite';
 
-import starlight from '@astrojs/starlight';
+import cloudflare from '@astrojs/cloudflare';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -15,98 +19,95 @@ import { fileURLToPath } from 'url';
 // https://astro.build/config
 export default defineConfig({
   site: 'https://shield-wizard.genteure.com',
+  // TODO Removs once cloudflare/workers-sdk#14218 is released.
+  output: process.env.VITEST ? 'server' : undefined,
 
-  adapter: cloudflare({
-    imageService: 'passthrough',
-  }),
+  env: {
+    schema: {
+      TURNSTILE_SECRET: envField.string({ context: "server", access: "secret", optional: true }),
+      PUBLIC_TURNSTILE_SITEKEY: envField.string({ context: "client", access: "public" }),
+    },
+  },
 
   integrations: [
-    solidJs(),
+    vue({
+      appEntrypoint: '/src/_entrypoint.ts',
+    }),
     starlight({
-      title: 'Shield Wizard for ZMK',
-      disable404Route: false,
+      title: 'Shield Wizard',
       editLink: {
         baseUrl:
           process.env.NODE_ENV === 'development'
             ? `vscode://file/${path.dirname(fileURLToPath(import.meta.url))}`
             : 'https://github.com/genteure/zmk-wizard/blob/main',
       },
-      sidebar: [
-        {
-          label: 'Shield Wizard Docs',
-          autogenerate: { directory: 'docs' }
-        }
-      ],
     }),
   ],
-  redirects: {
-    '/next-steps': '/docs/next-steps',
-  },
-  env: {
-    schema: {
-      PUBLIC_TURNSTILE_SITEKEY: envField.string({
-        context: 'client',
-        access: 'public',
-        default: '3x00000000000000000000FF',
-      }),
-      TURNSTILE_SECRET: envField.string({
-        context: 'server',
-        access: 'secret',
-        optional: true,
-      }),
-    }
-  },
-
-  markdown: {
-    rehypePlugins: [
-      () => (tree) => {
-        /** @param {any} node */
-        const setLinkAttrs = (node) => {
-          if (node.tagName === 'a') {
-            const props = node.properties ?? (node.properties = {});
-            props.target = '_blank';
-
-            const existingRel = props.rel;
-            const relValues = new Set(
-              Array.isArray(existingRel)
-                ? existingRel
-                : typeof existingRel === 'string'
-                  ? existingRel.split(/\s+/)
-                  : []
-            );
-
-            // relValues.add('noreferrer');
-            relValues.add('noopener');
-
-            props.rel = Array.from(relValues);
-          }
-
-          if (!node.children) return;
-
-          for (const child of node.children) {
-            if (child.type === 'element') {
-              setLinkAttrs(child);
-            }
-          }
-        };
-
-        setLinkAttrs(tree);
-      },
-    ],
-  },
 
   vite: {
-    resolve: {
-      alias: {
-        '~': new URL('./src', import.meta.url).pathname,
+    plugins: [
+      ui({
+        router: false,
+        theme: {
+          colors:
+            [
+              'primary',
+              'secondary',
+              'success',
+              'info',
+              'warning',
+              'error',
+              'kscanin',
+              'kscanout',
+              'part0',
+              'part1',
+              'part2',
+              'part3',
+              'part4',
+            ],
+        },
+        ui: {
+          colors: {
+            primary: 'indigo',
+            secondary: 'teal',
+            neutral: 'mist',
+
+            kscanin: 'emerald',
+            kscanout: 'rose',
+            part0: 'orange',
+            part1: 'sky',
+            part2: 'pink',
+            part3: 'violet',
+            part4: 'cyan',
+          },
+        },
+      }),
+      tailwindcss(),
+      SFCFluentPlugin({
+        blockType: 'ftl',
+        checkSyntax: true,
+        parseFtl: true,
+      }),
+      versionPlugin(),
+      // TODO: Remove once cloudflare/workers-sdk#14218 is released.
+      // The Cloudflare Vite plugin rejects `resolve.external` in SSR environments,
+      // causing errors when running vitest.
+      {
+        name: 'remove-ssr-external',
+        configResolved(config) {
+          config.environments.ssr.resolve.external = [];
+        },
       },
-    },
-    server: {
-      watch: {
-        ignored: ['**/*.test.*', '**/__tests__/**', '**/*.spec.*']
-      }
-    },
-    plugins: [versionPlugin(), tailwindcss()]
+    ]
   },
 
+  // TODO: Remove once cloudflare/workers-sdk#14218 is released.
+  adapter: process.env.VITEST
+    ? undefined
+    : cloudflare({
+      imageService: {
+        build: 'compile',
+        runtime: 'passthrough',
+      }
+    }),
 });
