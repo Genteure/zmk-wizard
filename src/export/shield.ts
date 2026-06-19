@@ -208,24 +208,6 @@ function dtsPinHandle(controller: ControllerId, pinId: string): string {
   );
 }
 
-function seeeduinoDisableVBatt(): string {
-  return `
-/*
- * D16/P0.31 on Seeeduino XIAO nRF52840 Plus is the the same pin as AIN7,
- * it's connected to the BAT+ through a 1M resistor for measuring the
- * battery voltage.
- * See https://wiki.seeedstudio.com/XIAO_BLE/ for schematics.
- *
- * To use D16 (P0.31, AIN7) as GPIO in kscan, you must:
- * - Hardware: DO NOT connect battery to VBAT pin, it may fry your pins due
- *   to high voltage since sink side of the voltage divider is disabled.
- * - Firmware: Configured for you below.
- */
-&adc { status = "disabled"; };
-&vbatt { status = "disabled"; };
-/ { chosen { /delete-property/ zmk,battery; }; };
-`;
-}
 
 
 
@@ -743,9 +725,6 @@ function buildDirectKscanUnit(
 };
 `;
 
-  if (part.controller === "xiao_ble" && pinData["d16"]) {
-    kscanDts += seeeduinoDisableVBatt();
-  }
 
   const keyMappings: KscanUnitResult["keyMappings"] = keyboard.layout
     .map((key, index) => {
@@ -806,9 +785,6 @@ function buildMatrixKscanUnit(
 `;
 
   const pinData = pinsForKscan(keyboard, partIndex, kscan.id);
-  if (part.controller === "xiao_ble" && pinData["d16"]) {
-    kscanDts += seeeduinoDisableVBatt();
-  }
 
   const keyMappings: KscanUnitResult["keyMappings"] = keyboard.layout
     .map((key, index) => {

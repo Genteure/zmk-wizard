@@ -202,10 +202,6 @@ function statusBadgeColor(status: BusStatus) {
       </UDropdownMenu>
     </div>
 
-    <div v-if="controllerMeta" class="text-muted text-xs mt-3">
-      {{ $t('bus-info', { count: busStatuses.length, soc: controllerMeta.soc, active: busStatuses.filter(b => b.status === 'active').length }) }}
-    </div>
-
     <div class="text-muted text-xs mt-0.5">
       {{ $t('device-driver-count', { available: availableDeviceTypes.length, blocked: moduleBlockedCount }) }}
     </div>
@@ -256,13 +252,13 @@ function statusBadgeColor(status: BusStatus) {
                     <template v-for="(propMeta, propKey) in deviceMetaFor(device.type)!.props" :key="propKey">
                       <UFormField v-if="propMeta.widget === 'dec'" :label="propMeta.label ?? propKey" :required="propMeta.required">
                         <UInput type="number" :model-value="Number((device as Record<string, unknown>)[propKey] ?? 0)"
-                          :min="propMeta.min" :max="propMeta.max" size="sm" class="w-24"
+                          :min="propMeta.min" :max="propMeta.max" size="sm" class="w-full"
                           @update:model-value="(v: number) => onDevicePropChange(busStatus.name, device.id, propKey, v)" />
                       </UFormField>
 
                       <UFormField v-if="propMeta.widget === 'hex'" :label="propMeta.label ?? propKey" :required="propMeta.required">
                         <UInput :model-value="'0x' + (Number((device as Record<string, unknown>)[propKey] ?? 0)).toString(16)"
-                          size="sm" class="w-24 font-mono"
+                          size="sm" class="w-full font-mono"
                           @update:model-value="(v: string) => { const n = parseInt(v, 16); if (!isNaN(n)) onDevicePropChange(busStatus.name, device.id, propKey, n); }" />
                       </UFormField>
 
@@ -322,10 +318,6 @@ function statusBadgeColor(status: BusStatus) {
 peripheral-devices = Peripheral Devices
 peripheral-devices-desc = Accessories on I2C or SPI, e.g. displays, trackballs, etc.
 add-peripheral-device = Add Peripheral Device
-bus-info = { $count } { $count ->
-  [one] bus available
- *[other] buses available
-} on { $soc }. { $active } active.
 bus-status-active = Active
 bus-status-inactive = Inactive
 bus-status-unavailable = Unavailable
@@ -345,7 +337,6 @@ device-driver-count = { $available } { $available ->
 peripheral-devices = 外设
 peripheral-devices-desc = I2C 或 SPI 外设，例如显示屏、轨迹球等。
 add-peripheral-device = 添加外设
-bus-info = { $count } 个总线可用（{ $soc }）。{ $active } 个使用中。
 bus-status-active = 使用中
 bus-status-inactive = 未使用
 bus-status-unavailable = 不可用
@@ -355,20 +346,21 @@ device-gpios = GPIO 引脚
 device-no-config = 此设备无需配置属性或 GPIO。
 bus-unavailable-hint = 由于冲突，此总线不可用。
 bus-inactive-hint = 此总线上没有设备。请使用上方按钮添加。
+device-driver-count = { $available } 个设备驱动可用。另有 { $blocked } 个需要启用外部模块后可用。
 </ftl>
 
 <ftl locale="ja">
 peripheral-devices = 周辺機器
-peripheral-devices-desc = I2CやSPIのアクセサリ（ディスプレイ、トラックボールなど）
+peripheral-devices-desc = I2CまたはSPI上のアクセサリ（例：ディスプレイ、トラックボールなど）
 add-peripheral-device = 周辺機器を追加
-bus-info = { $count }のバスが{ $soc }で利用可能です。{ $active }が使用中。
-bus-status-active = 使用中
-bus-status-inactive = 未使用
-bus-status-unavailable = 利用不可
+bus-status-active = アクティブ
+bus-status-inactive = 非アクティブ
+bus-status-unavailable = 使用不可
 bus-pins = バスピン：
 device-properties = プロパティ
 device-gpios = GPIOピン
-device-no-config = このデバイスには設定可能なプロパティやGPIOがありません。
-bus-unavailable-hint = 競合により、このバスは利用できません。
-bus-inactive-hint = 上のボタンからバスにデバイスを追加してください。
+device-no-config = このデバイスに設定するプロパティやGPIOはありません。
+bus-unavailable-hint = 競合のため、このバスは使用できません。
+bus-inactive-hint = このバスにはデバイスがありません。上のボタンで追加してください。
+device-driver-count = { $available } 個のデバイスドライバが利用可能です。外部モジュールを有効にすると、さらに { $blocked } 個利用可能になります。
 </ftl>

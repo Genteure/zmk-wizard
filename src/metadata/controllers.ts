@@ -50,7 +50,7 @@ export const SocBuses: Record<SocId, SocBus> = {
     },
     "spi3": {
       type: 'spi',
-      requires: ["sck"],
+      requires: [], // SPI3 doesn't require SCK
     },
   } satisfies Record<string, BusMetadata> as SocBus,
   "rp2040": {

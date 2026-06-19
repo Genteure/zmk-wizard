@@ -43,7 +43,7 @@ export const pmw3610Meta = {
     },
     irq: {
       label: "MOTION",
-      desc: "Motion / interrupt pin. Active low, requires pull-up.",
+      desc: "Motion / interrupt pin",
     },
   },
   visual: {
