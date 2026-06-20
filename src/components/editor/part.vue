@@ -146,18 +146,22 @@ function handleNewKscan(pinId: string, kind: 'matrix' | 'direct' | 'charlieplex'
   const part = keyboard.parts[nav.activePart];
   const newKscan = part.kscans[part.kscans.length - 1];
   keyboard.assignPinToKscan(nav.activePart, pinId as PinId, newKscan.id, role);
-  // Auto-select for key wiring (interrupt pins are not selectable).
-  if (role !== 'interrupt') {
+  // Auto-select for key wiring (interrupt and charlieplex pins are not auto-selected).
+  if (role !== 'interrupt' && kind !== 'charlieplex') {
     nav.wiringSelection = { pinId: pinId as PinId, role: role as 'input' | 'output' };
   }
 }
 
 
-/** Assign pin to existing kscan and auto-select for key wiring. */
+/** Assign pin to existing kscan and auto-select for key wiring (non-charlieplex only). */
 function handleAssignKscan(pinId: string, kscanId: string, role: 'input' | 'output' | 'interrupt') {
   keyboard.assignPinToKscan(nav.activePart!, pinId as PinId, kscanId, role);
   if (role !== 'interrupt') {
-    nav.wiringSelection = { pinId: pinId as PinId, role: role as 'input' | 'output' };
+    // Only auto-select for non-charlieplex kscans.
+    const kscan = keyboard.parts[nav.activePart!].kscans.find((k) => k.id === kscanId);
+    if (kscan && kscan.kind !== 'charlieplex') {
+      nav.wiringSelection = { pinId: pinId as PinId, role: role as 'input' | 'output' };
+    }
   }
 }
 /** Handle pin selection for key wiring. */
@@ -174,11 +178,8 @@ function handleSelectPin(payload: { pinId: string; role: 'input' | 'output' } | 
   nav.wiringSelection = { pinId: payload.pinId as PinId, role: payload.role };
 }
 
-/** Release a pin and clear selection if it was the selected pin. */
+/** Release a pin (store watch clears wiring selection automatically). */
 function handleReleasePin(pinId: string) {
-  if (nav.wiringSelection?.pinId === pinId) {
-    nav.wiringSelection = null;
-  }
   keyboard.releasePin(nav.activePart!, pinId as PinId);
 }
 

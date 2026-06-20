@@ -524,6 +524,24 @@ export const useNavigationStore = defineStore('navigation', () => {
   // Clear wiring selection when switching parts.
   watch(activePart, () => { wiringSelection.value = null; });
 
+  // Clear wiring selection when the selected pin is released (covers all release paths).
+  const keyboard = useKeyboardStore();
+  watch(
+    () => {
+      if (activePart.value === null) return null;
+      return keyboard.parts[activePart.value]?.pins;
+    },
+    (newPins, oldPins) => {
+      if (!newPins || !oldPins || !wiringSelection.value) return;
+      const selectedPinId = wiringSelection.value.pinId;
+      const pid = selectedPinId as PinId;
+      if (newPins[pid] === undefined && oldPins[pid] !== undefined) {
+        wiringSelection.value = null;
+      }
+    },
+    { deep: true },
+  );
+
   return { locale, activeTab, activePart, wiringSelection, dialog, build };
 });
 

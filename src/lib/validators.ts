@@ -480,6 +480,15 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
           }
         }
       }
+
+      // Input and output must be distinct pins
+      if (wiring.input && wiring.output && wiring.input === wiring.output) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Key ${idx} uses the same pin for both input and output; they must be different pins`,
+          path: ["parts", partIdx, "keys", key.id],
+        });
+      }
     });
 
     // ── 11. Pin existence on controller ─────────────────────

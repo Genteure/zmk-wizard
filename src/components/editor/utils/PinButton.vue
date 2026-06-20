@@ -237,15 +237,12 @@ function encoderLabel(encoderId: string): string {
 function onPopoverClick() {
   if (!isGpio.value) return;
   if (props.usage?.usage === 'kscan') {
-    // Charlieplex & interrupt: just open popover for explicit selection UI.
-    if (isCharlieplex.value || isInterrupt.value) return;
-    // Non-charlieplex non-interrupt: toggle selection on button click.
-    if (props.selected) {
-      emit('selectPin', null);
-    } else {
+    // Non-charlieplex non-interrupt unselected: select on click.
+    if (!isCharlieplex.value && !isInterrupt.value && !props.selected) {
       const role: 'input' | 'output' = props.usage.role as 'input' | 'output';
       emit('selectPin', { pinId: pinMeta.value!.id, role });
     }
+    // Otherwise (charlieplex, interrupt, or already selected): just open popover.
   } else {
     emit('selectPin', null);
   }
@@ -284,7 +281,7 @@ function onPopoverClick() {
           <template v-if="isSelectable">
             <template v-if="props.selected">
               <UButton label="Deselect" variant="subtle" color="neutral" class="w-full justify-center mb-3"
-                @click="emit('selectPin', null); open = false" />
+                @click="emit('selectPin', null)" />
             </template>
             <template v-else>
               <template v-if="isCharlieplex">
@@ -324,7 +321,7 @@ function onPopoverClick() {
               </div>
               <div class="flex flex-wrap gap-1">
                 <UButton v-for="(role, ri) in card.roles" :key="ri" :color="role.color" variant="outline"
-                  :label="role.label" @click="role.onSelect(); open = false" />
+                  :label="role.label" @click="role.onSelect()" />
               </div>
             </template>
             <!-- New kscan type: single-row layout -->
@@ -332,7 +329,7 @@ function onPopoverClick() {
               <div class="flex items-center gap-1.5">
                 <span class="font-medium">{{ card.heading }}</span>
                 <UButton v-for="(role, ri) in card.roles" :key="ri" :color="role.color" variant="outline"
-                  :label="role.label" @click="role.onSelect(); open = false" />
+                  :label="role.label" @click="role.onSelect()" />
               </div>
             </template>
           </div>
