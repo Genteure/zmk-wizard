@@ -272,10 +272,10 @@ const presetEntries = computed(() => {
 function loadPreset() {
   const entry = presetEntries.value.find(e => e.value === presetSelected.value);
   if (!entry) return;
-  console.time('loadPreset');
+
   keyboard.$patch({ layout: structuredClone(entry.keys) });
   keyboard.sortLayout();
-  console.timeEnd('loadPreset');
+
   presetOpen.value = false;
   presetSelected.value = '';
 }

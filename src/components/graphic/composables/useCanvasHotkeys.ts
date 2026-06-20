@@ -85,6 +85,62 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
     return keyboard.layout.filter((k) => selection.selectedIdSet.has(k.id));
   }
 
+  /** Shared placement algorithm for paste & duplicate (§5.10). */
+  function pasteKeys(src: typeof keyboard.layout) {
+    if (src.length === 0) return;
+    const allKeys = keyboard.layout;
+
+    // ── Physical layout placement ──
+    const srcBbox = keysBoundingBox(src, DEFAULT_KEY_SIZE);
+    if (!srcBbox) return;
+    const srcW = srcBbox.max.x - srcBbox.min.x;
+    const srcH = srcBbox.max.y - srcBbox.min.y;
+    let pxOffset = 0;
+    let pyOffset = 0;
+    if (allKeys.length > 0) {
+      if (srcW >= srcH) {
+        // Place below — new top edge = max(existing bottom) + 0.25U gap
+        const maxBottom = Math.max(...allKeys.map((k) => (k.y + k.h) * DEFAULT_KEY_SIZE));
+        pyOffset = maxBottom + DEFAULT_KEY_SIZE * 0.25 - srcBbox.min.y;
+      } else {
+        // Place to the right — new left edge = max(existing right) + 0.25U gap
+        const maxRight = Math.max(...allKeys.map((k) => (k.x + k.w) * DEFAULT_KEY_SIZE));
+        pxOffset = maxRight + DEFAULT_KEY_SIZE * 0.25 - srcBbox.min.x;
+      }
+    }
+
+    // ── Keymap layout placement (same logic, integer units) ──
+    const srcLBox = logicalKeysBoundingBox(src, DEFAULT_KEY_SIZE);
+    let colOffset = 0;
+    let rowOffset = 0;
+    if (allKeys.length > 0 && srcLBox) {
+      const srcLCols = (srcLBox.max.x - srcLBox.min.x) / DEFAULT_KEY_SIZE;
+      const srcLRows = (srcLBox.max.y - srcLBox.min.y) / DEFAULT_KEY_SIZE;
+      if (srcLCols >= srcLRows) {
+        const maxRow = Math.max(...allKeys.map((k) => k.row + 1));
+        rowOffset = maxRow - srcLBox.min.y / DEFAULT_KEY_SIZE;
+      } else {
+        const maxCol = Math.max(...allKeys.map((k) => k.col + 1));
+        colOffset = maxCol - srcLBox.min.x / DEFAULT_KEY_SIZE;
+      }
+    }
+
+    // ── Create new keys ──
+    const newIds = keyboard.addKeys(src.map((k) => ({
+      part: k.part,
+      row: k.row + rowOffset,
+      col: k.col + colOffset,
+      w: k.w,
+      h: k.h,
+      x: k.x + pxOffset / DEFAULT_KEY_SIZE,
+      y: k.y + pyOffset / DEFAULT_KEY_SIZE,
+      r: k.r,
+      rx: k.rx + pxOffset / DEFAULT_KEY_SIZE,
+      ry: k.ry + pyOffset / DEFAULT_KEY_SIZE,
+    })));
+    selection.setSelected(newIds);
+  }
+
   // ─── Actions (exposed for context menu reuse) ────────────────
 
   const actions = {
@@ -101,61 +157,11 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
     },
 
     paste() {
-      if (clipboard.value.length === 0) return;
-      const allKeys = keyboard.layout;
-
-      // ── Physical layout placement (§5.10) ──
-      const srcBbox = keysBoundingBox(clipboard.value, DEFAULT_KEY_SIZE);
-      if (!srcBbox) return;
-      const srcW = srcBbox.max.x - srcBbox.min.x;
-      const srcH = srcBbox.max.y - srcBbox.min.y;
-      let pxOffset = 0;
-      let pyOffset = 0;
-      if (allKeys.length > 0) {
-        if (srcW >= srcH) {
-          // Place below — new top edge = max(existing bottom) + 0.25U gap
-          const maxBottom = Math.max(...allKeys.map((k) => (k.y + k.h) * DEFAULT_KEY_SIZE));
-          pyOffset = maxBottom + DEFAULT_KEY_SIZE * 0.25 - srcBbox.min.y;
-        } else {
-          // Place to the right — new left edge = max(existing right) + 0.25U gap
-          const maxRight = Math.max(...allKeys.map((k) => (k.x + k.w) * DEFAULT_KEY_SIZE));
-          pxOffset = maxRight + DEFAULT_KEY_SIZE * 0.25 - srcBbox.min.x;
-        }
-      }
-
-      // ── Keymap layout placement (§5.10, same logic, integer units) ──
-      const srcLBox = logicalKeysBoundingBox(clipboard.value, DEFAULT_KEY_SIZE);
-      let colOffset = 0;
-      let rowOffset = 0;
-      if (allKeys.length > 0 && srcLBox) {
-        const srcLCols = (srcLBox.max.x - srcLBox.min.x) / DEFAULT_KEY_SIZE;
-        const srcLRows = (srcLBox.max.y - srcLBox.min.y) / DEFAULT_KEY_SIZE;
-        if (srcLCols >= srcLRows) {
-          const maxRow = Math.max(...allKeys.map((k) => k.row + 1));
-          rowOffset = maxRow - srcLBox.min.y / DEFAULT_KEY_SIZE;
-        } else {
-          const maxCol = Math.max(...allKeys.map((k) => k.col + 1));
-          colOffset = maxCol - srcLBox.min.x / DEFAULT_KEY_SIZE;
-        }
-      }
-
-      // ── Create new keys ──
-      const newIds = keyboard.addKeys(clipboard.value.map((k) => ({part: k.part,
-      row: k.row + rowOffset,
-      col: k.col + colOffset,
-      w: k.w,
-      h: k.h,
-      x: k.x + pxOffset / DEFAULT_KEY_SIZE,
-      y: k.y + pyOffset / DEFAULT_KEY_SIZE,
-      r: k.r,
-      rx: k.rx + pxOffset / DEFAULT_KEY_SIZE,
-      ry: k.ry + pyOffset / DEFAULT_KEY_SIZE,})));
-      selection.setSelected(newIds);
+      pasteKeys(clipboard.value);
     },
 
     duplicate() {
-      // TODO: implement duplicate with placement algorithm (interaction-design §5.10)
-      console.log('[hotkey] duplicate: not yet implemented');
+      pasteKeys(selectedKeys());
     },
 
     undo() {
