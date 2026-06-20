@@ -18,6 +18,10 @@
     {
       "binding": "GIT_REPOS",
       "id": "b24cdc62051b4a328b579932b4e9c6af"
+    },
+    {
+      "binding": "SESSION",
+      "id": "8a61d54c76f04e2f86a22f0b85a8812e"
     }
   ],
 }
