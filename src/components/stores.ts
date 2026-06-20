@@ -89,8 +89,8 @@ export const useKeyboardStore = defineStore('keyboard', {
       if (layout.length > 0) {
         row = Math.max(...layout.map((k) => k.row));
         col = 1 + Math.max(...layout.map((k) => k.col));
-        x = Math.ceil(Math.max(...layout.map((k) => k.x)));
-        y = 1 + Math.ceil(Math.max(...layout.map((k) => k.y)));
+        x = 1 + Math.ceil(Math.max(...layout.map((k) => k.x)));
+        y = Math.ceil(Math.max(...layout.map((k) => k.y)));
       }
 
       const key: Key = KeySchema.parse({
