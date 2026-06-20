@@ -21,6 +21,7 @@ Translate UI strings in this repository using Fluent (`fluent-vue`) while keepin
 
 - UI strings should be called via `$t('key-name')` in Vue templates/scripts.
 - Translations are defined in `<ftl locale="en">`, `<ftl locale="zh-CN">`, and `<ftl locale="ja">` blocks in SFCs.
+- `<ftl locale="..">` blocks are outside the `<script>` or `<template>` sections, placed at the end of the file.
 - Keep key names stable and kebab-case-like (for example: `external-modules-title`).
 - If a string uses variables, preserve placeholders in every locale (for example: `{ $devices }`).
 - Keep non-UI technical tokens unchanged when appropriate (product names, file names, identifiers).

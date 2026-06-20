@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useFluent } from 'fluent-vue';
 import type { FormSubmitEvent } from '@nuxt/ui';
 import { z } from 'astro/zod';
 import { reactive, ref, useTemplateRef, watch } from 'vue';
 import { KeyboardPartSchema } from '~/types';
+
+const { $t } = useFluent();
 
 export interface KeyboardPartNameProps {
   label?: string
@@ -50,8 +53,8 @@ function onSubmit(event: FormSubmitEvent<FormSchema>) {
             </UFormField>
 
             <div class="flex justify-end gap-2">
-              <UButton label="Cancel" color="neutral" variant="ghost" @click="open = false" />
-              <UButton type="submit" label="Save" />
+              <UButton :label="$t('part-name-cancel')" color="neutral" variant="ghost" @click="open = false" />
+              <UButton type="submit" :label="$t('part-name-save')" />
             </div>
           </UForm>
         </div>
@@ -59,3 +62,18 @@ function onSubmit(event: FormSubmitEvent<FormSchema>) {
     </UPopover>
   </UFieldGroup>
 </template>
+
+<ftl locale="en">
+part-name-cancel = Cancel
+part-name-save = Save
+</ftl>
+
+<ftl locale="zh-CN">
+part-name-cancel = 取消
+part-name-save = 保存
+</ftl>
+
+<ftl locale="ja">
+part-name-cancel = キャンセル
+part-name-save = 保存
+</ftl>

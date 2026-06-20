@@ -2,21 +2,21 @@
   <div class="overflow-y-auto p-2 select-none">
 
     <div class="m-2 flex justify-center items-end gap-4">
-      <UFormField label="Part Name">
-        <KeyboardPartName v-model="part.name" label="Part Name" placeholder="Enter part name"
-          description="The name of this split keyboard part." />
+      <UFormField :label="$t('part-name')">
+        <KeyboardPartName v-model="part.name" :label="$t('part-name')" :placeholder="$t('part-name-placeholder')"
+          :description="$t('part-name-desc')" />
       </UFormField>
-      <UFormField label="Controller">
+      <UFormField :label="$t('controller-label')">
         <UFieldGroup>
           <!-- class="flex items-center gap-2 rounded border p-2"> -->
           <UButton :label="controllerMeta.name" color="neutral" variant="outline"
             class="cursor-default select-none pointer-events-none" />
-          <UButton title="Select a different Controller" color="neutral" variant="outline" icon="i-lucide-microchip"
+          <UButton :title="$t('select-different-controller')" color="neutral" variant="outline" icon="i-lucide-microchip"
             @click="showControllerModal = true" />
         </UFieldGroup>
       </UFormField>
       <UDropdownMenu :items="copyWiringItems">
-        <UButton title="Copy wiring from another part" color="neutral" variant="outline" icon="i-lucide-copy" />
+        <UButton :title="$t('copy-wiring-title')" color="neutral" variant="outline" icon="i-lucide-copy" />
       </UDropdownMenu>
     </div>
 
@@ -71,7 +71,7 @@
       </div>
     </div>
     <div class="flex justify-center mt-2">
-      <UButton :href="controllerMeta.pinref" target="_blank" rel="noopener noreferrer" label="Pinout Reference"
+      <UButton :href="controllerMeta.pinref" target="_blank" rel="noopener noreferrer" :label="$t('pinout-reference')"
         icon="i-lucide-external-link" variant="outline" color="neutral" size="sm" />
     </div>
 
@@ -186,17 +186,17 @@ function handleReleasePin(pinId: string) {
 const copyWiringItems = computed<DropdownMenuItem[][]>(() => {
   if (nav.activePart === null) return [[]];
   const transforms: { label: string; transform: WiringTransform }[] = [
-    { label: 'Direct Copy', transform: 'none' },
-    { label: 'Mirrored Horizontally', transform: 'flip-horiz' },
-    { label: 'Mirrored Vertically', transform: 'flip-vert' },
-    { label: 'Mirrored Both', transform: 'flip-both' },
+    { label: $t('copy-wiring-direct'), transform: 'none' },
+    { label: $t('copy-wiring-mirror-h'), transform: 'flip-horiz' },
+    { label: $t('copy-wiring-mirror-v'), transform: 'flip-vert' },
+    { label: $t('copy-wiring-mirror-both'), transform: 'flip-both' },
   ];
   const items: DropdownMenuItem[] = [];
   for (let i = 0; i < keyboard.parts.length; i++) {
     if (i === nav.activePart) continue;
-    const partName = keyboard.parts[i].name || `Part ${i + 1}`;
+    const partName = keyboard.parts[i].name || $t('fallback-part-name', { index: i + 1 });
     items.push({
-      label: `From "${partName}"`,
+      label: $t('copy-wiring-from-part', { partName }),
       children: transforms.map(({ label, transform }) => ({
         label,
         onSelect: () => {
@@ -206,7 +206,7 @@ const copyWiringItems = computed<DropdownMenuItem[][]>(() => {
     });
   }
   return [
-    [{ type: 'label', label: 'Copy wiring from ...' }],
+    [{ type: 'label', label: $t('copy-wiring-from-header') }],
     items,
   ];
 });
@@ -214,29 +214,58 @@ const copyWiringItems = computed<DropdownMenuItem[][]>(() => {
 </script>
 
 <ftl locale="en">
+part-name = Part Name
+part-name-placeholder = Enter part name
+part-name-desc = The name of this split keyboard part.
+controller-label = Controller
+select-different-controller = Select a different Controller
+copy-wiring-title = Copy wiring from another part
+copy-wiring-direct = Direct Copy
+copy-wiring-mirror-h = Mirrored Horizontally
+copy-wiring-mirror-v = Mirrored Vertically
+copy-wiring-mirror-both = Mirrored Both
+copy-wiring-from-part = From "{ $partName }"
+fallback-part-name = Part { $index }
+copy-wiring-from-header = Copy wiring from ...
 pinout-reference = Pinout Reference
-
 encoders = Encoders
-encoders-ec11 = Encoders (EC11)
-encoders-desc = EC11-like rotary encoders. Only rotational inputs are configured here, add press-down inputs as direct kscan keys.
-
 peripheral-devices = Peripheral Devices
 </ftl>
 
 <ftl locale="zh-CN">
+part-name = 分体名字
+part-name-placeholder = 输入分体名字
+part-name-desc = 此分体的名称。
+controller-label = 控制器
+select-different-controller = 选择其他控制器
+copy-wiring-title = 从其他分体复制接线
+copy-wiring-direct = 直接复制
+copy-wiring-mirror-h = 水平镜像
+copy-wiring-mirror-v = 垂直镜像
+copy-wiring-mirror-both = 双向镜像
+copy-wiring-from-part = 从{ $partName }复制
+fallback-part-name = 分体 { $index }
+copy-wiring-from-header = 从...复制接线
 pinout-reference = 引脚参考
-
 encoders = 编码器
-encoders-ec11 = 编码器（EC11）
-
 peripheral-devices = 外设
 </ftl>
 
 <ftl locale="ja">
+part-name = パーツ名
+part-name-placeholder = パーツ名を入力
+part-name-desc = この分割キーボードパーツの名前です。
+controller-label = コントローラー
+select-different-controller = 別のコントローラーを選択
+copy-wiring-title = 他のパーツから配線をコピー
+copy-wiring-direct = 直接コピー
+copy-wiring-mirror-h = 左右反転
+copy-wiring-mirror-v = 上下反転
+copy-wiring-mirror-both = 両方向反転
+copy-wiring-from-part = { $partName } からコピー
+fallback-part-name = パーツ { $index }
+copy-wiring-from-header = 配線をコピー...
 pinout-reference = ピン配置リファレンス
-
 encoders = エンコーダー
-encoders-ec11 = エンコーダー（EC11）
-
 peripheral-devices = 周辺機器
 </ftl>

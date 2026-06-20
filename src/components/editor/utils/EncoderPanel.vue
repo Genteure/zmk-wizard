@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useFluent } from 'fluent-vue';
 import { computed } from 'vue';
 import { Controllers } from '~/metadata/controllers';
 import type { KeyboardPart, PinId } from '~/types';
@@ -7,6 +8,8 @@ import { encoderLabel } from '~/components/utils/labels';
 const props = defineProps<{
   part: KeyboardPart;
 }>();
+
+const { $t } = useFluent();
 
 
 /** Look up the display label for a GPIO pin from controller metadata. */
@@ -39,7 +42,7 @@ function encoderPhaseOptions(encoderId: string, phase: 'pinA' | 'pinB') {
   const free = Object.entries(props.part.pins)
     .filter(([id, u]) => !u || id === current)
     .map(([id]) => ({ label: pinLabel(id as PinId), value: id }));
-  return [{ label: '— none —', value: NONE_SENTINEL }, ...free];
+  return [{ label: $t('none-option'), value: NONE_SENTINEL }, ...free];
 }
 </script>
 
@@ -48,19 +51,18 @@ function encoderPhaseOptions(encoderId: string, phase: 'pinA' | 'pinB') {
     <template #header>
       <div class="flex justify-between items-center gap-2">
         <div>
-          <div class="text-highlighted font-semibold">Encoders (EC11)</div>
+          <div class="text-highlighted font-semibold">{{ $t('encoders-title') }}</div>
           <div class="mt-1 text-muted text-sm">
-            EC11-like rotary encoders. Only rotational inputs are configured here, add press-down
-            inputs as direct kscan keys.
+            {{ $t('encoders-desc') }}
           </div>
         </div>
-        <UButton label="Add Encoder" variant="outline" color="neutral"
+        <UButton :label="$t('add-encoder')" variant="outline" color="neutral"
           @click="emit('addEncoder')" />
       </div>
     </template>
 
     <div v-if="part.encoders.length === 0" class="text-muted text-sm py-4 text-center">
-      No encoders configured yet.
+      {{ $t('no-encoders') }}
     </div>
 
     <div v-for="encoder in part.encoders" :key="encoder.id"
@@ -82,12 +84,12 @@ function encoderPhaseOptions(encoderId: string, phase: 'pinA' | 'pinB') {
         </div>
 
       <div class="mt-3 flex gap-4">
-        <UFormField label="Pin A" class="w-40">
+        <UFormField :label="$t('encoder-pin-a')" class="w-40">
           <USelect :model-value="encoderPin(encoder.id, 'pinA') ?? NONE_SENTINEL"
             :items="encoderPhaseOptions(encoder.id, 'pinA')"
             @update:model-value="emit('setPin', { encoderId: encoder.id, phase: 'pinA', pinId: $event === NONE_SENTINEL ? undefined : $event })" />
         </UFormField>
-        <UFormField label="Pin B" class="w-40">
+        <UFormField :label="$t('encoder-pin-b')" class="w-40">
           <USelect :model-value="encoderPin(encoder.id, 'pinB') ?? NONE_SENTINEL"
             :items="encoderPhaseOptions(encoder.id, 'pinB')"
             @update:model-value="emit('setPin', { encoderId: encoder.id, phase: 'pinB', pinId: $event === NONE_SENTINEL ? undefined : $event })" />
@@ -96,3 +98,33 @@ function encoderPhaseOptions(encoderId: string, phase: 'pinA' | 'pinB') {
     </div>
   </UCard>
 </template>
+
+<ftl locale="en">
+encoders-title = Encoders (EC11)
+encoders-desc = EC11-like rotary encoders. Only rotational inputs are configured here, add press-down inputs as kscan keys.
+add-encoder = Add Encoder
+no-encoders = No encoders configured yet.
+encoder-pin-a = Pin A
+encoder-pin-b = Pin B
+none-option = — none —
+</ftl>
+
+<ftl locale="zh-CN">
+encoders-title = 编码器 (EC11)
+encoders-desc = EC11 旋转编码器。这里仅配置旋转输入，按下输入请作为 Kscan 按键添加。
+add-encoder = 添加编码器
+no-encoders = 尚未配置编码器
+encoder-pin-a = 引脚 A
+encoder-pin-b = 引脚 B
+none-option = — 无 —
+</ftl>
+
+<ftl locale="ja">
+encoders-title = エンコーダー (EC11)
+encoders-desc = EC11互換のロータリーエンコーダー。ここでは回転入力のみを設定します。押下入力はKscanキーとして追加してください。
+add-encoder = エンコーダーを追加
+no-encoders = エンコーダーが未設定です
+encoder-pin-a = ピン A
+encoder-pin-b = ピン B
+none-option = — なし —
+</ftl>

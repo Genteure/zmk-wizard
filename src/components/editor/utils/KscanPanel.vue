@@ -15,6 +15,7 @@
 
 const ROLE_ORDER: Record<string, number> = { input: 0, output: 1, interrupt: 2 };
 import { ref } from 'vue';
+import { useFluent } from 'fluent-vue';
 import type { KeyboardPart, PinId, KscanDriverKind } from '~/types';
 import { Controllers } from '~/metadata/controllers';
 import { kscanLabel } from '~/components/utils/labels';
@@ -22,6 +23,8 @@ import { kscanLabel } from '~/components/utils/labels';
 const props = defineProps<{
   part: KeyboardPart;
 }>();
+
+const { $t } = useFluent();
 
 
 /** Look up the display label for a GPIO pin from controller metadata. */
@@ -80,7 +83,7 @@ function interruptPinOptions(kscanId: string) {
   const free = Object.entries(props.part.pins)
     .filter(([id, u]) => !u || id === current)
     .map(([id]) => ({ label: pinLabel(id as PinId), value: id }));
-  return [{ label: '— none —', value: NONE_SENTINEL }, ...free];
+  return [{ label: $t('none-option'), value: NONE_SENTINEL }, ...free];
 }
 /** Handle interrupt pin selection for charlieplex kscan. */
 function handleInterruptPin(kscanId: string, value: string) {
@@ -92,7 +95,6 @@ function handleInterruptPin(kscanId: string, value: string) {
     emit('assignPin', { pinId: value as PinId, kscanId, role: 'interrupt' });
   }
 }
-
 </script>
 
 <template>
@@ -100,20 +102,19 @@ function handleInterruptPin(kscanId: string, value: string) {
     <template #header>
       <div class="flex justify-between items-center gap-2">
         <div>
-          <div class="text-highlighted font-semibold">Kscan Drivers</div>
+          <div class="text-highlighted font-semibold">{{ $t('kscan-drivers') }}</div>
           <div class="mt-1 text-muted text-sm">
-            Detect key presses by monitoring the state of the pins. Supports matrix, direct,
-            charlieplex kscan drivers and combinations of them.
+            {{ $t('kscan-drivers-desc') }}
           </div>
         </div>
         <UDropdownMenu v-model:open="showAddMenu" :items="addMenuItems">
-          <UButton label="Add Kscan" variant="outline" color="neutral" trailing-icon="i-lucide-chevron-down" />
+          <UButton :label="$t('add-kscan')" variant="outline" color="neutral" trailing-icon="i-lucide-chevron-down" />
         </UDropdownMenu>
       </div>
     </template>
 
     <div v-if="part.kscans.length === 0" class="text-muted text-sm py-4 text-center">
-      No kscan drivers configured yet.
+      {{ $t('no-kscan-drivers') }}
     </div>
 
     <!-- Composite kscan0 — virtual, shown only when >1 real kscans exist -->
@@ -126,7 +127,7 @@ function handleInterruptPin(kscanId: string, value: string) {
       </div>
       <!-- Fake properties: list all real kscans -->
       <div class="mt-3 flex flex-wrap gap-3">
-        <UFormField label="kscans" class="w-auto">
+        <UFormField :label="$t('kscans-field')" class="w-auto">
           <div class="flex flex-wrap gap-1">
             <span v-for="i in part.kscans.length" :key="i"
               class="inline-flex items-center gap-1 rounded bg-default ring ring-accented px-2 py-0.5 text-xs font-mono">
@@ -161,20 +162,20 @@ function handleInterruptPin(kscanId: string, value: string) {
       <!-- Properties -->
       <div class="mt-3 flex flex-wrap gap-3">
         <template v-if="kscan.kind === 'matrix'">
-          <UFormField label="Diodes" class="w-32">
+          <UFormField :label="$t('kscan-matrix-diodes')" class="w-32">
             <USelect :model-value="kscan.diodes ? 'true' : 'false'"
-              :items="[{ label: 'Yes', value: 'true' }, { label: 'No', value: 'false' }]"
+              :items="[{ label: $t('yes'), value: 'true' }, { label: $t('no'), value: 'false' }]"
               @update:model-value="emit('patchKscan', kscan.id, { diodes: $event === 'true' })" />
           </UFormField>
         </template>
         <template v-else-if="kscan.kind === 'direct'">
-          <UFormField label="Mode" class="w-32">
+          <UFormField :label="$t('kscan-direct-mode')" class="w-32">
             <USelect :model-value="kscan.mode" :items="[{ label: 'GND', value: 'gnd' }, { label: 'VCC', value: 'vcc' }]"
               @update:model-value="emit('patchKscan', kscan.id, { mode: $event })" />
           </UFormField>
         </template>
         <template v-else-if="kscan.kind === 'charlieplex'">
-          <UFormField label="Interrupt Pin" class="w-48">
+          <UFormField :label="$t('kscan-charlieplex-interrupt-pin')" class="w-48">
             <USelect :model-value="kscanInterruptPin(kscan.id) ?? NONE_SENTINEL" :items="interruptPinOptions(kscan.id)"
               @update:model-value="handleInterruptPin(kscan.id, $event)" />
           </UFormField>
@@ -183,7 +184,7 @@ function handleInterruptPin(kscanId: string, value: string) {
 
       <!-- Assigned pins -->
       <div class="mt-3">
-        <div v-if="kscanPins(kscan.id).length === 0" class="text-xs text-muted">No pins assigned.</div>
+        <div v-if="kscanPins(kscan.id).length === 0" class="text-xs text-muted">{{ $t('no-pins-assigned') }}</div>
         <div class="flex flex-wrap gap-1">
           <div v-for="kp in kscanPins(kscan.id)" :key="kp.pinId"
             class="flex items-center gap-1 rounded bg-default ring ring-accented px-2 py-0.5 text-xs">
@@ -197,3 +198,48 @@ function handleInterruptPin(kscanId: string, value: string) {
     </div>
   </UCard>
 </template>
+
+<ftl locale="en">
+kscan-drivers = Kscan Drivers
+kscan-drivers-desc = Detect key presses by monitoring the state of the pins. Supports matrix, direct, charlieplex kscan drivers and combinations of them.
+add-kscan = Add Kscan
+no-kscan-drivers = No kscan drivers configured yet.
+kscans-field = kscans
+kscan-matrix-diodes = Diodes
+kscan-direct-mode = Mode
+kscan-charlieplex-interrupt-pin = Interrupt Pin
+no-pins-assigned = No pins assigned.
+yes = Yes
+no = No
+none-option = — none —
+</ftl>
+
+<ftl locale="zh-CN">
+kscan-drivers = Kscan 驱动
+kscan-drivers-desc = 通过监测引脚状态检测按键输入。支持矩阵(matrix)、直连(direct)、charlieplex 等多种 Kscan 驱动及其组合。
+add-kscan = 添加 Kscan
+no-kscan-drivers = 尚未配置 Kscan 驱动
+kscans-field = Kscan 列表
+kscan-matrix-diodes = 二极管
+kscan-direct-mode = 模式
+kscan-charlieplex-interrupt-pin = 中断引脚
+no-pins-assigned = 未分配引脚
+yes = 是
+no = 否
+none-option = — 无 —
+</ftl>
+
+<ftl locale="ja">
+kscan-drivers = Kscan ドライバー
+kscan-drivers-desc = ピンの状態を監視してキー入力を検出します。matrix、direct、charlieplex などの Kscan ドライバーとそれらの組み合わせに対応しています。
+add-kscan = Kscan を追加
+no-kscan-drivers = Kscan ドライバーが未設定です
+kscans-field = Kscan 一覧
+kscan-matrix-diodes = ダイオード
+kscan-direct-mode = モード
+kscan-charlieplex-interrupt-pin = 割り込みピン
+no-pins-assigned = ピンが割り当てられていません
+yes = はい
+no = いいえ
+none-option = — なし —
+</ftl>
