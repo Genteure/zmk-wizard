@@ -2,16 +2,12 @@
 import { computed } from 'vue';
 import { Controllers } from '~/metadata/controllers';
 import type { KeyboardPart, PinId } from '~/types';
+import { encoderLabel } from '~/components/utils/labels';
 
 const props = defineProps<{
   part: KeyboardPart;
 }>();
 
-/** Friendly display name: e.g. "left_encoder0", "right_encoder1". */
-function encoderLabel(encoderId: string): string {
-  const idx = props.part.encoders.findIndex((e) => e.id === encoderId);
-  return `${props.part.name}_encoder${idx}`;
-}
 
 /** Look up the display label for a GPIO pin from controller metadata. */
 function pinLabel(pinId: PinId): string {
@@ -70,8 +66,8 @@ function encoderPhaseOptions(encoderId: string, phase: 'pinA' | 'pinB') {
     <div v-for="encoder in part.encoders" :key="encoder.id"
       class="rounded-xl p-3 bg-muted ring ring-default mb-3 last:mb-0">
       <div class="flex items-center justify-between gap-2">
-        <span class="text-sm font-mono text-base-content/50">{{ encoderLabel(encoder.id) }}</span>
-        <div class="flex items-center gap-1">
+        <span class="text-sm font-mono text-base-content/50">{{ encoderLabel(part.name, part.encoders, encoder.id) }}</span>
+          <div class="flex items-center gap-1">
           <UFieldGroup v-if="part.encoders.length > 1" size="xs">
             <UButton icon="i-lucide-chevron-up" variant="subtle" color="neutral"
               :disabled="part.encoders.indexOf(encoder) === 0"
@@ -82,8 +78,8 @@ function encoderPhaseOptions(encoderId: string, phase: 'pinA' | 'pinB') {
           </UFieldGroup>
           <UButton color="error" icon="i-lucide-trash" variant="subtle" size="xs"
             @click="emit('removeEncoder', encoder.id)" />
+          </div>
         </div>
-      </div>
 
       <div class="mt-3 flex gap-4">
         <UFormField label="Pin A" class="w-40">

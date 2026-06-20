@@ -8,6 +8,7 @@ import type { ControllerMetadata } from '~/metadata/controllers';
 import type { PinVisual } from '~/metadata/pins';
 import type { KscanDriver, PinUsage } from '~/types';
 import { computed, ref } from 'vue';
+import { kscanLabel, encoderLabel } from '~/components/utils/labels';
 type BtnColor = 'success' | 'error' | 'warning' | 'primary' | 'secondary' | 'info' | 'neutral' | 'kscanin' | 'kscanout';
 
 
@@ -126,7 +127,7 @@ const usageInfo = computed(() => {
       return {
         category: 'Kscan',
         categoryColor: categoryConfig.Kscan.color,
-        name: kscanLabel(u.kscan),
+        name: kscanLabel(props.context.name, props.context.kscans, u.kscan),
         roleLabel: role.label,
         roleColor: role.color,
       };
@@ -136,7 +137,7 @@ const usageInfo = computed(() => {
       return {
         category: 'Encoder',
         categoryColor: categoryConfig.Encoder.color,
-        name: encoderLabel(u.encoderId),
+        name: encoderLabel(props.context.name, props.context.encoders, u.encoderId),
         roleLabel: role.label,
         roleColor: role.color,
       };
@@ -180,7 +181,7 @@ const kscanCards = computed<KscanCard[]>(() => {
 
   if (ctx.kscans.length > 0) {
     return ctx.kscans.map((kscan) => {
-      const name = kscanLabel(kscan.id);
+      const name = kscanLabel(ctx.name, ctx.kscans, kscan.id);
       const kindLabel = kscanKindLabels[kscan.kind] ?? kscan.kind;
       const roles = kscanRoles(kscan.kind).map((role) => {
         const cfg = roleConfig[role] ?? { label: role, color: 'neutral' as BtnColor };
@@ -222,17 +223,7 @@ function kscanRoles(kind: KscanDriver['kind']): readonly KscanPinRole[] {
   return ['input']; // charlieplex
 }
 
-/** Display name for a kscan, e.g. "left_kscan0". */
-function kscanLabel(kscanId: string): string {
-  const idx = props.context.kscans.findIndex((k) => k.id === kscanId);
-  return `${props.context.name}_kscan${idx}`;
-}
 
-/** Display name for an encoder, e.g. "left_encoder0". */
-function encoderLabel(encoderId: string): string {
-  const idx = props.context.encoders.findIndex((e) => e.id === encoderId);
-  return `${props.context.name}_encoder${idx}`;
-}
 
 function onPopoverClick() {
   if (!isGpio.value) return;

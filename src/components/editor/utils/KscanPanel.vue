@@ -17,16 +17,12 @@ const ROLE_ORDER: Record<string, number> = { input: 0, output: 1, interrupt: 2 }
 import { ref } from 'vue';
 import type { KeyboardPart, PinId, KscanDriverKind } from '~/types';
 import { Controllers } from '~/metadata/controllers';
+import { kscanLabel } from '~/components/utils/labels';
 
 const props = defineProps<{
   part: KeyboardPart;
 }>();
 
-/** Friendly display name: e.g. "left_kscan0", "right_kscan1". */
-function kscanLabel(kscanId: string): string {
-  const idx = props.part.kscans.findIndex((k) => k.id === kscanId);
-  return `${props.part.name}_kscan${idx}`;
-}
 
 /** Look up the display label for a GPIO pin from controller metadata. */
 function pinLabel(pinId: PinId): string {
@@ -120,6 +116,26 @@ function handleInterruptPin(kscanId: string, value: string) {
       No kscan drivers configured yet.
     </div>
 
+    <!-- Composite kscan0 — virtual, shown only when >1 real kscans exist -->
+    <div v-if="part.kscans.length > 1" class="rounded-xl p-3 bg-muted ring ring-default mb-3">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <UBadge variant="subtle" color="neutral" class="uppercase">composite</UBadge>
+          <span class="text-sm font-mono text-base-content/50">{{ part.name }}_kscan0</span>
+        </div>
+      </div>
+      <!-- Fake properties: list all real kscans -->
+      <div class="mt-3 flex flex-wrap gap-3">
+        <UFormField label="kscans" class="w-auto">
+          <div class="flex flex-wrap gap-1">
+            <span v-for="i in part.kscans.length" :key="i"
+              class="inline-flex items-center gap-1 rounded bg-default ring ring-accented px-2 py-0.5 text-xs font-mono">
+              {{ part.name }}_kscan{{ i }}
+            </span>
+          </div>
+        </UFormField>
+      </div>
+    </div>
     <div v-for="kscan in part.kscans" :key="kscan.id" class="rounded-xl p-3 bg-muted ring ring-default mb-3 last:mb-0">
       <!-- Header row -->
       <div class="flex items-center justify-between gap-2">
@@ -127,7 +143,7 @@ function handleInterruptPin(kscanId: string, value: string) {
           <UBadge variant="subtle" color="neutral" class="uppercase">
             {{ kscan.kind }}
           </UBadge>
-          <span class="text-sm font-mono text-base-content/50">{{ kscanLabel(kscan.id) }}</span>
+          <span class="text-sm font-mono text-base-content/50">{{ kscanLabel(part.name, part.kscans, kscan.id) }}</span>
         </div>
         <div class="flex items-center gap-1">
           <UFieldGroup v-if="part.kscans.length > 1" size="xs">
