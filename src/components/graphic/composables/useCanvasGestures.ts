@@ -2,7 +2,7 @@ import type { ComputedRef, Ref } from 'vue';
 import { computed, reactive, ref } from 'vue';
 import type { CanvasTool } from '~/types/tools';
 
-const ZOOM_FACTOR = 1.12;
+const ZOOM_FACTOR = 1.23;
 const ZOOM_MIN = 0.04;
 const ZOOM_MAX = 25;
 const DRAG_THRESHOLD = 4;
@@ -420,7 +420,7 @@ export function useCanvasGestures(options: CanvasGesturesOptions) {
     e.preventDefault();
     const vp = clientToViewport(e.clientX, e.clientY);
     const base = e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
-    const factor = (e.metaKey || e.ctrlKey) ? (e.deltaY < 0 ? 1.03 : 1 / 1.03) : base;
+    const factor = (e.metaKey || e.ctrlKey) ? (e.deltaY < 0 ? 1.05 : 1 / 1.05) : base;
     applyZoom(vp.x, vp.y, factor);
   }
 
