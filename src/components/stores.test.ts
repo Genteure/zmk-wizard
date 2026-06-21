@@ -200,7 +200,8 @@ describe("useKeyboardStore", () => {
       const k = kb.layout[1];
       expect(k.row).toBe(2);
       expect(k.col).toBe(4);
-      expect(k.y).toBe(11);
+      expect(k.y).toBe(10);
+      expect(k.x).toBe(16);
     });
 
     test("sorts layout after adding", () => {
