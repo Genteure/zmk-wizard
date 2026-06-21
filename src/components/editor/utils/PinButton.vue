@@ -9,6 +9,7 @@ import type { PinVisual } from '~/metadata/pins';
 import type { KscanDriver, PinUsage } from '~/types';
 import { computed, ref } from 'vue';
 import { kscanLabel, encoderLabel } from '~/components/utils/labels';
+import { useFluent } from 'fluent-vue';
 type BtnColor = 'success' | 'error' | 'warning' | 'primary' | 'secondary' | 'info' | 'neutral' | 'kscanin' | 'kscanout';
 
 
@@ -33,6 +34,7 @@ const emit = defineEmits<{
   selectPin: [payload: { pinId: string; role: 'input' | 'output' } | null];
 }>();
 
+const { $t } = useFluent();
 const isGpio = computed(() => props.pin.kind === 'gpio');
 
 const variant = computed(() => isGpio.value ? (props.selected ? 'solid' : 'subtle') : 'ghost');
@@ -102,11 +104,11 @@ const isAssigned = computed(() => !!props.usage);
 
 /** Role display config: label, badge color. */
 const roleConfig: Record<string, { label: string; color: BtnColor }> = {
-  input: { label: 'Input', color: 'kscanin' },
-  output: { label: 'Output', color: 'kscanout' },
-  interrupt: { label: 'Interrupt', color: 'error' },
-  pinA: { label: 'Pin A', color: 'primary' },
-  pinB: { label: 'Pin B', color: 'success' },
+  input: { label: 'role-input', color: 'kscanin' },
+  output: { label: 'role-output', color: 'kscanout' },
+  interrupt: { label: 'role-interrupt', color: 'error' },
+  pinA: { label: 'role-pin-a', color: 'primary' },
+  pinB: { label: 'role-pin-b', color: 'success' },
 };
 
 /** Category display config. */
@@ -124,41 +126,42 @@ const usageInfo = computed(() => {
   switch (u.usage) {
     case 'kscan': {
       const role = roleConfig[u.role] ?? { label: u.role, color: 'neutral' as BtnColor };
+      const roleLabel = (isCharlieplex.value && u.role === 'input') ? $t('role-dual') : $t(role.label);
       return {
-        category: 'Kscan',
+        category: $t('category-kscan'),
         categoryColor: categoryConfig.Kscan.color,
         name: kscanLabel(props.context.name, props.context.kscans, u.kscan),
-        roleLabel: role.label,
+        roleLabel,
         roleColor: role.color,
       };
     }
     case 'encoder': {
       const role = roleConfig[u.role] ?? { label: u.role, color: 'neutral' as BtnColor };
       return {
-        category: 'Encoder',
+        category: $t('category-encoder'),
         categoryColor: categoryConfig.Encoder.color,
         name: encoderLabel(props.context.name, props.context.encoders, u.encoderId),
-        roleLabel: role.label,
+        roleLabel: $t(role.label),
         roleColor: role.color,
       };
     }
     case 'bus': {
       const role = roleConfig[u.role] ?? { label: u.role, color: 'neutral' as BtnColor };
       return {
-        category: 'Bus',
+        category: $t('category-bus'),
         categoryColor: categoryConfig.Bus.color,
         name: u.bus,
-        roleLabel: role.label,
+        roleLabel: $t(role.label),
         roleColor: role.color,
       };
     }
     case 'device': {
       const role = roleConfig[u.role] ?? { label: u.role, color: 'neutral' as BtnColor };
       return {
-        category: 'Device',
+        category: $t('category-device'),
         categoryColor: categoryConfig.Device.color,
         name: u.deviceId,
-        roleLabel: role.label,
+        roleLabel: $t(role.label),
         roleColor: role.color,
       };
     }
@@ -185,35 +188,37 @@ const kscanCards = computed<KscanCard[]>(() => {
       const kindLabel = kscanKindLabels[kscan.kind] ?? kscan.kind;
       const roles = kscanRoles(kscan.kind).map((role) => {
         const cfg = roleConfig[role] ?? { label: role, color: 'neutral' as BtnColor };
-        return { label: cfg.label, color: cfg.color, onSelect: () => emit('assignKscan', pinId, kscan.id, role) };
+        const label = (kscan.kind === 'charlieplex' && role === 'input') ? $t('role-dual') : $t(cfg.label);
+        return { label, color: cfg.color, onSelect: () => emit('assignKscan', pinId, kscan.id, role) };
       });
-      return { heading: name, subtitle: kindLabel, roles };
+      return { heading: name, subtitle: $t(kindLabel), roles };
     });
   }
 
   return newTypes.map(({ kind, label: kindLabel }) => {
     const roles = kscanRoles(kind).map((role) => {
       const cfg = roleConfig[role] ?? { label: role, color: 'neutral' as BtnColor };
-      return { label: cfg.label, color: cfg.color, onSelect: () => emit('newKscan', pinId, kind, role) };
+      const label = (kind === 'charlieplex' && role === 'input') ? $t('role-dual') : $t(cfg.label);
+      return { label, color: cfg.color, onSelect: () => emit('newKscan', pinId, kind, role) };
     });
-    return { heading: kindLabel, roles };
+    return { heading: $t(kindLabel), roles };
   });
 });
 
 const kscanCardsHeading = computed(() =>
-  props.context.kscans.length > 0 ? 'Select Kscan' : 'Create new Kscan',
+  $t(props.context.kscans.length > 0 ? 'select-kscan' : 'create-new-kscan'),
 );
 
 const newTypes: { kind: KscanDriver['kind']; label: string }[] = [
-  { kind: 'matrix', label: 'Matrix' },
-  { kind: 'direct', label: 'Direct' },
-  { kind: 'charlieplex', label: 'Charlieplex' },
+  { kind: 'matrix', label: 'kscan-kind-matrix' },
+  { kind: 'direct', label: 'kscan-kind-direct' },
+  { kind: 'charlieplex', label: 'kscan-kind-charlieplex' },
 ];
 
 const kscanKindLabels: Record<KscanDriver['kind'], string> = {
-  matrix: 'Matrix',
-  direct: 'Direct',
-  charlieplex: 'Charlieplex',
+  matrix: 'kscan-kind-matrix',
+  direct: 'kscan-kind-direct',
+  charlieplex: 'kscan-kind-charlieplex',
 };
 
 /** Available roles for a kscan driver kind. */
@@ -249,7 +254,7 @@ function onPopoverClick() {
         <div v-if="pinMeta" class="mb-3">
           <div class="font-semibold">{{ pinMeta.label }}</div>
           <div v-if="pinMeta.aliases.length" class="text-sm text-toned mt-0.5">
-            a.k.a. {{ pinMeta.aliases.join(', ') }}
+            {{ $t('aka') }} {{ pinMeta.aliases.join(', ') }}
           </div>
         </div>
 
@@ -271,27 +276,27 @@ function onPopoverClick() {
           <!-- Selection for key wiring (kscan, non-interrupt only) -->
           <template v-if="isSelectable">
             <template v-if="props.selected">
-              <UButton label="Deselect" variant="subtle" color="neutral" class="w-full justify-center mb-3"
+              <UButton :label="$t('deselect')" variant="subtle" color="neutral" class="w-full justify-center mb-3"
                 @click="emit('selectPin', null)" />
             </template>
             <template v-else>
               <template v-if="isCharlieplex">
-                <div class="text-sm text-toned mb-1">Select pin as</div>
+                <div class="text-sm text-toned mb-1">{{ $t('select-pin-as') }}</div>
                 <div class="flex gap-1 mb-3">
-                  <UButton label="Input" color="kscanin" variant="outline" class="flex-1 justify-center"
+                  <UButton :label="$t('role-input')" color="kscanin" variant="outline" class="flex-1 justify-center"
                     @click="emit('selectPin', { pinId: pinMeta!.id, role: 'input' }); open = false" />
-                  <UButton label="Output" color="kscanout" variant="outline" class="flex-1 justify-center"
+                  <UButton :label="$t('role-output')" color="kscanout" variant="outline" class="flex-1 justify-center"
                     @click="emit('selectPin', { pinId: pinMeta!.id, role: 'output' }); open = false" />
                 </div>
               </template>
               <template v-else>
-                <UButton :label="'Select for wiring (' + usageInfo!.roleLabel + ')'" :color="usageInfo!.roleColor"
+                <UButton :label="$t('select-for-wiring', { role: usageInfo!.roleLabel })" :color="usageInfo!.roleColor"
                   variant="outline" class="w-full justify-center mb-3"
                   @click="emit('selectPin', { pinId: pinMeta!.id, role: props.usage!.role as 'input' | 'output' }); open = false" />
               </template>
             </template>
           </template>
-          <UButton icon="i-lucide-x" color="error" variant="subtle" label="Unassign" class="w-full justify-center"
+          <UButton icon="i-lucide-x" color="error" variant="subtle" :label="$t('unassign')" class="w-full justify-center"
             @click="emit('releasePin', pinMeta!.id); open = false" />
         </template>
 
@@ -329,3 +334,86 @@ function onPopoverClick() {
     </template>
   </UPopover>
 </template>
+
+<ftl locale="en">
+# Role labels
+role-input = Input
+role-output = Output
+role-interrupt = Interrupt
+role-pin-a = Pin A
+role-pin-b = Pin B
+# Charlieplex pins serve dual input+output role
+role-dual = Dual
+
+# Category labels
+category-kscan = Kscan
+category-encoder = Encoder
+category-bus = Bus
+category-device = Device
+
+# Kscan driver kind names
+kscan-kind-matrix = Matrix
+kscan-kind-direct = Direct
+kscan-kind-charlieplex = Charlieplex
+
+# UI text
+deselect = Deselect
+select-pin-as = Select pin as
+select-for-wiring = Select for wiring ({ $role })
+unassign = Unassign
+select-kscan = Select Kscan
+create-new-kscan = Create new Kscan
+aka = a.k.a.
+</ftl>
+
+<ftl locale="zh-CN">
+role-input = 输入
+role-output = 输出
+role-interrupt = 中断
+role-pin-a = 引脚 A
+role-pin-b = 引脚 B
+role-dual = 双向
+
+category-kscan = Kscan
+category-encoder = 编码器
+category-bus = 总线
+category-device = 设备
+
+kscan-kind-matrix = 矩阵
+kscan-kind-direct = 直连
+kscan-kind-charlieplex = Charlieplex
+
+deselect = 取消选择
+select-pin-as = 选择引脚用途
+select-for-wiring = 选择用于接线（{ $role }）
+unassign = 取消分配
+select-kscan = 选择 Kscan
+create-new-kscan = 创建新 Kscan
+aka = 又称
+</ftl>
+
+<ftl locale="ja">
+role-input = 入力
+role-output = 出力
+role-interrupt = 割り込み
+role-pin-a = ピン A
+role-pin-b = ピン B
+role-dual = 双方向
+
+category-kscan = Kscan
+category-encoder = エンコーダー
+category-bus = バス
+category-device = デバイス
+
+kscan-kind-matrix = Matrix
+kscan-kind-direct = Direct
+kscan-kind-charlieplex = Charlieplex
+
+deselect = 選択解除
+select-pin-as = ピンの役割を選択
+select-for-wiring = 配線として選択（{ $role }）
+unassign = 割り当て解除
+select-kscan = Kscan を選択
+create-new-kscan = 新しい Kscan を作成
+aka = 別名
+</ftl>

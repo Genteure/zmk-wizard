@@ -11,16 +11,18 @@
           <!-- class="flex items-center gap-2 rounded border p-2"> -->
           <UButton :label="controllerMeta.name" color="neutral" variant="outline"
             class="cursor-default select-none pointer-events-none" />
-          <UButton :title="$t('select-different-controller')" color="neutral" variant="outline" icon="i-lucide-microchip"
-            @click="showControllerModal = true" />
+          <UButton :title="$t('select-different-controller')" color="neutral" variant="outline"
+            icon="i-lucide-microchip" @click="showControllerModal = true" />
         </UFieldGroup>
       </UFormField>
       <UDropdownMenu :items="copyWiringItems">
         <UButton :title="$t('copy-wiring-title')" color="neutral" variant="outline" icon="i-lucide-copy" />
       </UDropdownMenu>
     </div>
-
     <div class="flex justify-center mt-4">
+      <InputOutputHelp />
+    </div>
+    <div class="flex justify-center mt-2">
       <div class="border rounded-xl items-center gap-3 flex flex-col p-4">
         <div class="select-none text-lg font-bold text-center">
           {{ controllerMeta.name }}
@@ -109,6 +111,7 @@ import type { PartPinContext } from '~/types/pinContext';
 import KscanPanel from './utils/KscanPanel.vue';
 import EncoderPanel from './utils/EncoderPanel.vue';
 import BusDevicePanel from './utils/BusDevicePanel.vue';
+import InputOutputHelp from './utils/InputOutputHelp.vue';
 
 const { $t } = useFluent();
 
