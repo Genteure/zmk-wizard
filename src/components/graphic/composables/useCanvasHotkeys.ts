@@ -4,7 +4,7 @@ import { useEventListener } from '@vueuse/core';
 import { useKeyboardStore, useSelectionStore } from '../../stores';
 import type { KeyId } from '~/types/keyboard';
 import type { Gesture } from './useCanvasGestures';
-import { keysBoundingBox, logicalKeysBoundingBox, DEFAULT_KEY_SIZE } from '../keyShape';
+import { keysBoundingBox, logicalKeysBoundingBox, normalizeRotationOrigin, rotateAndNormalizeKey, DEFAULT_KEY_SIZE } from '../keyShape';
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -126,17 +126,20 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
     }
 
     // ── Create new keys ──
+    const xOff = pxOffset / DEFAULT_KEY_SIZE;
+    const yOff = pyOffset / DEFAULT_KEY_SIZE;
     const newIds = keyboard.addKeys(src.map((k) => ({
       part: k.part,
       row: k.row + rowOffset,
       col: k.col + colOffset,
       w: k.w,
       h: k.h,
-      x: k.x + pxOffset / DEFAULT_KEY_SIZE,
-      y: k.y + pyOffset / DEFAULT_KEY_SIZE,
+      x: k.x + xOff,
+      y: k.y + yOff,
       r: k.r,
-      rx: k.rx + pxOffset / DEFAULT_KEY_SIZE,
-      ry: k.ry + pyOffset / DEFAULT_KEY_SIZE,
+      // Per algo move rules: rx/ry only matter when r≠0; offset only if non-zero
+      rx: k.r === 0 ? 0 : (k.rx === 0 ? 0 : k.rx + xOff),
+      ry: k.r === 0 ? 0 : (k.ry === 0 ? 0 : k.ry + yOff),
     })));
     selection.setSelected(newIds);
   }
@@ -177,19 +180,34 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
     nudge(dxU: number, dyU: number) {
       const keys = selectedKeys();
       if (keys.length === 0) return;
-      keyboard.patchKeys(keys.map((k) => ({
-        id: k.id as KeyId,
-        changes: { x: k.x + dxU, y: k.y + dyU, rx: k.rx + dxU, ry: k.ry + dyU },
-      })));
+      keyboard.patchKeys(keys.map((k) => {
+        const base = { x: k.x + dxU, y: k.y + dyU };
+        if (k.r === 0) return { id: k.id as KeyId, changes: base };
+        return {
+          id: k.id as KeyId,
+          changes: {
+            ...base,
+            ...(k.rx !== 0 ? { rx: k.rx + dxU } : {}),
+            ...(k.ry !== 0 ? { ry: k.ry + dyU } : {}),
+          },
+        };
+      }));
     },
 
     rotateSelected(angleDeg: number) {
       const keys = selectedKeys();
       if (keys.length === 0) return;
-      keyboard.patchKeys(keys.map((k) => ({
-        id: k.id as KeyId,
-        changes: { r: k.r + angleDeg },
-      })));
+      const bbox = keysBoundingBox(keys, DEFAULT_KEY_SIZE);
+      if (!bbox) return;
+      const cxU = (bbox.min.x + bbox.max.x) / 2 / DEFAULT_KEY_SIZE;
+      const cyU = (bbox.min.y + bbox.max.y) / 2 / DEFAULT_KEY_SIZE;
+      keyboard.patchKeys(keys.map((k) => {
+        const result = rotateAndNormalizeKey(k, cxU, cyU, angleDeg);
+        return {
+          id: k.id as KeyId,
+          changes: { x: result.x, y: result.y, r: result.r % 360, rx: 0, ry: 0 },
+        };
+      }));
     },
     mirrorHorizontal() {
       const keys = selectedKeys();
@@ -199,15 +217,24 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
       const cx = (bbox.min.x + bbox.max.x) / 2 / DEFAULT_KEY_SIZE;
       const lBox = logicalKeysBoundingBox(keys, DEFAULT_KEY_SIZE);
       const centerCol = lBox ? (lBox.min.x + lBox.max.x) / 2 / DEFAULT_KEY_SIZE : null;
-      keyboard.patchKeys(keys.map((k) => ({
-        id: k.id as KeyId,
-        changes: {
-          x: 2 * cx - k.x - k.w,
-          rx: 2 * cx - k.rx,
-          r: -k.r,
-          ...(centerCol !== null ? { col: Math.round(2 * centerCol - k.col - 1) } : {}),
-        },
-      })));
+      keyboard.patchKeys(keys.map((k) => {
+        // Resolve fallback, mirror, then normalize to rx=0,ry=0
+        const ox = k.rx === 0 ? k.x : k.rx;
+        const x2 = 2 * cx - k.x - k.w;
+        const ox2 = 2 * cx - ox;
+        const r2 = -k.r;
+        const norm = normalizeRotationOrigin({
+          x: x2, y: k.y, w: k.w, h: k.h, r: r2, rx: ox2, ry: k.ry,
+        });
+        return {
+          id: k.id as KeyId,
+          changes: {
+            ...norm,
+            r: r2,
+            ...(centerCol !== null ? { col: Math.round(2 * centerCol - k.col - 1) } : {}),
+          },
+        };
+      }));
     },
 
     mirrorVertical() {
@@ -218,15 +245,24 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
       const cy = (bbox.min.y + bbox.max.y) / 2 / DEFAULT_KEY_SIZE;
       const lBox = logicalKeysBoundingBox(keys, DEFAULT_KEY_SIZE);
       const centerRow = lBox ? (lBox.min.y + lBox.max.y) / 2 / DEFAULT_KEY_SIZE : null;
-      keyboard.patchKeys(keys.map((k) => ({
-        id: k.id as KeyId,
-        changes: {
-          y: 2 * cy - k.y - k.h,
-          ry: 2 * cy - k.ry,
-          r: -k.r,
-          ...(centerRow !== null ? { row: Math.round(2 * centerRow - k.row - 1) } : {}),
-        },
-      })));
+      keyboard.patchKeys(keys.map((k) => {
+        // Resolve fallback, mirror, then normalize to rx=0,ry=0
+        const oy = k.ry === 0 ? k.y : k.ry;
+        const y2 = 2 * cy - k.y - k.h;
+        const oy2 = 2 * cy - oy;
+        const r2 = -k.r;
+        const norm = normalizeRotationOrigin({
+          x: k.x, y: y2, w: k.w, h: k.h, r: r2, rx: k.rx, ry: oy2,
+        });
+        return {
+          id: k.id as KeyId,
+          changes: {
+            ...norm,
+            r: r2,
+            ...(centerRow !== null ? { row: Math.round(2 * centerRow - k.row - 1) } : {}),
+          },
+        };
+      }));
     },
 
     toggleGridSnap() {

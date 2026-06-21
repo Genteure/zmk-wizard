@@ -52,7 +52,7 @@ import type { Gesture } from './composables/useCanvasGestures';
 import { useKeyboardStore, useNavigationStore, useSelectionStore } from '../stores';
 import CanvasViewport from './CanvasViewport.vue';
 import KeyEntity from './KeyEntity.vue';
-import { keysBoundingBox, keyBoundingBox, logicalKeysBoundingBox, logicalKeyBoundingBox, keyToSvgPath, DEFAULT_KEY_SIZE, DEFAULT_PADDING, DEFAULT_BORDER_RADIUS } from './keyShape';
+import { keysBoundingBox, keyBoundingBox, logicalKeysBoundingBox, logicalKeyBoundingBox, keyToSvgPath, normalizeRotationOrigin, rotateAndNormalizeKey, DEFAULT_KEY_SIZE, DEFAULT_PADDING, DEFAULT_BORDER_RADIUS } from './keyShape';
 import type { BoundingBox } from '~/types/geometry';
 import type { KeyId } from '~/types/keyboard';
 import type { PinId } from '~/types/devices';
@@ -490,34 +490,50 @@ function handleMoveEnd(g: Extract<Gesture, { mode: 'moving' }>, canvas: CanvasHa
   if (!canvas) return;
   const d = computeMoveDelta(g.svx, g.svy, g.cvx, g.cvy, g.shift, canvas.zoom, isPhysical);
   if (!d) return;
-  keyboard.patchKeys(selectedKeys.value.map((k) => ({
-    id: k.id as KeyId,
-    changes: isPhysical
-      ? { x: k.x + d.dU, y: k.y + d.dV, rx: k.rx + d.dU, ry: k.ry + d.dV }
-      : { col: k.col + d.dU, row: k.row + d.dV },
-  })));
+  keyboard.patchKeys(selectedKeys.value.map((k) => {
+    if (!isPhysical) return { id: k.id as KeyId, changes: { col: k.col + d.dU, row: k.row + d.dV } };
+    // Per algo §"Move key by dx, dy":
+    //   r=0 → only x,y; rx/ry ignored
+    //   r≠0 → x,y offset; rx/ry offset only if non-zero
+    const base = { x: k.x + d.dU, y: k.y + d.dV };
+    if (k.r === 0) return { id: k.id as KeyId, changes: base };
+    return {
+      id: k.id as KeyId,
+      changes: {
+        ...base,
+        ...(k.rx !== 0 ? { rx: k.rx + d.dU } : {}),
+        ...(k.ry !== 0 ? { ry: k.ry + d.dV } : {}),
+      },
+    };
+  }));
 }
 
-// ─── Rotate commit ─────────────────────────────────────────────
 
 function handleRotateEnd(g: Extract<Gesture, { mode: 'rotating' }>, canvas: CanvasHandle | undefined) {
   if (!canvas) return;
   const delta = computeRotateDelta(g.svx, g.svy, g.cvx, g.cvy, g.cx, g.cy, g.shift, canvas.pan, canvas.zoom);
   if (delta === null) return;
+
   if (g.alt) {
-    keyboard.patchKeys(selectedKeys.value.map((k) => ({ id: k.id as KeyId, changes: { r: k.r + delta } })));
-  } else {
-    const cxU = g.cx / DEFAULT_KEY_SIZE, cyU = g.cy / DEFAULT_KEY_SIZE;
-    const rad = (delta * Math.PI) / 180, cos = Math.cos(rad), sin = Math.sin(rad);
+    // Rotate around each key's own origin — only r changes, then normalize
     keyboard.patchKeys(selectedKeys.value.map((k) => {
-      const dx = k.x - cxU, dy = k.y - cyU, drx = k.rx - cxU, dry = k.ry - cyU;
+      const newR = k.r + delta;
+      const normalized = normalizeRotationOrigin({
+        x: k.x, y: k.y, w: k.w, h: k.h, r: newR, rx: k.rx, ry: k.ry,
+      });
       return {
         id: k.id as KeyId,
-        changes: {
-          x: cxU + dx * cos - dy * sin, y: cyU + dx * sin + dy * cos,
-          r: k.r + delta,
-          rx: cxU + drx * cos - dry * sin, ry: cyU + drx * sin + dry * cos,
-        },
+        changes: { ...normalized, r: newR },
+      };
+    }));
+  } else {
+    // Rotate around group center — use correct algorithm + normalize
+    const cxU = g.cx / DEFAULT_KEY_SIZE, cyU = g.cy / DEFAULT_KEY_SIZE;
+    keyboard.patchKeys(selectedKeys.value.map((k) => {
+      const result = rotateAndNormalizeKey(k, cxU, cyU, delta);
+      return {
+        id: k.id as KeyId,
+        changes: { x: result.x, y: result.y, r: result.r, rx: 0, ry: 0 },
       };
     }));
   }
@@ -542,23 +558,27 @@ const physicalGhosts = computed<GhostEntity[]>(() => {
   if (g.mode === 'moving') {
     const d = computeMoveDelta(g.svx, g.svy, g.cvx, g.cvy, g.shift, physicalCanvas.value!.zoom, true);
     if (!d) return [];
-    return selectedKeys.value.map((k) => ({
-      id: k.id,
-      path: ghostPath(k),
-      transform: ghostTransform(k.x * DEFAULT_KEY_SIZE + d.pxX, k.y * DEFAULT_KEY_SIZE + d.pxY, k.r, (k.rx - k.x) * DEFAULT_KEY_SIZE, (k.ry - k.y) * DEFAULT_KEY_SIZE),
-    }));
+    return selectedKeys.value.map((k) => {
+      // Rotation offset with rx/ry fallback: when rx=0, effective rx = x → offset = 0
+      const rotOffX = (k.rx === 0 ? 0 : (k.rx - k.x)) * DEFAULT_KEY_SIZE;
+      const rotOffY = (k.ry === 0 ? 0 : (k.ry - k.y)) * DEFAULT_KEY_SIZE;
+      return {
+        id: k.id,
+        path: ghostPath(k),
+        transform: ghostTransform(k.x * DEFAULT_KEY_SIZE + d.pxX, k.y * DEFAULT_KEY_SIZE + d.pxY, k.r, rotOffX, rotOffY),
+      };
+    });
   }
+  // Rotate ghost — use the same correct algorithm + normalization as commit
   const delta = computeRotateDelta(g.svx, g.svy, g.cvx, g.cvy, g.cx, g.cy, g.shift, physicalCanvas.value!.pan, physicalCanvas.value!.zoom);
   if (delta === null) return [];
   const cxU = g.cx / DEFAULT_KEY_SIZE, cyU = g.cy / DEFAULT_KEY_SIZE;
-  const rad = (delta * Math.PI) / 180, cos = Math.cos(rad), sin = Math.sin(rad);
   return selectedKeys.value.map((k) => {
-    const dx = k.x - cxU, dy = k.y - cyU, drx = k.rx - cxU, dry = k.ry - cyU;
-    const nx = cxU + dx * cos - dy * sin, ny = cyU + dx * sin + dy * cos;
-    const nrx = cxU + drx * cos - dry * sin, nry = cyU + drx * sin + dry * cos;
+    const result = rotateAndNormalizeKey(k, cxU, cyU, delta);
     return {
       id: k.id, path: ghostPath(k),
-      transform: ghostTransform(nx * DEFAULT_KEY_SIZE, ny * DEFAULT_KEY_SIZE, k.r + delta, (nrx - nx) * DEFAULT_KEY_SIZE, (nry - ny) * DEFAULT_KEY_SIZE),
+      // After normalization rx=0, ry=0 → rotation about key's own top-left → offset 0
+      transform: ghostTransform(result.x * DEFAULT_KEY_SIZE, result.y * DEFAULT_KEY_SIZE, result.r, 0, 0),
     };
   });
 });

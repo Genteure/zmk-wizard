@@ -141,8 +141,10 @@ const keyTransform = computed(() => {
   const tx = keyX.value * ks;
   const ty = keyY.value * ks;
   if (keyR.value === 0) return `translate(${tx},${ty})`;
-  const rotx = (keyRx.value - keyX.value) * ks;
-  const roty = (keyRy.value - keyY.value) * ks;
+  const effRx = keyRx.value === 0 ? keyX.value : keyRx.value;
+  const effRy = keyRy.value === 0 ? keyY.value : keyRy.value;
+  const rotx = (effRx - keyX.value) * ks;
+  const roty = (effRy - keyY.value) * ks;
   return `translate(${tx},${ty}) rotate(${keyR.value}, ${rotx}, ${roty})`;
 });
 
