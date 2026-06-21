@@ -542,6 +542,16 @@ export const useNavigationStore = defineStore('navigation', () => {
     { deep: true },
   );
 
+  // Reset activePart to 0 when the current part is removed (e.g. user reduces part count).
+  watch(
+    () => keyboard.parts.length,
+    (newLen) => {
+      if (activePart.value !== null && activePart.value >= newLen) {
+        activePart.value = 0;
+      }
+    },
+  );
+
   return { locale, activeTab, activePart, wiringSelection, dialog, build };
 });
 
