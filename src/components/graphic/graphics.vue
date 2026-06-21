@@ -532,7 +532,7 @@ function ghostPath(k: { w: number; h: number }) {
 }
 
 function ghostTransform(tx: number, ty: number, r: number, rx: number, ry: number) {
-  const base = `translate(${tx + DEFAULT_PADDING / 2},${ty + DEFAULT_PADDING / 2})`;
+  const base = `translate(${tx},${ty})`;
   return r === 0 ? base : `${base} rotate(${r}, ${rx},${ry})`;
 }
 
@@ -571,7 +571,7 @@ const keymapGhosts = computed<GhostEntity[]>(() => {
   return selectedKeys.value.map((k) => ({
     id: k.id,
     path: keyToSvgPath({ w: 1, h: 1 }, { keySize: DEFAULT_KEY_SIZE, padding: DEFAULT_PADDING, borderRadius: DEFAULT_BORDER_RADIUS }),
-    transform: `translate(${(k.col + d.dU) * DEFAULT_KEY_SIZE + DEFAULT_PADDING / 2},${(k.row + d.dV) * DEFAULT_KEY_SIZE + DEFAULT_PADDING / 2})`,
+    transform: `translate(${(k.col + d.dU) * DEFAULT_KEY_SIZE},${(k.row + d.dV) * DEFAULT_KEY_SIZE})`,
   }));
 });
 

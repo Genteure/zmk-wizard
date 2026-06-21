@@ -51,7 +51,7 @@
         <circle
           :cx="selectionCenterX"
           :cy="selectionCenterY"
-          r="6"
+:r="6 / zoom"
           fill="white"
           stroke="rgba(59,130,246,0.8)"
           stroke-width="1.5"
@@ -66,15 +66,15 @@
             :x1="selectionCenterX"
             :y1="selectionBBox.min.y"
             :x2="selectionCenterX"
-            :y2="selectionBBox.min.y - 20"
+:y2="selectionBBox.min.y - 20 / zoom"
             stroke="rgba(59,130,246,0.5)"
             stroke-width="1"
             vector-effect="non-scaling-stroke"
           />
           <circle
             :cx="selectionCenterX"
-            :cy="selectionBBox.min.y - 20"
-            r="6"
+:cy="selectionBBox.min.y - 20 / zoom"
+:r="6 / zoom"
             fill="white"
             stroke="rgba(59,130,246,0.8)"
             stroke-width="1.5"
