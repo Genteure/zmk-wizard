@@ -276,3 +276,39 @@ export function rotateAndNormalizeKey(
 
   return { x: norm.x, y: norm.y, r: newR };
 }
+/**
+ * Rotate a key around its own center point by delta degrees.
+ * The key's center (in world coordinates, accounting for current rotation)
+ * stays fixed; the rotation angle changes and rx,ry are normalized to (0,0).
+ *
+ * Returns { x, y, r } — the new position with r updated, rx=ry=0 implied.
+ */
+export function rotateKeyAroundCenter(
+  key: { x: number; y: number; w: number; h: number; r: number; rx: number; ry: number },
+  deltaDeg: number,
+): { x: number; y: number; r: number } {
+  // 1. Resolve fallback for current rotation origin
+  const ox = key.rx === 0 ? key.x : key.rx;
+  const oy = key.ry === 0 ? key.y : key.ry;
+
+  // 2. Current unrotated centre
+  const cx0 = key.x + key.w / 2;
+  const cy0 = key.y + key.h / 2;
+
+  // 3. Current final centre after rotation (clockwise in screen coordinates)
+  const rad = (key.r * Math.PI) / 180;
+  const cosR = Math.cos(rad), sinR = Math.sin(rad);
+  const finalCx = ox + (cx0 - ox) * cosR - (cy0 - oy) * sinR;
+  const finalCy = oy + (cx0 - ox) * sinR + (cy0 - oy) * cosR;
+
+  // 4. New rotation, normalized to [0, 360)
+  const newR = ((key.r + deltaDeg) % 360 + 360) % 360;
+
+  // 5. Solve for new top-left (normalized, rx=0, ry=0) preserving the original center
+  const newRad = (newR * Math.PI) / 180;
+  const cosNewR = Math.cos(newRad), sinNewR = Math.sin(newRad);
+  const newX = finalCx - (key.w / 2) * cosNewR + (key.h / 2) * sinNewR;
+  const newY = finalCy - (key.w / 2) * sinNewR - (key.h / 2) * cosNewR;
+
+  return { x: newX, y: newY, r: newR };
+}

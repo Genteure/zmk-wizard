@@ -52,7 +52,7 @@ import type { Gesture } from './composables/useCanvasGestures';
 import { useKeyboardStore, useNavigationStore, useSelectionStore } from '../stores';
 import CanvasViewport from './CanvasViewport.vue';
 import KeyEntity from './KeyEntity.vue';
-import { keysBoundingBox, keyBoundingBox, logicalKeysBoundingBox, logicalKeyBoundingBox, keyToSvgPath, normalizeRotationOrigin, rotateAndNormalizeKey, DEFAULT_KEY_SIZE, DEFAULT_PADDING, DEFAULT_BORDER_RADIUS } from './keyShape';
+import { keysBoundingBox, keyBoundingBox, logicalKeysBoundingBox, logicalKeyBoundingBox, keyToSvgPath, normalizeRotationOrigin, rotateAndNormalizeKey, rotateKeyAroundCenter, DEFAULT_KEY_SIZE, DEFAULT_PADDING, DEFAULT_BORDER_RADIUS } from './keyShape';
 import type { BoundingBox } from '~/types/geometry';
 import type { KeyId } from '~/types/keyboard';
 import type { PinId } from '~/types/devices';
@@ -514,16 +514,13 @@ function handleRotateEnd(g: Extract<Gesture, { mode: 'rotating' }>, canvas: Canv
   const delta = computeRotateDelta(g.svx, g.svy, g.cvx, g.cvy, g.cx, g.cy, g.shift, canvas.pan, canvas.zoom);
   if (delta === null) return;
 
-  if (g.alt) {
-    // Rotate around each key's own origin — only r changes, then normalize
+  if (g.alt || g.ctrl) {
+    // Rotate around each key's own center point
     keyboard.patchKeys(selectedKeys.value.map((k) => {
-      const newR = k.r + delta;
-      const normalized = normalizeRotationOrigin({
-        x: k.x, y: k.y, w: k.w, h: k.h, r: newR, rx: k.rx, ry: k.ry,
-      });
+      const result = rotateKeyAroundCenter(k, delta);
       return {
         id: k.id as KeyId,
-        changes: { ...normalized, r: newR },
+        changes: { x: result.x, y: result.y, r: result.r, rx: 0, ry: 0 },
       };
     }));
   } else {
@@ -569,9 +566,19 @@ const physicalGhosts = computed<GhostEntity[]>(() => {
       };
     });
   }
-  // Rotate ghost — use the same correct algorithm + normalization as commit
+  // Rotate ghost — match the commit behavior for alt vs group
   const delta = computeRotateDelta(g.svx, g.svy, g.cvx, g.cvy, g.cx, g.cy, g.shift, physicalCanvas.value!.pan, physicalCanvas.value!.zoom);
   if (delta === null) return [];
+  if (g.alt || g.ctrl) {
+    // Individual rotation around each key's own center
+    return selectedKeys.value.map((k) => {
+      const result = rotateKeyAroundCenter(k, delta);
+      return {
+        id: k.id, path: ghostPath(k),
+        transform: ghostTransform(result.x * DEFAULT_KEY_SIZE, result.y * DEFAULT_KEY_SIZE, result.r, 0, 0),
+      };
+    });
+  }
   const cxU = g.cx / DEFAULT_KEY_SIZE, cyU = g.cy / DEFAULT_KEY_SIZE;
   return selectedKeys.value.map((k) => {
     const result = rotateAndNormalizeKey(k, cxU, cyU, delta);

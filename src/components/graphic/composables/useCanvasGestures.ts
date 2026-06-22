@@ -61,6 +61,7 @@ export type Gesture =
       startAngle: number;
       shift: boolean;
       alt: boolean;
+      ctrl: boolean;
     }
   | {
       mode: 'scrubbing';
@@ -240,6 +241,7 @@ export function useCanvasGestures(options: CanvasGesturesOptions) {
           startAngle,
           shift: e.shiftKey,
           alt: e.altKey,
+          ctrl: e.ctrlKey,
         };
         el.setPointerCapture(e.pointerId);
         e.preventDefault();
@@ -382,7 +384,7 @@ export function useCanvasGestures(options: CanvasGesturesOptions) {
       const vp = clientToViewport(e.clientX, e.clientY);
       currentPointer.x = vp.x;
       currentPointer.y = vp.y;
-      gesture.value = { ...g, cvx: vp.x, cvy: vp.y, shift: e.shiftKey, alt: e.altKey };
+      gesture.value = { ...g, cvx: vp.x, cvy: vp.y, shift: e.shiftKey, alt: e.altKey, ctrl: e.ctrlKey };
       return;
     }
   }

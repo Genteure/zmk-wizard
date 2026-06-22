@@ -302,6 +302,11 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
       return;
     }
 
+    // ── Alt: prevent browser menu bar ──
+    if (e.code === 'AltLeft' || e.code === 'AltRight' || e.key === 'Alt') {
+      e.preventDefault();
+    }
+
     const cmd = e.metaKey || e.ctrlKey;
     const shift = e.shiftKey;
 
