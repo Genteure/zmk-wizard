@@ -217,18 +217,18 @@ const copyWiringItems = computed<DropdownMenuItem[][]>(() => {
 </script>
 
 <ftl locale="en">
-part-name = Part Name
+part-name = {-part} Name
 part-name-placeholder = Enter part name
 part-name-desc = The name of this split keyboard part.
-controller-label = Controller
-select-different-controller = Select a different Controller
+controller-label = {-controller}
+select-different-controller = Select a different {-controller}
 copy-wiring-title = Copy wiring from another part
 copy-wiring-direct = Direct Copy
 copy-wiring-mirror-h = Mirrored Horizontally
 copy-wiring-mirror-v = Mirrored Vertically
 copy-wiring-mirror-both = Mirrored Both
 copy-wiring-from-part = From "{ $partName }"
-fallback-part-name = Part { $index }
+fallback-part-name = {-part} { $index }
 copy-wiring-from-header = Copy wiring from ...
 pinout-reference = Pinout Reference
 encoders = Encoders
@@ -236,18 +236,18 @@ peripheral-devices = Peripheral Devices
 </ftl>
 
 <ftl locale="zh-CN">
-part-name = 分体名字
+part-name = {-part}名字
 part-name-placeholder = 输入分体名字
 part-name-desc = 此分体的名称。
-controller-label = 控制器
-select-different-controller = 选择其他控制器
+controller-label = {-controller}
+select-different-controller = 选择其他{-controller}
 copy-wiring-title = 从其他分体复制接线
 copy-wiring-direct = 直接复制
 copy-wiring-mirror-h = 水平镜像
 copy-wiring-mirror-v = 垂直镜像
 copy-wiring-mirror-both = 双向镜像
 copy-wiring-from-part = 从{ $partName }复制
-fallback-part-name = 分体 { $index }
+fallback-part-name = {-part} { $index }
 copy-wiring-from-header = 从...复制接线
 pinout-reference = 引脚参考
 encoders = 编码器
@@ -255,18 +255,18 @@ peripheral-devices = 外设
 </ftl>
 
 <ftl locale="ja">
-part-name = パーツ名
+part-name = {-part}名
 part-name-placeholder = パーツ名を入力
 part-name-desc = この分割キーボードパーツの名前です。
-controller-label = コントローラー
-select-different-controller = 別のコントローラーを選択
+controller-label = {-controller}
+select-different-controller = 別の{-controller}を選択
 copy-wiring-title = 他のパーツから配線をコピー
 copy-wiring-direct = 直接コピー
 copy-wiring-mirror-h = 左右反転
 copy-wiring-mirror-v = 上下反転
 copy-wiring-mirror-both = 両方向反転
 copy-wiring-from-part = { $partName } からコピー
-fallback-part-name = パーツ { $index }
+fallback-part-name = {-part} { $index }
 copy-wiring-from-header = 配線をコピー...
 pinout-reference = ピン配置リファレンス
 encoders = エンコーダー

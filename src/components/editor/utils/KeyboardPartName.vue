@@ -53,7 +53,7 @@ function onSubmit(event: FormSubmitEvent<FormSchema>) {
             </UFormField>
 
             <div class="flex justify-end gap-2">
-              <UButton :label="$t('part-name-cancel')" color="neutral" variant="ghost" @click="open = false" />
+              <UButton :label="$t('cancel')" color="neutral" variant="ghost" @click="open = false" />
               <UButton type="submit" :label="$t('part-name-save')" />
             </div>
           </UForm>
@@ -64,16 +64,13 @@ function onSubmit(event: FormSubmitEvent<FormSchema>) {
 </template>
 
 <ftl locale="en">
-part-name-cancel = Cancel
 part-name-save = Save
 </ftl>
 
 <ftl locale="zh-CN">
-part-name-cancel = 取消
 part-name-save = 保存
 </ftl>
 
 <ftl locale="ja">
-part-name-cancel = キャンセル
 part-name-save = 保存
 </ftl>

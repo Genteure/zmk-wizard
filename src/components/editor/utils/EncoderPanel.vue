@@ -102,29 +102,29 @@ function encoderPhaseOptions(encoderId: string, phase: 'pinA' | 'pinB') {
 <ftl locale="en">
 encoders-title = Encoders (EC11)
 encoders-desc = EC11-like rotary encoders. Only rotational inputs are configured here, add press-down inputs as kscan keys.
-add-encoder = Add Encoder
+add-encoder = Add {-encoder}
 no-encoders = No encoders configured yet.
 encoder-pin-a = Pin A
 encoder-pin-b = Pin B
-none-option = — none —
+none-option = — {none} —
 </ftl>
 
 <ftl locale="zh-CN">
 encoders-title = 编码器 (EC11)
 encoders-desc = EC11 旋转编码器。这里仅配置旋转输入，按下输入请作为 Kscan 按键添加。
-add-encoder = 添加编码器
+add-encoder = 添加{-encoder}
 no-encoders = 尚未配置编码器
 encoder-pin-a = 引脚 A
 encoder-pin-b = 引脚 B
-none-option = — 无 —
+none-option = — {none} —
 </ftl>
 
 <ftl locale="ja">
 encoders-title = エンコーダー (EC11)
 encoders-desc = EC11互換のロータリーエンコーダー。ここでは回転入力のみを設定します。押下入力はKscanキーとして追加してください。
-add-encoder = エンコーダーを追加
+add-encoder = {-encoder}を追加
 no-encoders = エンコーダーが未設定です
 encoder-pin-a = ピン A
 encoder-pin-b = ピン B
-none-option = — なし —
+none-option = — {none} —
 </ftl>

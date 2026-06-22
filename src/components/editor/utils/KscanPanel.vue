@@ -164,7 +164,7 @@ function handleInterruptPin(kscanId: string, value: string) {
         <template v-if="kscan.kind === 'matrix'">
           <UFormField :label="$t('kscan-matrix-diodes')" class="w-32">
             <USelect :model-value="kscan.diodes ? 'true' : 'false'"
-              :items="[{ label: $t('yes'), value: 'true' }, { label: $t('no'), value: 'false' }]"
+              :items="[{ label: $t('kscan-matrix-diodes-yes'), value: 'true' }, { label: $t('kscan-matrix-diodes-no'), value: 'false' }]"
               @update:model-value="emit('patchKscan', kscan.id, { diodes: $event === 'true' })" />
           </UFormField>
         </template>
@@ -200,46 +200,46 @@ function handleInterruptPin(kscanId: string, value: string) {
 </template>
 
 <ftl locale="en">
-kscan-drivers = Kscan Drivers
+kscan-drivers = {-kscan} Drivers
 kscan-drivers-desc = Detect key presses by monitoring the state of the pins. Supports matrix, direct, charlieplex kscan drivers and combinations of them.
-add-kscan = Add Kscan
+add-kscan = Add {-kscan}
 no-kscan-drivers = No kscan drivers configured yet.
 kscans-field = kscans
 kscan-matrix-diodes = Diodes
+kscan-matrix-diodes-yes = With diodes
+kscan-matrix-diodes-no = Without diodes
 kscan-direct-mode = Mode
 kscan-charlieplex-interrupt-pin = Interrupt Pin
 no-pins-assigned = No pins assigned.
-yes = Yes
-no = No
-none-option = — none —
+none-option = — {none} —
 </ftl>
 
 <ftl locale="zh-CN">
-kscan-drivers = Kscan 驱动
+kscan-drivers = {-kscan} 驱动
 kscan-drivers-desc = 通过监测引脚状态检测按键输入。支持矩阵(matrix)、直连(direct)、charlieplex 等多种 Kscan 驱动及其组合。
-add-kscan = 添加 Kscan
+add-kscan = 添加 {-kscan}
 no-kscan-drivers = 尚未配置 Kscan 驱动
 kscans-field = Kscan 列表
 kscan-matrix-diodes = 二极管
+kscan-matrix-diodes-yes = 有二极管
+kscan-matrix-diodes-no = 无二极管
 kscan-direct-mode = 模式
 kscan-charlieplex-interrupt-pin = 中断引脚
 no-pins-assigned = 未分配引脚
-yes = 是
-no = 否
-none-option = — 无 —
+none-option = — {none} —
 </ftl>
 
 <ftl locale="ja">
-kscan-drivers = Kscan ドライバー
+kscan-drivers = {-kscan} ドライバー
 kscan-drivers-desc = ピンの状態を監視してキー入力を検出します。matrix、direct、charlieplex などの Kscan ドライバーとそれらの組み合わせに対応しています。
-add-kscan = Kscan を追加
-no-kscan-drivers = Kscan ドライバーが未設定です
+add-kscan = {-kscan} を追加
+no-kscan-drivers = {-kscan} ドライバーが未設定です
 kscans-field = Kscan 一覧
 kscan-matrix-diodes = ダイオード
+kscan-matrix-diodes-yes = ダイオードあり
+kscan-matrix-diodes-no = ダイオードなし
 kscan-direct-mode = モード
 kscan-charlieplex-interrupt-pin = 割り込みピン
 no-pins-assigned = ピンが割り当てられていません
-yes = はい
-no = いいえ
-none-option = — なし —
+none-option = — {none} —
 </ftl>

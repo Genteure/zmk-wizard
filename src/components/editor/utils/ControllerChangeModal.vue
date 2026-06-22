@@ -51,35 +51,32 @@ function onConfirm() {
     </template>
 
     <template #footer>
-      <UButton :label="$t('change-controller-cancel')" color="neutral" variant="ghost" @click="open = false" />
+      <UButton :label="$t('cancel')" color="neutral" variant="ghost" @click="open = false" />
       <UButton :label="$t('change-controller-confirm')" color="error" @click="onConfirm" />
     </template>
   </UModal>
 </template>
 
 <ftl locale="en">
-change-controller-title = Change Controller
-change-controller-warning = Changing the controller will { $danger }, including existing wiring, kscan drivers, encoders, and peripheral devices.
-  .danger = reset everything on this part
-change-controller-new-label = New Controller
-change-controller-cancel = Cancel
+change-controller-title = Change {-controller}
+change-controller-warning = Changing the {-controller} will { $danger }, including existing wiring, kscan drivers, encoders, and peripheral devices.
+  .danger = reset everything on this {-part}
+change-controller-new-label = New {-controller}
 change-controller-confirm = Change & Reset
 </ftl>
 
 <ftl locale="zh-CN">
-change-controller-title = 更换控制器
-change-controller-warning = 更换控制器将{ $danger }，包括现有接线、Kscan 驱动、编码器和外设。
-  .danger = 重置此分体的所有内容
-change-controller-new-label = 新控制器
-change-controller-cancel = 取消
+change-controller-title = 更换{-controller}
+change-controller-warning = 更换{-controller}将{ $danger }，包括现有接线、Kscan 驱动、编码器和外设。
+  .danger = 重置此{-part}的所有内容
+change-controller-new-label = 新{-controller}
 change-controller-confirm = 更换并重置
 </ftl>
 
 <ftl locale="ja">
-change-controller-title = コントローラーの変更
-change-controller-warning = コントローラーを変更すると{ $danger }。既存の配線、Kscanドライバー、エンコーダー、周辺機器もすべてリセットされます。
-  .danger = このパーツのすべてがリセットされます
-change-controller-new-label = 新しいコントローラー
-change-controller-cancel = キャンセル
+change-controller-title = {-controller}の変更
+change-controller-warning = {-controller}を変更すると{ $danger }。既存の配線、Kscanドライバー、エンコーダー、周辺機器もすべてリセットされます。
+  .danger = この{-part}のすべてがリセットされます
+change-controller-new-label = 新しい{-controller}
 change-controller-confirm = 変更してリセット
 </ftl>

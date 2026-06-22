@@ -346,8 +346,8 @@ role-pin-b = Pin B
 role-dual = Dual
 
 # Category labels
-category-kscan = Kscan
-category-encoder = Encoder
+category-kscan = {-kscan}
+category-encoder = {-encoder}
 category-bus = Bus
 category-device = Device
 
@@ -361,8 +361,8 @@ deselect = Deselect
 select-pin-as = Select pin as
 select-for-wiring = Select for wiring ({ $role })
 unassign = Unassign
-select-kscan = Select Kscan
-create-new-kscan = Create new Kscan
+select-kscan = Select {-kscan}
+create-new-kscan = Create new {-kscan}
 aka = a.k.a.
 </ftl>
 
@@ -374,8 +374,8 @@ role-pin-a = 引脚 A
 role-pin-b = 引脚 B
 role-dual = 双向
 
-category-kscan = Kscan
-category-encoder = 编码器
+category-kscan = {-kscan}
+category-encoder = {-encoder}
 category-bus = 总线
 category-device = 设备
 
@@ -387,8 +387,8 @@ deselect = 取消选择
 select-pin-as = 选择引脚用途
 select-for-wiring = 选择用于接线（{ $role }）
 unassign = 取消分配
-select-kscan = 选择 Kscan
-create-new-kscan = 创建新 Kscan
+select-kscan = 选择{-kscan}
+create-new-kscan = 创建新{-kscan}
 aka = 又称
 </ftl>
 
@@ -400,8 +400,8 @@ role-pin-a = ピン A
 role-pin-b = ピン B
 role-dual = 双方向
 
-category-kscan = Kscan
-category-encoder = エンコーダー
+category-kscan = {-kscan}
+category-encoder = {-encoder}
 category-bus = バス
 category-device = デバイス
 
@@ -413,7 +413,7 @@ deselect = 選択解除
 select-pin-as = ピンの役割を選択
 select-for-wiring = 配線として選択（{ $role }）
 unassign = 割り当て解除
-select-kscan = Kscan を選択
-create-new-kscan = 新しい Kscan を作成
+select-kscan = {-kscan}を選択
+create-new-kscan = 新しい{-kscan}を作成
 aka = 別名
 </ftl>
