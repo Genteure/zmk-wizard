@@ -255,7 +255,7 @@ export function rotateAndNormalizeKey(
   const Oy2 = pivotY + (ox - pivotX) * sinD + (oy - pivotY) * cosD;
 
   // 4. New rotation
-  const newR = key.r + deltaDeg;
+  const newR = ((key.r + deltaDeg) % 360 + 360) % 360;
 
   // 5-6. Solve for new top-left from new centre and new explicit origin
   const newRRad = (newR * Math.PI) / 180;

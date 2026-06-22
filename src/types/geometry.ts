@@ -35,12 +35,16 @@ export function keyCenter(
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);
 
+  // Apply rx/ry fallback: when rx === 0, effective rx = x (same for ry)
+  const effRx = key.rx === 0 ? key.x : key.rx;
+  const effRy = key.ry === 0 ? key.y : key.ry;
+
   // Rotate around the rotation origin
-  const dx = cx - key.rx;
-  const dy = cy - key.ry;
+  const dx = cx - effRx;
+  const dy = cy - effRy;
 
   return {
-    x: key.rx + dx * cos - dy * sin,
-    y: key.ry + dx * sin + dy * cos,
+    x: effRx + dx * cos - dy * sin,
+    y: effRy + dx * sin + dy * cos,
   };
 }

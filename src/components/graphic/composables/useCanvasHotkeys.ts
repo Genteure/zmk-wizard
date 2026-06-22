@@ -205,7 +205,7 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
         const result = rotateAndNormalizeKey(k, cxU, cyU, angleDeg);
         return {
           id: k.id as KeyId,
-          changes: { x: result.x, y: result.y, r: result.r % 360, rx: 0, ry: 0 },
+          changes: { x: result.x, y: result.y, r: result.r, rx: 0, ry: 0 },
         };
       }));
     },
