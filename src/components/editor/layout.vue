@@ -98,8 +98,8 @@
     <template #body>
       <div class="flex flex-col gap-3">
         <div
-          class="w-full h-48 flex items-center justify-center border rounded border-muted bg-muted text-sm text-muted select-none">
-          <div>{{ $t('no-preview-yet') }}</div>
+          class="w-full h-48 flex items-center justify-center border rounded border-muted bg-muted select-none overflow-hidden">
+          <LayoutPreview :keys="presetKeys" />
         </div>
         <USelectMenu v-model="presetSelected" :items="presetEntries" value-key="value"
           :placeholder="$t('tools-load-preset-placeholder')" class="w-full" />
@@ -121,6 +121,7 @@ import { parsePhysicalLayoutDts, parseLayoutJson, parseKleJson, parseCsv, export
 import { exportPhysicalLayoutDts } from '~/export/shield';
 import { config_json } from '~/export/contents';
 import { getLayouts } from '~/lib/physicalLayouts';
+import LayoutPreview from '../graphic/LayoutPreview.vue';
 import PopoverInputNumber from './utils/PopoverInputNumber.vue';
 
 const { $t } = useFluent();
@@ -267,6 +268,11 @@ const presetEntries = computed(() => {
     }
   }
   return entries;
+});
+
+const presetKeys = computed(() => {
+  const entry = presetEntries.value.find(e => e.value === presetSelected.value);
+  return entry?.keys ?? [];
 });
 
 function loadPreset() {
@@ -422,8 +428,6 @@ tools-export-copy = Copy
 tools-export-copied = Copied!
 tools-external-kicad = KiCAD PCB -> Layout JSON
 tools-external-kle-ng = Keyboard Layout Editor NG
-
-no-preview-yet = Preview not implemented yet
 </ftl>
 
 <ftl locale="zh-CN">
@@ -489,7 +493,6 @@ tools-export-copied = 已复制！
 tools-external-kicad = KiCAD PCB -> 布局 JSON
 tools-external-kle-ng = Keyboard Layout Editor NG
 
-no-preview-yet = 预览尚未实现
 </ftl>
 
 <ftl locale="ja">
@@ -555,5 +558,4 @@ tools-export-copied = コピーしました！
 tools-external-kicad = KiCAD PCB -> レイアウト JSON
 tools-external-kle-ng = Keyboard Layout Editor NG
 
-no-preview-yet = プレビューはまだ実装されていません
 </ftl>
