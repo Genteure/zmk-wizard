@@ -52,6 +52,7 @@
       </div>
     </template>
   </UModal>
+  <FeedbackDialog v-model:open="feedbackOpen" />
 </template>
 
 <script setup lang="ts">
@@ -66,7 +67,7 @@ import Graphics from './graphic/graphics.vue';
 import { locales } from './locales';
 import { useKeyboardStore, useNavigationStore } from './stores.ts';
 import { Controllers } from '~/metadata/controllers';
-import KeyboardNameDialog from './utils/KeyboardNameDialog.vue';
+import FeedbackDialog from './utils/FeedbackDialog.vue';
 import LocaleSelect from './utils/LocaleSelect.vue';
 import BuildActions from './utils/BuildActions.vue';
 
@@ -96,6 +97,10 @@ function openDebugDialog() {
   debugData.value = JSON.stringify(keyboard.$state, null, 2).replace(/(\d,)\n +/g, '$1 ');
   debugError.value = '';
   debugOpen.value = true;
+}
+const feedbackOpen = ref(false);
+function openFeedbackDialog() {
+  feedbackOpen.value = true;
 }
 function applyDebugData() {
   try {
@@ -161,6 +166,11 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
       onSelect() { copyVersionInfo() },
     },
     {
+      label: $t('menu-feedback'),
+      icon: 'i-lucide-message-square-plus',
+      onSelect() { openFeedbackDialog() },
+    },
+    {
       label: $t('menu-debug'),
       icon: 'i-lucide-bug',
       children: [
@@ -200,6 +210,11 @@ const navItems = computed<NavigationMenuItem[][]>(() => [
       onSelect() { copyVersionInfo() },
     },
     {
+      label: $t('menu-feedback'),
+      icon: 'i-lucide-message-square-plus',
+      onSelect() { openFeedbackDialog() },
+    },
+    {
       label: $t('menu-debug'),
       icon: 'i-lucide-bug',
       children: [
@@ -208,6 +223,7 @@ const navItems = computed<NavigationMenuItem[][]>(() => [
     },
   ],
 ]);
+
 </script>
 
 <ftl locale="en">
@@ -217,6 +233,7 @@ menu-zmk-docs = ZMK Documentation
 menu-community = Community
 menu-next-steps = What to do after this?
 menu-discord = ZMK Community Discord
+menu-feedback = Feedback
 menu-github = Shield Wizard GitHub
 menu-debug = Debug Options
 menu-debug-data = Show Internal Data
@@ -233,6 +250,7 @@ menu-zmk-docs = ZMK 文档
 menu-community = 社区
 menu-next-steps = 接下来做什么？
 menu-github = Shield Wizard GitHub
+menu-feedback = 反馈
 menu-debug = 调试选项
 menu-debug-data = 查看内部数据
 debug-title = 内部数据
@@ -248,6 +266,7 @@ menu-next-steps = この後どうする？
 menu-community = コミュニティ
 menu-discord = ZMK コミュニティ Discord
 menu-github = Shield Wizard GitHub
+menu-feedback = フィードバック
 menu-debug = デバッグオプション
 menu-debug-data = 内部データを表示
 debug-title = 内部データ

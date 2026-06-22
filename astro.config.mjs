@@ -26,6 +26,7 @@ export default defineConfig({
     schema: {
       TURNSTILE_SECRET: envField.string({ context: "server", access: "secret", optional: true }),
       PUBLIC_TURNSTILE_SITEKEY: envField.string({ context: "client", access: "public" }),
+      FEEDBACK_WEBHOOK_URL: envField.string({ context: "server", access: "secret", optional: true }),
     },
   },
 
