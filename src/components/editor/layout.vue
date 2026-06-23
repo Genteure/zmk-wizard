@@ -108,6 +108,7 @@
       </div>
     </template>
   </UModal>
+  <BootstrapLayout v-model:open="bootstrapOpen" />
 </template>
 
 <script setup lang="ts">
@@ -122,6 +123,7 @@ import { exportPhysicalLayoutDts } from '~/export/shield';
 import { config_json } from '~/export/contents';
 import { getLayouts } from '~/lib/physicalLayouts';
 import LayoutPreview from '../graphic/LayoutPreview.vue';
+import BootstrapLayout from './BootstrapLayout.vue';
 import PopoverInputNumber from './utils/PopoverInputNumber.vue';
 
 const { $t } = useFluent();
@@ -191,6 +193,9 @@ const columns: TableColumn<Key>[] = [
   { id: 'ry', },
 
 ];
+
+// ─── Bootstrap state ──────────────────────────────────────────
+const bootstrapOpen = ref(false);
 
 // ─── Import/Export state ──────────────────────────────────────
 const importOpen = ref(false);
@@ -290,14 +295,7 @@ const layoutTools = computed<DropdownMenuItem[][]>(() => [
   [
     {
       label: $t('tools-bootstrap'),
-      onSelect() {
-        // TODO implement bootstrap layout generation
-        toast.add({
-          title: "Not Implemented Yet",
-          description: "Bootstrap layout is not implemented yet. Please use presets or import layouts for now.",
-          color: 'warning',
-        })
-      },
+      onSelect() { bootstrapOpen.value = true; },
     },
     {
       label: $t('tools-load-preset'),
