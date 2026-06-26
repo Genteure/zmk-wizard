@@ -30,6 +30,7 @@ Translate UI strings in this repository using Fluent (`fluent-vue`) while keepin
 ## Tone and Language Quality
 
 - Default to a neutral tone in all locales unless a feature explicitly requires a different voice.
+  - Do NOT use honorifics in any locale. "您" is explicitly disallowed, use neutral "你" instead.
 - Use component and project context to infer intent before translating.
   - Consider where the text appears (button label, warning, helper text, modal, paragraph).
   - Keep wording aligned with ZMK/keyboard domain terminology used elsewhere in the project.
