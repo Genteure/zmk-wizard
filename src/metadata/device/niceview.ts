@@ -29,7 +29,6 @@ export const niceViewMeta = {
   gpio: {
     cs: {
       label: "Chip Select",
-      desc: "SPI chip select pin. Active high for nice!view.",
       required: true,
     },
   },

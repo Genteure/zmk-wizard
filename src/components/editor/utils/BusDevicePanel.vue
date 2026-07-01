@@ -17,7 +17,7 @@ const props = defineProps<{
 const keyboard = useKeyboardStore();
 
 const partRef = computed(() => props.part);
-const { allPins, getPinsForBus } = usePinInventory(partRef);
+const { allPins, getPinsForBus, deviceNodeLabels } = usePinInventory(partRef);
 const partBuses = computed(() => props.part.buses as Record<string, { type: string; devices: AnyBusDevice[] }>);
 
 const { busStatuses, deviceAvailable, canAddToBus } = useBusAvailability(
@@ -256,13 +256,31 @@ function statusBadgeColor(status: BusStatus) {
             <div v-for="device in (partBuses[busStatus.name]?.devices ?? [])" :key="device.id"
               class="rounded-lg bg-default ring ring-accented px-3 py-2">
               <div class="flex items-center justify-between gap-2">
-                <span class="font-medium text-sm">
-                  {{ deviceMetaFor(device.type)?.visual.name ?? device.type }}
+                <span>
+                  <span class="font-medium text-sm">
+                    {{ deviceMetaFor(device.type)?.visual.name ?? device.type }}
+                  </span>
+                  <span v-if="deviceNodeLabels[device.id]"
+                    class="font-mono text-xs font-normal text-base-content/40">&nbsp;&mdash;&nbsp;{{
+                      deviceNodeLabels[device.id]
+                    }}</span>
                 </span>
                 <UButton icon="i-lucide-trash-2" color="error" variant="ghost" size="sm"
                   @click.stop="onRemoveDevice(busStatus.name, device.id)" />
               </div>
               <div class="mt-3 space-y-3">
+                <div v-if="Object.keys(deviceMetaFor(device.type)?.gpio ?? {}).length">
+                  <div class="text-xs text-base-content/60 font-semibold mb-2">{{ $t('device-gpios') }}</div>
+                  <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 items-end">
+                    <UFormField v-for="(gpioMeta, gpioRole) in deviceMetaFor(device.type)!.gpio" :key="gpioRole"
+                      :label="gpioMeta.label" :description="gpioMeta.desc" :required="gpioMeta.required">
+                      <USelect :model-value="devicePin(device.id, gpioRole) ?? NONE_SENTINEL"
+                        :items="pinSelectDeviceOptions(devicePin(device.id, gpioRole))" size="sm" class="w-full"
+                        @update:model-value="(v: string) => onDevicePinChange(device.id, gpioRole, v)" />
+                    </UFormField>
+                  </div>
+                </div>
+
                 <div v-if="deviceMetaFor(device.type)?.props">
                   <div class="text-xs text-base-content/60 font-semibold mb-2">{{ $t('device-properties') }}</div>
                   <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 items-end">
@@ -303,18 +321,6 @@ function statusBadgeColor(status: BusStatus) {
                           @update:model-value="(v: boolean | 'indeterminate') => onDevicePropChange(busStatus.name, device.id, propKey, !!v)" />
                       </UFormField>
                     </template>
-                  </div>
-                </div>
-
-                <div v-if="Object.keys(deviceMetaFor(device.type)?.gpio ?? {}).length">
-                  <div class="text-xs text-base-content/60 font-semibold mb-2">{{ $t('device-gpios') }}</div>
-                  <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 items-end">
-                    <UFormField v-for="(gpioMeta, gpioRole) in deviceMetaFor(device.type)!.gpio" :key="gpioRole"
-                      :label="gpioMeta.label" :description="gpioMeta.desc">
-                      <USelect :model-value="devicePin(device.id, gpioRole) ?? NONE_SENTINEL"
-                        :items="pinSelectDeviceOptions(devicePin(device.id, gpioRole))" size="sm" class="w-full"
-                        @update:model-value="(v: string) => onDevicePinChange(device.id, gpioRole, v)" />
-                    </UFormField>
                   </div>
                 </div>
 

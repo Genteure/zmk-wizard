@@ -73,12 +73,11 @@ export const pinnacleSpiMeta = {
   gpio: {
     cs: {
       label: "Chip Select",
-      desc: "SPI chip select pin",
       required: true,
     },
     dr: {
       label: "Data Ready",
-      desc: "Data ready / interrupt pin. Active high, requires pull-down.",
+      desc: "Data Ready / Interrupt",
     },
   },
   visual: {

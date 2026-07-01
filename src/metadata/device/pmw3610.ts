@@ -38,7 +38,6 @@ export const pmw3610Meta = {
   gpio: {
     cs: {
       label: "Chip Select",
-      desc: "SPI chip select pin",
       required: true,
     },
     irq: {

@@ -114,6 +114,7 @@ onMounted(() => {
       ],
       duration: 0, // Do not auto-dismiss
     });
+    return;
   }
 
   toast.add({

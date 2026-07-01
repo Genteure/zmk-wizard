@@ -76,17 +76,21 @@ const editorTabs = computed<TabsItem[]>(() => {
 });
 </script>
 
+<!--
+Keyboard tab renamed to Firmware because it's more accurate.
+Only changed the label because it's less work.
+-->
 <ftl locale="en">
 tab-layout = Layout
-tab-keyboard = Keyboard
+tab-keyboard = Firmware
 </ftl>
 
 <ftl locale="zh-CN">
 tab-layout = 布局
-tab-keyboard = 键盘
+tab-keyboard = 固件
 </ftl>
 
 <ftl locale="ja">
 tab-layout = レイアウト
-tab-keyboard = キーボード
+tab-keyboard = ファームウェア
 </ftl>

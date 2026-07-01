@@ -37,12 +37,11 @@ export const paw3395Meta = {
   gpio: {
     cs: {
       label: "Chip Select",
-      desc: "SPI chip select pin",
       required: true,
     },
     irq: {
       label: "MOTION",
-      desc: "Motion / interrupt pin. Active low, requires pull-up.",
+      desc: "Motion / Interrupt",
     },
   },
   visual: {

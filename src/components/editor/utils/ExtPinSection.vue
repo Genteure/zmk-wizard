@@ -15,6 +15,7 @@ import { usePinInventory } from '~/lib/usePinInventory';
 import { useNavigationStore } from '~/components/stores';
 import { kscanLabel } from '~/components/utils/labels';
 import type { KeyboardPart, PinId, KscanDriver, DeviceId, PinInfo } from '~/types';
+import { getDeviceMeta, type DeviceTypeName } from '~/metadata/device';
 
 const props = defineProps<{
   part: KeyboardPart;
@@ -89,6 +90,10 @@ const extPinsByDevice = computed<ExtPinGroup[]>(() => {
 
 // ── Helpers ───────────────────────────────────────────────
 
+/** Short display name from device metadata. */
+function deviceShortName(typeName: string): string {
+  return getDeviceMeta(typeName as DeviceTypeName).visual.short ?? typeName;
+}
 /** Get the usage of a pin from the shared pin map. */
 function pinUsage(pinId: PinId) {
   return props.part.pins[pinId];
@@ -206,33 +211,22 @@ function pinButtonColor(pinId: PinId): BtnColor {
 </script>
 
 <template>
-  <div v-for="group in extPinsByDevice" :key="group.deviceId"
-    class="rounded-xl bg-muted ring ring-default p-3 mt-3">
+  <div v-for="group in extPinsByDevice" :key="group.deviceId" class="rounded-xl bg-muted ring ring-default p-3 mt-3">
     <!-- Device heading -->
-    <div class="text-sm font-semibold text-toned mb-0.5">
-      {{ group.deviceTypeName }}
-      <span class="font-mono text-xs font-normal">&mdash; {{ group.nodeLabel }}</span>
-    </div>
-    <div class="text-xs text-muted mb-2">
-      {{ $t('ext-pins-on-bus', { bus: group.busName }) }}
+    <div class="mb-2 text-center">
+      <span class="font-semibold text-toned">
+        {{ deviceShortName(group.deviceTypeName) }}
+      </span>
+      <span class="font-mono text-sm text-muted">&nbsp;on {{ group.busName }}</span>
+      <span class="font-mono text-sm text-muted">&nbsp;&mdash;&nbsp;{{ group.nodeLabel }}</span>
     </div>
 
     <!-- Pin buttons -->
-    <div class="flex flex-wrap gap-2">
-      <UPopover
-        v-for="pin in group.pins"
-        :key="pin.id"
-        v-model:open="openPopovers[pin.id]"
-        :content="{ side: 'bottom', sideOffset: 8 }"
-      >
-        <UButton
-          :color="pinButtonColor(pin.id)"
-          :label="pin.label"
-          :variant="pinSelected(pin.id) ? 'solid' : 'subtle'"
-          class="w-14 justify-center font-bold"
-          size="sm"
-          @click="onExtPinClick(pin.id)"
-        />
+    <div class="flex flex-wrap gap-2 justify-center">
+      <UPopover v-for="pin in group.pins" :key="pin.id" v-model:open="openPopovers[pin.id]"
+        :content="{ side: 'bottom', sideOffset: 8 }">
+        <UButton :color="pinButtonColor(pin.id)" :label="pin.label" :variant="pinSelected(pin.id) ? 'solid' : 'subtle'"
+          class="w-14 justify-center font-bold" size="sm" @click="onExtPinClick(pin.id)" />
         <template #content>
           <div class="p-3 min-w-52 max-w-[20rem] select-none">
             <!-- Pin header -->
@@ -257,33 +251,18 @@ function pinButtonColor(pinId: PinId): BtnColor {
               <!-- Selection for key wiring -->
               <template v-if="pinSelectable(pin.id)">
                 <template v-if="pinSelected(pin.id)">
-                  <UButton
-                    :label="$t('deselect')"
-                    variant="subtle"
-                    color="neutral"
-                    class="w-full justify-center mb-3"
-                    @click="emit('selectPin', null); openPopovers[pin.id] = false"
-                  />
+                  <UButton :label="$t('deselect')" variant="subtle" color="neutral" class="w-full justify-center mb-3"
+                    @click="emit('selectPin', null); openPopovers[pin.id] = false" />
                 </template>
                 <template v-else>
-                  <UButton
-                    :label="$t('select-for-wiring', { role: $t('role-output') })"
-                    color="kscanout"
-                    variant="outline"
-                    class="w-full justify-center mb-3"
-                    @click="emit('selectPin', { pinId: pin.id, role: 'output' }); openPopovers[pin.id] = false"
-                  />
+                  <UButton :label="$t('select-for-wiring', { role: $t('role-output') })" color="kscanout"
+                    variant="outline" class="w-full justify-center mb-3"
+                    @click="emit('selectPin', { pinId: pin.id, role: 'output' }); openPopovers[pin.id] = false" />
                 </template>
               </template>
 
-              <UButton
-                icon="i-lucide-x"
-                color="error"
-                variant="subtle"
-                :label="$t('unassign')"
-                class="w-full justify-center"
-                @click="emit('releasePin', pin.id); openPopovers[pin.id] = false"
-              />
+              <UButton icon="i-lucide-x" color="error" variant="subtle" :label="$t('unassign')"
+                class="w-full justify-center" @click="emit('releasePin', pin.id); openPopovers[pin.id] = false" />
             </template>
 
             <!-- Unassigned: kscan option cards -->
@@ -292,11 +271,8 @@ function pinButtonColor(pinId: PinId): BtnColor {
                 {{ newTypesHeading }}
               </div>
 
-              <div
-                v-for="(card, ci) in kscanCardsForPin(pin.id).cards"
-                :key="ci"
-                class="rounded-lg border border-default p-2.5 mb-2 last:mb-0"
-              >
+              <div v-for="(card, ci) in kscanCardsForPin(pin.id).cards" :key="ci"
+                class="rounded-lg border border-default p-2.5 mb-2 last:mb-0">
                 <!-- Existing kscan: two-row layout -->
                 <template v-if="card.subtitle">
                   <div class="flex items-center gap-1.5 mb-1.5">
@@ -306,28 +282,16 @@ function pinButtonColor(pinId: PinId): BtnColor {
                     </UBadge>
                   </div>
                   <div class="flex flex-wrap gap-1">
-                    <UButton
-                      v-for="(role, ri) in card.roles"
-                      :key="ri"
-                      :color="role.color"
-                      variant="outline"
-                      :label="role.label"
-                      @click="role.onSelect()"
-                    />
+                    <UButton v-for="(role, ri) in card.roles" :key="ri" :color="role.color" variant="outline"
+                      :label="role.label" @click="role.onSelect()" />
                   </div>
                 </template>
                 <!-- New kscan type: single-row layout -->
                 <template v-else>
                   <div class="flex items-center gap-1.5">
                     <span class="font-medium">{{ card.heading }}</span>
-                    <UButton
-                      v-for="(role, ri) in card.roles"
-                      :key="ri"
-                      :color="role.color"
-                      variant="outline"
-                      :label="role.label"
-                      @click="role.onSelect()"
-                    />
+                    <UButton v-for="(role, ri) in card.roles" :key="ri" :color="role.color" variant="outline"
+                      :label="role.label" @click="role.onSelect()" />
                   </div>
                 </template>
               </div>
@@ -340,7 +304,6 @@ function pinButtonColor(pinId: PinId): BtnColor {
 </template>
 
 <ftl locale="en">
-ext-pins-on-bus = Pins on {$bus}
 ext-pin-select-kscan = Select {-kscan}
 ext-pin-create-kscan = Create new {-kscan}
 role-output = Output
@@ -352,7 +315,6 @@ kscan-kind-matrix = Matrix
 </ftl>
 
 <ftl locale="zh-CN">
-ext-pins-on-bus = {$bus} 上的引脚
 ext-pin-select-kscan = 选择{-kscan}
 ext-pin-create-kscan = 创建新{-kscan}
 role-output = 输出
@@ -364,7 +326,6 @@ kscan-kind-matrix = 矩阵
 </ftl>
 
 <ftl locale="ja">
-ext-pins-on-bus = {$bus} のピン
 ext-pin-select-kscan = {-kscan}を選択
 ext-pin-create-kscan = 新しい{-kscan}を作成
 role-output = 出力

@@ -31,7 +31,6 @@ export const shifter595Meta = {
   gpio: {
     cs: {
       label: "Chip Select",
-      desc: "SPI chip select pin for the shift register chain",
       required: true,
     },
   },

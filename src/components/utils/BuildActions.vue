@@ -95,6 +95,27 @@
             </template>
           </div>
 
+          <USeparator />
+
+          <div class="text-sm text-toned flex flex-col gap-1 justify-center items-center text-center px-2">
+            <span>
+              <UIcon name="i-lucide-triangle-alert" class="size-6 text-warning inline-block" />
+              {{ $t('no-guarantee') }}
+            </span>
+            <i18n path="report-issues" tag="span">
+              <template #githubRepo="{ githubRepoLabel }">
+                <ULink href="https://github.com/genteure/zmk-wizard/issues" class="underline" target="_blank">
+                  {{ githubRepoLabel }}
+                </ULink>
+              </template>
+              <template #discord="{ discordLabel }">
+                <ULink href="https://zmk.dev/community/discord/invite" class="underline" target="_blank">
+                  {{ discordLabel }}
+                </ULink>
+              </template>
+            </i18n>
+          </div>
+
           <UStepper orientation="vertical" :items="stepperItems" disabled model-value="0" class="w-full" />
         </div>
       </template>
@@ -354,6 +375,10 @@ error-group-part-simple = Keyboard Part { $index }
 error-group-general = General
 import-failed = Failed to build: { $message }
 import-unexpected-error = Unexpected error: { $message }
+no-guarantee = Not all configuration combinations are guaranteed to work.
+report-issues = Please report any issues with the generated firmware in { $githubRepo } or in { $discord }.
+  .github-repo-label = our GitHub repository
+  .discord-label = ZMK Community Discord
 </ftl>
 
 <ftl locale="zh-CN">
@@ -397,6 +422,10 @@ error-group-part-simple = 键盘分体 { $index }
 error-group-general = 通用
 import-failed = 构建失败: { $message }
 import-unexpected-error = 意外错误: { $message }
+no-guarantee = 并非所有配置组合都保证能正常工作。
+report-issues = 如果在生成的固件存在问题，请通过 { $githubRepo } 或 { $discord } 反馈。
+  .github-repo-label = GitHub 仓库
+  .discord-label = ZMK 社区 Discord
 </ftl>
 
 <ftl locale="ja">
@@ -440,4 +469,8 @@ error-group-part-simple = キーボードパート { $index }
 error-group-general = 全般
 import-failed = ビルドに失敗しました: { $message }
 import-unexpected-error = 予期しないエラー: { $message }
+no-guarantee = 設定の組み合わせによっては正常に動作しない場合があります。
+report-issues = 生成されたファームウェアに問題がある場合は、{ $githubRepo } または { $discord } で報告をお願いします。
+  .github-repo-label = GitHub リポジトリ
+  .discord-label = ZMK コミュニティ Discord
 </ftl>

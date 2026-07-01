@@ -11,10 +11,7 @@
 - Intended audience: Users who want to create custom keyboard layouts and configurations for ZMK-powered keyboards without manually writing configuration files.
 
 - High-level architecture (what to read first):
-  - `src/types/keyboard.ts` — Zod schemas for the keyboard model (Keyboard, Key, KeyboardPart, KscanDriver, PinUsage, Encoder, etc).
-  - `src/types/devices.ts` — Zod schemas for bus devices (I2C/SPI based peripherals) that can be added to the keyboard.
-  - `src/types/` — also includes `geometry.ts`, `git.ts`, `utils.ts` (ULID validation).
-  - `src/components/stores.ts` — three Pinia stores: `useKeyboardStore` (keyboard model), `useNavigationStore` (UI state), `useSelectionStore` (key selection).
+  - `src/types/` — schema and type definitions: `keyboard.ts` (keyboard model: Keyboard, Key, KeyboardPart, KscanDriver, PinUsage, Encoder, etc), `devices.ts` (I2C/SPI bus devices), `geometry.ts`, `git.ts`, `pinContext.ts`, `tools.ts`, `utils.ts` (ULID validation), and `index.ts`.
   - `src/components/app.vue` — shell layout: UHeader + UMain split between Editors and Graphics panels.
   - `src/components/editor/` — tabbed editors: `layout.vue`, `keyboard.vue`, `part.vue`.
   - `src/components/graphic/` — physical/keymap layout visualization (WIP).
@@ -24,7 +21,7 @@
 
 - For frontend/UI libraries:
   - Vue 3: https://vuejs.org/ — we use `<script setup>` SFCs.
-  - Nuxt UI v4: https://ui.nuxt.com/ — used standalone (without Nuxt). Provides UApp, UHeader, UTable, UModal, UButton, USelect, etc. See component docs for props/slots. Raw markdown and MCP is available, prefer those instead of fectching HTML from the docs site.
+  - Nuxt UI v4: https://ui.nuxt.com/ — used standalone (without Nuxt). Provides UApp, UHeader, UTable, UModal, UButton, USelect, etc. See component docs for props/slots. Raw markdown and MCP is available, prefer those instead of fetching HTML from the docs site.
   - TailwindCSS v4: https://tailwindcss.com/
   - Pinia: https://pinia.vuejs.org/ — state management via `defineStore`.
   - Fluent (fluent-vue): https://fluent-vue.demivan.me/ — i18n; locale bundles in `src/components/locales.ts`, inline `<ftl>` blocks in SFCs.
