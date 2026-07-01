@@ -98,7 +98,7 @@ export function devicesByCategory(category: DeviceCategory): DeviceTypeName[] {
 export const DEVICE_CLASS_LIMITS: Partial<Record<DeviceCategory, number>> = {
   display: 1,
   rgb: 1,
-  shift_register: 1,
+  // shift_register: unlimited
   // pointing: unlimited
 };
 

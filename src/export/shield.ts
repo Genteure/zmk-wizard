@@ -18,9 +18,14 @@ import {
   type PointingDeviceInfo,
 } from "./pointing";
 import {
+  kconfig_defconfig,
+  kconfig_shield,
+} from "./contents";
+import {
   boardOverlayPath,
   dongleOverlayPath,
   kconfigDefconfigPath,
+  kconfigShieldPath,
   partOverlayPath,
   shieldDtsiFilename,
   shieldDtsiPath,
@@ -84,6 +89,9 @@ ${encoderDtsi(keyboard)}
 ${inputDtsi}
 `.replace(/\n{3,}/g, "\n\n");
 
+  // Kconfig files (shield + defconfig with ZMK_KEYBOARD_NAME, ZMK_SPLIT, etc.)
+  files[kconfigShieldPath(keyboard.shield)] = kconfig_shield(keyboard);
+  files[kconfigDefconfigPath(keyboard.shield)] = kconfig_defconfig(keyboard);
   // Per-part overlays
   for (let idx = 0; idx < partCount; idx++) {
     const res = partResults[idx];
@@ -788,8 +796,6 @@ function buildMatrixKscanUnit(
     };
 };
 `;
-
-  const pinData = pinsForKscan(keyboard, partIndex, kscan.id);
 
   const keyMappings: KscanUnitResult["keyMappings"] = keyboard.layout
     .map((key, index) => {

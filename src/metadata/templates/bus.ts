@@ -170,8 +170,10 @@ export function generatePartTemplates(
     }
 
     // 5. Generate per-device DTS + Kconfig
+    // Per-type counter for unique DTS node labels (shifter0, shifter1, etc.)
+    const typeCounters = new Map<string, number>();
 
-    (bus as SpiBus | I2cBus).devices.forEach((device, index) => {
+    (bus as SpiBus | I2cBus).devices.forEach((device, busIndex) => {
       const meta = getDeviceMeta(device.type as DeviceTypeName);
       if (!meta) return;
 
@@ -181,14 +183,17 @@ export function generatePartTemplates(
         gpiosRecord[role] = info;
       }
 
+      const count = typeCounters.get(device.type) ?? 0;
+      typeCounters.set(device.type, count + 1);
 
       const args: DeviceTemplateArgs = {
         bus: busName,
-        csIndex: bus.type === "spi" ? index : undefined,
+        csIndex: bus.type === "spi" ? busIndex : undefined,
         props: device as unknown as Record<string, unknown>,
         gpios: gpiosRecord,
         busPins,
         controllerId,
+        nodeLabel: meta.dtsNodeLabel ? `${meta.dtsNodeLabel}${count}` : undefined,
       };
 
       const result = meta.template(args);

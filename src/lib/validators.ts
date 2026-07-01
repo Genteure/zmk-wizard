@@ -139,7 +139,9 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
       return;
     }
 
-    const validPinIds = new Set(Object.keys(controller.gpios));
+    // Resolve full pin inventory (controller GPIOs + extension device pins)
+    const inventory = resolvePinInventory(part);
+    const validPinIds = new Set<string>(inventory.allPins.map((p) => p.id));
     const socId = controller.soc;
 
     // ── 7. Bus and device configuration ────────────────────
@@ -154,7 +156,7 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
       if (!validPinIds.has(pinId)) {
         ctx.addIssue({
           code: "custom",
-          message: `Pin "${pinId}" used for bus "${usage.bus}" does not exist on controller "${part.controller}"`,
+          message: `Pin "${pinId}" used for bus "${usage.bus}" does not exist on "${part.controller}" or connected devices`,
           path: pinPath(pinId),
         });
       }
@@ -377,7 +379,7 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
         if (!validPinIds.has(id)) {
           ctx.addIssue({
             code: "custom",
-            message: `Pin "${id}" for ${baseLabel} A does not exist on controller "${part.controller}"`,
+            message: `Pin "${id}" for ${baseLabel} A does not exist on "${part.controller}" or connected devices`,
             path: ["parts", partIdx, "pins", id],
           });
         }
@@ -400,7 +402,7 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
         if (!validPinIds.has(id)) {
           ctx.addIssue({
             code: "custom",
-            message: `Pin "${id}" for ${baseLabel} B does not exist on controller "${part.controller}"`,
+            message: `Pin "${id}" for ${baseLabel} B does not exist on "${part.controller}" or connected devices`,
             path: ["parts", partIdx, "pins", id],
           });
         }
@@ -482,19 +484,18 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
       }
     });
 
-    // ── 11. Pin existence on controller ─────────────────────
+    // ── 11. Pin existence on controller or device ──────────
     for (const pinId of Object.keys(part.pins)) {
       if (!validPinIds.has(pinId)) {
         ctx.addIssue({
           code: "custom",
-          message: `Pin "${pinId}" does not exist on controller "${part.controller}"`,
+          message: `Pin "${pinId}" does not exist on "${part.controller}" or connected devices`,
           path: pinPath(pinId),
         });
       }
     }
 
     // ── 12. Bus pin capabilities — must be native ──────────
-    const inventory = resolvePinInventory(part);
     const pinById = new Map(inventory.allPins.map(p => [p.id, p]));
 
     for (const [pinId, usage] of pinEntries) {

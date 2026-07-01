@@ -132,6 +132,11 @@ export interface DeviceTemplateArgs {
    * ID of the controller, for SoC-specific template branches.
    */
   controllerId: ControllerId;
+  /**
+   * Unique DTS node label for this device instance (e.g., "shifter0", "shifter1").
+   * Computed from dtsNodeLabel + index by the template generator.
+   */
+  nodeLabel?: string;
 }
 
 // ─────────────────────────────────────────────────────────────

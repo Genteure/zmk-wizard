@@ -77,6 +77,10 @@
         icon="i-lucide-external-link" variant="outline" color="neutral" size="sm" />
     </div>
 
+    <ExtPinSection :part="part" @assign-kscan="handleAssignKscan"
+      @new-kscan="(pid, kind, role) => handleNewKscan(pid, kind, role)" @release-pin="handleReleasePin"
+      @select-pin="handleSelectPin" />
+
     <KscanPanel :part="part" @add-kscan="keyboard.addKscan(nav.activePart!, $event)"
       @remove-kscan="keyboard.removeKscan(nav.activePart!, $event)"
       @move-kscan="(id, dir) => keyboard.moveKscan(nav.activePart!, id, dir)"
@@ -109,6 +113,7 @@ import ControllerChangeModal from './utils/ControllerChangeModal.vue';
 import PinButton from './utils/PinButton.vue';
 import type { PartPinContext } from '~/types/pinContext';
 import KscanPanel from './utils/KscanPanel.vue';
+import ExtPinSection from './utils/ExtPinSection.vue';
 import EncoderPanel from './utils/EncoderPanel.vue';
 import BusDevicePanel from './utils/BusDevicePanel.vue';
 import InputOutputHelp from './utils/InputOutputHelp.vue';

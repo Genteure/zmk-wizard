@@ -303,10 +303,7 @@ config SHIELD_${keyboard.shield.toUpperCase()}_DONGLE
 
 // ── Kconfig.defconfig ─────────────────────────────────────
 
-export function kconfig_defconfig(
-  keyboard: Keyboard,
-  extraKconfig: string[],
-): string {
+export function kconfig_defconfig(keyboard: Keyboard): string {
   const partCount = keyboard.parts.length;
   const upper = keyboard.shield.toUpperCase();
   const part0 = keyboard.parts[0];
@@ -392,24 +389,6 @@ config BT_MAX_CONN
 
 config BT_MAX_PAIRED
   default ${partCount + 5}
-
-endif
-`;
-  }
-
-  // Append extra Kconfig from device templates
-  if (extraKconfig.length > 0) {
-    content += `
-# ── Device Kconfig requirements ──────────────────────────────
-
-if ${keyboard.parts
-  .map(
-    (p) =>
-      `SHIELD_${upper}${keyboard.parts.length > 1 ? `_${p.name.toUpperCase()}` : ""}`,
-  )
-  .join(" || ")}
-
-${extraKconfig.join("\n")}
 
 endif
 `;

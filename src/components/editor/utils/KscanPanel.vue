@@ -14,11 +14,11 @@
  */
 
 const ROLE_ORDER: Record<string, number> = { input: 0, output: 1, interrupt: 2 };
-import { ref, computed } from 'vue';
 import { useFluent } from 'fluent-vue';
-import type { KeyboardPart, PinId, KscanDriverKind } from '~/types';
-import { usePinInventory } from '~/lib/usePinInventory';
+import { computed, ref } from 'vue';
 import { kscanLabel } from '~/components/utils/labels';
+import { usePinInventory } from '~/lib/usePinInventory';
+import type { KeyboardPart, KscanDriverKind, PinId } from '~/types';
 
 const props = defineProps<{
   part: KeyboardPart;
@@ -96,6 +96,7 @@ function handleInterruptPin(kscanId: string, value: string) {
     emit('assignPin', { pinId: value as PinId, kscanId, role: 'interrupt' });
   }
 }
+
 </script>
 
 <template>
@@ -140,6 +141,7 @@ function handleInterruptPin(kscanId: string, value: string) {
     </div>
     <div v-for="kscan in part.kscans" :key="kscan.id" class="rounded-xl p-3 bg-muted ring ring-default mb-3 last:mb-0">
       <!-- Header row -->
+
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2">
           <UBadge variant="subtle" color="neutral" class="uppercase">
@@ -197,6 +199,7 @@ function handleInterruptPin(kscanId: string, value: string) {
         </div>
       </div>
     </div>
+
   </UCard>
 </template>
 

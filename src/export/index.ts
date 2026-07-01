@@ -14,14 +14,11 @@ import {
   config_json,
   config_keymap,
   config_west_yml,
-  kconfig_defconfig,
-  kconfig_shield,
   readme_md,
   WORKFLOWS_BUILD_YML,
   zephyr_module_yml,
 } from "./contents";
 import { createShieldOverlayFiles, type BuildFiles } from "./shield";
-import { kconfigDefconfigPath, kconfigShieldPath } from "./paths";
 import { generateLayoutSvg } from "./layoutSvg";
 
 export { config_json } from "./contents";
@@ -45,17 +42,6 @@ export function createZMKConfig(keyboard: Keyboard): BuildFiles {
   // pinctrl, encoders, pointing devices)
   const shieldFiles = createShieldOverlayFiles(keyboard);
   Object.assign(files, shieldFiles);
-
-  // Kconfig files
-  files[kconfigShieldPath(keyboard.shield)] = kconfig_shield(keyboard);
-
-  // Kconfig.defconfig starts with the base content, then gets additional
-  // kconfig from pinctrl appended by createShieldOverlayFiles
-  // (which appends to the same path). If it was already set, skip base.
-  const defconfigPath = kconfigDefconfigPath(keyboard.shield);
-  if (!files[defconfigPath]) {
-    files[defconfigPath] = kconfig_defconfig(keyboard, []);
-  }
 
   // Config files for the user
   files[`config/${keyboard.shield}.conf`] = config_conf(keyboard);

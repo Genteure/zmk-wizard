@@ -129,7 +129,7 @@ const ALL_CAPABILITIES: PinCapabilities = {
 
 const PRO_MICRO = "pro_micro";
 const XIAO_D = "xiao_d";
-const GPIO0 = "gpio0";
+// const GPIO0 = "gpio0";
 const GPIO1 = "gpio1";
 
 export const Controllers: Record<ControllerId, ControllerMetadata> = {

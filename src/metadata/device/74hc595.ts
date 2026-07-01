@@ -51,10 +51,11 @@ export const shifter595Meta = {
   template: (args) => {
     const ngpios = args.props.ngpios ?? 8;
     const index = args.csIndex ?? 0;
+    const nodeLabel = args.nodeLabel ?? 'shifter';
 
     const deviceDts = `
 &${args.bus} {
-    shifter: 595@${index} {
+    ${nodeLabel}: 595@${index} {
         compatible = "zmk,gpio-595";
         reg = <${index}>;
         status = "okay";

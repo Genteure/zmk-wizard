@@ -47,11 +47,16 @@ export function resolveDevicePins(part: KeyboardPart): {
   const devicePins: PinInfo[] = [];
   const deviceNodeLabels: Record<DeviceId, string> = {};
 
+  // Per-type counter for unique DTS node labels (shifter0, shifter1, etc.)
+  const typeCounters = new Map<string, number>();
+
   for (const bus of Object.values(part.buses)) {
-    for (const [index, device] of bus.devices.entries()) {
+    for (const device of bus.devices) {
       const meta = getDeviceMeta(device.type as Parameters<typeof getDeviceMeta>[0]);
+      const count = typeCounters.get(device.type) ?? 0;
+      typeCounters.set(device.type, count + 1);
       const nodeLabel = meta?.dtsNodeLabel
-        ? `${meta.dtsNodeLabel}${index}`
+        ? `${meta.dtsNodeLabel}${count}`
         : undefined;
       if (nodeLabel) {
         deviceNodeLabels[device.id] = nodeLabel;

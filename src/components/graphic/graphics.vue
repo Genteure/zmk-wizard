@@ -61,7 +61,7 @@ import { useCanvasHotkeys, type CanvasHandle } from './composables/useCanvasHotk
 import ContextMenu from './ContextMenu.vue';
 import type { ContextMenuItem } from './ContextMenu.vue';
 import HelpModal from './HelpModal.vue';
-import { Controllers } from '~/metadata/controllers';
+import { resolvePinInventory } from '~/lib/pinInventory';
 
 // ─── Stores ────────────────────────────────────────────────────
 const nav = useNavigationStore();
@@ -95,12 +95,13 @@ const keyWiringLabels = computed(() => {
   if (nav.activePart === null) return map;
   const part = keyboard.parts[nav.activePart];
   if (!part) return map;
-  const gpios = Controllers[part.controller]?.gpios;
-  if (!gpios) return map;
+
+  // Resolve all pins (controller + device) and index by id for O(1) label lookup.
+  const { allPins } = resolvePinInventory(part);
+  const pinLabelMap = new Map<string, string>(allPins.map((p) => [p.id, p.label]));
 
   for (const [keyId, wiring] of Object.entries(part.keys)) {
     if (!wiring) continue;
-    // Determine the kscan kind from whichever pin is wired.
     const anyPinId = (wiring.input ?? wiring.output) as PinId | undefined;
     if (!anyPinId) continue;
     const pinUsage = part.pins[anyPinId];
@@ -112,12 +113,12 @@ const keyWiringLabels = computed(() => {
     const result: { inputPinLabel?: string; outputPinLabel?: string } = {};
 
     result.inputPinLabel = wiring.input
-      ? (gpios[wiring.input]?.label ?? '???')
+      ? (pinLabelMap.get(wiring.input) ?? '???')
       : (needsOutput ? '???' : undefined);
 
     if (needsOutput) {
       result.outputPinLabel = wiring.output
-        ? (gpios[wiring.output]?.label ?? '???')
+        ? (pinLabelMap.get(wiring.output) ?? '???')
         : '???';
     }
 
