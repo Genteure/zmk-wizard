@@ -6,8 +6,9 @@
 // layout .dtsi, per-part overlays, encoder DTS, and wires
 // pinctrl via the existing src/metadata/templates layer.
 
-import type { Key, Keyboard, EncoderId, ControllerId } from "~/types";
+import { composeDtsRef, type Key, type Keyboard, type EncoderId, type KeyboardPart } from "~/types";
 import { Controllers } from "~/metadata/controllers";
+import { resolvePinInventory } from "~/lib/pinInventory";
 import { generatePartTemplates } from "~/metadata/templates";
 import {
   collectInputDevices,
@@ -196,16 +197,18 @@ function buildEmptyPart(): KscanSinglePartResult {
 
 // ── Helpers ────────────────────────────────────────────────
 
-function dtsPinHandle(controller: ControllerId, pinId: string): string {
-  const pinMeta = Controllers[controller]?.gpios[pinId as never];
-  if (pinMeta) return pinMeta.dtsRef;
-  // Check for shifter pins
-  if (pinId.startsWith("shifter")) {
-    return `&shifter ${pinId.replace("shifter", "")}`;
+/** Build a pinId → DTS reference map from the pin inventory (call once per part). */
+function pinDtsResolver(part: KeyboardPart): (pinId: string) => string {
+  const inventory = resolvePinInventory(part);
+  const map = new Map<string, string>();
+  for (const pin of inventory.allPins) {
+    map.set(pin.id, composeDtsRef(pin.dtsNodeLabel, pin.dtsPinNumber));
   }
-  throw new Error(
-    `Pin ${pinId} not found in controller ${controller} dts map`,
-  );
+  return (pinId: string) => {
+    const ref = map.get(pinId);
+    if (ref) return ref;
+    throw new Error(`Pin "${pinId}" not found in pin inventory`);
+  };
 }
 
 
@@ -443,6 +446,7 @@ function encoderOverlay(keyboard: Keyboard, partIndex: number): string {
   }
 
   if (part) {
+    const dtsRef = pinDtsResolver(part);
     for (let ei = 0; ei < part.encoders.length; ei++) {
       const enc = part.encoders[ei];
       const label =
@@ -454,8 +458,8 @@ function encoderOverlay(keyboard: Keyboard, partIndex: number): string {
       if (!pinA || !pinB) continue;
 
       dts += `&${label} {
-    a-gpios = <${dtsPinHandle(part.controller, pinA)} (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
-    b-gpios = <${dtsPinHandle(part.controller, pinB)} (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+    a-gpios = <${dtsRef(pinA)} (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+    b-gpios = <${dtsRef(pinB)} (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
     status = "okay";
 };
 `;
@@ -463,11 +467,10 @@ function encoderOverlay(keyboard: Keyboard, partIndex: number): string {
   }
 
   if (otherPartHasEncoders && part) {
-    let dummyPin: string;
-    const controllerMeta = Controllers[part.controller];
-    const firstPin = Object.keys(controllerMeta?.gpios ?? {})[0];
-    dummyPin = firstPin
-      ? controllerMeta.gpios[firstPin as never].dtsRef
+    const dtsRef = pinDtsResolver(part);
+    const firstPinId = resolvePinInventory(part).allPins[0]?.id;
+    const dummyPin = firstPinId
+      ? dtsRef(firstPinId)
       : "&gpio0 0";
 
     dts += `
@@ -710,8 +713,9 @@ function buildDirectKscanUnit(
     .map(([pin]) => pin);
 
   if (pins.length === 0) return null;
+  const dtsRef = pinDtsResolver(part);
 
-  const dtsRefs = pins.map((pin) => dtsPinHandle(part.controller, pin));
+  const dtsRefs = pins.map((pin) => dtsRef(pin));
 
   let kscanDts = `/ {
     ${label}: ${label} {
@@ -754,12 +758,13 @@ function buildMatrixKscanUnit(
   const outputPinFlag = kscan.diodes ? "GPIO_ACTIVE_HIGH" : "GPIO_OPEN_SOURCE";
   const inputIsRow = isInputRowKscan(keyboard, partIndex, kscan.id);
   const kscanOrder = matrixKscanOrderKscan(keyboard, inputIsRow, partIndex, kscan.id);
+  const dtsRef = pinDtsResolver(part);
 
   const colPins = kscanOrder.colPins.map((pin) =>
-    dtsPinHandle(part.controller, pin),
+    dtsRef(pin),
   );
   const rowPins = kscanOrder.rowPins.map((pin) =>
-    dtsPinHandle(part.controller, pin),
+    dtsRef(pin),
   );
 
   if (colPins.length === 0 || rowPins.length === 0) return null;
@@ -830,9 +835,10 @@ function buildCharlieplexKscanUnit(
   const interruptPin = Object.entries(pinData).find(
     ([_, info]) => info.mode === "interrupt",
   );
-  const dtsRefs = gpios.map((pin) => dtsPinHandle(part.controller, pin));
+  const dtsRef = pinDtsResolver(part);
+  const dtsRefs = gpios.map((pin) => dtsRef(pin));
   const interruptDts = interruptPin
-    ? `\n        interrupt-gpios = <${dtsPinHandle(part.controller, interruptPin[0])} (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;`
+    ? `\n        interrupt-gpios = <${dtsRef(interruptPin[0])} (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;`
     : "";
 
   const kscanDts = `/ {

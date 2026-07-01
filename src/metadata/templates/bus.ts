@@ -37,7 +37,7 @@ function indexDevicePins(
 ): DevicePinIndex {
   const index: DevicePinIndex = new Map();
   for (const [pinId, usage] of Object.entries(pins)) {
-    if (!usage || usage.usage !== "device") continue;
+    if (usage.usage !== "device") continue;
     const pu = usage as Extract<PinUsage, { usage: "device" }>;
     const pinInfo = controller.gpios[pinId as keyof typeof controller.gpios];
     if (!pinInfo) continue;
@@ -50,8 +50,8 @@ function indexDevicePins(
       pinId,
       pinInfo: {
         displayName: pinInfo.label,
-        dtsRef: pinInfo.dtsRef,
-        pinctrlRef: pinInfo.pinctrlRef,
+        dtsRef: `&${pinInfo.dtsNodeLabel} ${pinInfo.dtsPinNumber}`,
+        pinctrlRef: pinInfo.pinctrlRef ?? "",
       },
     });
   }
@@ -68,7 +68,7 @@ function indexBusPins(
     Partial<Record<BusPinRole, PinTemplateInfo>>
   >();
   for (const [pinId, usage] of Object.entries(pins)) {
-    if (!usage || usage.usage !== "bus") continue;
+    if (usage.usage !== "bus") continue;
     const pu = usage as Extract<PinUsage, { usage: "bus" }>;
     const pinInfo = controller.gpios[pinId as keyof typeof controller.gpios];
     if (!pinInfo) continue;
@@ -79,8 +79,8 @@ function indexBusPins(
     }
     busEntry[pu.role] = {
       displayName: pinInfo.label,
-      dtsRef: pinInfo.dtsRef,
-      pinctrlRef: pinInfo.pinctrlRef,
+      dtsRef: `&${pinInfo.dtsNodeLabel} ${pinInfo.dtsPinNumber}`,
+      pinctrlRef: pinInfo.pinctrlRef ?? "",
     };
   }
   return index;
@@ -267,7 +267,7 @@ function generateCsGpios(
         const pinMeta =
           controller.gpios[pinId as keyof typeof controller.gpios];
         if (pinMeta) {
-          csPinInfo = { dtsRef: pinMeta.dtsRef };
+          csPinInfo = { dtsRef: `&${pinMeta.dtsNodeLabel} ${pinMeta.dtsPinNumber}` };
         }
         break;
       }

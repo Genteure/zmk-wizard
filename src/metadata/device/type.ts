@@ -1,5 +1,5 @@
 import type { z } from "astro/zod";
-import type { BusPinRole, ControllerId, ModuleId } from "~/types";
+import type { AnyBusDevice, BusPinRole, ControllerId, ModuleId, PinInfo } from "~/types";
 
 // ─────────────────────────────────────────────────────────────
 // Widget Types — what UI widget to render for a device property
@@ -218,4 +218,22 @@ export interface DeviceMeta<TType extends string = string> {
   props: Record<string, DevicePropMeta>;
   /** Template function for DTS + Kconfig generation */
   template: DeviceTemplateFunction;
+  /**
+   * Devicetree node label base for this device type (without `&` prefix).
+   * Each instance gets a unique label by appending the instance index:
+   * "shifter" → "shifter0", "shifter1", etc.
+   *
+   * Only required for device types that provide pins (i.e., define `pins`).
+   */
+  dtsNodeLabel?: string;
+  /**
+   * Generate pin metadata for a device instance.
+   * Returns PinInfo[] if this device type provides pins, or undefined if it doesn't.
+   *
+   * @param device - The device instance from part.buses.
+   * @param deviceNodeLabel - Unique node label for this device instance (e.g., "shifter0").
+   *   Built by the resolver from `dtsNodeLabel` + instance index. The pins function
+   *   must NOT construct its own node label — it receives the canonical one here.
+   */
+  pins?: (device: AnyBusDevice, deviceNodeLabel: string) => PinInfo[];
 }

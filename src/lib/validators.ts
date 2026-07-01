@@ -3,7 +3,8 @@ import { Controllers, SocBuses } from "~/metadata/controllers";
 import { DEVICE_CLASS_LIMITS, DEVICE_REGISTRY, SOC_BUS_CONFLICTS, getDeviceMeta } from "~/metadata/device";
 import { ZMK_MODULES, modulesConflict } from "~/metadata/modules";
 import { KeyboardSchema } from "~/types/keyboard";
-import type { BusPinRole } from "~/types";
+import type { BusName, PinId, PinUsage, PinUsageEncoder } from "~/types";
+import { resolvePinInventory } from "~/lib/pinInventory";
 
 // ───────────────────────────────────────────────────────────
 // Reserved/common shield names (from ZMK ecosystem)
@@ -12,7 +13,7 @@ import type { BusPinRole } from "~/types";
 // or common keyboard name, add it here.
 // ───────────────────────────────────────────────────────────
 
-const COMMON_SHIELD_NAMES = [
+const COMMON_SHIELD_NAMES: readonly string[] = [
   "test", "zmk", "key", "macro", "macropad", "macro_pad", "keyboard",
   "my_keyboard", "corneish_zen", "totem", "nice_view", "nice_view_adapter",
   "a_dux", "adafruit_kb2040", "adafruit_qt_py_rp2040", "adv360pro",
@@ -22,20 +23,7 @@ const COMMON_SHIELD_NAMES = [
   "nice_nano", "nice_nano_v2", "nibble", "planck_rev6",
   "seeeduino_xiao", "seeeduino_xiao_ble", "seeeduino_xiao_rp2040",
   "sofle", "sweep",
-] as const satisfies readonly string[];
-
-// ───────────────────────────────────────────────────────────
-// Helpers
-// ───────────────────────────────────────────────────────────
-
-/** Iterate part.pins with runtime-string keys, ignoring branded type at runtime. */
-function pinEntries(part: { pins: Record<string, unknown> }): [string, { usage: string } | undefined][] {
-  return Object.entries(part.pins).map(([id, u]) => [id, u as { usage: string } | undefined]);
-}
-
-/** Inline type for SocBuses lookup (BusMetadata interface is not exported). */
-type SocBusLookup = Record<string, { type: "i2c" | "spi"; requires: readonly string[] } | undefined>;
-const socBusesLookup = SocBuses as unknown as Record<string, SocBusLookup>;
+];
 
 // ───────────────────────────────────────────────────────────
 // Enhanced Keyboard Schema with superRefine validation
@@ -51,7 +39,7 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
   if (data.shield !== data.shield.trim()) {
     ctx.addIssue({ code: "custom", message: "Shield name cannot start or end with spaces", path: ["shield"] });
   }
-  if ((COMMON_SHIELD_NAMES as readonly string[]).includes(data.shield)) {
+  if (COMMON_SHIELD_NAMES.includes(data.shield)) {
     ctx.addIssue({ code: "custom", message: "Shield name is reserved; please choose another", path: ["shield"] });
   }
 
@@ -139,6 +127,7 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
   // ── 7–11. Per-part validation ────────────────────────────
   data.parts.forEach((part, partIdx) => {
     const pinPath = (pinId: string): (string | number)[] => ["parts", partIdx, "pins", pinId];
+    const pinEntries = Object.entries(part.pins) as [string, PinUsage][];
 
     const controller = Controllers[part.controller];
     if (!controller) {
@@ -155,24 +144,33 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
 
     // ── 7. Bus and device configuration ────────────────────
     // Index bus pins by bus name for lookup
-    type BusPinEntry = { pinId: string; role: BusPinRole };
+    type BusPinEntry = { pinId: string; role: string };
     const busPinsByBus = new Map<string, BusPinEntry[]>();
 
-    for (const [pinId, usage] of pinEntries(part)) {
-      if (!usage || usage.usage !== "bus") continue;
-      const busUsage = usage as { usage: "bus"; bus: string; role: BusPinRole };
+    for (const [pinId, usage] of pinEntries) {
+      if (usage.usage !== "bus") continue;
+      // usage is narrowed to PinUsageBus via discriminated union
 
       if (!validPinIds.has(pinId)) {
         ctx.addIssue({
           code: "custom",
-          message: `Pin "${pinId}" used for bus "${busUsage.bus}" does not exist on controller "${part.controller}"`,
+          message: `Pin "${pinId}" used for bus "${usage.bus}" does not exist on controller "${part.controller}"`,
+          path: pinPath(pinId),
+        });
+      }
+      // Check pin can serve this bus role
+      const suitablePins = controller.canBusPins(usage.bus, usage.role);
+      if (suitablePins !== true && !suitablePins.includes(pinId as PinId)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Pin "${pinId}" cannot serve role "${usage.role}" on bus "${usage.bus}"`,
           path: pinPath(pinId),
         });
       }
 
-      const list = busPinsByBus.get(busUsage.bus) ?? [];
-      list.push({ pinId, role: busUsage.role });
-      busPinsByBus.set(busUsage.bus, list);
+      const list = busPinsByBus.get(usage.bus) ?? [];
+      list.push({ pinId, role: usage.role });
+      busPinsByBus.set(usage.bus, list);
     }
 
     const seenBusNames = new Set<string>();
@@ -192,8 +190,7 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
       }
       seenBusNames.add(busName);
 
-      // Validate bus against SoC metadata (data-driven per SocBuses)
-      const socBus = socBusesLookup[socId]?.[busName];
+      const socBus = SocBuses[socId]?.[busName as BusName];
       if (!socBus) {
         ctx.addIssue({
           code: "custom",
@@ -227,11 +224,7 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
 
       // Validate each device on the bus — all device metadata is data-driven
       for (const device of bus.devices) {
-        const meta = DEVICE_REGISTRY[device.type] as {
-          bus?: string; class?: string; module?: string; exclusive?: boolean;
-          gpio?: Record<string, { label: string; required?: boolean }>;
-          requiredBusPins?: Partial<Record<string, boolean>>;
-        } | undefined;
+        const meta = DEVICE_REGISTRY[device.type];
 
         if (!meta) {
           ctx.addIssue({
@@ -251,7 +244,7 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
         }
 
         // Module requirement — driven from device metadata
-        if (meta.module && !data.modules.includes(meta.module as never)) {
+        if (meta.module && !data.modules.includes(meta.module)) {
           ctx.addIssue({
             code: "custom",
             message: `Device "${device.type}" requires external module "${meta.module}" which is not enabled`,
@@ -262,7 +255,7 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
         // Class limits — driven from DEVICE_CLASS_LIMITS metadata
         if (meta.class) {
           const current = classCounts[meta.class] ?? 0;
-          const limit = DEVICE_CLASS_LIMITS[meta.class as keyof typeof DEVICE_CLASS_LIMITS];
+          const limit = DEVICE_CLASS_LIMITS[meta.class];
           if (typeof limit === "number" && current >= limit) {
             ctx.addIssue({
               code: "custom",
@@ -287,11 +280,11 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
           for (const [role, req] of Object.entries(meta.gpio)) {
             if (!req.required) continue;
 
-            const hasDevicePin = pinEntries(part).some(
+            const hasDevicePin = pinEntries.some(
               ([, u]) =>
-                u?.usage === "device" &&
-                (u as { usage: "device"; deviceId: string; role: string }).deviceId === device.id &&
-                (u as { usage: "device"; deviceId: string; role: string }).role === role,
+                u.usage === "device" &&
+                u.deviceId === device.id &&
+                u.role === role,
             );
 
             if (!hasDevicePin) {
@@ -322,8 +315,7 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
     }
 
     // Bus conflict detection — driven from SOC_BUS_CONFLICTS metadata
-    const socConflicts = SOC_BUS_CONFLICTS as unknown as Record<string, [string, string][]>;
-    const conflicts = socConflicts[socId] ?? [];
+    const conflicts = SOC_BUS_CONFLICTS[socId] ?? [];
     const seenConflicts = new Set<string>();
     for (const [busA, busB] of conflicts) {
       const hasA = activeBuses.some((b) => b.name === busA);
@@ -347,7 +339,7 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
     const displayDevices: string[] = [];
     for (const bus of Object.values(part.buses)) {
       for (const device of bus.devices) {
-        const meta = getDeviceMeta(device.type as never);
+        const meta = getDeviceMeta(device.type);
         if (meta.class === "display") {
           displayDevices.push(meta.visual?.name ?? device.type);
         }
@@ -368,12 +360,11 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
       const baseLabel = `encoder ${encIdx}`;
 
       // Find encoder pins from PinSelection
-      const encPins = pinEntries(part).filter(
-        ([, u]) => u?.usage === "encoder" && (u as { usage: "encoder"; encoderId: string }).encoderId === enc.id,
-      );
+      const encPins = pinEntries
+        .filter(([, u]) => u.usage === "encoder" && u.encoderId === enc.id) as [string, PinUsageEncoder][];
 
-      const pinA = encPins.find(([, u]) => (u as { usage: "encoder"; role: string }).role === "pinA");
-      const pinB = encPins.find(([, u]) => (u as { usage: "encoder"; role: string }).role === "pinB");
+      const pinA = encPins.find(([, u]) => u.role === "pinA");
+      const pinB = encPins.find(([, u]) => u.role === "pinB");
 
       if (!pinA) {
         ctx.addIssue({
@@ -499,6 +490,50 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
           message: `Pin "${pinId}" does not exist on controller "${part.controller}"`,
           path: pinPath(pinId),
         });
+      }
+    }
+
+    // ── 12. Bus pin capabilities — must be native ──────────
+    const inventory = resolvePinInventory(part);
+    const pinById = new Map(inventory.allPins.map(p => [p.id, p]));
+
+    for (const [pinId, usage] of pinEntries) {
+      const pinInfo = pinById.get(pinId as PinId);
+      if (!pinInfo) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Pin "${pinId}" does not exist on the controller or any active extension device`,
+          path: pinPath(pinId),
+        });
+        continue;
+      }
+
+      if (usage.usage === "bus" && pinInfo.source.type !== "controller") {
+        ctx.addIssue({
+          code: "custom",
+          message: `Bus pin "${pinId}" must be a native controller pin, not an extension device pin`,
+          path: pinPath(pinId),
+        });
+      }
+
+      // ── 13. Device pin capabilities — must be native ────
+      if (usage.usage === "device" && pinInfo.source.type !== "controller") {
+        ctx.addIssue({
+          code: "custom",
+          message: `Device pin "${pinId}" must be a native controller pin, not an extension device pin`,
+          path: pinPath(pinId),
+        });
+      }
+
+      // ── 14. Encoder pin capabilities — must have gpioIn + interrupt
+      if (usage.usage === "encoder") {
+        if (!pinInfo.capabilities.gpioIn || !pinInfo.capabilities.interrupt) {
+          ctx.addIssue({
+            code: "custom",
+            message: `Encoder pin "${pinId}" must support GPIO input and interrupts`,
+            path: pinPath(pinId),
+          });
+        }
       }
     }
   });

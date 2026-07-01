@@ -152,16 +152,8 @@ function applyDebugData() {
     const result = KeyboardSchema.parse(JSON.parse(debugData.value));
     keyboard.$patch(() => {
       Object.assign(keyboard.$state, result);
-      // Seed pins for each part (same logic as changeController)
-      for (const part of keyboard.$state.parts) {
-        const gpios = Controllers[part.controller]?.gpios;
-        if (!gpios) continue;
-        for (const pinId of Object.keys(gpios)) {
-          if (!(pinId in part.pins)) {
-            part.pins[pinId as keyof typeof part.pins] = undefined;
-          }
-        }
-      }
+      // Pin map is sparse — no seeding needed.
+      // Available pins are derived from controller + device metadata.
     });
     debugError.value = '';
     debugOpen.value = false;

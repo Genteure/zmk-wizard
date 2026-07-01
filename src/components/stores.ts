@@ -3,7 +3,6 @@ import { ulid } from 'ulidx';
 import { computed, reactive, ref, watch } from 'vue';
 import { KeyboardPartSchema, KeySchema, type AnyBusDevice, type Bus, type BusName, type BusPinRole, type ControllerId, type DeviceId, type EncoderId, type I2cBus, type I2cDevice, type Key, type Keyboard, type KeyId, type KscanDriver, type ModuleId, type PinId, type SpiBus, type SpiDevice } from '~/types';
 import type { localeMap } from './locales';
-import { Controllers } from '~/metadata/controllers';
 import { getDeviceMeta, type DeviceTypeName } from '~/metadata/device';
 import type { WiringTransform } from '~/lib/wiringMapping';
 import { mapKeyWirings } from '~/lib/wiringMapping';
@@ -11,19 +10,8 @@ import { mapKeyWirings } from '~/lib/wiringMapping';
 function isSpiBus(bus: Bus): bus is SpiBus { return bus.type === 'spi'; }
 function isI2cBus(bus: Bus): bus is I2cBus { return bus.type === 'i2c'; }
 
-/**
- * Build a PinSelection populated with every GPIO pin from the controller
- * metadata, all set to `undefined` (unused).
- */
-function seedPins(controllerId: ControllerId): Record<string, undefined> {
-  const gpios = Controllers[controllerId]?.gpios;
-  if (!gpios) return {};
-  const pins: Record<string, undefined> = {};
-  for (const pinId of Object.keys(gpios)) {
-    pins[pinId] = undefined;
-  }
-  return pins;
-}
+// Pin map is sparse: only assigned pins have entries.
+// Available pins are derived from controller + device metadata (see pinInventory.ts).
 
 /**
  * Keyboard configuration state
@@ -36,8 +24,8 @@ export const useKeyboardStore = defineStore('keyboard', {
     modules: [],
     layout: [],
     parts: [
-      KeyboardPartSchema.parse({ name: 'left', controller: 'nice_nano_v2', pins: seedPins('nice_nano_v2') }),
-      KeyboardPartSchema.parse({ name: 'right', controller: 'nice_nano_v2', pins: seedPins('nice_nano_v2') }),
+      KeyboardPartSchema.parse({ name: 'left', controller: 'nice_nano_v2' }),
+      KeyboardPartSchema.parse({ name: 'right', controller: 'nice_nano_v2' }),
     ],
   }),
 
@@ -158,7 +146,7 @@ export const useKeyboardStore = defineStore('keyboard', {
         const part = state.parts[partIdx];
         if (!part) return;
         part.controller = newController;
-        part.pins = seedPins(newController);
+        part.pins = {};
         part.kscans = [];
         part.keys = {};
         part.encoders = [];
@@ -168,7 +156,7 @@ export const useKeyboardStore = defineStore('keyboard', {
     // ─── Kscan CRUD ────────────────────────────────────────────
     // Kscan drivers detect key presses by scanning GPIO pins.
     // Pin assignments live in part.pins (shared pin map), not on the kscan entity.
-    // When a kscan is removed, its pins are released back to unused (set to undefined).
+    // When a kscan is removed, its pins are released (deleted from the map).
 
     addKscan(partIdx: number, kind: KscanDriver['kind']) {
       this.$patch((state) => {
@@ -198,7 +186,7 @@ export const useKeyboardStore = defineStore('keyboard', {
         const releasedPins: PinId[] = [];
         for (const [pinId, usage] of Object.entries(part.pins)) {
           if (usage?.usage === 'kscan' && usage.kscan === kscanId) {
-            part.pins[pinId as PinId] = undefined;
+            delete part.pins[pinId as PinId];
             releasedPins.push(pinId as PinId);
           }
         }
@@ -268,7 +256,7 @@ export const useKeyboardStore = defineStore('keyboard', {
         // Cascade: release pins assigned to this encoder
         for (const [pinId, usage] of Object.entries(part.pins)) {
           if (usage?.usage === 'encoder' && usage.encoderId === encoderId) {
-            part.pins[pinId as PinId] = undefined;
+            delete part.pins[pinId as PinId];
           }
         }
         part.encoders = part.encoders.filter((e) => e.id !== encoderId);
@@ -282,7 +270,7 @@ export const useKeyboardStore = defineStore('keyboard', {
         const part = state.parts[partIdx];
         if (!part) return;
         if (!part.kscans.some((k) => k.id === kscanId)) return;
-        if (part.pins[pinId] !== undefined) return; // pin already in use
+        if (pinId in part.pins) return; // pin already in use
         part.pins[pinId] = { usage: 'kscan', kscan: kscanId, role };
       });
     },
@@ -293,7 +281,7 @@ export const useKeyboardStore = defineStore('keyboard', {
         const part = state.parts[partIdx];
         if (!part) return;
         // Release the pin from the pin map.
-        part.pins[pinId] = undefined;
+        delete part.pins[pinId];
         // Remove the pin from all key wirings that reference it.
         for (const [keyId, wiring] of Object.entries(part.keys)) {
           if (!wiring) continue;
@@ -322,12 +310,12 @@ export const useKeyboardStore = defineStore('keyboard', {
         // Find and release old pin for this encoder+phase
         for (const [pid, usage] of Object.entries(part.pins)) {
           if (usage?.usage === 'encoder' && usage.encoderId === encoderId && usage.role === phase) {
-            part.pins[pid as PinId] = undefined;
+            delete part.pins[pid as PinId];
             break;
           }
         }
         // Assign new pin if provided and available
-        if (pinId && part.pins[pinId as PinId] === undefined) {
+        if (pinId && !(pinId in part.pins)) {
           part.pins[pinId as PinId] = { usage: 'encoder', encoderId: encoder.id, role: phase };
         }
       });
@@ -392,7 +380,7 @@ export const useKeyboardStore = defineStore('keyboard', {
         // Release device GPIO pins
         for (const [pinId, usage] of Object.entries(part.pins)) {
           if (usage?.usage === 'device' && usage.deviceId === deviceId) {
-            part.pins[pinId as PinId] = undefined;
+            delete part.pins[pinId as PinId];
           }
         }
         const idx = bus.devices.findIndex((d) => d.id === deviceId);
@@ -401,7 +389,7 @@ export const useKeyboardStore = defineStore('keyboard', {
         if (bus.devices.length === 0) {
           for (const [pinId, usage] of Object.entries(part.pins)) {
             if (usage?.usage === 'bus' && usage.bus === busName) {
-              part.pins[pinId as PinId] = undefined;
+              delete part.pins[pinId as PinId];
             }
           }
           delete part.buses[busName as BusName];
@@ -439,7 +427,7 @@ export const useKeyboardStore = defineStore('keyboard', {
       this.$patch((state) => {
         const part = state.parts[partIdx];
         if (!part) return;
-        if (part.pins[pinId] !== undefined) return; // pin already in use
+        if (pinId in part.pins) return; // pin already in use
         part.pins[pinId] = { usage: 'device', deviceId: deviceId as DeviceId, role };
       });
     },
@@ -485,7 +473,7 @@ export const useKeyboardStore = defineStore('keyboard', {
         // 3. Copy kscan pin assignments from source (updated kscan IDs)
         const newPins = { ...target.pins };
         for (const [pinId, usage] of Object.entries(source.pins)) {
-          if (!usage || usage.usage !== "kscan") continue;
+          if (usage.usage !== "kscan") continue;
           const newKscanId = kscanIdMap.get(usage.kscan);
           if (!newKscanId) continue;
           newPins[pinId as PinId] = {
@@ -535,7 +523,7 @@ export const useNavigationStore = defineStore('navigation', () => {
       if (!newPins || !oldPins || !wiringSelection.value) return;
       const selectedPinId = wiringSelection.value.pinId;
       const pid = selectedPinId as PinId;
-      if (newPins[pid] === undefined && oldPins[pid] !== undefined) {
+      if (!(pid in newPins) && pid in oldPins) {
         wiringSelection.value = null;
       }
     },

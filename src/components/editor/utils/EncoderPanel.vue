@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useFluent } from 'fluent-vue';
 import { computed } from 'vue';
-import { Controllers } from '~/metadata/controllers';
+import { usePinInventory } from '~/lib/usePinInventory';
 import type { KeyboardPart, PinId } from '~/types';
 import { encoderLabel } from '~/components/utils/labels';
 
@@ -10,12 +10,9 @@ const props = defineProps<{
 }>();
 
 const { $t } = useFluent();
+const partRef = computed(() => props.part);
+const { allPins } = usePinInventory(partRef);
 
-
-/** Look up the display label for a GPIO pin from controller metadata. */
-function pinLabel(pinId: PinId): string {
-  return Controllers[props.part.controller]?.gpios[pinId]?.label ?? pinId;
-}
 const emit = defineEmits<{
   addEncoder: [];
   removeEncoder: [encoderId: string];
@@ -39,9 +36,10 @@ const NONE_SENTINEL = '__none__';
 /** Build dropdown options for an encoder phase: none + free pins + the currently assigned pin. */
 function encoderPhaseOptions(encoderId: string, phase: 'pinA' | 'pinB') {
   const current = encoderPin(encoderId, phase);
-  const free = Object.entries(props.part.pins)
-    .filter(([id, u]) => !u || id === current)
-    .map(([id]) => ({ label: pinLabel(id as PinId), value: id }));
+  const free = allPins.value.filter(p =>
+    (p.capabilities.gpioIn && p.capabilities.interrupt) &&
+    (!(p.id in props.part.pins) || p.id === current)
+  ).map(p => ({ label: p.label, value: p.id }));
   return [{ label: $t('none-option'), value: NONE_SENTINEL }, ...free];
 }
 </script>

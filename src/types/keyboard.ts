@@ -1,5 +1,5 @@
 import { z } from "astro/zod";
-import { BusNameSchema, BusSchema, DeviceIdSchema, PinIdSchema } from "./devices";
+import { BusNameSchema, BusSchema, DeviceIdSchema, PinIdSchema, type DeviceId, type PinId } from "./devices";
 import { UlidSchema } from "./utils";
 
 // ----------------
@@ -152,10 +152,72 @@ export const PinUsageSchema = z.discriminatedUnion("usage", [
   PinUsageEncoderSchema,
 ]);
 export type PinUsage = z.infer<typeof PinUsageSchema>;
+// ── Pin Capabilities ───────────────────────────────────────
 
-// Note: In UI, loop over metadata of the selected controller to get all pins,
-// then for each pin you can get its usage, availability, and other info from this record.
-export const PinSelectionSchema = z.record(PinIdSchema, PinUsageSchema.optional());
+/**
+ * Hardware-level property of a physical pin.
+ * Independent of software assignment — describes what the pin *can* do.
+ */
+export type PinCapability =
+  | "gpioIn"     // Can sense voltage (kscan input, encoder, device IRQ)
+  | "gpioOut"    // Can drive voltage (kscan output, charlieplex, device CS)
+  | "interrupt"  // Can generate hardware interrupts
+  ;
+
+/**
+ * Capabilities of a pin. Describes what the pin hardware can do.
+ */
+export type PinCapabilities = Record<PinCapability, boolean>;
+
+/** Where a pin comes from. */
+export type PinSource =
+  | { type: "controller"; controllerId: ControllerId }
+  | { type: "device"; deviceId: DeviceId; deviceTypeName: string };
+
+/**
+ * Full metadata for a pin in the system.
+ * Each pin (controller GPIO or extension device output) has a PinInfo record.
+ */
+export interface PinInfo {
+  /** Unique identifier. Controller pins use raw IDs ("d0"). Device pins use "DEVICE_ULID:INDEX". */
+  id: PinId;
+  /** Human-readable display name. */
+  label: string;
+  /** Alternative names (e.g., SoC pin names like "P0.08"). */
+  aka?: string[];
+  /**
+   * Devicetree node label for DTS generation (without `&` prefix).
+   * Controller pins: the GPIO controller node (e.g., "pro_micro").
+   * Device pins: the device's unique node label (e.g., "shifter0").
+   */
+  dtsNodeLabel: string;
+  /**
+   * Pin number within the DTS node.
+   * Controller pins: the pin index on the GPIO controller (e.g., "0").
+   * Device pins: the GPIO index on the device (e.g., "3").
+   */
+  dtsPinNumber: string;
+  /** Pinctrl reference for SoC-specific pinctrl nodes. Only present for native (controller) pins. */
+  pinctrlRef?: string;
+  /** Hardware capabilities of this pin. */
+  capabilities: PinCapabilities;
+  /** Where this pin comes from. */
+  source: PinSource;
+}
+
+/**
+ * Compose a full devicetree pin reference from its parts.
+ * Adds the `&` prefix for DTS output — dtsNodeLabel is stored without `&`.
+ * Example: composeDtsRef("pro_micro", "0") → "&pro_micro 0"
+ */
+export function composeDtsRef(dtsNodeLabel: string, dtsPinNumber: string): string {
+  return `&${dtsNodeLabel} ${dtsPinNumber}`;
+}
+
+
+// Sparse pin map: only pins that are actually assigned have entries.
+// "Is this pin free?" → !(pinId in part.pins)
+export const PinSelectionSchema = z.record(PinIdSchema, PinUsageSchema);
 export type PinSelection = z.infer<typeof PinSelectionSchema>;
 
 /**

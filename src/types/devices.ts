@@ -23,7 +23,7 @@ export {
 /**
  * Pin identifier, e.g. d0, d1, p101, gp12, etc.
  */
-export const PinIdSchema = z.string().brand<"PinId">().max(10);
+export const PinIdSchema = z.string().brand<"PinId">().max(40);
 export type PinId = z.infer<typeof PinIdSchema>;
 
 export const BusNameSchema = z.string().brand<"BusName">()

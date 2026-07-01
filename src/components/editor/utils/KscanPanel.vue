@@ -14,22 +14,25 @@
  */
 
 const ROLE_ORDER: Record<string, number> = { input: 0, output: 1, interrupt: 2 };
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useFluent } from 'fluent-vue';
 import type { KeyboardPart, PinId, KscanDriverKind } from '~/types';
-import { Controllers } from '~/metadata/controllers';
+import { usePinInventory } from '~/lib/usePinInventory';
 import { kscanLabel } from '~/components/utils/labels';
 
 const props = defineProps<{
   part: KeyboardPart;
 }>();
 
+const partRef = computed(() => props.part);
+const { allPins, getPin } = usePinInventory(partRef);
+
 const { $t } = useFluent();
 
 
 /** Look up the display label for a GPIO pin from controller metadata. */
 function pinLabel(pinId: PinId): string {
-  return Controllers[props.part.controller]?.gpios[pinId]?.label ?? pinId;
+  return getPin(pinId)?.label ?? pinId;
 }
 
 const emit = defineEmits<{
@@ -80,9 +83,7 @@ const NONE_SENTINEL = '__none__';
 /** Build dropdown options for the interrupt pin: none + free pins + current assignment. */
 function interruptPinOptions(kscanId: string) {
   const current = kscanInterruptPin(kscanId);
-  const free = Object.entries(props.part.pins)
-    .filter(([id, u]) => !u || id === current)
-    .map(([id]) => ({ label: pinLabel(id as PinId), value: id }));
+  const free = allPins.value.filter(p => !(p.id in props.part.pins) || p.id === current).map(p => ({ label: p.label, value: p.id }));
   return [{ label: $t('none-option'), value: NONE_SENTINEL }, ...free];
 }
 /** Handle interrupt pin selection for charlieplex kscan. */

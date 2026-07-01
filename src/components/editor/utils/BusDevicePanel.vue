@@ -3,9 +3,9 @@ import type { DropdownMenuItem } from '@nuxt/ui';
 import { useFluent } from 'fluent-vue';
 import { computed } from 'vue';
 import { useKeyboardStore } from '~/components/stores';
-import { Controllers } from '~/metadata/controllers';
+import { usePinInventory } from '~/lib/usePinInventory';
 import { DEVICE_REGISTRY, getDeviceMeta, type DeviceTypeName } from '~/metadata/device';
-import type { AnyBusDevice, BusPinRole, KeyboardPart, PinId } from '~/types';
+import type { AnyBusDevice, BusName, BusPinRole, KeyboardPart, PinId } from '~/types';
 import { useBusAvailability, type BusStatus } from './useBusAvailability';
 
 const { $t } = useFluent();
@@ -16,7 +16,8 @@ const props = defineProps<{
 
 const keyboard = useKeyboardStore();
 
-const controllerMeta = computed(() => Controllers[props.part.controller]);
+const partRef = computed(() => props.part);
+const { allPins, getPinsForBus } = usePinInventory(partRef);
 const partBuses = computed(() => props.part.buses as Record<string, { type: string; devices: AnyBusDevice[] }>);
 
 const { busStatuses, deviceAvailable, canAddToBus } = useBusAvailability(
@@ -69,26 +70,41 @@ function onAddDeviceToBus(busName: string, deviceType: DeviceTypeName) {
 
 const NONE_SENTINEL = '__none__';
 
-function pinLabel(pinId: PinId): string {
-  return controllerMeta.value.gpios[pinId]?.label ?? pinId;
-}
-
 const SPI_MISO_MOSI_PAIR: Record<string, string> = { miso: 'mosi', mosi: 'miso' };
 
-function freePinOptions(currentPin?: string, busName?: string, role?: string) {
+function freeBusPinOptions(busName: string, role: string, currentPin: string | undefined) {
   const pairedRole = busName && role ? SPI_MISO_MOSI_PAIR[role] : undefined;
-  return Object.entries(props.part.pins)
-    .filter(([id, u]) => {
-      if (!u || id === currentPin) return true;
+  // only pins that support the specific role on this bus
+  return getPinsForBus(busName as BusName, role as BusPinRole)
+    .filter((p) => {
+      if (p.id === currentPin) return true;
+      const usage = props.part.pins[p.id];
+      if (!usage) return true;
       // Allow pin if it's the paired SPI data role on the same bus (miosio sharing)
-      if (pairedRole && u.usage === 'bus' && u.bus === busName && u.role === pairedRole) return true;
+      if (pairedRole && usage.usage === 'bus' && usage.bus === busName && usage.role === pairedRole) return true;
       return false;
     })
-    .map(([id]) => ({ label: pinLabel(id as PinId), value: id }));
+    .map((p) => ({ label: p.label, value: p.id }));
 }
 
-function pinSelectOptions(currentPin?: string, busName?: string, role?: string) {
-  return [{ label: '\u2014 none \u2014', value: NONE_SENTINEL }, ...freePinOptions(currentPin, busName, role)];
+function pinSelectBusOptions(busName: string, role: string, currentPin: string | undefined) {
+  return [{ label: '\u2014 none \u2014', value: NONE_SENTINEL }, ...freeBusPinOptions(busName, role, currentPin)];
+}
+
+function freeDevicePinOptions(currentPin: string | undefined) {
+  return allPins.value
+    .filter((p) => {
+      if (p.source.type !== 'controller') return false;
+      // TODO actually read what the device needs
+      if (p.id === currentPin) return true;
+      const usage = props.part.pins[p.id];
+      return !usage;
+    })
+    .map((p) => ({ label: p.label, value: p.id }));
+}
+
+function pinSelectDeviceOptions(currentPin: string | undefined) {
+  return [{ label: '\u2014 none \u2014', value: NONE_SENTINEL }, ...freeDevicePinOptions(currentPin)];
 }
 
 function busPin(busName: string, role: string): PinId | undefined {
@@ -217,7 +233,8 @@ function statusBadgeColor(status: BusStatus) {
             <span class="text-base font-medium">{{ busStatus.name }}</span>
           </div>
           <UBadge :color="statusBadgeColor(busStatus.status)" variant="outline" size="sm">
-            {{ $t(busStatus.status === 'active' ? 'bus-status-active' : busStatus.status === 'inactive' ? 'bus-status-inactive' : 'bus-status-unavailable') }}
+            {{ $t(busStatus.status === 'active' ? 'bus-status-active' : busStatus.status === 'inactive' ?
+              'bus-status-inactive' : 'bus-status-unavailable') }}
           </UBadge>
         </div>
 
@@ -228,7 +245,7 @@ function statusBadgeColor(status: BusStatus) {
               <UFormField v-for="role in busStatus.available" :key="`${busStatus.name}-${role}`"
                 :label="role.toUpperCase()" :required="busStatus.requires.includes(role)" class="min-w-24">
                 <USelect :model-value="busPin(busStatus.name, role) ?? NONE_SENTINEL"
-                  :items="pinSelectOptions(busPin(busStatus.name, role), busStatus.name, role)" size="sm"
+                  :items="pinSelectBusOptions(busStatus.name, role, busPin(busStatus.name, role))" size="sm"
                   class="w-full"
                   @update:model-value="(v: string) => onBusPinChange(busStatus.name, role as BusPinRole, v)" />
               </UFormField>
@@ -250,32 +267,38 @@ function statusBadgeColor(status: BusStatus) {
                   <div class="text-xs text-base-content/60 font-semibold mb-2">{{ $t('device-properties') }}</div>
                   <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 items-end">
                     <template v-for="(propMeta, propKey) in deviceMetaFor(device.type)!.props" :key="propKey">
-                      <UFormField v-if="propMeta.widget === 'dec'" :label="propMeta.label ?? propKey" :required="propMeta.required">
+                      <UFormField v-if="propMeta.widget === 'dec'" :label="propMeta.label ?? propKey"
+                        :required="propMeta.required">
                         <UInput type="number" :model-value="Number((device as Record<string, unknown>)[propKey] ?? 0)"
                           :min="propMeta.min" :max="propMeta.max" size="sm" class="w-full"
                           @update:model-value="(v: number) => onDevicePropChange(busStatus.name, device.id, propKey, v)" />
                       </UFormField>
 
-                      <UFormField v-if="propMeta.widget === 'hex'" :label="propMeta.label ?? propKey" :required="propMeta.required">
-                        <UInput :model-value="'0x' + (Number((device as Record<string, unknown>)[propKey] ?? 0)).toString(16)"
+                      <UFormField v-if="propMeta.widget === 'hex'" :label="propMeta.label ?? propKey"
+                        :required="propMeta.required">
+                        <UInput
+                          :model-value="'0x' + (Number((device as Record<string, unknown>)[propKey] ?? 0)).toString(16)"
                           size="sm" class="w-full font-mono"
                           @update:model-value="(v: string) => { const n = parseInt(v, 16); if (!isNaN(n)) onDevicePropChange(busStatus.name, device.id, propKey, n); }" />
                       </UFormField>
 
-                      <UFormField v-if="propMeta.widget === 'numberOptions'" :label="propMeta.label ?? propKey" :required="propMeta.required">
+                      <UFormField v-if="propMeta.widget === 'numberOptions'" :label="propMeta.label ?? propKey"
+                        :required="propMeta.required">
                         <USelect :model-value="Number((device as Record<string, unknown>)[propKey]) || undefined"
-                          :items="(propMeta.options ?? []).map(o => ({ label: String(o), value: o as number }))" size="sm"
-                          class="w-full"
+                          :items="(propMeta.options ?? []).map(o => ({ label: String(o), value: o as number }))"
+                          size="sm" class="w-full"
                           @update:model-value="(v) => onDevicePropChange(busStatus.name, device.id, propKey, Number(v))" />
                       </UFormField>
 
-                      <UFormField v-if="propMeta.widget === 'stringOptions'" :label="propMeta.label ?? propKey" :required="propMeta.required">
+                      <UFormField v-if="propMeta.widget === 'stringOptions'" :label="propMeta.label ?? propKey"
+                        :required="propMeta.required">
                         <USelect :model-value="String((device as Record<string, unknown>)[propKey] ?? '') || undefined"
                           :items="Array.from(propMeta.options ?? []).map(o => ({ label: String(o), value: o as string }))"
                           size="sm" class="w-full"
                           @update:model-value="(v) => onDevicePropChange(busStatus.name, device.id, propKey, String(v))" />
                       </UFormField>
-                      <UFormField v-if="propMeta.widget === 'checkbox'" :label="propMeta.label ?? propKey" :required="propMeta.required">
+                      <UFormField v-if="propMeta.widget === 'checkbox'" :label="propMeta.label ?? propKey"
+                        :required="propMeta.required">
                         <UCheckbox :model-value="Boolean((device as Record<string, unknown>)[propKey])"
                           @update:model-value="(v: boolean | 'indeterminate') => onDevicePropChange(busStatus.name, device.id, propKey, !!v)" />
                       </UFormField>
@@ -289,7 +312,7 @@ function statusBadgeColor(status: BusStatus) {
                     <UFormField v-for="(gpioMeta, gpioRole) in deviceMetaFor(device.type)!.gpio" :key="gpioRole"
                       :label="gpioMeta.label" :description="gpioMeta.desc">
                       <USelect :model-value="devicePin(device.id, gpioRole) ?? NONE_SENTINEL"
-                        :items="pinSelectOptions(devicePin(device.id, gpioRole))" size="sm" class="w-full"
+                        :items="pinSelectDeviceOptions(devicePin(device.id, gpioRole))" size="sm" class="w-full"
                         @update:model-value="(v: string) => onDevicePinChange(device.id, gpioRole, v)" />
                     </UFormField>
                   </div>

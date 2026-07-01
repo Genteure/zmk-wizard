@@ -1,5 +1,6 @@
 import { z } from "astro/zod";
 import { DeviceIdSchema } from "~/types/utils";
+import type { AnyBusDevice, PinCapabilities, PinId, PinInfo } from "~/types";
 import type { DeviceMeta } from "./type";
 
 // ── Zod Schema (data model — no pin refs) ───────────────
@@ -66,5 +67,27 @@ export const shifter595Meta = {
 `;
 
     return { deviceDts };
+  },
+  dtsNodeLabel: "shifter",
+  pins: (device: AnyBusDevice, deviceNodeLabel: string): PinInfo[] => {
+    const shifter = device as Shifter595Device;
+    const ngpios = shifter.ngpios ?? 8;
+    const pins: PinInfo[] = [];
+    const capabilities: PinCapabilities = {
+      gpioIn: false,
+      gpioOut: true,
+      interrupt: false,
+    };
+    for (let i = 0; i < ngpios; i++) {
+      pins.push({
+        id: `${shifter.id}:${i}` as PinId,
+        label: `SR${i}`,
+        dtsNodeLabel: deviceNodeLabel,
+        dtsPinNumber: String(i),
+        capabilities,
+        source: { type: "device", deviceId: shifter.id, deviceTypeName: "74hc595" },
+      });
+    }
+    return pins;
   },
 } satisfies DeviceMeta<"74hc595">;
