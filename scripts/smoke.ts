@@ -116,7 +116,7 @@ async function readKeyboardFixture(fixturePath: string): Promise<Keyboard> {
   // module conflicts, pin constraints, controller-specific limits)
   const validated = ValidatedKeyboardSchema.safeParse(parsed);
   if (!validated.success) {
-    const issues = validated.error.errors
+    const issues = validated.error.issues
       .map(
         (issue: { path: (string | number)[]; message: string }) =>
           `${issue.path.join(".")}: ${issue.message}`,
