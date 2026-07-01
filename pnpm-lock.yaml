@@ -98,7 +98,7 @@ importers:
         version: 3.2.4(vitest@3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(happy-dom@20.0.10)(jiti@2.7.0)(jsdom@27.2.0)(lightningcss@1.32.0)(yaml@2.9.0))
       daisyui:
         specifier: ^5.5.20
-        version: 5.5.20
+        version: 5.6.6
       jiti:
         specifier: ^2.7.0
         version: 2.7.0
@@ -418,8 +418,8 @@ packages:
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
     engines: {node: '>=12'}
 
-  '@csstools/color-helpers@6.0.2':
-    resolution: {integrity: sha512-LMGQLS9EuADloEFkcTBR3BwV/CGHV7zyDxVRtVDTwdI2Ca4it0CCVTT9wCkxSgokjE5Ho41hEPgb8OEUwoXr6Q==}
+  '@csstools/color-helpers@6.1.0':
+    resolution: {integrity: sha512-064IFJdjTfUqnjpCVpMOdbr8FLQBhinbZj6yRv2An2E41O/pLEXqfFRWqGq/SxlE5PEUYTlvWsG2r8MswAVvkg==}
     engines: {node: '>=20.19.0'}
 
   '@csstools/css-calc@3.2.1':
@@ -429,8 +429,8 @@ packages:
       '@csstools/css-parser-algorithms': ^4.0.0
       '@csstools/css-tokenizer': ^4.0.0
 
-  '@csstools/css-color-parser@4.1.1':
-    resolution: {integrity: sha512-eZ5XOtyhK+mggRafYUWzA0tvaYOFgdY8AkgQiCJF9qNAePnUo/zmsqqYubBBb3sQ8uNUaSKTY9s9klfRaAXL0g==}
+  '@csstools/css-color-parser@4.1.9':
+    resolution: {integrity: sha512-paQcIaOO53Rk5+YrBaBjm/SgrV4INImjo2BT1DtQRYr+XeTRbeAYlS+jxXp9drqvKmtFnWRJKIalDLhZZDu42A==}
     engines: {node: '>=20.19.0'}
     peerDependencies:
       '@csstools/css-parser-algorithms': ^4.0.0
@@ -442,8 +442,8 @@ packages:
     peerDependencies:
       '@csstools/css-tokenizer': ^4.0.0
 
-  '@csstools/css-syntax-patches-for-csstree@1.1.4':
-    resolution: {integrity: sha512-wgsqt92b7C7tQhIdPNxj0n9zuUbQlvAuI1exyzeNrOKOi62SD7ren8zqszmpVREjAOqg8cD2FqYhQfAuKjk4sw==}
+  '@csstools/css-syntax-patches-for-csstree@1.1.6':
+    resolution: {integrity: sha512-TcJCWFbXLPpJYq6z7bfOyjWYJDiDg2/I4gyUC9pqPNqHFRIey0EB0q0L5cSnQDfWJg8Jd6VadakxdIez/3zkqQ==}
     peerDependencies:
       css-tree: ^3.2.1
     peerDependenciesMeta:
@@ -1835,8 +1835,8 @@ packages:
   '@types/nlcst@2.0.3':
     resolution: {integrity: sha512-vSYNSDe6Ix3q+6Z7ri9lyWqgGhJTmzRjZRqyq15N0Z/1/UnVsno9G/N40NBijoYx2seFDIl0+B2mgAb9mezUCA==}
 
-  '@types/node@20.19.41':
-    resolution: {integrity: sha512-ECymXOukMnOoVkC2bb1Vc/w/836DXncOg5m8Xj1RH7xSHZJWNYY6Zh7EH477vcnD5egKNNfy2RpNOmuChhFPgQ==}
+  '@types/node@20.19.43':
+    resolution: {integrity: sha512-6oYBAi5ikg4Pl+kGsoYtawUMBT2zZMCvPNF7pVLnHZfd1zf38DRiWn/gT01RYCdUqkv7Fhr+C9ot4/tb+2sVvA==}
 
   '@types/node@24.12.4':
     resolution: {integrity: sha512-GUUEShf+PBCGW2KaXwcIt3Yk+e3pkKwWKb9GSyM9WQVE+ep2jzmHdGsHzu4wgcZy5fN9FBdVzjpBQsYlpfpgLA==}
@@ -2227,8 +2227,8 @@ packages:
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
-  daisyui@5.5.20:
-    resolution: {integrity: sha512-HemJcjl0Gk9rQ8BcgofN6p+EURrqftQG9wK1Hkxs98i49xe68+QxpNvry+PyxwkIUgrbMpNmZ5ZWjmtffAjfhQ==}
+  daisyui@5.6.6:
+    resolution: {integrity: sha512-UFiuIZYucF7ylrnY3PT1SqwaEbVB10mqTZRyeRchZk0bud+HihYLLhXdxGDVmR/ftrM9G9YVr9FFPRVVIZJ5hA==}
 
   data-urls@6.0.1:
     resolution: {integrity: sha512-euIQENZg6x8mj3fO6o9+fOW8MimUI4PpD/fZBhJfeioZVy9TUpM4UY7KjQNVZFlqwJ0UdzRDzkycB997HEq1BQ==}
@@ -2499,6 +2499,7 @@ packages:
 
   glob@10.4.5:
     resolution: {integrity: sha512-7Bv8RF0k6xjo7d4A/PxYLbUCfb6c+Vpd2/mB2yRDlew7Jb5hEXiCD9ibfO7wpk8i4sevK6DFny9h7EYbM3/sHg==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   graceful-fs@4.2.11:
@@ -3704,11 +3705,11 @@ packages:
     resolution: {integrity: sha512-azl+t0z7pw/z958Gy9svOTuzqIk6xq+NSheJzn5MMWtWTFywIacg2wUlzKFGtt3cthx0r2SxMK0yzJOR0IES7Q==}
     engines: {node: '>=14.0.0'}
 
-  tldts-core@7.4.1:
-    resolution: {integrity: sha512-sc2nGvGbixlJRHwTh/qQdPXTxJU1UDJboGPQm4d/01YUJ9r/u6aeIulQvEaxUlvKDN7hb1qCLjax+jhVAPLa/g==}
+  tldts-core@7.4.5:
+    resolution: {integrity: sha512-pGrwzZDvPwKe+7NNUqAunb6rqTfynr0VOUhCMdqbu5xlvNiszsAJygRzwvpVycdzejlbpY+SWJOn+s75Og7FEA==}
 
-  tldts@7.4.0:
-    resolution: {integrity: sha512-yHBe+zVfzNZ3QfTPW/Z6KK1G2t340gFjMHqI/4KKSt/abzYydzuCnpqdaF5gCCABby+9Yfbj59oR5F2Fd5CBzg==}
+  tldts@7.4.5:
+    resolution: {integrity: sha512-RfEzKWcq5fHUOFq7J3rl3Oz6ylKGtcHqUznzj4EcXsxLSIjJcvpbXAQtWGeJQ0xKnimR5e0Cn+cn9TssfMzm+g==}
     hasBin: true
 
   tough-cookie@6.0.1:
@@ -3756,6 +3757,7 @@ packages:
   tsconfck@3.1.6:
     resolution: {integrity: sha512-ks6Vjr/jEw0P1gmOVwutM3B7fWxoWBL2KRDb1JfqGVawBmO5UsvmWOQFGHBPl5yxYz4eERr19E6L7NMv+Fej4w==}
     engines: {node: ^18 || >=20}
+    deprecated: unmaintained
     hasBin: true
     peerDependencies:
       typescript: ^5.0.0
@@ -4350,7 +4352,7 @@ snapshots:
   '@asamuzakjp/css-color@4.1.2':
     dependencies:
       '@csstools/css-calc': 3.2.1(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
-      '@csstools/css-color-parser': 4.1.1(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
+      '@csstools/css-color-parser': 4.1.9(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
       '@csstools/css-parser-algorithms': 4.0.0(@csstools/css-tokenizer@4.0.0)
       '@csstools/css-tokenizer': 4.0.0
       lru-cache: 11.5.1
@@ -4735,7 +4737,7 @@ snapshots:
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
 
-  '@csstools/color-helpers@6.0.2':
+  '@csstools/color-helpers@6.1.0':
     optional: true
 
   '@csstools/css-calc@3.2.1(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)':
@@ -4744,9 +4746,9 @@ snapshots:
       '@csstools/css-tokenizer': 4.0.0
     optional: true
 
-  '@csstools/css-color-parser@4.1.1(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)':
+  '@csstools/css-color-parser@4.1.9(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)':
     dependencies:
-      '@csstools/color-helpers': 6.0.2
+      '@csstools/color-helpers': 6.1.0
       '@csstools/css-calc': 3.2.1(@csstools/css-parser-algorithms@4.0.0(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
       '@csstools/css-parser-algorithms': 4.0.0(@csstools/css-tokenizer@4.0.0)
       '@csstools/css-tokenizer': 4.0.0
@@ -4757,7 +4759,7 @@ snapshots:
       '@csstools/css-tokenizer': 4.0.0
     optional: true
 
-  '@csstools/css-syntax-patches-for-csstree@1.1.4(css-tree@3.2.1)':
+  '@csstools/css-syntax-patches-for-csstree@1.1.6(css-tree@3.2.1)':
     optionalDependencies:
       css-tree: 3.2.1
     optional: true
@@ -5770,7 +5772,7 @@ snapshots:
     dependencies:
       '@types/unist': 3.0.3
 
-  '@types/node@20.19.41':
+  '@types/node@20.19.43':
     dependencies:
       undici-types: 6.21.0
     optional: true
@@ -6276,14 +6278,14 @@ snapshots:
   cssstyle@5.3.7:
     dependencies:
       '@asamuzakjp/css-color': 4.1.2
-      '@csstools/css-syntax-patches-for-csstree': 1.1.4(css-tree@3.2.1)
+      '@csstools/css-syntax-patches-for-csstree': 1.1.6(css-tree@3.2.1)
       css-tree: 3.2.1
       lru-cache: 11.5.1
     optional: true
 
   csstype@3.2.3: {}
 
-  daisyui@5.5.20: {}
+  daisyui@5.6.6: {}
 
   data-urls@6.0.1:
     dependencies:
@@ -6644,7 +6646,7 @@ snapshots:
 
   happy-dom@20.0.10:
     dependencies:
-      '@types/node': 20.19.41
+      '@types/node': 20.19.43
       '@types/whatwg-mimetype': 3.0.2
       whatwg-mimetype: 3.0.0
     optional: true
@@ -8368,17 +8370,17 @@ snapshots:
 
   tinyspy@4.0.4: {}
 
-  tldts-core@7.4.1:
+  tldts-core@7.4.5:
     optional: true
 
-  tldts@7.4.0:
+  tldts@7.4.5:
     dependencies:
-      tldts-core: 7.4.1
+      tldts-core: 7.4.5
     optional: true
 
   tough-cookie@6.0.1:
     dependencies:
-      tldts: 7.4.0
+      tldts: 7.4.5
     optional: true
 
   tr46@6.0.0:
