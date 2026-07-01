@@ -482,6 +482,23 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
           path: ["parts", partIdx, "keys", key.id],
         });
       }
+
+      // Input and output pins must belong to the same kscan instance
+      if (wiring.input && wiring.output) {
+        const inputUsage = part.pins[wiring.input];
+        const outputUsage = part.pins[wiring.output];
+        if (
+          inputUsage?.usage === "kscan" &&
+          outputUsage?.usage === "kscan" &&
+          inputUsage.kscan !== outputUsage.kscan
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            message: `Key ${idx} uses input pin from kscan "${inputUsage.kscan}" and output pin from kscan "${outputUsage.kscan}"; both pins must belong to the same kscan instance`,
+            path: ["parts", partIdx, "keys", key.id],
+          });
+        }
+      }
     });
 
     // ── 11. Pin existence on controller or device ──────────

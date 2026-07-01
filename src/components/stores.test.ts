@@ -678,6 +678,114 @@ describe("useKeyboardStore", () => {
       expect(kb.parts[0].keys[key.id]?.input).toBe(pinId("d0"));
       expect(kb.parts[0].keys[key.id]?.output).toBe(pinId("d1"));
     });
+
+    test("replaces opposite pin when new pin is from a different kscan instance", () => {
+      const kb = useKeyboardStore();
+      const key = makeKey();
+      kb.$patch({
+        layout: [key],
+        parts: [
+          {
+            name: "left",
+            controller: "nice_nano_v2",
+            pins: {
+              [pinId("d0")]: { usage: "kscan", kscan: "k1", role: "input" },
+              [pinId("d1")]: { usage: "kscan", kscan: "k1", role: "output" },
+              [pinId("d2")]: { usage: "kscan", kscan: "k2", role: "output" },
+            },
+            kscans: [
+              { id: "k1", kind: "matrix", diodes: true },
+              { id: "k2", kind: "matrix", diodes: true },
+            ],
+            keys: {},
+            encoders: [],
+            buses: {},
+          },
+        ],
+      });
+
+      // Wire both pins from kscan "k1" first
+      kb.setKeyWiring(0, key.id, { pinId: pinId("d0"), role: "input" });
+      kb.setKeyWiring(0, key.id, { pinId: pinId("d1"), role: "output" });
+      expect(kb.parts[0].keys[key.id]?.input).toBe(pinId("d0"));
+      expect(kb.parts[0].keys[key.id]?.output).toBe(pinId("d1"));
+
+      // Wire a new output pin from kscan "k2" — should replace the old output
+      kb.setKeyWiring(0, key.id, { pinId: pinId("d2"), role: "output" });
+      expect(kb.parts[0].keys[key.id]?.output).toBe(pinId("d2"));
+      // Input should be cleared since it belonged to a different kscan
+      expect(kb.parts[0].keys[key.id]?.input).toBeUndefined();
+    });
+
+    test("replaces opposite pin from input side when switching kscan", () => {
+      const kb = useKeyboardStore();
+      const key = makeKey();
+      kb.$patch({
+        layout: [key],
+        parts: [
+          {
+            name: "left",
+            controller: "nice_nano_v2",
+            pins: {
+              [pinId("d0")]: { usage: "kscan", kscan: "k1", role: "input" },
+              [pinId("d1")]: { usage: "kscan", kscan: "k1", role: "output" },
+              [pinId("d3")]: { usage: "kscan", kscan: "k2", role: "input" },
+            },
+            kscans: [
+              { id: "k1", kind: "matrix", diodes: true },
+              { id: "k2", kind: "matrix", diodes: true },
+            ],
+            keys: {},
+            encoders: [],
+            buses: {},
+          },
+        ],
+      });
+
+      // Wire both pins from kscan "k1"
+      kb.setKeyWiring(0, key.id, { pinId: pinId("d0"), role: "input" });
+      kb.setKeyWiring(0, key.id, { pinId: pinId("d1"), role: "output" });
+      expect(kb.parts[0].keys[key.id]?.input).toBe(pinId("d0"));
+      expect(kb.parts[0].keys[key.id]?.output).toBe(pinId("d1"));
+
+      // Wire a new input pin from kscan "k2" — should replace the old input
+      kb.setKeyWiring(0, key.id, { pinId: pinId("d3"), role: "input" });
+      expect(kb.parts[0].keys[key.id]?.input).toBe(pinId("d3"));
+      // Output should be cleared since it belonged to a different kscan
+      expect(kb.parts[0].keys[key.id]?.output).toBeUndefined();
+    });
+
+    test("does not clear opposite pin when same kscan instance", () => {
+      const kb = useKeyboardStore();
+      const key = makeKey();
+      kb.$patch({
+        layout: [key],
+        parts: [
+          {
+            name: "left",
+            controller: "nice_nano_v2",
+            pins: {
+              [pinId("d0")]: { usage: "kscan", kscan: "k1", role: "input" },
+              [pinId("d1")]: { usage: "kscan", kscan: "k1", role: "output" },
+              [pinId("d2")]: { usage: "kscan", kscan: "k1", role: "output" },
+            },
+            kscans: [{ id: "k1", kind: "matrix", diodes: true }],
+            keys: {},
+            encoders: [],
+            buses: {},
+          },
+        ],
+      });
+
+      // Wire both pins from kscan "k1"
+      kb.setKeyWiring(0, key.id, { pinId: pinId("d0"), role: "input" });
+      kb.setKeyWiring(0, key.id, { pinId: pinId("d1"), role: "output" });
+
+      // Wire a different output pin from the same kscan "k1" — should keep the input
+      kb.setKeyWiring(0, key.id, { pinId: pinId("d2"), role: "output" });
+      expect(kb.parts[0].keys[key.id]?.output).toBe(pinId("d2"));
+      expect(kb.parts[0].keys[key.id]?.input).toBe(pinId("d0"));
+    });
   });
 
   // ── Bus/Device CRUD ─────────────────────────────────────

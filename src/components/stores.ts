@@ -326,6 +326,29 @@ export const useKeyboardStore = defineStore('keyboard', {
       this.$patch((state) => {
         const part = state.parts[partIdx];
         if (!part) return;
+
+        // Guard: input and output pins for the same key must belong to the same kscan instance.
+        // If the new pin's kscan differs from the existing opposite pin's kscan, clear the opposite
+        // pin so the user can freely switch between kscan instances without getting stuck.
+        const oppositeRole = wiring.role === 'input' ? 'output' : 'input';
+        const oppositePinId = part.keys[keyId]?.[oppositeRole];
+        if (oppositePinId) {
+          const newUsage = part.pins[wiring.pinId];
+          const existingUsage = part.pins[oppositePinId];
+          if (
+            newUsage?.usage === 'kscan' &&
+            existingUsage?.usage === 'kscan' &&
+            newUsage.kscan !== existingUsage.kscan
+          ) {
+            // Replace: clear the opposite pin so it's no longer cross-kscan
+            const current = part.keys[keyId] ?? {};
+            delete current[oppositeRole];
+            current[wiring.role] = wiring.pinId;
+            part.keys[keyId] = current;
+            return;
+          }
+        }
+
         const current = part.keys[keyId] ?? {};
         part.keys[keyId] = { ...current, [wiring.role]: wiring.pinId };
       });
