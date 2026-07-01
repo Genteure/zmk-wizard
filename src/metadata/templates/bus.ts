@@ -134,6 +134,8 @@ export function generatePartTemplates(
 
   let allDts = "";
   const allKconfig = new Set<string>();
+  // Per-type counter for unique DTS node labels across all buses (shifter0, shifter1, etc.)
+  const typeCounters = new Map<string, number>();
 
   for (const [busName, bus] of Object.entries(buses)) {
     if (bus.devices.length === 0) continue;
@@ -168,10 +170,7 @@ export function generatePartTemplates(
 
       allDts += generateCsGpios(busName, spiBus, pins, controller);
     }
-
     // 5. Generate per-device DTS + Kconfig
-    // Per-type counter for unique DTS node labels (shifter0, shifter1, etc.)
-    const typeCounters = new Map<string, number>();
 
     (bus as SpiBus | I2cBus).devices.forEach((device, busIndex) => {
       const meta = getDeviceMeta(device.type as DeviceTypeName);
