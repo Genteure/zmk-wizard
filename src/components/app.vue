@@ -236,7 +236,7 @@ const navItems = computed<NavigationMenuItem[][]>(() => [
   ],
   [
     { label: $t('menu-community'), type: 'label' },
-    { label: $t('menu-next-steps'), icon: 'i-lucide-circle-help', href: '/next-steps', target: '_blank' },
+    // { label: $t('menu-next-steps'), icon: 'i-lucide-circle-help', href: '/docs/next-steps', target: '_blank' },
     { label: $t('menu-discord'), icon: 'i-lucide-messages-square', href: 'https://zmk.dev/community/discord/invite', target: '_blank' },
     { label: $t('menu-github'), icon: 'i-lucide-github', href: 'https://github.com/Genteure/zmk-wizard', target: '_blank' },
   ],
