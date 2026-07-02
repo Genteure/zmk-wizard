@@ -82,6 +82,7 @@ export const paw3395Meta = {
     const index = args.csIndex ?? 0;
 
     const irqPin = args.gpios.irq?.dtsRef ?? '';
+    const nodeLabel = args.nodeLabel ?? 'paw3395';
     const swap = swapxy ? '\n        swap-xy;' : '';
     const invx = invertx ? '\n        invert-x;' : '';
     const invy = inverty ? '\n        invert-y;' : '';
@@ -90,7 +91,7 @@ export const paw3395Meta = {
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 
 &${args.bus} {
-    paw3395: paw3395@${index} {
+    ${nodeLabel}: ${nodeLabel}@${index} {
         status = "okay";
         compatible = "pixart,paw3395";
         reg = <${index}>;

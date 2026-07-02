@@ -1,3 +1,6 @@
+import { Controllers, type ControllerMetadata } from "~/metadata/controllers";
+import { getDeviceMeta, type DeviceTypeName } from "~/metadata/device";
+import type { DeviceTemplateArgs, PinTemplateInfo } from "~/metadata/device/type";
 import type {
   Bus,
   BusPinRole,
@@ -8,9 +11,6 @@ import type {
   PinUsage,
   SpiBus,
 } from "~/types";
-import { Controllers, type ControllerMetadata } from "~/metadata/controllers";
-import type { DeviceTemplateArgs, PinTemplateInfo } from "~/metadata/device/type";
-import { getDeviceMeta, type DeviceTypeName } from "~/metadata/device";
 import { generateBusPinctrl } from "./pinctrl";
 
 // ─────────────────────────────────────────────────────────────
@@ -27,10 +27,10 @@ import { generateBusPinctrl } from "./pinctrl";
 /** Indexed view of pin usage by device ID. */
 type DevicePinIndex = Map<
   DeviceId,
-  Map<string, { pinId: string; pinInfo: PinTemplateInfo }>
+  Map<string, PinTemplateInfo>
 >;
 
-/** Build a lookup: deviceId → role → { pinId, pinInfo } from part.pins */
+/** Build a lookup: deviceId → role → PinTemplateInfo from part.pins */
 function indexDevicePins(
   pins: PinSelection,
   controller: ControllerMetadata,
@@ -43,16 +43,13 @@ function indexDevicePins(
     if (!pinInfo) continue;
     let byRole = index.get(pu.deviceId);
     if (!byRole) {
-      byRole = new Map();
+      byRole = new Map<string, PinTemplateInfo>();
       index.set(pu.deviceId, byRole);
     }
     byRole.set(pu.role, {
-      pinId,
-      pinInfo: {
-        displayName: pinInfo.label,
-        dtsRef: `&${pinInfo.dtsNodeLabel} ${pinInfo.dtsPinNumber}`,
-        pinctrlRef: pinInfo.pinctrlRef ?? "",
-      },
+      displayName: pinInfo.label,
+      dtsRef: `&${pinInfo.dtsNodeLabel} ${pinInfo.dtsPinNumber}`,
+      pinctrlRef: pinInfo.pinctrlRef ?? "",
     });
   }
   return index;
@@ -72,10 +69,10 @@ function indexBusPins(
     const pu = usage as Extract<PinUsage, { usage: "bus" }>;
     const pinInfo = controller.gpios[pinId as keyof typeof controller.gpios];
     if (!pinInfo) continue;
-    let busEntry = index.get(pu.bus as string);
+    let busEntry = index.get(pu.bus);
     if (!busEntry) {
       busEntry = {};
-      index.set(pu.bus as string, busEntry);
+      index.set(pu.bus, busEntry);
     }
     busEntry[pu.role] = {
       displayName: pinInfo.label,
@@ -134,8 +131,10 @@ export function generatePartTemplates(
 
   let allDts = "";
   const allKconfig = new Set<string>();
-  // Per-type counter for unique DTS node labels across all buses (shifter0, shifter1, etc.)
+  // Per-type counter for unique DTS node labels (shifter0, shifter1, etc.)
   const typeCounters = new Map<string, number>();
+  // Per-part pointing device counter for input_device_* labels
+  let pointingCounter = 0;
 
   for (const [busName, bus] of Object.entries(buses)) {
     if (bus.devices.length === 0) continue;
@@ -176,14 +175,23 @@ export function generatePartTemplates(
       const meta = getDeviceMeta(device.type as DeviceTypeName);
       if (!meta) return;
 
-      const gpios = deviceIndex.get(device.id as DeviceId) ?? new Map();
       const gpiosRecord: Record<string, PinTemplateInfo> = {};
-      for (const [role, info] of gpios) {
-        gpiosRecord[role] = info;
+      const gpios = deviceIndex.get(device.id as DeviceId);
+      if (gpios) {
+        for (const [role, info] of gpios) {
+          gpiosRecord[role] = info;
+        }
       }
 
-      const count = typeCounters.get(device.type) ?? 0;
-      typeCounters.set(device.type, count + 1);
+      // Compute unique DTS node label
+      let nodeLabel: string | undefined;
+      if (meta.class === "pointing") {
+        nodeLabel = `input_device_${partName}${pointingCounter++}`;
+      } else if (meta.dtsNodeLabel) {
+        const count = typeCounters.get(device.type) ?? 0;
+        typeCounters.set(device.type, count + 1);
+        nodeLabel = `${meta.dtsNodeLabel}${count}`;
+      }
 
       const args: DeviceTemplateArgs = {
         bus: busName,
@@ -192,7 +200,7 @@ export function generatePartTemplates(
         gpios: gpiosRecord,
         busPins,
         controllerId,
-        nodeLabel: meta.dtsNodeLabel ? `${meta.dtsNodeLabel}${count}` : undefined,
+        nodeLabel,
       };
 
       const result = meta.template(args);
@@ -245,7 +253,7 @@ function generateCsGpios(
   for (const dev of bus.devices) {
     const meta = getDeviceMeta(dev.type as DeviceTypeName);
     if (meta?.gpio?.cs?.required) {
-      deviceIds.add(dev.id as string);
+      deviceIds.add(dev.id);
     }
   }
 
@@ -256,7 +264,7 @@ function generateCsGpios(
   let allAssigned = true;
 
   for (const dev of bus.devices) {
-    const devId = dev.id as string;
+    const devId = dev.id;
     if (!deviceIds.has(devId)) continue;
 
     // Find the pin assigned to this device with role "cs"
@@ -265,7 +273,7 @@ function generateCsGpios(
       if (
         usage?.usage === "device" &&
         (usage as Extract<typeof usage, { usage: "device" }>).deviceId ===
-          devId &&
+        devId &&
         (usage as Extract<typeof usage, { usage: "device" }>).role === "cs"
       ) {
         const pinMeta =

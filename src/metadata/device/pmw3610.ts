@@ -79,6 +79,7 @@ export const pmw3610Meta = {
     const index = args.csIndex ?? 0;
 
     const irqPin = args.gpios.irq?.dtsRef ?? '';
+    const nodeLabel = args.nodeLabel ?? 'pmw3610';
     const swap = swapxy ? '\n        swap-xy;' : '';
     const invx = invertx ? '\n        invert-x;' : '';
     const invy = inverty ? '\n        invert-y;' : '';
@@ -87,7 +88,7 @@ export const pmw3610Meta = {
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 
 &${args.bus} {
-    pmw3610: pmw3610@${index} {
+    ${nodeLabel}: ${nodeLabel}@${index} {
         status = "okay";
         compatible = "pixart,pmw3610";
         reg = <${index}>;

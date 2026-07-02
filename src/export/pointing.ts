@@ -24,6 +24,8 @@ export type PointingDeviceInfo = {
   device: { type: string };
   reg: number;
   baseName: string;
+  /** DTS node label of the hardware driver instance (e.g. "pinnacle_i2c0") */
+  deviceNodeLabel: string;
 };
 
 export function collectInputDevices(keyboard: Keyboard): PointingDeviceInfo[] {
@@ -44,11 +46,12 @@ export function collectInputDevices(keyboard: Keyboard): PointingDeviceInfo[] {
           partIndex,
           partName: part.name,
           deviceIndex,
-          busName: "", // not used in output
+          busName: "",
           busType: bus.type,
           device: { type: device.type },
           reg: regCounter++,
           baseName,
+          deviceNodeLabel: inputDeviceNodeName(baseName),
         });
 
         deviceIndex++;

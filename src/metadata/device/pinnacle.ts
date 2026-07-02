@@ -93,6 +93,7 @@ export const pinnacleSpiMeta = {
     const props = args.props;
     const index = args.csIndex ?? 0;
     const drPin = args.gpios.dr?.dtsRef ?? '';
+    const nodeLabel = args.nodeLabel ?? 'pinnacle_spi';
     const rotate90 = props.rotate90 ? '\n        rotate-90;' : '';
     const invx = props.invertx ? '\n        x-invert;' : '';
     const invy = props.inverty ? '\n        y-invert;' : '';
@@ -103,7 +104,7 @@ export const pinnacleSpiMeta = {
 
     const deviceDts = `
 &${args.bus} {
-    pinnacle_spi: pinnacle_spi@${index} {
+    ${nodeLabel}: ${nodeLabel}@${index} {
         status = "okay";
         compatible = "cirque,pinnacle";
         reg = <${index}>;
@@ -166,6 +167,7 @@ export const pinnacleI2cMeta = {
     const add = props.add as number ?? 0x2a;
     const addressHex = (add as number).toString(16).padStart(2, '0');
     const drPin = args.gpios.dr?.dtsRef ?? '';
+    const nodeLabel = args.nodeLabel ?? 'pinnacle_i2c';
     const rotate90 = props.rotate90 ? '\n        rotate-90;' : '';
     const invx = props.invertx ? '\n        x-invert;' : '';
     const invy = props.inverty ? '\n        y-invert;' : '';
@@ -176,7 +178,7 @@ export const pinnacleI2cMeta = {
 
     const deviceDts = `
 &${args.bus} {
-    pinnacle_i2c: pinnacle_i2c@${addressHex} {
+    ${nodeLabel}: ${nodeLabel}@${addressHex} {
         status = "okay";
         compatible = "cirque,pinnacle";
         reg = <0x${addressHex}>;
