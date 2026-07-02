@@ -16,16 +16,13 @@ export type SocId = z.infer<typeof SocIdSchema>;
 export const ControllerIdSchema = z.enum([
   "nice_nano_v2",
   "xiao_ble",
-  // "xiao_ble_plus",
+  "xiao_ble_plus",
   "rpi_pico",
   "xiao_rp2040",
-  // "qt_py_rp2040",
-  // "kb2040",
-  // "sparkfun_pro_micro_rp2040",
+  "qt_py_rp2040",
+  "kb2040",
+  "sparkfun_pro_micro_rp2040",
 ]);
-
-// While we rewrite the entire project, some controllers are commented out to reduce initial implementation scope.
-// TODO: Implement the rest of the controllers.
 
 export type ControllerId = z.infer<typeof ControllerIdSchema>;
 

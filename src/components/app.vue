@@ -192,7 +192,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
     { label: 'Keymap Editor', icon: 'i-lucide-external-link', to: 'https://nickcoutsos.github.io/keymap-editor/', target: '_blank' },
   ],
   [
-    { label: $t('menu-next-steps'), icon: 'i-lucide-circle-help', to: '/next-steps', target: '_blank' },
+    // { label: $t('menu-next-steps'), icon: 'i-lucide-circle-help', to: '/docs/next-steps', target: '_blank' },
     { label: $t('menu-discord'), icon: 'i-lucide-messages-square', to: 'https://zmk.dev/community/discord/invite', target: '_blank' },
     { label: $t('menu-github'), icon: 'i-lucide-github', to: 'https://github.com/Genteure/zmk-wizard', target: '_blank' },
   ],

@@ -126,7 +126,7 @@ const ALL_CAPABILITIES: PinCapabilities = {
 
 const PRO_MICRO = "pro_micro";
 const XIAO_D = "xiao_d";
-// const GPIO0 = "gpio0";
+const GPIO0 = "gpio0";
 const GPIO1 = "gpio1";
 const PICO_HEADER = "pico_header";
 
@@ -218,6 +218,92 @@ const RPI_PICO_GPIOS = asPinMap({
   "gp28": { label: "GP28", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "28", pinctrlRef: "28" },
 });
 
+// ── nRF52840 controller GPIO maps ─────────────────────────
+const XIAO_BLE_PLUS_GPIOS = asPinMap({
+  "d0": { label: "D0", aka: ["P0.02"], dtsNodeLabel: XIAO_D, dtsPinNumber: "0", pinctrlRef: "0, 2" },
+  "d1": { label: "D1", aka: ["P0.03"], dtsNodeLabel: XIAO_D, dtsPinNumber: "1", pinctrlRef: "0, 3" },
+  "d2": { label: "D2", aka: ["P0.28"], dtsNodeLabel: XIAO_D, dtsPinNumber: "2", pinctrlRef: "0, 28" },
+  "d3": { label: "D3", aka: ["P0.29"], dtsNodeLabel: XIAO_D, dtsPinNumber: "3", pinctrlRef: "0, 29" },
+  "d4": { label: "D4", aka: ["P0.04"], dtsNodeLabel: XIAO_D, dtsPinNumber: "4", pinctrlRef: "0, 4" },
+  "d5": { label: "D5", aka: ["P0.05"], dtsNodeLabel: XIAO_D, dtsPinNumber: "5", pinctrlRef: "0, 5" },
+  "d6": { label: "D6", aka: ["P1.11"], dtsNodeLabel: XIAO_D, dtsPinNumber: "6", pinctrlRef: "1, 11" },
+  "d7": { label: "D7", aka: ["P1.12"], dtsNodeLabel: XIAO_D, dtsPinNumber: "7", pinctrlRef: "1, 12" },
+  "d8": { label: "D8", aka: ["P1.13"], dtsNodeLabel: XIAO_D, dtsPinNumber: "8", pinctrlRef: "1, 13" },
+  "d9": { label: "D9", aka: ["P1.14"], dtsNodeLabel: XIAO_D, dtsPinNumber: "9", pinctrlRef: "1, 14" },
+  "d10": { label: "D10", aka: ["P1.15"], dtsNodeLabel: XIAO_D, dtsPinNumber: "10", pinctrlRef: "1, 15" },
+  "d11": { label: "D11", aka: ["P0.15"], dtsNodeLabel: GPIO0, dtsPinNumber: "15", pinctrlRef: "0, 15" },
+  "d12": { label: "D12", aka: ["P0.19"], dtsNodeLabel: GPIO0, dtsPinNumber: "19", pinctrlRef: "0, 19" },
+  "d13": { label: "D13", aka: ["P1.01"], dtsNodeLabel: GPIO1, dtsPinNumber: "1", pinctrlRef: "1, 1" },
+  "d14": { label: "D14", aka: ["P0.09"], dtsNodeLabel: GPIO0, dtsPinNumber: "9", pinctrlRef: "0, 9" },
+  "d15": { label: "D15", aka: ["P0.10"], dtsNodeLabel: GPIO0, dtsPinNumber: "10", pinctrlRef: "0, 10" },
+  "d17": { label: "D17", aka: ["P1.03"], dtsNodeLabel: GPIO1, dtsPinNumber: "3", pinctrlRef: "1, 3" },
+  "d18": { label: "D18", aka: ["P1.05"], dtsNodeLabel: GPIO1, dtsPinNumber: "5", pinctrlRef: "1, 5" },
+  "d19": { label: "D19", aka: ["P1.07"], dtsNodeLabel: GPIO1, dtsPinNumber: "7", pinctrlRef: "1, 7" },
+});
+
+// ── RP2040 controller GPIO maps (continued) ────────────────
+const QT_PY_RP2040_GPIOS = asPinMap({
+  "d0": { label: "D0", aka: ["GPIO29", "A0"], dtsNodeLabel: XIAO_D, dtsPinNumber: "0", pinctrlRef: "29" },
+  "d1": { label: "D1", aka: ["GPIO28", "A1"], dtsNodeLabel: XIAO_D, dtsPinNumber: "1", pinctrlRef: "28" },
+  "d2": { label: "D2", aka: ["GPIO27", "A2"], dtsNodeLabel: XIAO_D, dtsPinNumber: "2", pinctrlRef: "27" },
+  "d3": { label: "D3", aka: ["GPIO26", "A3"], dtsNodeLabel: XIAO_D, dtsPinNumber: "3", pinctrlRef: "26" },
+  "d4": { label: "D4", aka: ["GPIO24", "SDA"], dtsNodeLabel: XIAO_D, dtsPinNumber: "4", pinctrlRef: "24" },
+  "d5": { label: "D5", aka: ["GPIO25", "SCL"], dtsNodeLabel: XIAO_D, dtsPinNumber: "5", pinctrlRef: "25" },
+  "d6": { label: "D6", aka: ["GPIO20", "TX"], dtsNodeLabel: XIAO_D, dtsPinNumber: "6", pinctrlRef: "20" },
+  "d7": { label: "D7", aka: ["GPIO5", "RX"], dtsNodeLabel: XIAO_D, dtsPinNumber: "7", pinctrlRef: "5" },
+  "d8": { label: "D8", aka: ["GPIO6", "SCK"], dtsNodeLabel: XIAO_D, dtsPinNumber: "8", pinctrlRef: "6" },
+  "d9": { label: "D9", aka: ["GPIO4", "MISO"], dtsNodeLabel: XIAO_D, dtsPinNumber: "9", pinctrlRef: "4" },
+  "d10": { label: "D10", aka: ["GPIO3", "MOSI"], dtsNodeLabel: XIAO_D, dtsPinNumber: "10", pinctrlRef: "3" },
+  "gp22": { label: "GP22", aka: ["SDA1"], dtsNodeLabel: GPIO0, dtsPinNumber: "22", pinctrlRef: "22" },
+  "gp23": { label: "GP23", aka: ["SCL1"], dtsNodeLabel: GPIO0, dtsPinNumber: "23", pinctrlRef: "23" },
+});
+
+const KB2040_GPIOS = asPinMap({
+  "d1": { label: "D1", aka: ["GPIO0"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "1", pinctrlRef: "0" },
+  "d0": { label: "D0", aka: ["GPIO1"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "0", pinctrlRef: "1" },
+  "d2": { label: "D2", aka: ["GPIO2"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "2", pinctrlRef: "2" },
+  "d3": { label: "D3", aka: ["GPIO3"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "3", pinctrlRef: "3" },
+  "d4": { label: "D4", aka: ["GPIO4"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "4", pinctrlRef: "4" },
+  "d5": { label: "D5", aka: ["GPIO5"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "5", pinctrlRef: "5" },
+  "d6": { label: "D6", aka: ["GPIO6"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "6", pinctrlRef: "6" },
+  "d7": { label: "D7", aka: ["GPIO7"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "7", pinctrlRef: "7" },
+  "d8": { label: "D8", aka: ["GPIO8"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "8", pinctrlRef: "8" },
+  "d9": { label: "D9", aka: ["GPIO9"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "9", pinctrlRef: "9" },
+  "d21": { label: "D21", aka: ["GPIO29", "A3"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "21", pinctrlRef: "29" },
+  "d20": { label: "D20", aka: ["GPIO28", "A2"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "20", pinctrlRef: "28" },
+  "d19": { label: "D19", aka: ["GPIO27", "A1"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "19", pinctrlRef: "27" },
+  "d18": { label: "D18", aka: ["GPIO26", "A0"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "18", pinctrlRef: "26" },
+  "d15": { label: "D15", aka: ["GPIO18", "SCK"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "15", pinctrlRef: "18" },
+  "d14": { label: "D14", aka: ["GPIO20", "MISO"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "14", pinctrlRef: "20" },
+  "d16": { label: "D16", aka: ["GPIO19", "MOSI"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "16", pinctrlRef: "19" },
+  "d10": { label: "D10", aka: ["GPIO10"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "10", pinctrlRef: "10" },
+  "gp12": { label: "GP12", aka: ["SDA"], dtsNodeLabel: GPIO0, dtsPinNumber: "12", pinctrlRef: "12" },
+  "gp13": { label: "GP13", aka: ["SCL"], dtsNodeLabel: GPIO0, dtsPinNumber: "13", pinctrlRef: "13" },
+});
+
+const SPARKFUN_PRO_MICRO_RP2040_GPIOS = asPinMap({
+  "d1": { label: "D1", aka: ["GPIO0", "TX"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "1", pinctrlRef: "0" },
+  "d0": { label: "D0", aka: ["GPIO1", "RX"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "0", pinctrlRef: "1" },
+  "d2": { label: "D2", aka: ["GPIO2"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "2", pinctrlRef: "2" },
+  "d3": { label: "D3", aka: ["GPIO3"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "3", pinctrlRef: "3" },
+  "d4": { label: "D4", aka: ["GPIO4"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "4", pinctrlRef: "4" },
+  "d5": { label: "D5", aka: ["GPIO5"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "5", pinctrlRef: "5" },
+  "d6": { label: "D6", aka: ["GPIO6"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "6", pinctrlRef: "6" },
+  "d7": { label: "D7", aka: ["GPIO7"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "7", pinctrlRef: "7" },
+  "d8": { label: "D8", aka: ["GPIO8"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "8", pinctrlRef: "8" },
+  "d9": { label: "D9", aka: ["GPIO9"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "9", pinctrlRef: "9" },
+  "d21": { label: "D21", aka: ["GPIO29", "A3"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "21", pinctrlRef: "29" },
+  "d20": { label: "D20", aka: ["GPIO28", "A2"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "20", pinctrlRef: "28" },
+  "d19": { label: "D19", aka: ["GPIO27", "A1"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "19", pinctrlRef: "27" },
+  "d18": { label: "D18", aka: ["GPIO26", "A0"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "18", pinctrlRef: "26" },
+  "d15": { label: "D15", aka: ["GPIO22", "SCK"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "15", pinctrlRef: "22" },
+  "d14": { label: "D14", aka: ["GPIO20", "CI"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "14", pinctrlRef: "20" },
+  "d16": { label: "D16", aka: ["GPIO23", "CO"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "16", pinctrlRef: "23" },
+  "d10": { label: "D10", aka: ["GPIO21"], dtsNodeLabel: PRO_MICRO, dtsPinNumber: "10", pinctrlRef: "21" },
+  "gp16": { label: "GP16", aka: ["SDA"], dtsNodeLabel: GPIO0, dtsPinNumber: "16", pinctrlRef: "16" },
+  "gp17": { label: "GP17", aka: ["SCL"], dtsNodeLabel: GPIO0, dtsPinNumber: "17", pinctrlRef: "17" },
+});
+
 export const Controllers: Record<ControllerId, ControllerMetadata> = {
   "nice_nano_v2": {
     name: "nice!nano v2",
@@ -305,5 +391,59 @@ export const Controllers: Record<ControllerId, ControllerMetadata> = {
     ].map((id) => [id, ALL_CAPABILITIES])
     ) as Record<PinId, PinCapabilities>,
     canBusPins: makeRP2040CanBusPins(RPI_PICO_GPIOS),
+  } satisfies ControllerMetadata,
+  "xiao_ble_plus": {
+    name: "Seeed XIAO nRF52840 Plus",
+    soc: "nrf52840",
+    board: "seeeduino_xiao_ble",
+    boardKconfig: "BOARD_SEEEDUINO_XIAO_BLE",
+    pinref: "https://wiki.seeedstudio.com/XIAO_BLE/#hardware-overview",
+    gpios: XIAO_BLE_PLUS_GPIOS,
+    pinCapabilities: Object.fromEntries([
+      "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9", "d10",
+      "d11", "d12", "d13", "d14", "d15", "d17", "d18", "d19",
+    ].map((id) => [id, ALL_CAPABILITIES])) as Record<PinId, PinCapabilities>,
+    canBusPins: () => true,
+  } satisfies ControllerMetadata,
+  "qt_py_rp2040": {
+    name: "Adafruit QT Py RP2040",
+    soc: "rp2040",
+    board: "adafruit_qt_py_rp2040",
+    boardKconfig: "BOARD_ADAFRUIT_QT_PY_RP2040",
+    pinref: "https://learn.adafruit.com/adafruit-qt-py-2040/pinouts",
+    gpios: QT_PY_RP2040_GPIOS,
+    pinCapabilities: Object.fromEntries([
+      "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9", "d10",
+      "gp22", "gp23",
+    ].map((id) => [id, ALL_CAPABILITIES])) as Record<PinId, PinCapabilities>,
+    canBusPins: makeRP2040CanBusPins(QT_PY_RP2040_GPIOS),
+  } satisfies ControllerMetadata,
+  "kb2040": {
+    name: "Adafruit KB2040",
+    soc: "rp2040",
+    board: "adafruit_kb2040",
+    boardKconfig: "BOARD_ADAFRUIT_KB2040",
+    pinref: "https://learn.adafruit.com/adafruit-kb2040/pinouts",
+    gpios: KB2040_GPIOS,
+    pinCapabilities: Object.fromEntries([
+      "d1", "d0", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9",
+      "d21", "d20", "d19", "d18", "d15", "d14", "d16", "d10",
+      "gp12", "gp13",
+    ].map((id) => [id, ALL_CAPABILITIES])) as Record<PinId, PinCapabilities>,
+    canBusPins: makeRP2040CanBusPins(KB2040_GPIOS),
+  } satisfies ControllerMetadata,
+  "sparkfun_pro_micro_rp2040": {
+    name: "SparkFun Pro Micro RP2040",
+    soc: "rp2040",
+    board: "sparkfun_pro_micro_rp2040",
+    boardKconfig: "BOARD_SPARKFUN_PRO_MICRO_RP2040",
+    pinref: "https://cdn.sparkfun.com/assets/e/2/7/6/b/ProMicroRP2040_Graphical_Datasheet.pdf",
+    gpios: SPARKFUN_PRO_MICRO_RP2040_GPIOS,
+    pinCapabilities: Object.fromEntries([
+      "d1", "d0", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9",
+      "d21", "d20", "d19", "d18", "d15", "d14", "d16", "d10",
+      "gp16", "gp17",
+    ].map((id) => [id, ALL_CAPABILITIES])) as Record<PinId, PinCapabilities>,
+    canBusPins: makeRP2040CanBusPins(SPARKFUN_PRO_MICRO_RP2040_GPIOS),
   } satisfies ControllerMetadata,
 };

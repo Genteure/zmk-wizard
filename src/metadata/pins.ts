@@ -156,4 +156,148 @@ export const ControllerPinVisuals: Record<ControllerId, ControllerPinVisual> = {
       { kind: 'gpio', pinId: 'gp16' as PinId },
     ],
   },
+  "xiao_ble_plus": {
+    left: [
+      { kind: 'gpio', pinId: 'd0' as PinId },
+      { kind: 'gpio', pinId: 'd1' as PinId },
+      { kind: 'gpio', pinId: 'd2' as PinId },
+      { kind: 'gpio', pinId: 'd3' as PinId },
+      { kind: 'gpio', pinId: 'd4' as PinId },
+      { kind: 'gpio', pinId: 'd5' as PinId },
+      { kind: 'gpio', pinId: 'd6' as PinId },
+
+      { kind: 'none', text: '' },
+
+      { kind: 'none', text: '' },
+      { kind: 'none', text: '' },
+      { kind: 'none', text: '' },
+      { kind: 'gpio', pinId: 'd19' as PinId },
+      { kind: 'gpio', pinId: 'd18' as PinId },
+      { kind: 'gpio', pinId: 'd17' as PinId },
+    ],
+    right: [
+      { kind: 'vcc', text: 'VBUS' },
+      { kind: 'gnd', text: 'GND' },
+      { kind: 'vcc', text: '3.3V' },
+      { kind: 'gpio', pinId: 'd10' as PinId },
+      { kind: 'gpio', pinId: 'd9' as PinId },
+      { kind: 'gpio', pinId: 'd8' as PinId },
+      { kind: 'gpio', pinId: 'd7' as PinId },
+
+      { kind: 'none', text: '' },
+
+      { kind: 'gpio', pinId: 'd11' as PinId },
+      { kind: 'gpio', pinId: 'd12' as PinId },
+      { kind: 'gpio', pinId: 'd13' as PinId },
+      { kind: 'gpio', pinId: 'd14' as PinId },
+      { kind: 'gpio', pinId: 'd15' as PinId },
+      { kind: 'ctl', text: 'D16' },
+    ],
+  },
+  "qt_py_rp2040": {
+    left: [
+      { kind: 'gpio', pinId: 'd0' as PinId },
+      { kind: 'gpio', pinId: 'd1' as PinId },
+      { kind: 'gpio', pinId: 'd2' as PinId },
+      { kind: 'gpio', pinId: 'd3' as PinId },
+      { kind: 'gpio', pinId: 'd4' as PinId },
+      { kind: 'gpio', pinId: 'd5' as PinId },
+      { kind: 'gpio', pinId: 'd6' as PinId },
+
+      { kind: 'none', text: '' },
+
+      { kind: 'gpio', pinId: 'gp22' as PinId },
+    ],
+    right: [
+      { kind: 'vcc', text: 'VBUS' },
+      { kind: 'gnd', text: 'GND' },
+      { kind: 'vcc', text: '3.3V' },
+      { kind: 'gpio', pinId: 'd10' as PinId },
+      { kind: 'gpio', pinId: 'd9' as PinId },
+      { kind: 'gpio', pinId: 'd8' as PinId },
+      { kind: 'gpio', pinId: 'd7' as PinId },
+
+      { kind: 'none', text: '' },
+
+      { kind: 'gpio', pinId: 'gp23' as PinId },
+    ],
+  },
+  "kb2040": {
+    left: [
+      { kind: 'ctl', text: 'D+' },
+      { kind: 'gpio', pinId: 'd1' as PinId },
+      { kind: 'gpio', pinId: 'd0' as PinId },
+      { kind: 'gnd', text: 'GND' },
+      { kind: 'gnd', text: 'GND' },
+      { kind: 'gpio', pinId: 'd2' as PinId },
+      { kind: 'gpio', pinId: 'd3' as PinId },
+      { kind: 'gpio', pinId: 'd4' as PinId },
+      { kind: 'gpio', pinId: 'd5' as PinId },
+      { kind: 'gpio', pinId: 'd6' as PinId },
+      { kind: 'gpio', pinId: 'd7' as PinId },
+      { kind: 'gpio', pinId: 'd8' as PinId },
+      { kind: 'gpio', pinId: 'd9' as PinId },
+
+      { kind: 'none', text: '' },
+
+      { kind: 'gpio', pinId: 'gp12' as PinId },
+    ],
+    right: [
+      { kind: 'ctl', text: 'D-' },
+      { kind: 'vcc', text: 'VBUS' },
+      { kind: 'gnd', text: 'GND' },
+      { kind: 'ctl', text: 'RST' },
+      { kind: 'vcc', text: '3.3V' },
+      { kind: 'gpio', pinId: 'd21' as PinId },
+      { kind: 'gpio', pinId: 'd20' as PinId },
+      { kind: 'gpio', pinId: 'd19' as PinId },
+      { kind: 'gpio', pinId: 'd18' as PinId },
+      { kind: 'gpio', pinId: 'd15' as PinId },
+      { kind: 'gpio', pinId: 'd14' as PinId },
+      { kind: 'gpio', pinId: 'd16' as PinId },
+      { kind: 'gpio', pinId: 'd10' as PinId },
+
+      { kind: 'none', text: '' },
+
+      { kind: 'gpio', pinId: 'gp13' as PinId },
+    ],
+  },
+  "sparkfun_pro_micro_rp2040": {
+    left: [
+      { kind: 'gpio', pinId: 'd1' as PinId },
+      { kind: 'gpio', pinId: 'd0' as PinId },
+      { kind: 'gnd', text: 'GND' },
+      { kind: 'gnd', text: 'GND' },
+      { kind: 'gpio', pinId: 'd2' as PinId },
+      { kind: 'gpio', pinId: 'd3' as PinId },
+      { kind: 'gpio', pinId: 'd4' as PinId },
+      { kind: 'gpio', pinId: 'd5' as PinId },
+      { kind: 'gpio', pinId: 'd6' as PinId },
+      { kind: 'gpio', pinId: 'd7' as PinId },
+      { kind: 'gpio', pinId: 'd8' as PinId },
+      { kind: 'gpio', pinId: 'd9' as PinId },
+
+      { kind: 'none', text: '' },
+
+      { kind: 'gpio', pinId: 'gp16' as PinId },
+    ],
+    right: [
+      { kind: 'vcc', text: 'RAW' },
+      { kind: 'gnd', text: 'GND' },
+      { kind: 'ctl', text: 'RST' },
+      { kind: 'vcc', text: 'VCC' },
+      { kind: 'gpio', pinId: 'd21' as PinId },
+      { kind: 'gpio', pinId: 'd20' as PinId },
+      { kind: 'gpio', pinId: 'd19' as PinId },
+      { kind: 'gpio', pinId: 'd18' as PinId },
+      { kind: 'gpio', pinId: 'd15' as PinId },
+      { kind: 'gpio', pinId: 'd14' as PinId },
+      { kind: 'gpio', pinId: 'd16' as PinId },
+      { kind: 'gpio', pinId: 'd10' as PinId },
+
+      { kind: 'none', text: '' },
+
+      { kind: 'gpio', pinId: 'gp17' as PinId },
+    ],
+  },
 };
