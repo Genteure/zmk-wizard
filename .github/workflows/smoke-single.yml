@@ -19,11 +19,11 @@ jobs:
       artifact_name: ${{ steps.set_artifact_name.outputs.artifact_name }}
       build_matrix: ${{ steps.generate_config.outputs.build_matrix }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
-          version: "10"
-      - uses: actions/setup-node@v6
+          version: "10.34.4"
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
@@ -41,7 +41,7 @@ jobs:
           echo "config_workspace=${config_workspace}" >> "$GITHUB_OUTPUT"
           pnpm run smoke generate "${{ inputs['json-path'] }}" "${config_workspace}"
       - name: Upload generated config
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ${{ steps.set_artifact_name.outputs.artifact_name }}
           path: ${{ steps.generate_config.outputs.config_workspace }}
@@ -50,7 +50,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: zmkfirmware/zmk-build-arm:stable
+      image: zmkfirmware/zmk-build-arm:stable@sha256:edb1c953438c6f720ddb79c3762f3972013b7fbbaf4fff3592fc869983e7afc5
     needs: matrix
     name: Build
     strategy:
@@ -65,7 +65,7 @@ jobs:
       build_dir: ""
     steps:
       - name: Download generated config
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: ${{ needs.matrix.outputs.artifact_name }}
           path: ${{ github.workspace }}
@@ -109,7 +109,7 @@ jobs:
           fi
 
       - name: Cache west modules
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         continue-on-error: true
         env:
           cache_name: cache-zephyr-${{ env.zephyr_version }}-modules

@@ -19,38 +19,38 @@
     "generate-types": "wrangler types"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
-    "@vueuse/core": "^14.3.0",
-    "jiti": "^2.7.0",
-    "reka-ui": "^2.9.10",
-    "typescript": "^6.0.3",
-    "unplugin-fluent-vue": "^1.4.1",
-    "vitest": "^4.1.8",
-    "vue-tsc": "^3.3.5",
-    "yaml": "^2.9.0"
+    "@types/node": "25.9.1",
+    "@vueuse/core": "14.3.0",
+    "jiti": "2.7.0",
+    "reka-ui": "2.9.10",
+    "typescript": "6.0.3",
+    "unplugin-fluent-vue": "1.4.1",
+    "vitest": "4.1.8",
+    "vue-tsc": "3.3.5",
+    "yaml": "2.9.0"
   },
   "dependencies": {
-    "@astrojs/check": "^0.9.9",
-    "@astrojs/cloudflare": "^13.6.1",
-    "@astrojs/starlight": "^0.39.2",
-    "@astrojs/vue": "^6.0.1",
-    "@fluent/bundle": "^0.19.1",
-    "@iconify-json/lucide": "^1.2.111",
-    "@nuxt/ui": "^4.8.1",
-    "@standard-schema/spec": "^1.1.0",
-    "@tailwindcss/vite": "^4.3.0",
-    "astro": "^6.4.4",
-    "fluent-vue": "^3.8.2",
-    "jszip": "^3.10.1",
-    "nanotar": "^0.3.0",
-    "pinia": "^3.0.4",
-    "tailwindcss": "^4.3.0",
-    "ulidx": "^2.4.1",
-    "vue": "^3.5.35",
-    "vue-turnstile": "^1.0.11",
-    "wrangler": "^4.98.0"
+    "@astrojs/check": "0.9.9",
+    "@astrojs/cloudflare": "13.6.1",
+    "@astrojs/starlight": "0.39.2",
+    "@astrojs/vue": "6.0.1",
+    "@fluent/bundle": "0.19.1",
+    "@iconify-json/lucide": "1.2.111",
+    "@nuxt/ui": "4.8.1",
+    "@standard-schema/spec": "1.1.0",
+    "@tailwindcss/vite": "4.3.0",
+    "astro": "6.4.4",
+    "fluent-vue": "3.8.2",
+    "jszip": "3.10.1",
+    "nanotar": "0.3.0",
+    "pinia": "3.0.4",
+    "tailwindcss": "4.3.0",
+    "ulidx": "2.4.1",
+    "vue": "3.5.35",
+    "vue-turnstile": "1.0.11",
+    "wrangler": "4.98.0"
   },
   "overrides": {
-    "vite": "^7"
+    "vite": "7.3.6"
   }
 }
