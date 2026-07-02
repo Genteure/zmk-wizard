@@ -144,6 +144,11 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
     const validPinIds = new Set<string>(inventory.allPins.map((p) => p.id));
     const socId = controller.soc;
 
+    // miosio is the half-duplex SPI role where one pin serves both MOSI and MISO
+    function pinMatchesRole(pinRole: string, requiredRole: string): boolean {
+      return pinRole === requiredRole || (pinRole === 'miosio' && (requiredRole === 'mosi' || requiredRole === 'miso'));
+    }
+
     // ── 7. Bus and device configuration ────────────────────
     // Index bus pins by bus name for lookup
     type BusPinEntry = { pinId: string; role: string };
@@ -303,7 +308,8 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
         if (meta.requiredBusPins) {
           for (const [roleStr, required] of Object.entries(meta.requiredBusPins)) {
             if (!required) continue;
-            const hasPin = busPinsByBus.get(busName)?.some((e) => e.role === roleStr) ?? false;
+            const busPins = busPinsByBus.get(busName);
+            const hasPin = busPins !== undefined && busPins.some((e) => pinMatchesRole(e.role, roleStr));
             if (!hasPin) {
               ctx.addIssue({
                 code: "custom",

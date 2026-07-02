@@ -78,6 +78,7 @@ export const pinnacleSpiMeta = {
     dr: {
       label: "Data Ready",
       desc: "Data Ready / Interrupt",
+      required: true,
     },
   },
   visual: {
@@ -141,7 +142,8 @@ export const pinnacleI2cMeta = {
   gpio: {
     dr: {
       label: "Data Ready",
-      desc: "Data ready / interrupt pin. Active high, requires pull-down.",
+      required: true,
+      desc: "Data Ready / Interrupt",
     },
   },
   visual: {
