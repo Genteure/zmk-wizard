@@ -7,7 +7,7 @@
     <UTabs v-model="selectedGraphic" size="sm" class="w-full" :content="false" :items="graphicTabs" />
   </div>
   <div class="flex-1 min-h-0 flex flex-col">
-    <div class="flex-1 min-h-0 bg-default lg:border-b border-default"
+    <div class="flex-1 min-h-0 bg-default lg:border-b border-default relative"
       :class="selectedGraphic === 'physical' ? '' : 'hidden lg:block'">
       <CanvasViewport ref="physicalCanvas" :bbox="keysBbox" :tool="toolbarTool" :entity-interaction="interactiveKeys"
         :selection-b-box="physicalSelectionBBox" :show-rotate-handle="true" :space-held="spaceHeld"
@@ -16,29 +16,67 @@
         <KeyEntity v-for="(key, i) in keyboard.layout" :key="key.id" :key-data="key" :index="i"
           :selected="selection.selectedIdSet.has(key.id)" :pending-selected="currentPendingIds.has(key.id)"
           :input-pin-label="keyWiringLabels.get(key.id)?.inputPinLabel"
-          :output-pin-label="keyWiringLabels.get(key.id)?.outputPinLabel"
-          :pin-active="isKeyPinActive(key.id)" />
+          :output-pin-label="keyWiringLabels.get(key.id)?.outputPinLabel" :pin-active="isKeyPinActive(key.id)" />
         <!-- Ghost entities during move/rotate (physical) -->
         <g v-for="ghost in physicalGhosts" :key="'pg-' + ghost.id" :transform="ghost.transform" opacity="0.45">
           <path :d="ghost.path" fill="var(--ui-bg)" stroke="var(--ui-text-muted)" stroke-width="1" />
         </g>
       </CanvasViewport>
+      <!-- Overlay -->
+      <div class="absolute inset-0 pointer-events-none">
+        <div class="absolute top-0 left-0 bg-muted/80 border-accented border-r border-b rounded-br">
+          <div class="text-xs font-medium px-2 py-1">{{ $t('physical-layout') }}</div>
+        </div>
+        <div v-if="toolbarTool === 'wire' && nav.wiringSelection"
+          class="absolute top-1 left-1/2 -translate-x-1/2 bg-muted/80 border-primary border rounded">
+          <div class="text-sm px-2 py-1 text-primary font-medium">
+            {{ $t('selected-pin', { pin: selectedPinLabel, role: nav.wiringSelection.role }) }}
+          </div>
+        </div>
+        <div class="absolute bottom-2 left-2">
+          <span class="text-xs text-foreground/50 bg-default/80 px-2 py-1 rounded">{{ operationHint }}</span>
+        </div>
+        <div class="absolute bottom-2 right-2 pointer-events-auto">
+          <UButton size="sm" color="neutral" variant="outline" @click="physicalCanvas?.fitAll()">
+            Zoom to Fit
+          </UButton>
+        </div>
+      </div>
     </div>
-    <div class="flex-1 min-h-0 bg-default" :class="selectedGraphic === 'keymap' ? '' : 'hidden lg:block'">
+    <div class="flex-1 min-h-0 bg-default relative" :class="selectedGraphic === 'keymap' ? '' : 'hidden lg:block'">
       <CanvasViewport ref="keymapCanvas" :bbox="keymapBbox" :grid-cell-size="0" :grid-major-cell-size="DEFAULT_KEY_SIZE"
         :tool="toolbarTool" :entity-interaction="interactiveKeys" :selection-b-box="keymapSelectionBBox"
-        :show-rotate-handle="false" :space-held="spaceHeld" :hit-test="wiringHitTestKeymap" :wire-callback="handleWireEntity"
-        @contextmenu="handleContextMenu('keymap', $event)">
+        :show-rotate-handle="false" :space-held="spaceHeld" :hit-test="wiringHitTestKeymap"
+        :wire-callback="handleWireEntity" @contextmenu="handleContextMenu('keymap', $event)">
         <KeyEntity v-for="(key, i) in keyboard.layout" :key="key.id" :key-data="key" :index="i" position-mode="logical"
           :selected="selection.selectedIdSet.has(key.id)" :pending-selected="currentPendingIds.has(key.id)"
           :input-pin-label="keyWiringLabels.get(key.id)?.inputPinLabel"
-          :output-pin-label="keyWiringLabels.get(key.id)?.outputPinLabel"
-          :pin-active="isKeyPinActive(key.id)" />
+          :output-pin-label="keyWiringLabels.get(key.id)?.outputPinLabel" :pin-active="isKeyPinActive(key.id)" />
         <!-- Ghost entities during move (keymap) -->
         <g v-for="ghost in keymapGhosts" :key="'kg-' + ghost.id" :transform="ghost.transform" opacity="0.45">
           <path :d="ghost.path" fill="var(--ui-bg)" stroke="var(--ui-text-muted)" stroke-width="1" />
         </g>
       </CanvasViewport>
+      <!-- Overlay -->
+      <div class="absolute inset-0 pointer-events-none">
+        <div class="absolute top-0 left-0 bg-muted/80 border-accented border-r border-b rounded-br">
+          <div class="text-xs font-medium px-2 py-1">{{ $t('keymap-layout') }}</div>
+        </div>
+        <div v-if="toolbarTool === 'wire' && nav.wiringSelection"
+          class="absolute top-1 left-1/2 -translate-x-1/2 bg-muted/80 border-primary border rounded">
+          <div class="text-sm px-2 py-1 text-primary font-medium">
+            {{ $t('selected-pin', { pin: selectedPinLabel, role: nav.wiringSelection.role }) }}
+          </div>
+        </div>
+        <div class="absolute bottom-2 left-2">
+          <span class="text-xs text-foreground/50 bg-default/80 px-2 py-1 rounded">{{ operationHint }}</span>
+        </div>
+        <div class="absolute bottom-2 right-2 pointer-events-auto">
+          <UButton size="sm" color="neutral" variant="outline" @click="keymapCanvas?.fitAll()">
+            Zoom to Fit
+          </UButton>
+        </div>
+      </div>
     </div>
     <ContextMenu :visible="contextMenu.visible" :x="contextMenu.x" :y="contextMenu.y" :items="contextMenu.items"
       @close="closeContextMenu" />
@@ -47,21 +85,32 @@
 
 <script setup lang="ts">
 import type { TabsItem } from '@nuxt/ui';
+import { useFluent } from 'fluent-vue';
 import { computed, reactive, ref, watch, watchEffect } from 'vue';
-import type { Gesture } from './composables/useCanvasGestures';
+import { resolvePinInventory } from '~/lib/pinInventory';
+import type { BoundingBox, CanvasTool, KeyId, PinId } from '~/types';
 import { useKeyboardStore, useNavigationStore, useSelectionStore } from '../stores';
 import CanvasViewport from './CanvasViewport.vue';
-import KeyEntity from './KeyEntity.vue';
-import { keysBoundingBox, keyBoundingBox, logicalKeysBoundingBox, logicalKeyBoundingBox, keyToSvgPath, normalizeRotationOrigin, rotateAndNormalizeKey, rotateKeyAroundCenter, DEFAULT_KEY_SIZE, DEFAULT_PADDING, DEFAULT_BORDER_RADIUS } from './keyShape';
-import type { BoundingBox } from '~/types/geometry';
-import type { KeyId } from '~/types/keyboard';
-import type { PinId } from '~/types/devices';
-import type { CanvasTool } from '~/types/tools';
+import type { Gesture } from './composables/useCanvasGestures';
 import { useCanvasHotkeys, type CanvasHandle } from './composables/useCanvasHotkeys';
-import ContextMenu from './ContextMenu.vue';
 import type { ContextMenuItem } from './ContextMenu.vue';
+import ContextMenu from './ContextMenu.vue';
 import HelpModal from './HelpModal.vue';
-import { resolvePinInventory } from '~/lib/pinInventory';
+import KeyEntity from './KeyEntity.vue';
+import {
+  DEFAULT_BORDER_RADIUS,
+  DEFAULT_KEY_SIZE,
+  DEFAULT_PADDING,
+  keyBoundingBox,
+  keysBoundingBox,
+  keyToSvgPath,
+  logicalKeyBoundingBox,
+  logicalKeysBoundingBox,
+  rotateAndNormalizeKey,
+  rotateKeyAroundCenter,
+} from './keyShape';
+
+const { $t } = useFluent();
 
 // ─── Stores ────────────────────────────────────────────────────
 const nav = useNavigationStore();
@@ -73,11 +122,20 @@ const toolbarTool = ref<CanvasTool>('select');
 const selectedGraphic = ref<'physical' | 'keymap'>('physical');
 
 const graphicTabs = computed<TabsItem[]>(() => [
-  { label: 'Physical Layout', value: 'physical' },
-  { label: 'Keymap Layout', value: 'keymap' },
+  { label: $t('physical-layout'), value: 'physical' },
+  { label: $t('keymap-layout'), value: 'keymap' },
 ]);
 
 const interactiveKeys = computed(() => toolbarTool.value === 'wire');
+
+const operationHint = computed(() => {
+  switch (toolbarTool.value) {
+    case 'pan': return null;
+    case 'select': return $t('hint-select');
+    case 'wire': return $t('hint-wire');
+    default: return null;
+  }
+});
 
 // ─── Key wiring pin labels (Parts tab, active part) ────────────
 
@@ -125,6 +183,17 @@ const keyWiringLabels = computed(() => {
     map.set(keyId, result);
   }
   return map;
+});
+
+/** Resolve the display label for the currently selected wiring pin. */
+const selectedPinLabel = computed(() => {
+  const ws = nav.wiringSelection;
+  if (!ws || nav.activePart === null) return '';
+  const part = keyboard.parts[nav.activePart];
+  if (!part) return '';
+  const { allPins } = resolvePinInventory(part);
+  const pinMap = new Map<string, string>(allPins.map((p) => [p.id, p.label]));
+  return pinMap.get(ws.pinId) ?? '???';
 });
 
 /** Whether the selected wiring pin is used by the given key. */
@@ -631,3 +700,45 @@ const toolbarItems = computed<TabsItem[]>(() => {
   return list;
 });
 </script>
+
+<ftl locale="en">
+physical-layout = Physical Layout
+keymap-layout = Keymap Layout
+
+selected-pin = {$pin} as {$role ->
+  [input] Input
+  [output] Output
+  *[other] {$role}
+}
+
+hint-select = Click to select, drag to box select
+hint-wire = Click/drag on keys to assign the selected pin
+</ftl>
+
+<ftl locale="zh-CN">
+physical-layout = 物理布局
+keymap-layout = 键位布局
+
+selected-pin = {$pin} 作为{$role ->
+  [input] 输入
+  [output] 输出
+  *[other] {$role}
+}
+
+hint-select = 点击选择，拖动进行框选
+hint-wire = 在按键上点击或拖动分配所选引脚
+</ftl>
+
+<ftl locale="ja">
+physical-layout = 物理レイアウト
+keymap-layout = キーマップレイアウト
+
+selected-pin = {$pin} を{$role ->
+  [input] 入力
+  [output] 出力
+  *[other] {$role}
+}
+
+hint-select = クリックで選択、ドラッグで範囲選択
+hint-wire = キーをクリック／ドラッグで選択したピンを割り当て
+</ftl>

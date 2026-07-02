@@ -15,8 +15,9 @@
 
         <!-- Keymap key code: keyboard tab only, centered -->
         <div v-if="nav.activeTab === 'keyboard'"
-          class="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <span class="text-xl font-medium text-highlighted tabular-nums">{{ keyLabel }}</span>
+          class="absolute inset-0 flex items-center justify-center pointer-events-none leading-none tabular-nums">
+          <span class="text-sm font-semibold tracking-tighter">&amp;kp&nbsp;</span>
+          <span class="text-xl font-medium text-highlighted">{{ keyLabel }}</span>
         </div>
 
         <!-- Part label: layout tab only, bottom center -->
@@ -32,8 +33,10 @@
         <!-- Wiring pin labels: parts tab, active part only (§4.4) -->
         <div v-if="isInActivePart && (outputPinLabel !== undefined || inputPinLabel !== undefined)"
           class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5">
-          <span v-if="outputPinLabel !== undefined" class="font-mono font-semibold text-kscanout leading-none">{{ outputPinLabel }}</span>
-          <span v-if="inputPinLabel !== undefined" class="font-mono font-semibold text-kscanin leading-none">{{ inputPinLabel }}</span>
+          <span v-if="outputPinLabel !== undefined" class="font-mono font-semibold text-kscanout leading-none">{{
+            outputPinLabel }}</span>
+          <span v-if="inputPinLabel !== undefined" class="font-mono font-semibold text-kscanin leading-none">{{
+            inputPinLabel }}</span>
         </div>
       </div>
     </foreignObject>
@@ -260,9 +263,9 @@ const indexContainerClass = computed(() =>
  *   parts-inact → text-2xl font-semibold text-dimmed       (§4.1)
  *   otherwise   → text-xs text-highlighted               (§3.1, §4.2)
   */
- const indexTextClass = computed(() => {
-   if (isLayoutTab.value) return 'text-2xl font-semibold text-highlighted';
-   if (isPartsInactive.value) return 'text-2xl font-semibold text-dimmed';
+const indexTextClass = computed(() => {
+  if (isLayoutTab.value) return 'text-2xl font-semibold text-highlighted';
+  if (isPartsInactive.value) return 'text-2xl font-semibold text-dimmed';
   return 'text-xs font-semibold text-highlighted';
- });
+});
 </script>
