@@ -226,7 +226,7 @@ function pinButtonColor(pinId: PinId): BtnColor {
       <UPopover v-for="pin in group.pins" :key="pin.id" v-model:open="openPopovers[pin.id]"
         :content="{ side: 'bottom', sideOffset: 8 }">
         <UButton :color="pinButtonColor(pin.id)" :label="pin.label" :variant="pinSelected(pin.id) ? 'solid' : 'subtle'"
-          class="w-14 justify-center font-bold" size="sm" @click="onExtPinClick(pin.id)" />
+          class="w-16 justify-center font-bold" size="sm" @click="onExtPinClick(pin.id)" />
         <template #content>
           <div class="p-3 min-w-52 max-w-[20rem] select-none">
             <!-- Pin header -->

@@ -67,7 +67,7 @@ const label = computed(() => {
 });
 
 const buttonClass = computed(() => [
-  'w-14 justify-center font-bold',
+  'w-16 justify-center font-bold',
   !isGpio.value && 'pointer-events-none select-none opacity-70',
 ]);
 

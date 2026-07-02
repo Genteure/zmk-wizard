@@ -16,9 +16,9 @@ export interface BusStatusEntry {
   type: "i2c" | "spi";
   status: BusStatus;
   /** Roles that devices on this bus need (e.g., ["sck", "mosi"]). */
-  requires: BusPinRole[];
+  requires: readonly BusPinRole[];
   /** All possible roles for this bus type (e.g., ["sda", "scl"] for I2C). */
-  available: BusPinRole[];
+  available: readonly BusPinRole[];
 }
 
 export interface BusAvailabilityContext {
@@ -38,7 +38,7 @@ export interface BusAvailabilityContext {
  * with the requiredBusPins from all devices on the bus.
  */
 function effectiveBusRequires(
-  busRequires: BusPinRole[],
+  busRequires: readonly BusPinRole[],
   devices: { type: string }[],
 ): BusPinRole[] {
   const roles = new Set<BusPinRole>(busRequires);
@@ -104,7 +104,7 @@ function buildConflictMap(controllerId: ControllerId): Record<string, Record<str
 }
 
 /** All possible pin roles for each bus type. */
-const BUS_PIN_ROLES: Record<"i2c" | "spi", BusPinRole[]> = {
+const BUS_PIN_ROLES: Readonly<Record<"i2c" | "spi", readonly BusPinRole[]>> = {
   i2c: ["sda", "scl"],
   spi: ["sck", "mosi", "miso"],
 };

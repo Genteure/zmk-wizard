@@ -11,11 +11,13 @@ export const SocIdSchema = z.enum([
 ]);
 export type SocId = z.infer<typeof SocIdSchema>;
 
+// Note: when adding new controllers, also update src/components/editor/utils/ControllerChangeModal.vue
+
 export const ControllerIdSchema = z.enum([
   "nice_nano_v2",
   "xiao_ble",
   // "xiao_ble_plus",
-  // "rpi_pico",
+  "rpi_pico",
   "xiao_rp2040",
   // "qt_py_rp2040",
   // "kb2040",
@@ -167,7 +169,7 @@ export type PinCapability =
 /**
  * Capabilities of a pin. Describes what the pin hardware can do.
  */
-export type PinCapabilities = Record<PinCapability, boolean>;
+export type PinCapabilities = Readonly<Record<PinCapability, boolean>>;
 
 /** Where a pin comes from. */
 export type PinSource =
@@ -184,7 +186,7 @@ export interface PinInfo {
   /** Human-readable display name. */
   label: string;
   /** Alternative names (e.g., SoC pin names like "P0.08"). */
-  aka?: string[];
+  aka?: readonly string[];
   /**
    * Devicetree node label for DTS generation (without `&` prefix).
    * Controller pins: the GPIO controller node (e.g., "pro_micro").

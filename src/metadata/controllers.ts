@@ -16,12 +16,11 @@ export const SoCs = {
 }
 
 interface BusMetadata {
-  type: 'i2c' | 'spi';
+  readonly type: 'i2c' | 'spi';
   /** Bus-level required pins (e.g., SCK for SPI, SDA+SCL for I2C). MISO/MOSI are device-level — see DeviceMeta.requiredBusPins. */
-  requires: BusPinRole[];
+  readonly requires: readonly BusPinRole[];
 }
-
-export type SocBus = Record<BusName, BusMetadata>;
+export type SocBus = Readonly<Record<BusName, BusMetadata>>;
 /**
  * Mapping of SoC to its available buses and their metadata.
  * This is the single source of truth for all bus-related information, for UI and for validation.
@@ -74,32 +73,31 @@ export const SocBuses: Record<SocId, SocBus> = {
 };
 
 interface PinMetadata {
-  label: string;
-  aka?: string[];
+  readonly label: string;
+  readonly aka?: readonly string[];
   /** Devicetree node label, e.g. "&pro_micro" or "&gpio1". */
-  dtsNodeLabel: string;
+  readonly dtsNodeLabel: string;
   /** Pin number on the GPIO controller, e.g. "0", "8". */
-  dtsPinNumber: string;
+  readonly dtsPinNumber: string;
   /** Pinctrl reference for pinctrl nodes, e.g. "0, 8" (nRF52), "26" (RP2040). Only on native pins. */
-  pinctrlRef?: string;
+  readonly pinctrlRef?: string;
 }
-
 const asPinMap = <T extends Record<string, PinMetadata>>(map: T) =>
   map as Record<PinId, PinMetadata>;
 
 export interface ControllerMetadata {
   /** Display name */
-  name: string;
+  readonly name: string;
   /** System on Chip used by this controller */
-  soc: SocId;
+  readonly soc: SocId;
   /** Link to pin reference for this controller */
-  pinref: string;
+  readonly pinref: string;
   /** Zephyr board name for build.yaml and pinctrl overlay paths */
-  board: string;
+  readonly board: string;
   /** Kconfig symbol for the board */
-  boardKconfig: string;
+  readonly boardKconfig: string;
   /** General Purpose Input/Output pins */
-  gpios: Record<PinId, PinMetadata>;
+  readonly gpios: Readonly<Record<PinId, PinMetadata>>;
   /**
    * Capabilities for each GPIO pin.
    * Keys are PinIds that match entries in `gpios`.
@@ -107,16 +105,15 @@ export interface ControllerMetadata {
    * TODO: Values are placeholders — all pins marked as full capability.
    * Replace with actual per-SoC per-pin data from datasheets.
    */
-  pinCapabilities: Record<PinId, PinCapabilities>;
+  readonly pinCapabilities: Readonly<Record<PinId, PinCapabilities>>;
   /**
    * Return which native pin IDs can serve a given bus role.
    * Only controller pins can participate in pinctrl.
    * @returns `true` if all pins are flexible,
    *          or a specific list of PinIds that support the role.
    */
-  canBusPins(busName: BusName, role: BusPinRole): PinId[] | true;
+  readonly canBusPins: (busName: BusName, role: BusPinRole) => Readonly<PinId[]> | true;
 }
-
 /**
  * Placeholder: full capabilities for all pins on a flexible GPIO SoC.
  * TODO: Replace with actual per-pin capability data from SoC datasheets.
@@ -131,6 +128,95 @@ const PRO_MICRO = "pro_micro";
 const XIAO_D = "xiao_d";
 // const GPIO0 = "gpio0";
 const GPIO1 = "gpio1";
+const PICO_HEADER = "pico_header";
+
+// ── RP2040 pinctrl pin capabilities ────────────────────────
+/**
+ * RP2040 has fixed hardware peripheral-to-GPIO assignments.
+ * Maps bus name → role → native GPIO numbers that can serve that role.
+ * Source: RP2040 datasheet section 2.19 GPIO, 2.19.2 Function Select.
+ */
+const RP2040_BUS_PINS: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
+  i2c0: { sda: ["0", "4", "8", "12", "16", "20", "24", "28"], scl: ["1", "5", "9", "13", "17", "21", "25", "29"] },
+  i2c1: { sda: ["2", "6", "10", "14", "18", "22", "26"], scl: ["3", "7", "11", "15", "19", "23", "27"] },
+  spi0: { miso: ["0", "4", "16", "20"], mosi: ["3", "7", "19", "23"], sck: ["2", "6", "18", "22"] },
+  spi1: { miso: ["8", "12", "24", "28"], mosi: ["11", "15", "27"], sck: ["10", "14", "26"] },
+};
+
+/**
+ * Build a `canBusPins` function for an RP2040-based controller.
+ *
+ * Uses the controller's gpios (whose `pinctrlRef` stores the native RP2040 GPIO number)
+ * to determine which controller PinIds can serve each bus role.
+ */
+function makeRP2040CanBusPins(gpios: Readonly<Record<PinId, PinMetadata>>): (busName: BusName, role: BusPinRole) => Readonly<PinId[]> | true {
+  // Build a reverse index: native GPIO number → controller PinIds that expose it
+  const nativeToPinIds: Record<string, PinId[]> = {};
+  for (const [pinId, meta] of Object.entries(gpios)) {
+    if (meta.pinctrlRef) {
+      (nativeToPinIds[meta.pinctrlRef] ??= []).push(pinId as PinId);
+    }
+  }
+
+  return (busName, role) => {
+    const busPins = RP2040_BUS_PINS[busName as string];
+    if (!busPins) return [];
+    const nativeGpios = busPins[role as string];
+    if (!nativeGpios) return [];
+
+    const result: PinId[] = [];
+    for (const nativeGpio of nativeGpios) {
+      const pinIds = nativeToPinIds[nativeGpio];
+      if (pinIds) {
+        result.push(...pinIds);
+      }
+    }
+    return result;
+  };
+}
+
+// ── RP2040 controller GPIO maps (shared between gpios and canBusPins) ──
+const XIAO_RP2040_GPIOS = asPinMap({
+  "d0": { label: "D0", aka: ["GPIO26"], dtsNodeLabel: XIAO_D, dtsPinNumber: "0", pinctrlRef: "26" },
+  "d1": { label: "D1", aka: ["GPIO27"], dtsNodeLabel: XIAO_D, dtsPinNumber: "1", pinctrlRef: "27" },
+  "d2": { label: "D2", aka: ["GPIO28"], dtsNodeLabel: XIAO_D, dtsPinNumber: "2", pinctrlRef: "28" },
+  "d3": { label: "D3", aka: ["GPIO29"], dtsNodeLabel: XIAO_D, dtsPinNumber: "3", pinctrlRef: "29" },
+  "d4": { label: "D4", aka: ["GPIO6"], dtsNodeLabel: XIAO_D, dtsPinNumber: "4", pinctrlRef: "6" },
+  "d5": { label: "D5", aka: ["GPIO7"], dtsNodeLabel: XIAO_D, dtsPinNumber: "5", pinctrlRef: "7" },
+  "d6": { label: "D6", aka: ["GPIO0"], dtsNodeLabel: XIAO_D, dtsPinNumber: "6", pinctrlRef: "0" },
+  "d7": { label: "D7", aka: ["GPIO1"], dtsNodeLabel: XIAO_D, dtsPinNumber: "7", pinctrlRef: "1" },
+  "d8": { label: "D8", aka: ["GPIO2"], dtsNodeLabel: XIAO_D, dtsPinNumber: "8", pinctrlRef: "2" },
+  "d9": { label: "D9", aka: ["GPIO4"], dtsNodeLabel: XIAO_D, dtsPinNumber: "9", pinctrlRef: "4" },
+  "d10": { label: "D10", aka: ["GPIO3"], dtsNodeLabel: XIAO_D, dtsPinNumber: "10", pinctrlRef: "3" },
+});
+const RPI_PICO_GPIOS = asPinMap({
+  "gp0": { label: "GP0", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "0", pinctrlRef: "0" },
+  "gp1": { label: "GP1", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "1", pinctrlRef: "1" },
+  "gp2": { label: "GP2", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "2", pinctrlRef: "2" },
+  "gp3": { label: "GP3", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "3", pinctrlRef: "3" },
+  "gp4": { label: "GP4", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "4", pinctrlRef: "4" },
+  "gp5": { label: "GP5", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "5", pinctrlRef: "5" },
+  "gp6": { label: "GP6", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "6", pinctrlRef: "6" },
+  "gp7": { label: "GP7", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "7", pinctrlRef: "7" },
+  "gp8": { label: "GP8", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "8", pinctrlRef: "8" },
+  "gp9": { label: "GP9", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "9", pinctrlRef: "9" },
+  "gp10": { label: "GP10", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "10", pinctrlRef: "10" },
+  "gp11": { label: "GP11", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "11", pinctrlRef: "11" },
+  "gp12": { label: "GP12", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "12", pinctrlRef: "12" },
+  "gp13": { label: "GP13", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "13", pinctrlRef: "13" },
+  "gp14": { label: "GP14", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "14", pinctrlRef: "14" },
+  "gp15": { label: "GP15", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "15", pinctrlRef: "15" },
+  "gp16": { label: "GP16", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "16", pinctrlRef: "16" },
+  "gp17": { label: "GP17", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "17", pinctrlRef: "17" },
+  "gp18": { label: "GP18", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "18", pinctrlRef: "18" },
+  "gp19": { label: "GP19", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "19", pinctrlRef: "19" },
+  "gp20": { label: "GP20", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "20", pinctrlRef: "20" },
+  "gp21": { label: "GP21", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "21", pinctrlRef: "21" },
+  "gp22": { label: "GP22", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "22", pinctrlRef: "22" },
+  "gp26": { label: "GP26", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "26", pinctrlRef: "26" },
+  "gp27": { label: "GP27", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "27", pinctrlRef: "27" },
+  "gp28": { label: "GP28", dtsNodeLabel: PICO_HEADER, dtsPinNumber: "28", pinctrlRef: "28" },
+});
 
 export const Controllers: Record<ControllerId, ControllerMetadata> = {
   "nice_nano_v2": {
@@ -163,14 +249,11 @@ export const Controllers: Record<ControllerId, ControllerMetadata> = {
       "p102": { label: "P1.02", dtsNodeLabel: GPIO1, dtsPinNumber: "2", pinctrlRef: "1, 2" },
       "p107": { label: "P1.07", dtsNodeLabel: GPIO1, dtsPinNumber: "7", pinctrlRef: "1, 7" },
     }),
-    // TODO: Replace ALL_CAPABILITIES with actual per-pin nRF52840 capability data
-    pinCapabilities: Object.fromEntries(
-      Object.keys({
-        "d0": 0, "d1": 0, "d2": 0, "d3": 0, "d4": 0, "d5": 0, "d6": 0, "d7": 0,
-        "d8": 0, "d9": 0, "d10": 0, "d14": 0, "d15": 0, "d16": 0, "d18": 0,
-        "d19": 0, "d20": 0, "d21": 0, "p101": 0, "p102": 0, "p107": 0,
-      }).map((id) => [id, ALL_CAPABILITIES])
-    ) as Record<PinId, PinCapabilities>,
+    pinCapabilities: Object.fromEntries([
+      "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9",
+      "d10", "d14", "d15", "d16", "d18", "d19", "d20", "d21",
+      "p101", "p102", "p107",
+    ].map((id) => [id, ALL_CAPABILITIES])) as Record<PinId, PinCapabilities>,
     canBusPins: () => true,
   } satisfies ControllerMetadata,
   "xiao_ble": {
@@ -192,13 +275,9 @@ export const Controllers: Record<ControllerId, ControllerMetadata> = {
       "d9": { label: "D9", aka: ["P1.14"], dtsNodeLabel: XIAO_D, dtsPinNumber: "9", pinctrlRef: "1, 14" },
       "d10": { label: "D10", aka: ["P1.15"], dtsNodeLabel: XIAO_D, dtsPinNumber: "10", pinctrlRef: "1, 15" },
     }),
-    // TODO: Replace ALL_CAPABILITIES with actual per-pin nRF52840 capability data
-    pinCapabilities: Object.fromEntries(
-      Object.keys({
-        "d0": 0, "d1": 0, "d2": 0, "d3": 0, "d4": 0, "d5": 0, "d6": 0,
-        "d7": 0, "d8": 0, "d9": 0, "d10": 0,
-      }).map((id) => [id, ALL_CAPABILITIES])
-    ) as Record<PinId, PinCapabilities>,
+    pinCapabilities: Object.fromEntries([
+      "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9", "d10",
+    ].map((id) => [id, ALL_CAPABILITIES])) as Record<PinId, PinCapabilities>,
     canBusPins: () => true,
   } satisfies ControllerMetadata,
   "xiao_rp2040": {
@@ -207,27 +286,24 @@ export const Controllers: Record<ControllerId, ControllerMetadata> = {
     board: "seeeduino_xiao_rp2040",
     boardKconfig: "BOARD_SEEEDUINO_XIAO_RP2040",
     pinref: "https://wiki.seeedstudio.com/XIAO-RP2040/#hardware-overview",
-    gpios: asPinMap({
-      "d0": { label: "D0", aka: ["GPIO26"], dtsNodeLabel: XIAO_D, dtsPinNumber: "0", pinctrlRef: "26" },
-      "d1": { label: "D1", aka: ["GPIO27"], dtsNodeLabel: XIAO_D, dtsPinNumber: "1", pinctrlRef: "27" },
-      "d2": { label: "D2", aka: ["GPIO28"], dtsNodeLabel: XIAO_D, dtsPinNumber: "2", pinctrlRef: "28" },
-      "d3": { label: "D3", aka: ["GPIO29"], dtsNodeLabel: XIAO_D, dtsPinNumber: "3", pinctrlRef: "29" },
-      "d4": { label: "D4", aka: ["GPIO6"], dtsNodeLabel: XIAO_D, dtsPinNumber: "4", pinctrlRef: "6" },
-      "d5": { label: "D5", aka: ["GPIO7"], dtsNodeLabel: XIAO_D, dtsPinNumber: "5", pinctrlRef: "7" },
-      "d6": { label: "D6", aka: ["GPIO0"], dtsNodeLabel: XIAO_D, dtsPinNumber: "6", pinctrlRef: "0" },
-      "d7": { label: "D7", aka: ["GPIO1"], dtsNodeLabel: XIAO_D, dtsPinNumber: "7", pinctrlRef: "1" },
-      "d8": { label: "D8", aka: ["GPIO2"], dtsNodeLabel: XIAO_D, dtsPinNumber: "8", pinctrlRef: "2" },
-      "d9": { label: "D9", aka: ["GPIO4"], dtsNodeLabel: XIAO_D, dtsPinNumber: "9", pinctrlRef: "4" },
-      "d10": { label: "D10", aka: ["GPIO3"], dtsNodeLabel: XIAO_D, dtsPinNumber: "10", pinctrlRef: "3" },
-    }),
-    // TODO: Replace ALL_CAPABILITIES with actual per-pin RP2040 capability data
-    // RP2040 has fixed peripheral assignments per GPIO — canBus should check per-pin lookup
-    pinCapabilities: Object.fromEntries(
-      Object.keys({
-        "d0": 0, "d1": 0, "d2": 0, "d3": 0, "d4": 0, "d5": 0, "d6": 0,
-        "d7": 0, "d8": 0, "d9": 0, "d10": 0,
-      }).map((id) => [id, ALL_CAPABILITIES])
+    gpios: XIAO_RP2040_GPIOS,
+    pinCapabilities: Object.fromEntries([
+      "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9", "d10",
+    ].map((id) => [id, ALL_CAPABILITIES])) as Record<PinId, PinCapabilities>,
+    canBusPins: makeRP2040CanBusPins(XIAO_RP2040_GPIOS),
+  } satisfies ControllerMetadata,
+  "rpi_pico": {
+    name: "Raspberry Pi Pico",
+    soc: "rp2040",
+    board: "rpi_pico",
+    boardKconfig: "BOARD_RPI_PICO",
+    pinref: "https://datasheets.raspberrypi.com/pico/Pico-R3-A4-Pinout.pdf",
+    gpios: RPI_PICO_GPIOS,
+    pinCapabilities: Object.fromEntries([
+      ...Array.from({ length: 23 }, (_, i) => `gp${i}` as PinId),
+      'gp26', 'gp27', 'gp28'
+    ].map((id) => [id, ALL_CAPABILITIES])
     ) as Record<PinId, PinCapabilities>,
-    canBusPins: () => true,
+    canBusPins: makeRP2040CanBusPins(RPI_PICO_GPIOS),
   } satisfies ControllerMetadata,
 };
