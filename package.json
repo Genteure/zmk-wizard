@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "@astrojs/check": "0.9.9",
-    "@astrojs/cloudflare": "13.6.1",
+    "@astrojs/cloudflare": "13.7.0",
     "@astrojs/starlight": "0.39.2",
     "@astrojs/vue": "6.0.1",
     "@fluent/bundle": "0.19.1",
@@ -39,7 +39,7 @@
     "@nuxt/ui": "4.8.1",
     "@standard-schema/spec": "1.1.0",
     "@tailwindcss/vite": "4.3.0",
-    "astro": "6.4.4",
+    "astro": "6.4.8",
     "fluent-vue": "3.8.2",
     "jszip": "3.10.1",
     "nanotar": "0.3.0",
