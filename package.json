@@ -32,7 +32,7 @@
   "dependencies": {
     "@astrojs/check": "0.9.9",
     "@astrojs/cloudflare": "13.6.1",
-    "@astrojs/starlight": "0.39.2",
+    "@astrojs/starlight": "0.41.3",
     "@astrojs/vue": "6.0.1",
     "@fluent/bundle": "0.19.1",
     "@iconify-json/lucide": "1.2.111",
