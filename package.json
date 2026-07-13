@@ -42,6 +42,7 @@
     "astro": "6.4.4",
     "fluent-vue": "3.8.2",
     "jszip": "3.10.1",
+    "lz-string": "1.5.0",
     "nanotar": "0.3.0",
     "pinia": "3.0.4",
     "tailwindcss": "4.3.0",
