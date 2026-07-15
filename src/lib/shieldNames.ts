@@ -9,7 +9,9 @@ export const ReservedNames = [
   'keyboard',
   'my_keyboard',
   'corneish_zen',
+  'charybdis',
   'totem',
+  'xiao_ble',
   'nice_view',
   'nice_view_adapter',
 
