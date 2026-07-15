@@ -26,7 +26,7 @@ export const GET: APIRoute = async (context) => {
 
     return new Response("[Shield Wizard]\nThere's no web interface for browsing repositories.\n" +
       "Please clone the repository using git, or import to GitHub at https://github.com/new/import\n\n" +
-      `Don't know what to do? See https://${hostname}/next-steps\n\n` +
+      `Don't know what to do? See https://${hostname}/docs/next-steps\n\n` +
       `This repository was created at ${timeText} (${hoursAgo.toFixed(1)} hours ago)` +
       (hoursAgo < (ExpirationTtlSeconds / 3600)
         ? ` and will be deleted in ${(ExpirationTtlSeconds / 3600 - hoursAgo).toFixed(1)} hours.`

@@ -6,7 +6,7 @@ import "~/styles/global.css";
 
 const supportedLocales = Object.keys(localeMap);
 
-const cononicalUrl = Astro.site ? new URL("/", Astro.site).href : null;
+const canonicalUrl = Astro.site ? new URL("/", Astro.site).href : null;
 ---
 
 <!doctype html>
@@ -18,10 +18,10 @@ const cononicalUrl = Astro.site ? new URL("/", Astro.site).href : null;
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <title>Shield Wizard for ZMK</title>
-    <link rel="canonical" href={cononicalUrl} />
+    <link rel="canonical" href={canonicalUrl} />
     {
       supportedLocales.map((locale) => (
-        <link rel="alternate" hreflang={locale} href={cononicalUrl} />
+        <link rel="alternate" hreflang={locale} href={canonicalUrl} />
       ))
     }
     <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
@@ -58,7 +58,7 @@ const cononicalUrl = Astro.site ? new URL("/", Astro.site).href : null;
             </p>
             <p>
               Already got your import link? Check out our <a
-                href="/next-steps"
+                href="/docs/next-steps"
                 class="link">what to do next</a
               > page for instructions and tips. Git repositories hosted by Shield
               Wizard are only kept for 24 hours, so make sure to import them before

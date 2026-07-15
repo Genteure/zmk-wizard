@@ -42,8 +42,21 @@ export default defineConfig({
             ? `vscode://file/${path.dirname(fileURLToPath(import.meta.url))}`
             : 'https://github.com/genteure/zmk-wizard/blob/main',
       },
+      sidebar: [
+        {
+          label: 'Shield Wizard Docs',
+          items: [
+            { autogenerate: { directory: 'docs' } }
+          ]
+        }
+      ],
     }),
   ],
+
+  redirects: {
+    '/next-steps': '/docs/next-steps',
+    '/docs/layout-edit': '/docs/layouts',
+  },
 
   vite: {
     plugins: [
