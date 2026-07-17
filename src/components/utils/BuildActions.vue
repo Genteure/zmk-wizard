@@ -95,13 +95,30 @@
                 </UInput>
               </div>
 
-              <div class="flex flex-col items-center justify-center mt-4 gap-2">
-                <div class="text-sm text-toned">
+              <div class="flex flex-col items-center justify-center mt-4 gap-2 text-sm text-toned">
+                <div>
+                  <i18n path="import-instructions" tag="span">
+                    <template #importUrl>
+                      <ULink href="https://github.com/new/import" class="underline" target="_blank">
+                        https://github.com/new/import
+                      </ULink>
+                    </template>
+                  </i18n>
+                </div>
+                <div>
+                  <ULink href="/docs/next-steps/" class="underline" target="_blank">
+                    {{ $t('import-next-steps') }}
+                  </ULink>
+                </div>
+              </div>
+
+              <div class="flex flex-col items-center justify-center mt-4 gap-2 text-sm text-toned">
+                <div>
                   {{
                     $t('import-repo-created-at', { date: new Date(decodeTime(navigation.build.repoId)) })
                   }}
                 </div>
-                <div class="text-sm text-toned">
+                <div>
                   {{
                     $t('import-repo-expires-at', {
                       date: new Date(decodeTime(navigation.build.repoId) + 24 * 60 * 60 * 1000)
@@ -592,6 +609,9 @@ error-group-general = General
 import-failed = Failed to build: { $message }
 import-unexpected-error = Unexpected error: { $message }
 no-guarantee = Not all configuration combinations are guaranteed to work.
+import-instructions = Import at { $importUrl }
+import-next-steps = What to do next?
+
 report-issues = Please report any issues with the generated firmware in { $githubRepo } or in { $discord }.
   .github-repo-label = our GitHub repository
   .discord-label = ZMK Community Discord
@@ -649,6 +669,8 @@ no-guarantee = 并非所有配置组合都保证能正常工作。
 report-issues = 如果在生成的固件存在问题，请通过 { $githubRepo } 或 { $discord } 反馈。
   .github-repo-label = GitHub 仓库
   .discord-label = ZMK 社区 Discord
+import-instructions = 在 { $importUrl } 导入仓库
+import-next-steps = 接下来做什么？
 
 promo-title = 给 Shield Wizard for ZMK 点个星吧！
 promo-desc = 如果 Shield Wizard for ZMK 对你有帮助，请考虑在 GitHub 上为项目点个星！
@@ -703,6 +725,8 @@ no-guarantee = 設定の組み合わせによっては正常に動作しない�
 report-issues = 生成されたファームウェアに問題がある場合は、{ $githubRepo } または { $discord } で報告をお願いします。
   .github-repo-label = GitHub リポジトリ
   .discord-label = ZMK コミュニティ Discord
+import-instructions = { $importUrl } でインポート
+import-next-steps = この後どうする？
 
 promo-title = Shield Wizard for ZMK にスターしよう！
 promo-desc = Shield Wizard for ZMK を楽しんで使ってくれたら、GitHub でプロジェクトにスターを付けてもらえると嬉しいです。
