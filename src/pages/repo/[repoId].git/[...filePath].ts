@@ -50,14 +50,20 @@ export const GET: APIRoute = async (context) => {
     'info/refs',
     'HEAD',
     'refs/heads/main',
+    'objects/info/packs',
     '.shield-wizard.json',
   ];
   if (!knownFiles.includes(filePath)) {
     const pathFragments = filePath.split('/');
-    if (pathFragments.length !== 3
-      || pathFragments[0] !== 'objects'
-      || pathFragments[1].length !== 2
-      || pathFragments[2].length !== 38) {
+    const isLooseObject = pathFragments.length === 3
+      && pathFragments[0] === 'objects'
+      && pathFragments[1].length === 2
+      && pathFragments[2].length === 38;
+    const isPackFile = pathFragments.length === 3
+      && pathFragments[0] === 'objects'
+      && pathFragments[1] === 'pack'
+      && /^pack-[0-9a-f]{40}\.(?:pack|idx)$/.test(pathFragments[2]);
+    if (!isLooseObject && !isPackFile) {
       return new Response("[Shield Wizard] File not found", {
         status: 404,
         statusText: "Not Found",

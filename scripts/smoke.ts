@@ -22,8 +22,9 @@ const jiti = createJiti(import.meta.url, {
 const { createZMKConfig } = await jiti.import("~/export") as typeof import("~/export");
 const { KeyboardSchema } = await jiti.import("~/types/keyboard") as typeof import("~/types/keyboard");
 const { ValidatedKeyboardSchema } = await jiti.import("~/lib/validators") as typeof import("~/lib/validators");
+const { createGitRepository } = await jiti.import("~/lib/gitrepo") as typeof import("~/lib/gitrepo");
 
-type BuildFiles = Record<string, string>;
+type BuildFiles = Record<string, string | Uint8Array>;
 
 async function main(): Promise<void> {
   const [, , command, ...args] = process.argv;
@@ -34,6 +35,9 @@ async function main(): Promise<void> {
       return;
     case "generate":
       await handleGenerate(args);
+      return;
+    case "git":
+      await handleGenerateGit(args);
       return;
     default:
       printUsage();
@@ -76,12 +80,35 @@ async function handleGenerate(args: string[]): Promise<void> {
   console.log(matrixJson);
 }
 
+async function handleGenerateGit(args: string[]): Promise<void> {
+  const [fixturePath, destRoot] = args;
+  if (!fixturePath || !destRoot) {
+    console.error("Usage: pnpm run smoke git <fixture.json> <destDir>");
+    process.exit(1);
+  }
+
+  console.log(`Generating git repo for fixture ${fixturePath} into ${destRoot}...`);
+
+  const keyboard = await readKeyboardFixture(fixturePath);
+  const configFiles = createZMKConfig(keyboard);
+  const gitFiles = await createGitRepository(configFiles);
+
+  console.log("Generated git repository structure:");
+  for (const relativePath of Object.keys(gitFiles).sort()) {
+    console.log(` - ${relativePath}`);
+  }
+
+  await writeVirtualRepo(gitFiles, destRoot);
+  console.log(`Wrote git repository to ${destRoot}`);
+}
+
 function printUsage(): void {
   console.error(`Usage: pnpm run smoke <command>
 
 Commands:
   list                             List fixture JSON files
   generate <fixture.json> <destDir>  Generate repo files into destDir and emit build matrix JSON
+  git <fixture.json> <destDir>  Generate a local git repository into destDir from a fixture
 `);
 }
 
@@ -125,7 +152,6 @@ async function readKeyboardFixture(fixturePath: string): Promise<Keyboard> {
     console.error(`Invalid keyboard fixture ${fixturePath} (validation):\n${issues}`);
     process.exit(1);
   }
-
   return schema.data;
 }
 
@@ -155,7 +181,11 @@ async function writeVirtualRepo(files: BuildFiles, destRoot: string): Promise<vo
   for (const [relative, content] of Object.entries(files)) {
     const fullPath = path.join(destRoot, relative);
     await fs.mkdir(path.dirname(fullPath), { recursive: true });
-    await fs.writeFile(fullPath, content, "utf8");
+    if (typeof content === "string") {
+      await fs.writeFile(fullPath, content, "utf8");
+    } else {
+      await fs.writeFile(fullPath, content);
+    }
   }
 }
 
