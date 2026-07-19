@@ -59,6 +59,9 @@ export default defineConfig({
   },
 
   vite: {
+    server: {
+      allowedHosts: ['shield-wizard.genteure.workers.dev'],
+    },
     plugins: [
       ui({
         router: false,

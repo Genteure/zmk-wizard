@@ -4,6 +4,9 @@ import { localeMap } from "~/components/locales";
 
 import "~/styles/global.css";
 
+// setting prerender to false to redirect to allow the middleware to redirect
+export const prerender = false;
+
 const supportedLocales = Object.keys(localeMap);
 
 const canonicalUrl = Astro.site ? new URL("/", Astro.site).href : null;
