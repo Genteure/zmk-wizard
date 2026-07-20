@@ -22,7 +22,7 @@
     "@types/node": "25.9.1",
     "@vueuse/core": "14.3.0",
     "jiti": "2.7.0",
-    "reka-ui": "2.9.10",
+    "reka-ui": "2.10.1",
     "typescript": "6.0.3",
     "unplugin-fluent-vue": "1.4.1",
     "vitest": "4.1.8",
