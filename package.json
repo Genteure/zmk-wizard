@@ -19,7 +19,7 @@
     "generate-types": "wrangler types"
   },
   "devDependencies": {
-    "@types/node": "25.9.1",
+    "@types/node": "25.9.5",
     "@vueuse/core": "14.3.0",
     "jiti": "2.7.0",
     "reka-ui": "2.9.10",
