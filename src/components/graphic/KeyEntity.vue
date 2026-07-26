@@ -13,8 +13,8 @@
           <span class="tabular-nums" :class="indexTextClass">{{ index }}</span>
         </div>
 
-        <!-- Keymap key code: keyboard tab only, centered -->
-        <div v-if="nav.activeTab === 'keyboard'"
+        <!-- Keymap key code: keyboard tab (or preview mode), centered -->
+        <div v-if="previewMode || nav.activeTab === 'keyboard'"
           class="absolute inset-0 flex items-center justify-center pointer-events-none leading-none tabular-nums">
           <span class="text-sm font-semibold tracking-tighter">&amp;kp&nbsp;</span>
           <span class="text-xl font-medium text-highlighted">{{ keyLabel }}</span>
@@ -79,6 +79,13 @@ const props = withDefaults(defineProps<{
   inputPinLabel?: string;
   /** True when the selected wiring pin is used by this key (§4.3). */
   pinActive?: boolean;
+  /**
+   * Read-only preview mode: always render the "keyboard tab" style (kp label
+   * centered) regardless of the global navigation store's active tab. Used by
+   * standalone previews (e.g. the pre-build layout confirmation dialog) that
+   * must not depend on — or mutate — the shared editor navigation state.
+   */
+  previewMode?: boolean;
 }>(), {
   keySize: DEFAULT_KEY_SIZE,
   padding: DEFAULT_PADDING,
@@ -89,6 +96,7 @@ const props = withDefaults(defineProps<{
   outputPinLabel: undefined,
   inputPinLabel: undefined,
   pinActive: false,
+  previewMode: false,
 });
 
 /** Keymap label: A-Z cycling */
@@ -101,9 +109,9 @@ const keyboard = useKeyboardStore();
 
 // ─── Tab / part context ─────────────────────────────────────────
 
-const isLayoutTab = computed(() => nav.activeTab === 'layout');
+const isLayoutTab = computed(() => !props.previewMode && nav.activeTab === 'layout');
 /** True when on parts tab with an active part selected */
-const isPartsTab = computed(() => nav.activeTab === 'parts' && nav.activePart !== null);
+const isPartsTab = computed(() => !props.previewMode && nav.activeTab === 'parts' && nav.activePart !== null);
 /** True when the key belongs to the currently active part */
 const isInActivePart = computed(() => isPartsTab.value && props.keyData.part === nav.activePart);
 /** True when on parts tab and key is NOT in the active part → dimmed, non-interactive */

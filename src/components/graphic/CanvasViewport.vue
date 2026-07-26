@@ -102,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, toRef, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, toRef, watch } from 'vue';
 import type { BoundingBox } from '~/types/geometry';
 import type { CanvasTool } from '~/types/tools';
 import { useCanvasGestures } from './composables/useCanvasGestures';
@@ -222,18 +222,29 @@ let resizeObserver: ResizeObserver | null = null;
 
 function updateViewportSize() {
   if (!svgEl.value) return;
-  const rect = svgEl.value.getBoundingClientRect();
-  viewportWidth.value = rect.width;
-  viewportHeight.value = rect.height;
+  const style = getComputedStyle(svgEl.value);
+  let w = parseFloat(style.width);
+  let h = parseFloat(style.height);
+  // getBoundingClientRect includes ancestor CSS transforms (e.g. modal scale animation),
+  // so prefer computed style for the actual layout size.
+  // Fall back to getBoundingClientRect when getComputedStyle returns non-finite values
+  // (e.g. "auto" or empty string on SVG elements in some browsers).
+  if (!(Number.isFinite(w) && w > 0) || !(Number.isFinite(h) && h > 0)) {
+    const rect = svgEl.value.getBoundingClientRect();
+    w = rect.width;
+    h = rect.height;
+  }
+  if (Number.isFinite(w) && w > 0) viewportWidth.value = w;
+  if (Number.isFinite(h) && h > 0) viewportHeight.value = h;
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await nextTick();
   updateViewportSize();
   if (svgEl.value) {
     resizeObserver = new ResizeObserver(() => updateViewportSize());
     resizeObserver.observe(svgEl.value);
   }
-  if (props.bbox) fitAll(props.bbox);
 });
 
 onUnmounted(() => { resizeObserver?.disconnect(); });

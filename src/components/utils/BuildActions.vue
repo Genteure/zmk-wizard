@@ -14,6 +14,10 @@
       </template>
     </UModal>
 
+    <!-- Keymap layout confirmation modal -->
+    <LayoutConfirmModal v-model:open="confirmModalOpen" :keys="keyboard.layout" @confirm="onLayoutConfirmed"
+      @edit="onEditLayout" />
+
     <!-- Preview modal -->
     <UModal v-model:open="previewModalOpen" :title="$t('preview-modal-title')" :close="true"
       :ui="{ content: 'max-w-4xl' }">
@@ -171,8 +175,9 @@ import { computed, nextTick, ref, watch } from 'vue';
 import VueTurnstile from 'vue-turnstile';
 import { createZMKConfig } from '~/export';
 import { ValidatedKeyboardSchema } from '~/lib/validators';
-import type { Keyboard } from '~/types';
+import type { Key, Keyboard } from '~/types';
 import { useKeyboardStore, useNavigationStore } from '../stores';
+import LayoutConfirmModal from './LayoutConfirmModal.vue';
 
 const { $t } = useFluent();
 const toast = useToast();
@@ -341,8 +346,16 @@ function openPreview() {
 
 const dropdownOpen = ref(false);
 const errorModalOpen = ref(false);
+const confirmModalOpen = ref(false);
 const validationErrorGroups = ref<Record<string, string[]>>({});
 const validatedData = ref<Keyboard | null>(null);
+/** Hash of the key layout the user last accepted via the confirmation modal. */
+let acceptedLayoutHash: string | null = null;
+
+/** Compute a hash of physical-layout props (order, position, rotation, size) to detect layout changes. */
+function computePhysicalLayoutHash(keys: Key[]): string {
+  return JSON.stringify(keys.map((k) => [k.id, k.x, k.y, k.w, k.h, k.r, k.rx, k.ry]));
+}
 
 const slideoverOpen = ref(false);
 const isBuilding = ref(false);
@@ -388,6 +401,22 @@ function onDropdownOpenChange(open: boolean) {
   }
 
   validatedData.value = result.data as unknown as Keyboard;
+
+  if (acceptedLayoutHash !== null && computePhysicalLayoutHash(keyboard.layout) === acceptedLayoutHash) {
+    return;
+  }
+
+  dropdownOpen.value = false;
+  confirmModalOpen.value = true;
+}
+
+function onLayoutConfirmed() {
+  acceptedLayoutHash = computePhysicalLayoutHash(keyboard.layout);
+  dropdownOpen.value = true;
+}
+
+function onEditLayout() {
+  navigation.$patch({ activeTab: 'layout', activePart: null });
 }
 
 function downloadZip() {
