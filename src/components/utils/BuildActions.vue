@@ -175,7 +175,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import VueTurnstile from 'vue-turnstile';
 import { createZMKConfig } from '~/export';
 import { ValidatedKeyboardSchema } from '~/lib/validators';
-import type { Keyboard } from '~/types';
+import type { Key, Keyboard } from '~/types';
 import { useKeyboardStore, useNavigationStore } from '../stores';
 import LayoutConfirmModal from './LayoutConfirmModal.vue';
 
@@ -349,8 +349,13 @@ const errorModalOpen = ref(false);
 const confirmModalOpen = ref(false);
 const validationErrorGroups = ref<Record<string, string[]>>({});
 const validatedData = ref<Keyboard | null>(null);
-/** Set right before re-opening the dropdown after layout confirmation, so we don't re-validate/re-prompt. */
-let bypassConfirmOnce = false;
+/** Hash of the key layout the user last accepted via the confirmation modal. */
+let acceptedLayoutHash: string | null = null;
+
+/** Compute a hash of the key order and physical location props, used to detect layout changes. */
+function computeLayoutHash(keys: Key[]): string {
+  return JSON.stringify(keys.map((k) => [k.id, k.x, k.y, k.w, k.h, k.r, k.rx, k.ry]));
+}
 
 const slideoverOpen = ref(false);
 const isBuilding = ref(false);
@@ -364,11 +369,6 @@ const importResultUrl = computed(() => {
 
 function onDropdownOpenChange(open: boolean) {
   if (!open) return;
-
-  if (bypassConfirmOnce) {
-    bypassConfirmOnce = false;
-    return;
-  }
 
   const result = ValidatedKeyboardSchema.safeParse(keyboard.$state);
 
@@ -401,12 +401,18 @@ function onDropdownOpenChange(open: boolean) {
   }
 
   validatedData.value = result.data as unknown as Keyboard;
+
+  // Skip the confirmation prompt if the user already accepted this exact layout before.
+  if (acceptedLayoutHash !== null && computeLayoutHash(keyboard.layout) === acceptedLayoutHash) {
+    return;
+  }
+
   dropdownOpen.value = false;
   confirmModalOpen.value = true;
 }
 
 function onLayoutConfirmed() {
-  bypassConfirmOnce = true;
+  acceptedLayoutHash = computeLayoutHash(keyboard.layout);
   dropdownOpen.value = true;
 }
 
