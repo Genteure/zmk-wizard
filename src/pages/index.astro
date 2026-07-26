@@ -21,7 +21,10 @@ const canonicalUrl = Astro.site ? new URL("/", Astro.site).href : null;
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <title>Shield Wizard for ZMK</title>
-    <link rel="canonical" href={canonicalUrl} />
+    <meta
+      name="description"
+      content="Graphical ZMK firmware configurator for custom keyboards, without manually editing files. Getting started with ZMK on your keyboard, no local tooling required."
+    />
     {
       supportedLocales.map((locale) => (
         <link rel="alternate" hreflang={locale} href={canonicalUrl} />
