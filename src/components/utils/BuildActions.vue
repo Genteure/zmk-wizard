@@ -14,6 +14,10 @@
       </template>
     </UModal>
 
+    <!-- Keymap layout confirmation modal -->
+    <LayoutConfirmModal v-model:open="confirmModalOpen" :keys="keyboard.layout" @confirm="onLayoutConfirmed"
+      @edit="onEditLayout" />
+
     <!-- Preview modal -->
     <UModal v-model:open="previewModalOpen" :title="$t('preview-modal-title')" :close="true"
       :ui="{ content: 'max-w-4xl' }">
@@ -173,6 +177,7 @@ import { createZMKConfig } from '~/export';
 import { ValidatedKeyboardSchema } from '~/lib/validators';
 import type { Keyboard } from '~/types';
 import { useKeyboardStore, useNavigationStore } from '../stores';
+import LayoutConfirmModal from './LayoutConfirmModal.vue';
 
 const { $t } = useFluent();
 const toast = useToast();
@@ -341,8 +346,11 @@ function openPreview() {
 
 const dropdownOpen = ref(false);
 const errorModalOpen = ref(false);
+const confirmModalOpen = ref(false);
 const validationErrorGroups = ref<Record<string, string[]>>({});
 const validatedData = ref<Keyboard | null>(null);
+/** Set right before re-opening the dropdown after layout confirmation, so we don't re-validate/re-prompt. */
+let bypassConfirmOnce = false;
 
 const slideoverOpen = ref(false);
 const isBuilding = ref(false);
@@ -356,6 +364,11 @@ const importResultUrl = computed(() => {
 
 function onDropdownOpenChange(open: boolean) {
   if (!open) return;
+
+  if (bypassConfirmOnce) {
+    bypassConfirmOnce = false;
+    return;
+  }
 
   const result = ValidatedKeyboardSchema.safeParse(keyboard.$state);
 
@@ -388,6 +401,17 @@ function onDropdownOpenChange(open: boolean) {
   }
 
   validatedData.value = result.data as unknown as Keyboard;
+  dropdownOpen.value = false;
+  confirmModalOpen.value = true;
+}
+
+function onLayoutConfirmed() {
+  bypassConfirmOnce = true;
+  dropdownOpen.value = true;
+}
+
+function onEditLayout() {
+  navigation.$patch({ activeTab: 'layout', activePart: null });
 }
 
 function downloadZip() {
