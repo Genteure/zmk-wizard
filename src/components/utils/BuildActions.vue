@@ -109,6 +109,11 @@
                     </template>
                   </i18n>
                 </div>
+                <i18n path="recommended-repo-name" tag="div">
+                  <template #name>
+                    <code class="font-mono font-semibold">{{ recommendedRepoName }}</code>
+                  </template>
+                </i18n>
                 <div>
                   <ULink href="/docs/next-steps/" class="underline" target="_blank">
                     {{ $t('import-next-steps') }}
@@ -184,6 +189,7 @@ const toast = useToast();
 const keyboard = useKeyboardStore();
 const navigation = useNavigationStore();
 
+const recommendedRepoName = computed(() => `zmk-config-${keyboard.shield}`);
 const previewModalOpen = ref(false);
 const selectedFilePath = ref<string | null>(null);
 
@@ -601,6 +607,7 @@ build-preview = Preview Generated Files
 preview-modal-title = Files Preview
 preview-select-file = Select a file to preview
 import-slideover-description = Get a link to a hosted git repository with your keyboard configuration
+recommended-repo-name = Recommended repository name: { $name }
 import-generate-link = Generate Link
 
 step1-title = Get Your Import Link
@@ -659,6 +666,7 @@ preview-modal-title = 文件预览
 preview-select-file = 选择文件进行预览
 import-slideover-description = 获取一个包含你的键盘配置的托管 git 仓库链接
 import-generate-link = 生成链接
+recommended-repo-name = 建议的仓库名称: { $name }
 
 step1-title = 获取导入链接
 step1-desc = 我们提供一个临时的 git 仓库来存放你的键盘配置。该仓库将在服务器上保留 24 小时。
@@ -715,6 +723,7 @@ preview-modal-title = ファイルプレビュー
 preview-select-file = プレビューするファイルを選択
 import-slideover-description = キーボード設定を含むホストされた git リポジトリへのリンクを取得します。
 import-generate-link = リンクを生成
+recommended-repo-name = 推奨リポジトリ名: { $name }
 
 step1-title = インポートリンクを取得
 step1-desc = カスタムキーボード設定を保持する一時的な git リポジトリを提供します。リポジトリはサーバー上に 24 時間保存されます。
