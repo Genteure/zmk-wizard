@@ -6,3 +6,6 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - miniflare@4.20260603.0
   - wrangler@4.98.0
+  - '@vueuse/core@14.4.0'
+  - '@vueuse/metadata@14.4.0'
+  - '@vueuse/shared@14.4.0'
