@@ -326,6 +326,8 @@ config ZMK_POINTING
 
   let content = "";
 
+  // TODO: For ZMK v0.4 / Zephyr 4.1 upgrade later, replace BT_L2CAP_TX_BUF_COUNT with BT_ATT_TX_COUNT
+
   if (partCount > 1) {
     content = `if SHIELD_${shieldUpper0}
 
@@ -344,6 +346,10 @@ config BT_MAX_CONN
 
 config BT_MAX_PAIRED
   default ${partCount - 1 + 5}
+
+# Bump this value needed for concurrent GATT discovery of splits
+config BT_L2CAP_TX_BUF_COUNT
+    default ${10 + (partCount - 2) * 5} if ZMK_SPLIT_ROLE_CENTRAL
 
 endif
 
@@ -389,6 +395,10 @@ config BT_MAX_CONN
 
 config BT_MAX_PAIRED
   default ${partCount + 5}
+
+# Bump this value needed for concurrent GATT discovery of splits
+config BT_L2CAP_TX_BUF_COUNT
+    default ${15 + (partCount - 2) * 5} if ZMK_SPLIT_ROLE_CENTRAL
 
 endif
 `;
