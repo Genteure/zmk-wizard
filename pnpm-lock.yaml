@@ -24,8 +24,8 @@ importers:
         specifier: 0.19.1
         version: 0.19.1
       '@iconify-json/lucide':
-        specifier: 1.2.120
-        version: 1.2.120
+        specifier: 1.2.121
+        version: 1.2.121
       '@nuxt/ui':
         specifier: 4.10.0
         version: 4.10.0(afba1b65a7a8f15a3dd5a812fa9c10d5)
@@ -934,8 +934,8 @@ packages:
     resolution: {integrity: sha512-5D2qVpZrgpjtqU4eNOcWGp1gnUCgjfM+vKGE2y03kKN6z5EBhtx0qdRFbg8QuNNj8wXNoX93KJoYb+NqoxswmQ==}
     engines: {node: '>=14.0.0', npm: '>=7.0.0'}
 
-  '@iconify-json/lucide@1.2.120':
-    resolution: {integrity: sha512-4ECF24fxag1n5tZlPGrbWuCGqhkwD0rvAzfCXretqQb4KEC8Y6ja3khF8qmvpR1Mk0NQDhBTRK3Fr/YoV8QyJw==}
+  '@iconify-json/lucide@1.2.121':
+    resolution: {integrity: sha512-zSoQQSmsyFaeTpSwURHJ9PIrsDcGFpDNhGlpiTrs+Ua4uFeH5UsE26L4OEBLrgLWoSK0UO+JhsO8yehSw0403g==}
 
   '@iconify/collections@1.0.715':
     resolution: {integrity: sha512-4EP9EOD9qx/Ybu+FtepdxL49FV1mFKsPuLTl06ccwvP5lZyErzTy5CODamEnsnKsYr+8jle2DdlDxqzVBok9hQ==}
@@ -5731,7 +5731,7 @@ snapshots:
 
   '@fluent/syntax@0.19.0': {}
 
-  '@iconify-json/lucide@1.2.120':
+  '@iconify-json/lucide@1.2.121':
     dependencies:
       '@iconify/types': 2.0.0
 
