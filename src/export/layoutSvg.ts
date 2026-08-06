@@ -54,10 +54,14 @@ export function generateLayoutSvg(keyboard: { layout: Key[] }): string {
   function deg2rad(d: number): number { return d * Math.PI / 180; }
 
   for (const k of keys) {
+    // Rotation origin fallback: rx === 0 means "rotate around the key's own
+    // top-left corner" (same for ry). Mirrors KeyEntity.vue / keyShape.ts.
+    const effRx = k.rx === 0 ? k.x : k.rx;
+    const effRy = k.ry === 0 ? k.y : k.ry;
     const rw = k.w * KS - PAD;
     const rh = k.h * KS - PAD;
-    const cx = (k.rx - k.x) * KS; // rotation center in group-local space
-    const cy = (k.ry - k.y) * KS;
+    const cx = (effRx - k.x) * KS; // rotation center in group-local space
+    const cy = (effRy - k.y) * KS;
     // 4 path corners in key-local space (before any transform)
     const corners = [[P, P], [P + rw, P], [P + rw, P + rh], [P, P + rh]];
 
@@ -129,11 +133,15 @@ export function generateLayoutSvg(keyboard: { layout: Key[] }): string {
         borderRadius: DEFAULT_BORDER_RADIUS,
       },
     );
+    // Rotation origin fallback: rx === 0 means "rotate around the key's own
+    // top-left corner" (same for ry) — matches the editor's keyTransform.
+    const effRx = key.rx === 0 ? key.x : key.rx;
+    const effRy = key.ry === 0 ? key.y : key.ry;
     // Group transform: translate + optional rotation (shared by shadow and body)
     const groupTransform =
       key.r === 0
         ? `translate(${tx},${ty})`
-        : `translate(${tx},${ty}) rotate(${key.r},${(key.rx - key.x) * KS},${(key.ry - key.y) * KS})`;
+        : `translate(${tx},${ty}) rotate(${key.r},${(effRx - key.x) * KS},${(effRy - key.y) * KS})`;
 
     const textEl = key.w >= 1 && key.h >= 0.6
       ? `<text x="${pw / 2}" y="${ph / 2 + 1}" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" font-size="${Math.min(14, pw * 0.28)}" class="key-label">${i}</text>`
