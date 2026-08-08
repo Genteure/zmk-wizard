@@ -58,6 +58,6 @@
     "ulidx": "2.4.1",
     "vue": "3.5.40",
     "vue-turnstile": "1.0.11",
-    "wrangler": "4.114.0"
+    "wrangler": "4.119.0"
   }
 }
