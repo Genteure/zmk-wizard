@@ -25,7 +25,11 @@ export default defineConfig({
   env: {
     schema: {
       TURNSTILE_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
-      PUBLIC_TURNSTILE_SITEKEY: envField.string({ context: 'client', access: 'public' }),
+      // Defaults to Cloudflare's documented "always pass" Turnstile test
+      // sitekey so `astro dev`/`astro build` work without a `.env`. Override
+      // with a real sitekey (and set TURNSTILE_SECRET) in deployments that
+      // enforce captcha.
+      PUBLIC_TURNSTILE_SITEKEY: envField.string({ context: 'client', access: 'public', optional: true, default: '1x00000000000000000000AA' }),
       FEEDBACK_WEBHOOK_URL: envField.string({ context: 'server', access: 'secret', optional: true }),
     },
   },
