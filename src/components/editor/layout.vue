@@ -13,12 +13,12 @@
     </UFieldGroup>
   </div>
   <!-- TODO: Optimize performance. It's a bit abysmal right now. -->
-  <UTable sticky :virtualize="{ estimateSize: 41, overscan: 5 }" :get-row-id="key => key.id" :columns="columns"
-    v-model:row-selection="selection.rowSelection" :data="keyboard.layout"
+  <UTable v-model:row-selection="selection.rowSelection" sticky :virtualize="{ estimateSize: 41, overscan: 5 }" :get-row-id="key => key.id"
+    :columns="columns" :data="keyboard.layout"
     :ui="{ td: 'px-2 py-1', th: 'p-2 text-center' }" class="flex-1 h-full">
     <template #select-header="{ table }">
       <UCheckbox :model-value="table.getIsSomePageRowsSelected() ? 'indeterminate' : table.getIsAllPageRowsSelected()"
-        @update:model-value="value => table.toggleAllPageRowsSelected(!!value)" :aria-label="$t('table-select-all')" />
+        :aria-label="$t('table-select-all')" @update:model-value="value => table.toggleAllPageRowsSelected(!!value)" />
     </template>
 
     <template #select-cell="{ row }">
@@ -37,39 +37,39 @@
     <template #ry-header>{{ $t('table-header-ry') }}</template>
 
     <template #row-cell="{ row }">
-      <PopoverInputNumber input-type="integer" v-model="row.original.row"
+      <PopoverInputNumber v-model="row.original.row" input-type="integer"
         :title="$t('table-cell-title', { prop: 'row', index: row.index })" />
     </template>
     <template #col-cell="{ row }">
-      <PopoverInputNumber input-type="integer" v-model="row.original.col"
+      <PopoverInputNumber v-model="row.original.col" input-type="integer"
         :title="$t('table-cell-title', { prop: 'col', index: row.index })" />
     </template>
     <template #x-cell="{ row }">
-      <PopoverInputNumber input-type="float" v-model="row.original.x"
+      <PopoverInputNumber v-model="row.original.x" input-type="float"
         :title="$t('table-cell-title', { prop: 'x', index: row.index })" />
     </template>
     <template #y-cell="{ row }">
-      <PopoverInputNumber input-type="float" v-model="row.original.y"
+      <PopoverInputNumber v-model="row.original.y" input-type="float"
         :title="$t('table-cell-title', { prop: 'y', index: row.index })" />
     </template>
     <template #w-cell="{ row }">
-      <PopoverInputNumber input-type="float" v-model="row.original.w"
+      <PopoverInputNumber v-model="row.original.w" input-type="float"
         :title="$t('table-cell-title', { prop: 'w', index: row.index })" />
     </template>
     <template #h-cell="{ row }">
-      <PopoverInputNumber input-type="float" v-model="row.original.h"
+      <PopoverInputNumber v-model="row.original.h" input-type="float"
         :title="$t('table-cell-title', { prop: 'h', index: row.index })" />
     </template>
     <template #r-cell="{ row }">
-      <PopoverInputNumber input-type="float" v-model="row.original.r"
+      <PopoverInputNumber v-model="row.original.r" input-type="float"
         :title="$t('table-cell-title', { prop: 'r', index: row.index })" />
     </template>
     <template #rx-cell="{ row }">
-      <PopoverInputNumber input-type="float" v-model="row.original.rx"
+      <PopoverInputNumber v-model="row.original.rx" input-type="float"
         :title="$t('table-cell-title', { prop: 'rx', index: row.index })" />
     </template>
     <template #ry-cell="{ row }">
-      <PopoverInputNumber input-type="float" v-model="row.original.ry"
+      <PopoverInputNumber v-model="row.original.ry" input-type="float"
         :title="$t('table-cell-title', { prop: 'ry', index: row.index })" />
     </template>
   </UTable>
@@ -114,7 +114,7 @@
 <script setup lang="ts">
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui';
 import { useFluent } from 'fluent-vue';
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import type { Key } from '~/types';
 
 import { useKeyboardStore, useSelectionStore } from '../stores';

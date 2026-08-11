@@ -3,6 +3,7 @@ export type { PinVisual } from '~/metadata/pins';
 </script>
 
 <script setup lang="ts">
+/* eslint-disable import/first -- the type-only re-export in the first <script> block precedes these imports */
 import type { PartPinContext } from '~/types/pinContext';
 import type { ControllerMetadata } from '~/metadata/controllers';
 import type { PinVisual } from '~/metadata/pins';
@@ -166,6 +167,7 @@ const usageInfo = computed(() => {
       };
     }
   }
+  return null;
 });
 
 /** A group of role choices under one heading — a "card" in the popover. */

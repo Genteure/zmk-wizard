@@ -725,7 +725,7 @@ function buildDirectKscanUnit(
 
   const dtsRefs = pins.map((pin) => dtsRef(pin));
 
-  let kscanDts = `/ {
+  const kscanDts = `/ {
     ${label}: ${label} {
         compatible = "zmk,kscan-gpio-direct";
         wakeup-source;
@@ -781,7 +781,7 @@ function buildMatrixKscanUnit(
     ? `        diode-direction = "${inputIsRow ? "col2row" : "row2col"}";\n`
     : "";
 
-  let kscanDts = `/ {
+  const kscanDts = `/ {
     ${label}: ${label} {
         compatible = "zmk,kscan-gpio-matrix";
         ${diodeProp}        wakeup-source;

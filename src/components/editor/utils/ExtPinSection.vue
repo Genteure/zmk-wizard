@@ -196,11 +196,6 @@ function kscanCardsForPin(pinId: PinId): { heading: string; cards: KscanCard[] }
   };
 }
 
-/** Human-readable label from PinInfo, falling back to the id. */
-function getPinLabel(pinId: PinId): string {
-  return allPins.value.find((p) => p.id === pinId)?.label ?? pinId;
-}
-
 /** Button color based on usage. */
 function pinButtonColor(pinId: PinId): BtnColor {
   const u = pinUsage(pinId);

@@ -9,7 +9,7 @@
         <UDropdownMenu :items="menuItems">
           <UButton icon="i-lucide-menu" color="neutral" variant="outline" />
           <template #languages>
-            <LocaleSelect class="w-full" :locales="locales" v-model="nav.locale" />
+            <LocaleSelect v-model="nav.locale" class="w-full" :locales="locales" />
           </template>
           <template #themes>
             <UColorModeSelect class="w-full" />
@@ -27,7 +27,7 @@
         </div>
         <div class="flex items-center justify-center gap-4">
           <UColorModeSelect />
-          <LocaleSelect :locales="locales" v-model="nav.locale" />
+          <LocaleSelect v-model="nav.locale" :locales="locales" />
         </div>
         <UNavigationMenu :items="navItems" orientation="vertical" class="-mx-2.5" />
       </div>
@@ -62,7 +62,6 @@ import { version } from 'virtual:version';
 import { computed, onMounted, ref } from 'vue';
 import { KeyboardSchema } from '~/types';
 
-import { Controllers } from '~/metadata/controllers';
 import Editors from './editor/editors.vue';
 import Graphics from './graphic/graphics.vue';
 import { locales } from './locales';

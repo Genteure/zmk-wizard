@@ -215,7 +215,6 @@ async function buildPackfile(
   const packHash = toHex(packSha1);
 
   // 4. Build the pack index v2.
-  const N = entries.length;
   const fanout = new Uint32Array(256);
   for (const e of entries) {
     const firstByte = parseInt(e.hash.substring(0, 2), 16);

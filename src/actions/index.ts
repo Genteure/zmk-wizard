@@ -38,7 +38,7 @@ export const server = {
       } else if (import.meta.env.DEV) {
         // add 3 sec delay if running locally in dev mode without captcha secret
         console.log("Dev mode: adding delay to simulate captcha verification");
-        const { promise, resolve } = Promise.withResolvers<void>();
+        const { promise, resolve } = Promise.withResolvers<undefined>();
         setTimeout(resolve, 3000);
         await promise;
       } else {
@@ -105,7 +105,7 @@ export const server = {
         }
       } else if (import.meta.env.DEV) {
         console.log("Dev mode: adding delay to simulate captcha verification");
-        const { promise, resolve } = Promise.withResolvers<void>();
+        const { promise, resolve } = Promise.withResolvers<undefined>();
         setTimeout(resolve, 3000);
         await promise;
       } else {
@@ -155,7 +155,7 @@ export const server = {
         // if parts is array and parts[n].controller is string, list controllers for each part
         if (Array.isArray(kb.parts)) {
           const controllers: string[] = [];
-          (kb.parts as Array<{ controller?: unknown }>).forEach((part, index) => {
+          (kb.parts as Array<{ controller?: unknown }>).forEach((part) => {
             if (typeof part.controller === 'string') {
               controllers.push(`${part.controller}`);
             } else {

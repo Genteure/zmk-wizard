@@ -1,6 +1,8 @@
 // Based on https://github.com/adamws/kle-serial2/blob/d6b89acf351a4a9dce7f3ffa198a385b74cc7393/index.ts
 // Licensed under MIT License
 
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-namespace -- KLE JSON is a loosely-typed dynamic format; kept close to upstream kle-serial2 for diffability. */
+
 // Fixed-length 12-element array type for labels, textColor, and textSize
 export type Array12<T> = [T, T, T, T, T, T, T, T, T, T, T, T];
 
@@ -70,7 +72,7 @@ export namespace Serial {
   // Map from serialized label position to normalized position,
   // depending on the alignment flags.
   // prettier-ignore
-  let labelMap: Array<Array<number>> = [
+  const labelMap: Array<Array<number>> = [
     //0  1  2  3  4  5  6  7  8  9 10 11   // align flags
     [0, 6, 2, 8, 9, 11, 3, 5, 1, 4, 7, 10], // 0 = no centering
     [1, 7, -1, -1, 9, 11, 4, -1, -1, -1, -1, 10], // 1 = center x
@@ -83,8 +85,8 @@ export namespace Serial {
   ];
 
   function reorderLabelsIn<T>(labels: T[], align: number, defaultval: T): Array12<T> {
-    var ret = createArray12(defaultval);
-    for (var i = 0; i < labels.length; ++i) {
+    const ret = createArray12(defaultval);
+    for (let i = 0; i < labels.length; ++i) {
       if (labels[i]) {
         const index = labelMap[align][i];
         if (index !== -1) {
@@ -123,17 +125,17 @@ export namespace Serial {
       deserializeError("expected an array of objects");
 
     // Initialize with defaults
-    let current: Key = new Key();
-    let kbd = new Keyboard();
-    let cluster = { x: 0, y: 0 };
-    var align = 4;
+    const current: Key = new Key();
+    const kbd = new Keyboard();
+    const cluster = { x: 0, y: 0 };
+    let align = 4;
 
-    for (var r = 0; r < rows.length; ++r) {
+    for (let r = 0; r < rows.length; ++r) {
       if (rows[r] instanceof Array) {
-        for (var k = 0; k < rows[r].length; ++k) {
-          var item = rows[r][k];
+        for (let k = 0; k < rows[r].length; ++k) {
+          const item = rows[r][k];
           if (typeof item === "string") {
-            var newKey: Key = {
+            const newKey: Key = {
               ...current,
               labels: [...current.labels],
               textColor: [...current.textColor],
@@ -151,7 +153,7 @@ export namespace Serial {
             // textColor is also already normalized, don't reorder it
 
             // Clean up: set textSize/textColor to 0/"" for positions without labels
-            for (var i = 0; i < 12; ++i) {
+            for (let i = 0; i < 12; ++i) {
               if (!newKey.labels[i]) {
                 newKey.textSize[i] = 0;
                 newKey.textColor[i] = "";
@@ -196,8 +198,8 @@ export namespace Serial {
             }
             if (item.f2) {
               // f2 applies to serialized positions 1-11, need to reorder to normalized format
-              var tempTextSize = createArray12(current.default.textSize);
-              for (var i = 1; i < 12; ++i) tempTextSize[i] = item.f2;
+              const tempTextSize = createArray12(current.default.textSize);
+              for (let i = 1; i < 12; ++i) tempTextSize[i] = item.f2;
               current.textSize = reorderLabelsIn(tempTextSize, align, 0);
             }
             if (item.fa) {
@@ -206,7 +208,7 @@ export namespace Serial {
             }
             // Clean up textSize values that equal the default to enable serialization optimization
             if (item.f || item.f2 || item.fa) {
-              for (var j = 0; j < 12; ++j) {
+              for (let j = 0; j < 12; ++j) {
                 if (current.textSize[j] === current.default.textSize) {
                   current.textSize[j] = 0;
                 }
@@ -221,7 +223,7 @@ export namespace Serial {
                 current.default.textColor = item.t;
               } else {
                 // Legacy format: 't' contains both default and per-label colors
-                var split = item.t.split("\n");
+                const split = item.t.split("\n");
                 // Set default: if first value is non-empty, use most common color
                 // (to handle cases like "#111111\n#222222\n#222222" where #222222 is most common)
                 // If first value is empty, don't change default (backward compatible)
@@ -234,7 +236,7 @@ export namespace Serial {
                   current.default.textColor,
                 );
                 // Clean up values that equal the default
-                for (var j = 0; j < 12; ++j) {
+                for (let j = 0; j < 12; ++j) {
                   if (current.textColor[j] === current.default.textColor) {
                     current.textColor[j] = "";
                   }
@@ -243,10 +245,10 @@ export namespace Serial {
             }
             if ("ta" in item) {
               // New format: 'ta' is per-label colors (newline-delimited string)
-              var taSplit = item.ta.split("\n");
+              const taSplit = item.ta.split("\n");
               current.textColor = reorderLabelsIn(taSplit, align, "");
               // Clean up values that equal the default
-              for (var j = 0; j < 12; ++j) {
+              for (let j = 0; j < 12; ++j) {
                 if (current.textColor[j] === current.default.textColor) {
                   current.textColor[j] = "";
                 }
@@ -281,7 +283,7 @@ export namespace Serial {
           );
         }
         // Copy all properties from input, including unrecognized ones
-        for (let prop in rows[r]) {
+        for (const prop in rows[r]) {
           if (rows[r][prop]) kbd.meta[prop] = rows[r][prop];
         }
       } else {
@@ -292,7 +294,7 @@ export namespace Serial {
   }
 
   // prettier-ignore
-  let reverseLabelMap: Array<Array<number>> = [
+  const reverseLabelMap: Array<Array<number>> = [
     //0  1  2  3  4  5  6  7  8  9 10 11   // align flags
     [0, 8, 2, 6, 9, 7, 1, 10, 3, 4, 11, 5], // 0 = no centering
     [-1, 0, -1, -1, 6, -1, -1, 1, -1, 4, 11, 5], // 1 = center x
@@ -305,7 +307,7 @@ export namespace Serial {
   ];
 
   function reorderLabelsKle(labels: any[], align: number, defaultval: any): any[] {
-    let ret: any[] = new Array(12).fill(defaultval);
+    const ret: any[] = new Array(12).fill(defaultval);
     for (let i = 0; i < labels.length; i++) {
       if (labels[i]) {
         const index = reverseLabelMap[align][i];
@@ -322,7 +324,7 @@ export namespace Serial {
   }
 
   function findBestLabelAlignment(labels: any[]): [number, any[]] {
-    let results: Record<number, any[]> = {}; // Explicitly type results
+    const results: Record<number, any[]> = {}; // Explicitly type results
     for (let align = 7; align >= 0; align--) {
       const ret = reorderLabelsKle(labels, align, "");
       if (ret.length > 0) {
@@ -341,18 +343,18 @@ export namespace Serial {
 
 
   export function serialize(kbd: Keyboard): Array<any> {
-    let rows: any[] = [];
+    const rows: any[] = [];
     let row: any[] = [];
-    let current = new Key();
+    const current = new Key();
     let current_textColor_str: string = "";
     let current_textSize_arr: number[] = [];
     let current_alignment = 4;
-    let cluster = { r: 0, rx: 0, ry: 0 };
+    const cluster = { r: 0, rx: 0, ry: 0 };
     let new_row = true;
     current.y -= 1;
 
     for (const k of kbd.keys) {
-      let props: Record<string, any> = {};
+      const props: Record<string, any> = {};
 
       // Lightweight clone: shallow copy + clone only the arrays we'll mutate
       // Much faster than structuredClone for property tests with thousands of iterations
@@ -391,7 +393,7 @@ export namespace Serial {
       // Clean up the data (skipping this step will cause unexpected
       // serialization if textColor/textSize defined for undefined label)
       // Also remove values that equal the default to enable serialization optimization
-      for (var i = 0; i < 12; ++i) {
+      for (let i = 0; i < 12; ++i) {
         if (!key.labels[i]) {
           delete key.textSize[i];
           delete key.textColor[i];
@@ -458,8 +460,8 @@ export namespace Serial {
       );
 
       // Output 'ta' when per-label colors exist
-      let textColor = reorderLabelsKle(key.textColor, alignment, "");
-      let textColorStr = textColor.join("\n").replace(/\n+$/, "");
+      const textColor = reorderLabelsKle(key.textColor, alignment, "");
+      const textColorStr = textColor.join("\n").replace(/\n+$/, "");
       current_textColor_str = add_prop(
         "ta",
         textColorStr,
@@ -481,7 +483,7 @@ export namespace Serial {
       );
 
       // Output 'fa' when per-label size exist
-      let textSize = reorderLabelsKle(key.textSize, alignment, 0);
+      const textSize = reorderLabelsKle(key.textSize, alignment, 0);
       while (textSize.length > 0 && textSize[textSize.length - 1] === 0) {
         // remove trailing 0 values
         textSize.pop();
@@ -516,7 +518,7 @@ export namespace Serial {
     }
 
     const defaultMeta = new KeyboardMetadata();
-    let meta: Record<string, any> = {};
+    const meta: Record<string, any> = {};
     // Export all metadata properties, including unrecognized ones
     for (const prop in kbd.meta) {
       // Only skip if it's a default standard property with default value

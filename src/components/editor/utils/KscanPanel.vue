@@ -13,12 +13,14 @@
  * entity itself. This panel reads/writes that map via emit callbacks to the parent.
  */
 
-const ROLE_ORDER: Record<string, number> = { input: 0, output: 1, interrupt: 2 };
 import { useFluent } from 'fluent-vue';
 import { computed, ref } from 'vue';
 import { kscanLabel } from '~/components/utils/labels';
 import { usePinInventory } from '~/lib/usePinInventory';
 import type { KeyboardPart, KscanDriverKind, PinId } from '~/types';
+import type { DropdownMenuItem } from '@nuxt/ui';
+
+const ROLE_ORDER: Record<string, number> = { input: 0, output: 1, interrupt: 2 };
 
 const props = defineProps<{
   part: KeyboardPart;
@@ -43,8 +45,6 @@ const emit = defineEmits<{
   assignPin: [payload: { pinId: PinId; kscanId: string; role: 'input' | 'output' | 'interrupt' }];
   releasePin: [pinId: PinId];
 }>();
-
-import type { DropdownMenuItem } from '@nuxt/ui';
 
 const addMenuItems: DropdownMenuItem[][] = [[
   { label: 'Matrix', onSelect: () => addKscan('matrix') },

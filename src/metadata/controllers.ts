@@ -2,9 +2,8 @@ import type { BusName, BusPinRole, ControllerId, PinCapabilities, PinId, SocId }
 
 // Metadata for controllers
 
-export interface SocMetadata {
-  // TODO add metadata fields.
-}
+/** Metadata for controllers. TODO: add metadata fields. */
+export type SocMetadata = object;
 
 export const SoCs = {
   "nrf52840": {

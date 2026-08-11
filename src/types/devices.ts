@@ -1,4 +1,5 @@
 import { z } from "astro/zod";
+import { I2cDeviceSchema, SpiDeviceSchema } from "~/metadata/device";
 
 // Re-export from utils and metadata — single source of truth lives there.
 export { DeviceIdSchema, type DeviceId } from "./utils";
@@ -38,8 +39,6 @@ export type BusName = z.infer<typeof BusNameSchema>;
 // Bus communication pins (MOSI/MISO/SCK/SDA/SCL) are tracked
 // via PinUsageBus (usage: "bus", bus: <name>, role: <BusPinRole>).
 // This keeps all pin assignments in one place.
-
-import { I2cDeviceSchema, SpiDeviceSchema } from "~/metadata/device";
 
 export const SpiBusSchema = z.object({
   type: z.literal("spi"),

@@ -324,7 +324,7 @@ config ZMK_POINTING
 `
     : "";
 
-  let content = "";
+  let content: string;
 
   // TODO: For ZMK v0.4 / Zephyr 4.1 upgrade later, replace BT_L2CAP_TX_BUF_COUNT with BT_ATT_TX_COUNT
 

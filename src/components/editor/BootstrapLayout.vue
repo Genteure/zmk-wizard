@@ -13,10 +13,10 @@
           <template #grid>
             <div class="flex gap-4">
               <UFormField :label="$t('grid-cols')" class="flex-1">
-                <UInputNumber v-model="cols" :min="1" :max="32" invertWheelChange class="w-full" />
+                <UInputNumber v-model="cols" :min="1" :max="32" invert-wheel-change class="w-full" />
               </UFormField>
               <UFormField :label="$t('grid-rows')" class="flex-1">
-                <UInputNumber v-model="rows" :min="1" :max="16" invertWheelChange class="w-full" />
+                <UInputNumber v-model="rows" :min="1" :max="16" invert-wheel-change class="w-full" />
               </UFormField>
             </div>
           </template>
@@ -147,7 +147,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { TabsItem } from '@nuxt/ui';
 import { ulid } from 'ulidx';
 import type { Key, KeyId } from '~/types';
@@ -197,7 +197,6 @@ const bootstrapKeys = computed<Key[]>(() => {
 
     try {
       const { keymap, physical } = parseNotation(trimmedNotation);
-      notationError.value = '';
       return keymap.map((km, i) => ({
         id: ulid() as KeyId,
         part: 0,
@@ -211,8 +210,7 @@ const bootstrapKeys = computed<Key[]>(() => {
         rx: 0,
         ry: 0,
       }));
-    } catch (e) {
-      notationError.value = e instanceof Error ? e.message : String(e);
+    } catch {
       return [];
     }
   }
@@ -227,6 +225,25 @@ const open = defineModel<boolean>('open', { required: true });
 const keyboard = useKeyboardStore();
 
 const activeTab = ref<'grid' | 'cols-thumbs'>('cols-thumbs');
+
+// Parse errors are tracked outside the computed to keep it side-effect free.
+watch([activeTab, notation], () => {
+  if (activeTab.value !== 'cols-thumbs') {
+    notationError.value = '';
+    return;
+  }
+  const trimmed = notation.value.trim();
+  if (!trimmed) {
+    notationError.value = '';
+    return;
+  }
+  try {
+    parseNotation(trimmed);
+    notationError.value = '';
+  } catch (e) {
+    notationError.value = e instanceof Error ? e.message : String(e);
+  }
+}, { immediate: true });
 
 const tabItems = computed<TabsItem[]>(() => [
   {

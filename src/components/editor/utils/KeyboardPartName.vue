@@ -13,9 +13,10 @@ export interface KeyboardPartNameProps {
   description?: string
 }
 
-const props = withDefaults(defineProps<KeyboardPartNameProps>(), {
+withDefaults(defineProps<KeyboardPartNameProps>(), {
   label: 'Part Name',
   placeholder: 'Enter part name',
+  description: '',
 });
 
 const modelValue = defineModel<string>({ required: true });

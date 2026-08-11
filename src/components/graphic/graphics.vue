@@ -1,6 +1,6 @@
 <template>
   <div class="shrink-0 p-1 flex items-center justify-between gap-1 flex-notIne">
-    <UTabs class="min-w-0" :content="false" size="sm" :items="toolbarItems" v-model="toolbarTool" />
+    <UTabs v-model="toolbarTool" class="min-w-0" :content="false" size="sm" :items="toolbarItems" />
     <HelpModal />
   </div>
   <div class="shrink-0 p-1 flex lg:hidden items-center">
@@ -408,7 +408,7 @@ watchEffect(() => {
     if (!canvas) continue;
     const g = canvas.gesture;
     const mode = g?.mode;
-    const confirmed = (g as any)?.confirmed;
+    const confirmed = g?.mode === 'selecting' && g.confirmed;
     const cp = canvas.currentPointer;
     const _rect = canvas.selectionRect;
     if (mode !== 'selecting' || !confirmed) continue;

@@ -122,12 +122,18 @@ const props = withDefaults(defineProps<{
   /** True while Space is held for temporary pan override. */
   spaceHeld?: boolean;
   /** Hit-test: returns entity ID at viewport position, or null. Only active (non-dimmed) entities should match. */
+  // eslint-disable-next-line vue/require-default-prop -- function prop; optional by design (LayoutConfirmModal omits it)
   hitTest?: (vpX: number, vpY: number) => string | null;
   /** Called once per entity when the pointer first enters it during a wiring scrub drag. */
+  // eslint-disable-next-line vue/require-default-prop -- function prop; optional by design
   wireCallback?: (entityId: string) => void;
 }>(), {
+  bbox: null,
+  gridCellSize: 17.5,
+  gridMajorCellSize: 70,
   tool: 'pan',
   showRotateHandle: true,
+  selectionBBox: null,
 });
 const emit = defineEmits<{
   contextmenu: [info: { clientX: number; clientY: number; vpX: number; vpY: number }];

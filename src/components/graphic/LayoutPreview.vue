@@ -13,7 +13,7 @@
     </picture>
   </div>
   <svg v-else class="w-full h-full overflow-hidden" xmlns="http://www.w3.org/2000/svg" :viewBox="viewBox">
-    <g v-for="(key, i) in keys" :key="key.id" :transform="computeTransform(key)">
+    <g v-for="key in keys" :key="key.id" :transform="computeTransform(key)">
       <path :d="computePath(key)" fill="var(--ui-bg-elevated)" stroke="var(--ui-text)" stroke-width="1" />
     </g>
   </svg>

@@ -1,4 +1,4 @@
-import { z } from "astro/zod";
+import type { z } from "astro/zod";
 import { Controllers, SocBuses } from "~/metadata/controllers";
 import { DEVICE_CLASS_LIMITS, DEVICE_REGISTRY, SOC_BUS_CONFLICTS, getDeviceMeta } from "~/metadata/device";
 import { ZMK_MODULES, modulesConflict } from "~/metadata/modules";

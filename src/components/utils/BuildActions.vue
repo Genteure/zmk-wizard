@@ -88,8 +88,8 @@
             </template>
             <template v-else>
               <div class="flex items-center justify-center">
-                <UInput icon="i-lucide-folder-git-2" v-model="importResultUrl" readonly
-                  class="font-mono max-w-sm flex-1" size="lg" ref="importLinkInput" @focus="selectImportLinkText">
+                <UInput ref="importLinkInput" v-model="importResultUrl" icon="i-lucide-folder-git-2"
+                  readonly class="font-mono max-w-sm flex-1" size="lg" @focus="selectImportLinkText">
                   <template #trailing>
                     <UTooltip :text="$t('copy-to-clipboard')" :content="{ side: 'right' }">
                       <UButton color="neutral" variant="link" size="sm" icon="i-lucide-copy"
@@ -229,6 +229,9 @@ interface PreviewFolderNode extends PreviewNode {
 
 type PreviewEntry = PreviewFileNode | PreviewFolderNode;
 
+/** Tree item with repo file path (custom fields set in buildPreviewTree). */
+type PreviewTreeItem = TreeItem & { fullPath: string; children?: PreviewTreeItem[] };
+
 interface IconRule {
   icon: string;
   match(name: string, fullPath: string): boolean;
@@ -264,7 +267,7 @@ function getFolderIcon(name: string, fullPath: string): string | undefined {
   return FOLDER_ICON_RULES.find(r => r.match(name, fullPath))?.icon;
 }
 
-function buildPreviewTree(files: Record<string, string>): TreeItem[] {
+function buildPreviewTree(files: Record<string, string>): PreviewTreeItem[] {
   const root: Record<string, PreviewEntry> = {};
 
   for (const fullPath of Object.keys(files).sort()) {
@@ -294,7 +297,7 @@ function buildPreviewTree(files: Record<string, string>): TreeItem[] {
     }
   }
 
-  function toItems(obj: Record<string, PreviewEntry>): TreeItem[] {
+  function toItems(obj: Record<string, PreviewEntry>): PreviewTreeItem[] {
     return Object.entries(obj)
       .sort(([, a], [, b]) => {
         if (a.type === b.type) return 0;
@@ -302,7 +305,7 @@ function buildPreviewTree(files: Record<string, string>): TreeItem[] {
       })
       .map(([key, val]) => {
         if (val.type === 'file') {
-          return { label: key, fullPath: val.fullPath, icon: val.icon } as TreeItem;
+          return { label: key, fullPath: val.fullPath, icon: val.icon } as PreviewTreeItem;
         }
         return {
           label: key,
@@ -310,11 +313,11 @@ function buildPreviewTree(files: Record<string, string>): TreeItem[] {
           defaultExpanded: true,
           icon: val.icon,
           children: toItems(val.children),
-        } as TreeItem;
+        } as PreviewTreeItem;
       });
   }
 
-  function collapseSingleFolders(items: TreeItem[]): TreeItem[] {
+  function collapseSingleFolders(items: PreviewTreeItem[]): PreviewTreeItem[] {
     return items.flatMap(item => {
       if (!item.children) return [item];
       const collapsed = collapseSingleFolders(item.children);
@@ -329,16 +332,16 @@ function buildPreviewTree(files: Record<string, string>): TreeItem[] {
           fullPath: collapsed[0].fullPath ?? item.fullPath,
           icon: mergedIcon,
           children: collapsed[0].children,
-        } as TreeItem];
+        } as PreviewTreeItem];
       }
-      return [{ ...item, children: collapsed } as TreeItem];
+      return [{ ...item, children: collapsed } as PreviewTreeItem];
     });
   }
 
   return collapseSingleFolders(toItems(root));
 }
 
-function onPreviewFileSelect(item: any) {
+function onPreviewFileSelect(item: PreviewTreeItem) {
   // Folders have children — clicking them should not change the preview
   if (!item || item.children || !item.fullPath) return;
   selectedFilePath.value = item.fullPath;
