@@ -7,9 +7,17 @@
       <div class="flex items-center gap-2">
         <span>Shield Wizard for ZMK v0.3</span>
         <UDropdownMenu :items="menuItems">
-          <UButton icon="i-lucide-menu" color="neutral" variant="outline" />
+          <UButton
+            icon="i-lucide-menu"
+            color="neutral"
+            variant="outline"
+          />
           <template #languages>
-            <LocaleSelect v-model="nav.locale" class="w-full" :locales="locales" />
+            <LocaleSelect
+              v-model="nav.locale"
+              class="w-full"
+              :locales="locales"
+            />
           </template>
           <template #themes>
             <UColorModeSelect class="w-full" />
@@ -27,28 +35,55 @@
         </div>
         <div class="flex items-center justify-center gap-4">
           <UColorModeSelect />
-          <LocaleSelect v-model="nav.locale" :locales="locales" />
+          <LocaleSelect
+            v-model="nav.locale"
+            :locales="locales"
+          />
         </div>
-        <UNavigationMenu :items="navItems" orientation="vertical" class="-mx-2.5" />
+        <UNavigationMenu
+          :items="navItems"
+          orientation="vertical"
+          class="-mx-2.5"
+        />
       </div>
     </template>
   </UHeader>
   <UMain class="h-[calc(100vh-var(--ui-header-height))] flex flex-col-reverse lg:flex-row">
     <div
-      class="h-1/2 lg:h-full w-full lg:w-2/5 shrink-0 flex flex-col overflow-hidden border-t lg:border-t-0 lg:border-r border-default">
+      class="h-1/2 lg:h-full w-full lg:w-2/5 shrink-0 flex flex-col overflow-hidden border-t lg:border-t-0 lg:border-r border-default"
+    >
       <Editors />
     </div>
     <div class="h-1/2 lg:h-full w-full lg:w-3/5 shrink-0 flex flex-col overflow-hidden">
       <Graphics />
     </div>
   </UMain>
-  <UModal v-model:open="debugOpen" :title="$t('debug-title')">
+  <UModal
+    v-model:open="debugOpen"
+    :title="$t('debug-title')"
+  >
     <template #body>
       <div class="flex flex-col gap-3">
-        <p class="text-sm text-toned">{{ $t('debug-warning') }}</p>
-        <UTextarea v-model="debugData" :rows="20" class="w-full font-mono text-sm" />
-        <p v-if="debugError" class="text-sm text-error">{{ debugError }}</p>
-        <UButton :label="$t('debug-apply')" color="warning" class="w-full justify-center" @click="applyDebugData" />
+        <p class="text-sm text-toned">
+          {{ $t('debug-warning') }}
+        </p>
+        <UTextarea
+          v-model="debugData"
+          :rows="20"
+          class="w-full font-mono text-sm"
+        />
+        <p
+          v-if="debugError"
+          class="text-sm text-error"
+        >
+          {{ debugError }}
+        </p>
+        <UButton
+          :label="$t('debug-apply')"
+          color="warning"
+          class="w-full justify-center"
+          @click="applyDebugData"
+        />
       </div>
     </template>
   </UModal>
@@ -72,7 +107,7 @@ import LocaleSelect from './utils/LocaleSelect.vue';
 
 const toast = useToast();
 
-const { $t } = useFluent()
+const { $t } = useFluent();
 
 const keyboard = useKeyboardStore();
 const nav = useNavigationStore();
@@ -107,7 +142,7 @@ onMounted(() => {
           variant: 'outline',
           label: $t('host-action'),
           onClick() {
-            window.open('https://shield-wizard.genteure.com', '_blank')
+            window.open('https://shield-wizard.genteure.com', '_blank');
           },
         },
       ],
@@ -126,7 +161,7 @@ onMounted(() => {
         variant: 'outline',
         label: $t('host-action'),
         onClick() {
-          window.open('https://shield-wizard.genteure.com', '_blank')
+          window.open('https://shield-wizard.genteure.com', '_blank');
         },
       },
     ],
@@ -157,7 +192,8 @@ function applyDebugData() {
     });
     debugError.value = '';
     debugOpen.value = false;
-  } catch (e) {
+  }
+  catch (e) {
     debugError.value = (e as Error).message;
   }
 }
@@ -167,12 +203,12 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
     {
       slot: 'languages',
       class: 'block',
-      onSelect(e) { e.preventDefault() },
+      onSelect(e) { e.preventDefault(); },
     },
     {
       slot: 'themes',
       class: 'block',
-      onSelect(e) { e.preventDefault() },
+      onSelect(e) { e.preventDefault(); },
     },
   ],
   [
@@ -200,18 +236,18 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
       label: versionLabel,
       icon: 'i-lucide-git-branch',
       class: 'font-mono text-xs items-center',
-      onSelect() { copyVersionInfo() },
+      onSelect() { copyVersionInfo(); },
     },
     {
       label: $t('menu-feedback'),
       icon: 'i-lucide-message-square-plus',
-      onSelect() { openFeedbackDialog() },
+      onSelect() { openFeedbackDialog(); },
     },
     {
       label: $t('menu-debug'),
       icon: 'i-lucide-bug',
       children: [
-        { label: $t('menu-debug-data'), onSelect() { openDebugDialog() } },
+        { label: $t('menu-debug-data'), onSelect() { openDebugDialog(); } },
       ],
     },
   ],
@@ -244,23 +280,22 @@ const navItems = computed<NavigationMenuItem[][]>(() => [
       label: versionLabel,
       icon: 'i-lucide-git-branch',
       class: 'font-mono text-xs',
-      onSelect() { copyVersionInfo() },
+      onSelect() { copyVersionInfo(); },
     },
     {
       label: $t('menu-feedback'),
       icon: 'i-lucide-message-square-plus',
-      onSelect() { openFeedbackDialog() },
+      onSelect() { openFeedbackDialog(); },
     },
     {
       label: $t('menu-debug'),
       icon: 'i-lucide-bug',
       children: [
-        { label: $t('menu-debug-data'), onSelect() { openDebugDialog() } },
+        { label: $t('menu-debug-data'), onSelect() { openDebugDialog(); } },
       ],
     },
   ],
 ]);
-
 </script>
 
 <ftl locale="en">

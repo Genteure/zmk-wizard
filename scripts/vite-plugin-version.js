@@ -3,7 +3,8 @@ import { execSync } from 'child_process';
 function safeExec(cmd) {
   try {
     return execSync(cmd, { encoding: 'utf8' }).trim();
-  } catch {
+  }
+  catch {
     return '';
   }
 }

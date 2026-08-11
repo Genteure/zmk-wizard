@@ -17,7 +17,7 @@ function makePart(
     buses: {
       spi1: {
         type: 'spi',
-        devices: devices.map((d) => ({
+        devices: devices.map(d => ({
           id: d.id as DeviceId,
           type: d.type,
           ngpios: d.ngpios ?? 8,
@@ -95,8 +95,8 @@ describe('resolveDevicePins', () => {
       ]);
       const { devicePins } = resolveDevicePins(part);
 
-      const p1Pins = devicePins.filter((p) => p.source.type === 'device' && p.source.deviceId === 'p1');
-      const p2Pins = devicePins.filter((p) => p.source.type === 'device' && p.source.deviceId === 'p2');
+      const p1Pins = devicePins.filter(p => p.source.type === 'device' && p.source.deviceId === 'p1');
+      const p2Pins = devicePins.filter(p => p.source.type === 'device' && p.source.deviceId === 'p2');
 
       expect(p1Pins).toHaveLength(8);
       expect(p2Pins).toHaveLength(16);
@@ -109,8 +109,8 @@ describe('resolveDevicePins', () => {
       ]);
       const { devicePins } = resolveDevicePins(part);
 
-      const q1Pins = devicePins.filter((p) => p.source.type === 'device' && p.source.deviceId === 'q1');
-      const q2Pins = devicePins.filter((p) => p.source.type === 'device' && p.source.deviceId === 'q2');
+      const q1Pins = devicePins.filter(p => p.source.type === 'device' && p.source.deviceId === 'q1');
+      const q2Pins = devicePins.filter(p => p.source.type === 'device' && p.source.deviceId === 'q2');
 
       for (const pin of q1Pins) {
         expect(pin.dtsNodeLabel).toBe('shifter0');
@@ -135,7 +135,7 @@ describe('resolvePinInventory', () => {
     expect(inventory.allPins.length).toBeGreaterThan(8);
 
     const devicePins = inventory.allPins.filter(
-      (p) => p.source.type === 'device',
+      p => p.source.type === 'device',
     );
     expect(devicePins).toHaveLength(8);
   });

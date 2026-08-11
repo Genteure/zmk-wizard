@@ -1,110 +1,232 @@
 <template>
   <div class="flex flex-wrap items-center justify-center gap-2 m-2">
     <UDropdownMenu :items="layoutTools">
-      <UButton icon="i-lucide-menu" :label="$t('tools-label')" color="neutral" variant="outline" />
+      <UButton
+        icon="i-lucide-menu"
+        :label="$t('tools-label')"
+        color="neutral"
+        variant="outline"
+      />
     </UDropdownMenu>
-    <UButton :label="$t('add-key')" icon="i-lucide-plus" color="neutral" variant="outline" @click="keyboard.addKey()" />
+    <UButton
+      :label="$t('add-key')"
+      icon="i-lucide-plus"
+      color="neutral"
+      variant="outline"
+      @click="keyboard.addKey()"
+    />
     <UFieldGroup>
       <UDropdownMenu :items="assignPartItems">
-        <UButton :label="$t('assign-part')" color="neutral" variant="outline" :disabled="!selection.selectedCount" />
+        <UButton
+          :label="$t('assign-part')"
+          color="neutral"
+          variant="outline"
+          :disabled="!selection.selectedCount"
+        />
       </UDropdownMenu>
-      <UButton :label="$t('delete-selected')" color="error" variant="outline" :disabled="!selection.selectedCount"
-        @click="keyboard.deleteSelected()" />
+      <UButton
+        :label="$t('delete-selected')"
+        color="error"
+        variant="outline"
+        :disabled="!selection.selectedCount"
+        @click="keyboard.deleteSelected()"
+      />
     </UFieldGroup>
   </div>
   <!-- TODO: Optimize performance. It's a bit abysmal right now. -->
-  <UTable v-model:row-selection="selection.rowSelection" sticky :virtualize="{ estimateSize: 41, overscan: 5 }" :get-row-id="key => key.id"
-    :columns="columns" :data="keyboard.layout"
-    :ui="{ td: 'px-2 py-1', th: 'p-2 text-center' }" class="flex-1 h-full">
+  <UTable
+    v-model:row-selection="selection.rowSelection"
+    sticky
+    :virtualize="{ estimateSize: 41, overscan: 5 }"
+    :get-row-id="key => key.id"
+    :columns="columns"
+    :data="keyboard.layout"
+    :ui="{ td: 'px-2 py-1', th: 'p-2 text-center' }"
+    class="flex-1 h-full"
+  >
     <template #select-header="{ table }">
-      <UCheckbox :model-value="table.getIsSomePageRowsSelected() ? 'indeterminate' : table.getIsAllPageRowsSelected()"
-        :aria-label="$t('table-select-all')" @update:model-value="value => table.toggleAllPageRowsSelected(!!value)" />
+      <UCheckbox
+        :model-value="table.getIsSomePageRowsSelected() ? 'indeterminate' : table.getIsAllPageRowsSelected()"
+        :aria-label="$t('table-select-all')"
+        @update:model-value="value => table.toggleAllPageRowsSelected(!!value)"
+      />
     </template>
 
     <template #select-cell="{ row }">
-      <UCheckbox :model-value="row.getIsSelected()" :aria-label="$t('table-select-key', { index: row.index })"
-        @update:model-value="value => row.toggleSelected(!!value)" />
+      <UCheckbox
+        :model-value="row.getIsSelected()"
+        :aria-label="$t('table-select-key', { index: row.index })"
+        @update:model-value="value => row.toggleSelected(!!value)"
+      />
     </template>
 
-    <template #row-header>{{ $t('table-header-row') }}</template>
-    <template #col-header>{{ $t('table-header-col') }}</template>
-    <template #x-header>{{ $t('table-header-x') }}</template>
-    <template #y-header>{{ $t('table-header-y') }}</template>
-    <template #w-header>{{ $t('table-header-w') }}</template>
-    <template #h-header>{{ $t('table-header-h') }}</template>
-    <template #r-header>{{ $t('table-header-r') }}</template>
-    <template #rx-header>{{ $t('table-header-rx') }}</template>
-    <template #ry-header>{{ $t('table-header-ry') }}</template>
+    <template #row-header>
+      {{ $t('table-header-row') }}
+    </template>
+    <template #col-header>
+      {{ $t('table-header-col') }}
+    </template>
+    <template #x-header>
+      {{ $t('table-header-x') }}
+    </template>
+    <template #y-header>
+      {{ $t('table-header-y') }}
+    </template>
+    <template #w-header>
+      {{ $t('table-header-w') }}
+    </template>
+    <template #h-header>
+      {{ $t('table-header-h') }}
+    </template>
+    <template #r-header>
+      {{ $t('table-header-r') }}
+    </template>
+    <template #rx-header>
+      {{ $t('table-header-rx') }}
+    </template>
+    <template #ry-header>
+      {{ $t('table-header-ry') }}
+    </template>
 
     <template #row-cell="{ row }">
-      <PopoverInputNumber v-model="row.original.row" input-type="integer"
-        :title="$t('table-cell-title', { prop: 'row', index: row.index })" />
+      <PopoverInputNumber
+        v-model="row.original.row"
+        input-type="integer"
+        :title="$t('table-cell-title', { prop: 'row', index: row.index })"
+      />
     </template>
     <template #col-cell="{ row }">
-      <PopoverInputNumber v-model="row.original.col" input-type="integer"
-        :title="$t('table-cell-title', { prop: 'col', index: row.index })" />
+      <PopoverInputNumber
+        v-model="row.original.col"
+        input-type="integer"
+        :title="$t('table-cell-title', { prop: 'col', index: row.index })"
+      />
     </template>
     <template #x-cell="{ row }">
-      <PopoverInputNumber v-model="row.original.x" input-type="float"
-        :title="$t('table-cell-title', { prop: 'x', index: row.index })" />
+      <PopoverInputNumber
+        v-model="row.original.x"
+        input-type="float"
+        :title="$t('table-cell-title', { prop: 'x', index: row.index })"
+      />
     </template>
     <template #y-cell="{ row }">
-      <PopoverInputNumber v-model="row.original.y" input-type="float"
-        :title="$t('table-cell-title', { prop: 'y', index: row.index })" />
+      <PopoverInputNumber
+        v-model="row.original.y"
+        input-type="float"
+        :title="$t('table-cell-title', { prop: 'y', index: row.index })"
+      />
     </template>
     <template #w-cell="{ row }">
-      <PopoverInputNumber v-model="row.original.w" input-type="float"
-        :title="$t('table-cell-title', { prop: 'w', index: row.index })" />
+      <PopoverInputNumber
+        v-model="row.original.w"
+        input-type="float"
+        :title="$t('table-cell-title', { prop: 'w', index: row.index })"
+      />
     </template>
     <template #h-cell="{ row }">
-      <PopoverInputNumber v-model="row.original.h" input-type="float"
-        :title="$t('table-cell-title', { prop: 'h', index: row.index })" />
+      <PopoverInputNumber
+        v-model="row.original.h"
+        input-type="float"
+        :title="$t('table-cell-title', { prop: 'h', index: row.index })"
+      />
     </template>
     <template #r-cell="{ row }">
-      <PopoverInputNumber v-model="row.original.r" input-type="float"
-        :title="$t('table-cell-title', { prop: 'r', index: row.index })" />
+      <PopoverInputNumber
+        v-model="row.original.r"
+        input-type="float"
+        :title="$t('table-cell-title', { prop: 'r', index: row.index })"
+      />
     </template>
     <template #rx-cell="{ row }">
-      <PopoverInputNumber v-model="row.original.rx" input-type="float"
-        :title="$t('table-cell-title', { prop: 'rx', index: row.index })" />
+      <PopoverInputNumber
+        v-model="row.original.rx"
+        input-type="float"
+        :title="$t('table-cell-title', { prop: 'rx', index: row.index })"
+      />
     </template>
     <template #ry-cell="{ row }">
-      <PopoverInputNumber v-model="row.original.ry" input-type="float"
-        :title="$t('table-cell-title', { prop: 'ry', index: row.index })" />
+      <PopoverInputNumber
+        v-model="row.original.ry"
+        input-type="float"
+        :title="$t('table-cell-title', { prop: 'ry', index: row.index })"
+      />
     </template>
   </UTable>
 
-  <UModal v-model:open="importOpen" :title="$t('tools-import')">
+  <UModal
+    v-model:open="importOpen"
+    :title="$t('tools-import')"
+  >
     <template #body>
       <div class="flex flex-col gap-3">
-        <UTextarea v-model="importText" :rows="12"
-          :placeholder="$t('tools-import-placeholder', { format: importFormat })" class="w-full font-mono text-sm" />
-        <p v-if="importError" class="text-sm text-error">{{ importError }}</p>
-        <UButton :label="$t('tools-import-confirm')" color="primary" class="w-full justify-center"
-          :disabled="!importText.trim()" @click="doImport" />
+        <UTextarea
+          v-model="importText"
+          :rows="12"
+          :placeholder="$t('tools-import-placeholder', { format: importFormat })"
+          class="w-full font-mono text-sm"
+        />
+        <p
+          v-if="importError"
+          class="text-sm text-error"
+        >
+          {{ importError }}
+        </p>
+        <UButton
+          :label="$t('tools-import-confirm')"
+          color="primary"
+          class="w-full justify-center"
+          :disabled="!importText.trim()"
+          @click="doImport"
+        />
       </div>
     </template>
   </UModal>
-  <UModal v-model:open="exportOpen" :title="$t('tools-export')">
+  <UModal
+    v-model:open="exportOpen"
+    :title="$t('tools-export')"
+  >
     <template #body>
       <div class="flex flex-col gap-3">
-        <UTextarea :model-value="exportText" :rows="12" readonly class="w-full font-mono text-sm" />
-        <UButton :label="exportCopied ? $t('tools-export-copied') : $t('tools-export-copy')" color="primary"
-          class="w-full justify-center" @click="copyExport" />
+        <UTextarea
+          :model-value="exportText"
+          :rows="12"
+          readonly
+          class="w-full font-mono text-sm"
+        />
+        <UButton
+          :label="exportCopied ? $t('tools-export-copied') : $t('tools-export-copy')"
+          color="primary"
+          class="w-full justify-center"
+          @click="copyExport"
+        />
       </div>
     </template>
   </UModal>
-  <UModal v-model:open="presetOpen" :title="$t('tools-load-preset')">
+  <UModal
+    v-model:open="presetOpen"
+    :title="$t('tools-load-preset')"
+  >
     <template #body>
       <div class="flex flex-col gap-3">
         <div
-          class="w-full h-48 flex items-center justify-center border rounded border-muted bg-muted select-none overflow-hidden">
+          class="w-full h-48 flex items-center justify-center border rounded border-muted bg-muted select-none overflow-hidden"
+        >
           <LayoutPreview :keys="presetKeys" />
         </div>
-        <USelectMenu v-model="presetSelected" :items="presetEntries" value-key="value"
-          :placeholder="$t('tools-load-preset-placeholder')" class="w-full" />
-        <UButton :label="$t('tools-load-preset-confirm')" color="primary" class="w-full justify-center"
-          :disabled="!presetSelected" @click="loadPreset" />
+        <USelectMenu
+          v-model="presetSelected"
+          :items="presetEntries"
+          value-key="value"
+          :placeholder="$t('tools-load-preset-placeholder')"
+          class="w-full"
+        />
+        <UButton
+          :label="$t('tools-load-preset-confirm')"
+          color="primary"
+          class="w-full justify-center"
+          :disabled="!presetSelected"
+          @click="loadPreset"
+        />
       </div>
     </template>
   </UModal>
@@ -179,18 +301,18 @@ const columns: TableColumn<Key>[] = [
     meta: {
       class: {
         td: 'text-center',
-      }
-    }
+      },
+    },
   },
-  { id: 'row', },
-  { id: 'col', },
-  { id: 'x', },
-  { id: 'y', },
-  { id: 'w', },
-  { id: 'h', },
-  { id: 'r', },
-  { id: 'rx', },
-  { id: 'ry', },
+  { id: 'row' },
+  { id: 'col' },
+  { id: 'x' },
+  { id: 'y' },
+  { id: 'w' },
+  { id: 'h' },
+  { id: 'r' },
+  { id: 'rx' },
+  { id: 'ry' },
 
 ];
 
@@ -220,11 +342,14 @@ function doImport() {
 
   if (importFormat.value === 'dts') {
     parsed = parsePhysicalLayoutDts(text);
-  } else if (importFormat.value === 'qmk') {
+  }
+  else if (importFormat.value === 'qmk') {
     parsed = parseLayoutJson(text);
-  } else if (importFormat.value === 'kle') {
+  }
+  else if (importFormat.value === 'kle') {
     parsed = parseKleJson(text);
-  } else {
+  }
+  else {
     parsed = parseCsv(text);
   }
 
@@ -241,7 +366,7 @@ function doImport() {
     color: 'warning',
     description: $t('imported-toast-desc'),
     duration: 30 * 1000,
-  })
+  });
 
   importOpen.value = false;
 }
@@ -249,11 +374,14 @@ function doImport() {
 function openExport(format: 'dts' | 'json' | 'kle' | 'csv') {
   if (format === 'dts') {
     exportText.value = exportPhysicalLayoutDts(keyboard.$state);
-  } else if (format === 'json') {
+  }
+  else if (format === 'json') {
     exportText.value = config_json(keyboard.$state);
-  } else if (format === 'kle') {
+  }
+  else if (format === 'kle') {
     exportText.value = exportKleJson(keyboard.layout);
-  } else {
+  }
+  else {
     exportText.value = exportCsv(keyboard.layout);
   }
   exportCopied.value = false;
@@ -356,7 +484,7 @@ const layoutTools = computed<DropdownMenuItem[][]>(() => [
     {
       label: $t('tools-export-csv'),
       onSelect() { openExport('csv'); },
-    }
+    },
   ],
   [
     {
@@ -368,7 +496,7 @@ const layoutTools = computed<DropdownMenuItem[][]>(() => [
       label: $t('tools-external-kle-ng'),
       to: 'https://editor.keyboard-tools.xyz/',
       target: '_blank',
-    }
+    },
   ],
 ]);
 </script>

@@ -51,34 +51,63 @@ function onConfirm() {
 </script>
 
 <template>
-  <UModal v-model:open="open" :ui="{ footer: 'justify-end' }">
+  <UModal
+    v-model:open="open"
+    :ui="{ footer: 'justify-end' }"
+  >
     <template #header>
       <div class="flex items-center gap-2">
-        <UIcon name="i-lucide-alert-triangle" class="text-warning" />
+        <UIcon
+          name="i-lucide-alert-triangle"
+          class="text-warning"
+        />
         <span class="text-highlighted font-semibold">{{ $t('change-controller-title') }}</span>
       </div>
     </template>
 
     <template #body>
       <div class="flex flex-col gap-4">
-        <i18n path="change-controller-warning" tag="p" class="text-sm text-muted">
+        <i18n
+          path="change-controller-warning"
+          tag="p"
+          class="text-sm text-muted"
+        >
           <template #danger="{ danger }">
             <span class="text-warning font-semibold">{{ danger }}</span>
           </template>
         </i18n>
 
-        <UAlert v-if="isRp2040OnSplit" color="error" variant="soft" icon="i-lucide-alert-circle"
-          :title="$t('rp2040-split-error')" />
+        <UAlert
+          v-if="isRp2040OnSplit"
+          color="error"
+          variant="soft"
+          icon="i-lucide-alert-circle"
+          :title="$t('rp2040-split-error')"
+        />
 
         <UFormField :label="$t('change-controller-new-label')">
-          <USelect v-model="selected" :items="selectItems" class="w-full" />
+          <USelect
+            v-model="selected"
+            :items="selectItems"
+            class="w-full"
+          />
         </UFormField>
       </div>
     </template>
 
     <template #footer>
-      <UButton :label="$t('cancel')" color="neutral" variant="ghost" @click="open = false" />
-      <UButton :label="$t('change-controller-confirm')" color="error" :disabled="isRp2040OnSplit" @click="onConfirm" />
+      <UButton
+        :label="$t('cancel')"
+        color="neutral"
+        variant="ghost"
+        @click="open = false"
+      />
+      <UButton
+        :label="$t('change-controller-confirm')"
+        color="error"
+        :disabled="isRp2040OnSplit"
+        @click="onConfirm"
+      />
     </template>
   </UModal>
 </template>

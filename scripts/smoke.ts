@@ -1,28 +1,28 @@
-import { promises as fs } from "fs";
-import { createJiti } from "jiti";
-import path from "path";
-import { fileURLToPath } from "url";
-import YAML from "yaml";
+import { promises as fs } from 'fs';
+import { createJiti } from 'jiti';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import YAML from 'yaml';
 
-import type { Keyboard } from "../src/types/keyboard";
+import type { Keyboard } from '../src/types/keyboard';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(__dirname, "..");
-const fixturesRoot = path.join(repoRoot, "examples", "json");
+const repoRoot = path.resolve(__dirname, '..');
+const fixturesRoot = path.join(repoRoot, 'examples', 'json');
 
 const jiti = createJiti(import.meta.url, {
   cache: false,
   alias: {
-    "~": path.join(repoRoot, "src"),
-    "virtual:version": path.join(__dirname, "virtual-version-shim.ts"),
+    '~': path.join(repoRoot, 'src'),
+    'virtual:version': path.join(__dirname, 'virtual-version-shim.ts'),
   },
 });
 
 // Deferred import so we can attach aliases for virtual modules and paths.
-const { createZMKConfig } = await jiti.import("~/export") as typeof import("~/export");
-const { KeyboardSchema } = await jiti.import("~/types/keyboard") as typeof import("~/types/keyboard");
-const { ValidatedKeyboardSchema } = await jiti.import("~/lib/validators") as typeof import("~/lib/validators");
-const { createGitRepository } = await jiti.import("~/lib/gitrepo") as typeof import("~/lib/gitrepo");
+const { createZMKConfig } = await jiti.import('~/export') as typeof import('~/export');
+const { KeyboardSchema } = await jiti.import('~/types/keyboard') as typeof import('~/types/keyboard');
+const { ValidatedKeyboardSchema } = await jiti.import('~/lib/validators') as typeof import('~/lib/validators');
+const { createGitRepository } = await jiti.import('~/lib/gitrepo') as typeof import('~/lib/gitrepo');
 
 type BuildFiles = Record<string, string | Uint8Array>;
 
@@ -30,13 +30,13 @@ async function main(): Promise<void> {
   const [, , command, ...args] = process.argv;
 
   switch (command) {
-    case "list":
+    case 'list':
       await handleList();
       return;
-    case "generate":
+    case 'generate':
       await handleGenerate(args);
       return;
-    case "git":
+    case 'git':
       await handleGenerateGit(args);
       return;
     default:
@@ -51,13 +51,13 @@ async function handleList(): Promise<void> {
 
   const listJson = JSON.stringify(files);
   console.log(listJson);
-  await writeOutput("json-files", listJson);
+  await writeOutput('json-files', listJson);
 }
 
 async function handleGenerate(args: string[]): Promise<void> {
   const [fixturePath, destRoot] = args;
   if (!fixturePath || !destRoot) {
-    console.error("Usage: pnpm run smoke generate <fixture.json> <destDir>");
+    console.error('Usage: pnpm run smoke generate <fixture.json> <destDir>');
     process.exit(1);
   }
 
@@ -67,7 +67,7 @@ async function handleGenerate(args: string[]): Promise<void> {
   const files = createZMKConfig(keyboard);
   const matrixJson = buildMatrixJson(files);
 
-  console.log("Generated files:");
+  console.log('Generated files:');
   for (const relativePath of Object.keys(files).sort()) {
     console.log(` - ${relativePath}`);
   }
@@ -75,15 +75,15 @@ async function handleGenerate(args: string[]): Promise<void> {
   await writeVirtualRepo(files, destRoot);
   console.log(`Wrote files to ${destRoot}`);
 
-  await writeOutput("build_matrix", matrixJson);
-  console.log("Build matrix JSON:");
+  await writeOutput('build_matrix', matrixJson);
+  console.log('Build matrix JSON:');
   console.log(matrixJson);
 }
 
 async function handleGenerateGit(args: string[]): Promise<void> {
   const [fixturePath, destRoot] = args;
   if (!fixturePath || !destRoot) {
-    console.error("Usage: pnpm run smoke git <fixture.json> <destDir>");
+    console.error('Usage: pnpm run smoke git <fixture.json> <destDir>');
     process.exit(1);
   }
 
@@ -93,7 +93,7 @@ async function handleGenerateGit(args: string[]): Promise<void> {
   const configFiles = createZMKConfig(keyboard);
   const gitFiles = await createGitRepository(configFiles);
 
-  console.log("Generated git repository structure:");
+  console.log('Generated git repository structure:');
   for (const relativePath of Object.keys(gitFiles).sort()) {
     console.log(` - ${relativePath}`);
   }
@@ -119,9 +119,10 @@ async function readKeyboardFixture(fixturePath: string): Promise<Keyboard> {
 
   let parsed: unknown;
   try {
-    const content = await fs.readFile(absolutePath, "utf8");
+    const content = await fs.readFile(absolutePath, 'utf8');
     parsed = JSON.parse(content);
-  } catch (error) {
+  }
+  catch (error) {
     console.error(`Failed to read fixture ${fixturePath}:`, error);
     process.exit(1);
   }
@@ -132,9 +133,9 @@ async function readKeyboardFixture(fixturePath: string): Promise<Keyboard> {
     const issues = schema.error.errors
       .map(
         (issue: { path: (string | number)[]; message: string }) =>
-          `${issue.path.join(".")}: ${issue.message}`,
+          `${issue.path.join('.')}: ${issue.message}`,
       )
-      .join("\n");
+      .join('\n');
     console.error(`Invalid keyboard fixture ${fixturePath} (schema):\n${issues}`);
     process.exit(1);
   }
@@ -146,9 +147,9 @@ async function readKeyboardFixture(fixturePath: string): Promise<Keyboard> {
     const issues = validated.error.issues
       .map(
         (issue: { path: (string | number)[]; message: string }) =>
-          `${issue.path.join(".")}: ${issue.message}`,
+          `${issue.path.join('.')}: ${issue.message}`,
       )
-      .join("\n");
+      .join('\n');
     console.error(`Invalid keyboard fixture ${fixturePath} (validation):\n${issues}`);
     process.exit(1);
   }
@@ -168,7 +169,8 @@ async function walkForJson(dir: string): Promise<string[]> {
       const full = path.join(current, entry.name);
       if (entry.isDirectory()) {
         stack.push(full);
-      } else if (entry.isFile() && entry.name.endsWith(".json")) {
+      }
+      else if (entry.isFile() && entry.name.endsWith('.json')) {
         found.push(full);
       }
     }
@@ -181,9 +183,10 @@ async function writeVirtualRepo(files: BuildFiles, destRoot: string): Promise<vo
   for (const [relative, content] of Object.entries(files)) {
     const fullPath = path.join(destRoot, relative);
     await fs.mkdir(path.dirname(fullPath), { recursive: true });
-    if (typeof content === "string") {
-      await fs.writeFile(fullPath, content, "utf8");
-    } else {
+    if (typeof content === 'string') {
+      await fs.writeFile(fullPath, content, 'utf8');
+    }
+    else {
       await fs.writeFile(fullPath, content);
     }
   }
@@ -196,34 +199,34 @@ async function writeOutput(key: string, value: string): Promise<void> {
 }
 
 function buildMatrixJson(files: BuildFiles): string {
-  const buildYaml = files["build.yaml"];
+  const buildYaml = files['build.yaml'];
   if (!buildYaml) {
-    throw new Error("build.yaml not generated by templating");
+    throw new Error('build.yaml not generated by templating');
   }
 
   // Pre-processing to enable optional (commented-out) builds:
   // Split into lines and find `---` document separator.
   // For all lines after it, if the line starts with `#`, remove one `#`.
-  const lines = buildYaml.split("\n");
-  const documentStartIndex = lines.findIndex(line => line === "---");
+  const lines = buildYaml.split('\n');
+  const documentStartIndex = lines.findIndex(line => line === '---');
 
   for (let i = documentStartIndex + 1; i < lines.length; i++) {
     const line = lines[i];
-    if (line.startsWith("#")) {
+    if (line.startsWith('#')) {
       lines[i] = line.slice(1);
     }
   }
 
-  const processedYaml = lines.join("\n");
+  const processedYaml = lines.join('\n');
   const parsed = YAML.parse(processedYaml);
 
   if (
-    typeof parsed !== "object" ||
-    parsed === null ||
-    Array.isArray(parsed) ||
-    !("include" in parsed)
+    typeof parsed !== 'object'
+    || parsed === null
+    || Array.isArray(parsed)
+    || !('include' in parsed)
   ) {
-    throw new Error("build.yaml does not have expected structure");
+    throw new Error('build.yaml does not have expected structure');
   }
 
   // Remove settings_reset entries — they are identical across all builds
@@ -231,10 +234,10 @@ function buildMatrixJson(files: BuildFiles): string {
   if (Array.isArray(parsed.include)) {
     parsed.include = parsed.include.filter(
       (entry: Record<string, unknown>) => {
-        if (typeof entry !== "object" || entry === null) return true;
-        if (!("shield" in entry)) return true;
-        if (typeof entry.shield !== "string") return true;
-        return !(entry.shield as string).includes("settings_reset");
+        if (typeof entry !== 'object' || entry === null) return true;
+        if (!('shield' in entry)) return true;
+        if (typeof entry.shield !== 'string') return true;
+        return !(entry.shield as string).includes('settings_reset');
       },
     );
   }
@@ -244,7 +247,7 @@ function buildMatrixJson(files: BuildFiles): string {
 
 function toPosixRelative(p: string): string {
   const rel = path.relative(fixturesRoot, p);
-  return rel.split(path.sep).join("/");
+  return rel.split(path.sep).join('/');
 }
 
 await main();

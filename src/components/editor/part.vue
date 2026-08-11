@@ -1,22 +1,39 @@
 <template>
   <div class="overflow-y-auto p-2 select-none">
-
     <div class="m-2 flex justify-center items-end gap-4">
       <UFormField :label="$t('part-name')">
-        <KeyboardPartName v-model="part.name" :label="$t('part-name')" :placeholder="$t('part-name-placeholder')"
-          :description="$t('part-name-desc')" />
+        <KeyboardPartName
+          v-model="part.name"
+          :label="$t('part-name')"
+          :placeholder="$t('part-name-placeholder')"
+          :description="$t('part-name-desc')"
+        />
       </UFormField>
       <UFormField :label="$t('controller-label')">
         <UFieldGroup>
           <!-- class="flex items-center gap-2 rounded border p-2"> -->
-          <UButton :label="controllerMeta.name" color="neutral" variant="outline"
-            class="cursor-default select-none pointer-events-none" />
-          <UButton :title="$t('select-different-controller')" color="neutral" variant="outline"
-            icon="i-lucide-microchip" @click="showControllerModal = true" />
+          <UButton
+            :label="controllerMeta.name"
+            color="neutral"
+            variant="outline"
+            class="cursor-default select-none pointer-events-none"
+          />
+          <UButton
+            :title="$t('select-different-controller')"
+            color="neutral"
+            variant="outline"
+            icon="i-lucide-microchip"
+            @click="showControllerModal = true"
+          />
         </UFieldGroup>
       </UFormField>
       <UDropdownMenu :items="copyWiringItems">
-        <UButton :title="$t('copy-wiring-title')" color="neutral" variant="outline" icon="i-lucide-copy" />
+        <UButton
+          :title="$t('copy-wiring-title')"
+          color="neutral"
+          variant="outline"
+          icon="i-lucide-copy"
+        />
       </UDropdownMenu>
     </div>
     <div class="flex justify-center mt-4">
@@ -29,28 +46,42 @@
         </div>
         <div class="flex flex-row flex-nowrap gap-4">
           <div class="flex flex-nowrap flex-col gap-1 pointer-coarse:gap-4">
-            <template v-for="(pin, i) in pinVisuals.left" :key="'l-' + i">
+            <template
+              v-for="(pin, i) in pinVisuals.left"
+              :key="'l-' + i"
+            >
               <div class="flex items-center gap-2 pointer-coarse:gap-4">
-                <PinButton :pin="pin" :controller-meta="controllerMeta"
-                  :usage="pin.kind === 'gpio' ? part.pins[pin.pinId] : undefined" :context="partContext"
+                <PinButton
+                  :pin="pin"
+                  :controller-meta="controllerMeta"
+                  :usage="pin.kind === 'gpio' ? part.pins[pin.pinId] : undefined"
+                  :context="partContext"
                   :selected="pin.kind === 'gpio' && nav.wiringSelection?.pinId === pin.pinId ? nav.wiringSelection.role : false"
                   @assign-kscan="(pid: string, kid: string, role: 'input' | 'output' | 'interrupt') => handleAssignKscan(pid, kid, role)"
                   @new-kscan="(pid: string, kind: 'matrix' | 'direct' | 'charlieplex', role: 'input' | 'output' | 'interrupt') => handleNewKscan(pid, kind, role)"
                   @release-pin="(pid: string) => handleReleasePin(pid)"
-                  @select-pin="(payload: { pinId: string; role: 'input' | 'output' } | null) => handleSelectPin(payload)" />
+                  @select-pin="(payload: { pinId: string; role: 'input' | 'output' } | null) => handleSelectPin(payload)"
+                />
               </div>
             </template>
           </div>
           <div class="flex flex-nowrap flex-col gap-1 pointer-coarse:gap-4">
-            <template v-for="(pin, i) in pinVisuals.right" :key="'r-' + i">
+            <template
+              v-for="(pin, i) in pinVisuals.right"
+              :key="'r-' + i"
+            >
               <div class="flex items-center gap-2 pointer-coarse:gap-4">
-                <PinButton :pin="pin" :controller-meta="controllerMeta"
-                  :usage="pin.kind === 'gpio' ? part.pins[pin.pinId] : undefined" :context="partContext"
+                <PinButton
+                  :pin="pin"
+                  :controller-meta="controllerMeta"
+                  :usage="pin.kind === 'gpio' ? part.pins[pin.pinId] : undefined"
+                  :context="partContext"
                   :selected="pin.kind === 'gpio' && nav.wiringSelection?.pinId === pin.pinId ? nav.wiringSelection.role : false"
                   @assign-kscan="(pid: string, kid: string, role: 'input' | 'output' | 'interrupt') => handleAssignKscan(pid, kid, role)"
                   @new-kscan="(pid: string, kind: 'matrix' | 'direct' | 'charlieplex', role: 'input' | 'output' | 'interrupt') => handleNewKscan(pid, kind, role)"
                   @release-pin="(pid: string) => handleReleasePin(pid)"
-                  @select-pin="(payload: { pinId: string; role: 'input' | 'output' } | null) => handleSelectPin(payload)" />
+                  @select-pin="(payload: { pinId: string; role: 'input' | 'output' } | null) => handleSelectPin(payload)"
+                />
               </div>
             </template>
           </div>
@@ -58,43 +89,64 @@
         <div>
           <!-- Grid of 2 col on larger screens, 1 col on smaller screens -->
           <div class="flex items-center gap-2">
-            <span class="h-4 w-4 rounded bg-amber-600 inline-block"></span>
+            <span class="h-4 w-4 rounded bg-amber-600 inline-block" />
             <span>Kscan</span>
           </div>
           <div class="flex items-center gap-2">
-            <span class="h-4 w-4 rounded bg-blue-600 inline-block"></span>
+            <span class="h-4 w-4 rounded bg-blue-600 inline-block" />
             <span>{{ $t('encoders') }}</span>
           </div>
           <div class="flex items-center gap-2">
-            <span class="h-4 w-4 rounded bg-green-600 inline-block"></span>
+            <span class="h-4 w-4 rounded bg-green-600 inline-block" />
             <span>{{ $t('peripheral-devices') }}</span>
           </div>
         </div>
       </div>
     </div>
     <div class="flex justify-center mt-2">
-      <UButton :href="controllerMeta.pinref" target="_blank" rel="noopener noreferrer" :label="$t('pinout-reference')"
-        icon="i-lucide-external-link" variant="outline" color="neutral" size="sm" />
+      <UButton
+        :href="controllerMeta.pinref"
+        target="_blank"
+        rel="noopener noreferrer"
+        :label="$t('pinout-reference')"
+        icon="i-lucide-external-link"
+        variant="outline"
+        color="neutral"
+        size="sm"
+      />
     </div>
 
-    <ExtPinSection :part="part" @assign-kscan="handleAssignKscan"
-      @new-kscan="(pid, kind, role) => handleNewKscan(pid, kind, role)" @release-pin="handleReleasePin"
-      @select-pin="handleSelectPin" />
+    <ExtPinSection
+      :part="part"
+      @assign-kscan="handleAssignKscan"
+      @new-kscan="(pid, kind, role) => handleNewKscan(pid, kind, role)"
+      @release-pin="handleReleasePin"
+      @select-pin="handleSelectPin"
+    />
 
-    <KscanPanel :part="part" @add-kscan="keyboard.addKscan(nav.activePart!, $event)"
+    <KscanPanel
+      :part="part"
+      @add-kscan="keyboard.addKscan(nav.activePart!, $event)"
       @remove-kscan="keyboard.removeKscan(nav.activePart!, $event)"
       @move-kscan="(id, dir) => keyboard.moveKscan(nav.activePart!, id, dir)"
       @patch-kscan="(id, changes) => keyboard.patchKscan(nav.activePart!, id, changes)"
       @assign-pin="keyboard.assignPinToKscan(nav.activePart!, $event.pinId, $event.kscanId, $event.role)"
-      @release-pin="keyboard.releasePin(nav.activePart!, $event)" />
+      @release-pin="keyboard.releasePin(nav.activePart!, $event)"
+    />
 
-    <EncoderPanel :part="part" @add-encoder="keyboard.addEncoder(nav.activePart!)"
+    <EncoderPanel
+      :part="part"
+      @add-encoder="keyboard.addEncoder(nav.activePart!)"
       @remove-encoder="keyboard.removeEncoder(nav.activePart!, $event)"
       @move-encoder="(id, dir) => keyboard.moveEncoder(nav.activePart!, id, dir)"
-      @set-pin="keyboard.setEncoderPin(nav.activePart!, $event.encoderId, $event.phase, $event.pinId)" />
+      @set-pin="keyboard.setEncoderPin(nav.activePart!, $event.encoderId, $event.phase, $event.pinId)"
+    />
 
     <BusDevicePanel :part="part" />
-    <ControllerChangeModal v-model="showControllerModal" @confirm="onControllerChange" />
+    <ControllerChangeModal
+      v-model="showControllerModal"
+      @confirm="onControllerChange"
+    />
   </div>
 </template>
 
@@ -139,8 +191,8 @@ const controllerMeta = computed(() => Controllers[part.value.controller]);
 const pinVisuals = computed(() => ControllerPinVisuals[part.value.controller]);
 const partContext = computed<PartPinContext>(() => ({
   name: part.value.name,
-  kscans: part.value.kscans.map((k) => ({ id: k.id, kind: k.kind })),
-  encoders: part.value.encoders.map((e) => ({ id: e.id })),
+  kscans: part.value.kscans.map(k => ({ id: k.id, kind: k.kind })),
+  encoders: part.value.encoders.map(e => ({ id: e.id })),
 }));
 const showControllerModal = ref(false);
 
@@ -160,13 +212,12 @@ function handleNewKscan(pinId: string, kind: 'matrix' | 'direct' | 'charlieplex'
   }
 }
 
-
 /** Assign pin to existing kscan and auto-select for key wiring (non-charlieplex only). */
 function handleAssignKscan(pinId: string, kscanId: string, role: 'input' | 'output' | 'interrupt') {
   keyboard.assignPinToKscan(nav.activePart!, pinId as PinId, kscanId, role);
   if (role !== 'interrupt') {
     // Only auto-select for non-charlieplex kscans.
-    const kscan = keyboard.parts[nav.activePart!].kscans.find((k) => k.id === kscanId);
+    const kscan = keyboard.parts[nav.activePart!].kscans.find(k => k.id === kscanId);
     if (kscan && kscan.kind !== 'charlieplex') {
       nav.wiringSelection = { pinId: pinId as PinId, role: role as 'input' | 'output' };
     }
@@ -218,7 +269,6 @@ const copyWiringItems = computed<DropdownMenuItem[][]>(() => {
     items,
   ];
 });
-
 </script>
 
 <ftl locale="en">

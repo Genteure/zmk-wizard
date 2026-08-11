@@ -1,6 +1,6 @@
-import { z } from "astro/zod";
-import { DeviceIdSchema } from "~/types/utils";
-import type { DeviceMeta } from "./type";
+import { z } from 'astro/zod';
+import { DeviceIdSchema } from '~/types/utils';
+import type { DeviceMeta } from './type';
 
 // ── Zod Schema (data model — no pin refs) ───────────────
 // SSD1306 has no device-level GPIOs. Only bus-level pins
@@ -8,7 +8,7 @@ import type { DeviceMeta } from "./type";
 
 export const ssd1306DeviceSchema = z.object({
   id: DeviceIdSchema,
-  type: z.literal("ssd1306"),
+  type: z.literal('ssd1306'),
   add: z.number().min(0).max(0x7f).default(0x3c),
   width: z.number().min(1).default(128),
   height: z.number().min(1).default(64),
@@ -18,10 +18,10 @@ export type SSD1306Device = z.infer<typeof ssd1306DeviceSchema>;
 // ── Metadata ────────────────────────────────────────────
 
 export const ssd1306Meta = {
-  type: "ssd1306",
+  type: 'ssd1306',
   schema: ssd1306DeviceSchema,
-  bus: "i2c",
-  class: "display",
+  bus: 'i2c',
+  class: 'display',
   exclusive: false,
   // No external module — SSD1306 driver is built into ZMK.
   requiredBusPins: {
@@ -31,26 +31,26 @@ export const ssd1306Meta = {
     // SSD1306 has no device-level GPIOs.
   },
   visual: {
-    name: "SSD1306 OLED Display",
-    short: "SSD1306",
-    category: "display",
+    name: 'SSD1306 OLED Display',
+    short: 'SSD1306',
+    category: 'display',
   },
   props: {
     add: {
-      widget: "hex",
-      label: "I2C Address",
+      widget: 'hex',
+      label: 'I2C Address',
       min: 0x00,
       max: 0x7f,
       required: true,
     },
     width: {
-      widget: "dec",
-      label: "Width (px)",
+      widget: 'dec',
+      label: 'Width (px)',
       min: 1,
     },
     height: {
-      widget: "dec",
-      label: "Height (px)",
+      widget: 'dec',
+      label: 'Height (px)',
       min: 1,
     },
   },
@@ -122,4 +122,4 @@ endif # LVGL
 
     return { deviceDts, kconfig };
   },
-} satisfies DeviceMeta<"ssd1306">;
+} satisfies DeviceMeta<'ssd1306'>;

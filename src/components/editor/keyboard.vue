@@ -1,90 +1,172 @@
 <template>
   <div class="overflow-y-auto p-2">
-
-    <UCard :title="$t('external-modules-title')" :description="$t('external-modules-description')">
-
+    <UCard
+      :title="$t('external-modules-title')"
+      :description="$t('external-modules-description')"
+    >
       <!-- Enabled Modules -->
-      <div class="font-bold text-sm mb-2">{{ $t('external-modules-enabled') }}</div>
+      <div class="font-bold text-sm mb-2">
+        {{ $t('external-modules-enabled') }}
+      </div>
       <div class="flex flex-col gap-2">
-        <div v-if="keyboard.modules.length === 0"
-          class="text-toned text-sm italic p-3 rounded-lg ring ring-default bg-muted/40">
+        <div
+          v-if="keyboard.modules.length === 0"
+          class="text-toned text-sm italic p-3 rounded-lg ring ring-default bg-muted/40"
+        >
           {{ $t('external-modules-none') }}
         </div>
-        <div v-for="modId in keyboard.modules" :key="modId"
-          class="flex items-center justify-between gap-3 p-3 rounded-lg ring ring-default bg-muted">
+        <div
+          v-for="modId in keyboard.modules"
+          :key="modId"
+          class="flex items-center justify-between gap-3 p-3 rounded-lg ring ring-default bg-muted"
+        >
           <div class="min-w-0 flex-1">
-            <UButton :href="moduleGitUrl(modId)" target="_blank" variant="link" class="p-0">
+            <UButton
+              :href="moduleGitUrl(modId)"
+              target="_blank"
+              variant="link"
+              class="p-0"
+            >
               {{ moduleMeta(modId)?.name ?? modId }}
             </UButton>
             <div class="text-xs text-toned mt-0.5">
               {{ $t('external-modules-provides', { devices: getDevicesForModule(modId).join(', ') }) }}
             </div>
           </div>
-          <UButton icon="i-lucide-minus" color="error" variant="ghost" size="sm" @click="keyboard.removeModule(modId)">
+          <UButton
+            icon="i-lucide-minus"
+            color="error"
+            variant="ghost"
+            size="sm"
+            @click="keyboard.removeModule(modId)"
+          >
             {{ $t('external-modules-remove') }}
           </UButton>
         </div>
       </div>
 
-      <hr class="my-4 border-default" />
+      <hr class="my-4 border-default">
 
       <!-- Available Modules -->
-      <div class="font-bold text-sm mb-2">{{ $t('external-modules-supported') }}</div>
+      <div class="font-bold text-sm mb-2">
+        {{ $t('external-modules-supported') }}
+      </div>
       <div class="flex flex-col gap-2">
-        <div v-if="availableModules.length === 0"
-          class="text-toned text-sm italic p-3 rounded-lg ring ring-default bg-muted/40">
+        <div
+          v-if="availableModules.length === 0"
+          class="text-toned text-sm italic p-3 rounded-lg ring ring-default bg-muted/40"
+        >
           {{ $t('external-modules-all-enabled') }}
         </div>
-        <div v-for="[modId, meta] in availableModules" :key="modId"
+        <div
+          v-for="[modId, meta] in availableModules"
+          :key="modId"
           class="flex items-center justify-between gap-3 p-3 rounded-lg ring"
-          :class="moduleConflicts(modId).length ? 'ring-warning/50 bg-warning/5' : 'ring-default bg-muted/40'">
+          :class="moduleConflicts(modId).length ? 'ring-warning/50 bg-warning/5' : 'ring-default bg-muted/40'"
+        >
           <div class="min-w-0 flex-1">
-            <UButton :href="moduleGitUrl(modId)" target="_blank" variant="link" class="p-0">
+            <UButton
+              :href="moduleGitUrl(modId)"
+              target="_blank"
+              variant="link"
+              class="p-0"
+            >
               {{ meta.name }}
             </UButton>
             <div class="text-xs text-toned mt-0.5">
               {{ $t('external-modules-provides', { devices: getDevicesForModule(modId).join(', ') }) }}
             </div>
-            <div v-if="moduleConflicts(modId).length" class="flex items-center gap-1 text-xs text-warning mt-1">
-              <UIcon name="i-lucide-alert-triangle" class="size-3" />
-              {{$t('external-modules-conflict-hint', {
+            <div
+              v-if="moduleConflicts(modId).length"
+              class="flex items-center gap-1 text-xs text-warning mt-1"
+            >
+              <UIcon
+                name="i-lucide-alert-triangle"
+                class="size-3"
+              />
+              {{ $t('external-modules-conflict-hint', {
                 conflicts: moduleConflicts(modId).map(m => moduleMeta(m)?.name
-                  ?? m).join(', ')
-              })}}
+                  ?? m).join(', '),
+              }) }}
             </div>
           </div>
-          <UButton icon="i-lucide-plus" color="success" variant="ghost" size="sm"
-            :disabled="moduleConflicts(modId).length > 0" @click="keyboard.addModule(modId)">
+          <UButton
+            icon="i-lucide-plus"
+            color="success"
+            variant="ghost"
+            size="sm"
+            :disabled="moduleConflicts(modId).length > 0"
+            @click="keyboard.addModule(modId)"
+          >
             {{ $t('external-modules-add') }}
           </UButton>
         </div>
       </div>
     </UCard>
 
-    <UCard class="mt-4" :title="$t('dongle-title')" :description="$t('dongle-description')">
-      <UCheckbox color="primary" variant="card" class="cursor-pointer" v-model="keyboard.dongle"
-        :label="$t('dongle-checkbox-label')" :description="$t('dongle-checkbox-description')" />
-      <i18n path="dongle-docs-link" tag="p" class="text-toned text-sm mt-4">
+    <UCard
+      class="mt-4"
+      :title="$t('dongle-title')"
+      :description="$t('dongle-description')"
+    >
+      <UCheckbox
+        v-model="keyboard.dongle"
+        color="primary"
+        variant="card"
+        class="cursor-pointer"
+        :label="$t('dongle-checkbox-label')"
+        :description="$t('dongle-checkbox-description')"
+      />
+      <i18n
+        path="dongle-docs-link"
+        tag="p"
+        class="text-toned text-sm mt-4"
+      >
         <template #dongleLink="{ dongleLinkLabel }">
-          <ULink to="https://zmk.dev/docs/hardware-integration/dongle" target="_blank">{{ dongleLinkLabel }}</ULink>
+          <ULink
+            to="https://zmk.dev/docs/hardware-integration/dongle"
+            target="_blank"
+          >
+            {{ dongleLinkLabel }}
+          </ULink>
         </template>
       </i18n>
-      <p class="text-toned text-sm mt-2">{{ $t('dongle-checkbox-explanation') }}</p>
-      <i18n path="dongle-build-matrix" tag="p" class="text-toned text-sm mt-2">
+      <p class="text-toned text-sm mt-2">
+        {{ $t('dongle-checkbox-explanation') }}
+      </p>
+      <i18n
+        path="dongle-build-matrix"
+        tag="p"
+        class="text-toned text-sm mt-2"
+      >
         <template #buildFile>
           <code class="font-mono text-xs px-1 py-0.5 rounded border border-default">build.yaml</code>
         </template>
       </i18n>
     </UCard>
 
-    <UCard class="mt-4" :title="$t('keymap-title')" :description="$t('keymap-description')">
-      <i18n path="keymap-default-explanation" tag="p" class="text-toned text-sm mb-2">
+    <UCard
+      class="mt-4"
+      :title="$t('keymap-title')"
+      :description="$t('keymap-description')"
+    >
+      <i18n
+        path="keymap-default-explanation"
+        tag="p"
+        class="text-toned text-sm mb-2"
+      >
         <template #codeSample>
           <code class="font-mono text-xs px-1 py-0.5 rounded border border-default">&kp A &kp B &kp C …</code>
         </template>
       </i18n>
-      <p class="text-toned text-sm mb-2">{{ $t('keymap-layout-explanation') }}</p>
-      <i18n path="keymap-create-instructions" tag="p" class="text-toned text-sm">
+      <p class="text-toned text-sm mb-2">
+        {{ $t('keymap-layout-explanation') }}
+      </p>
+      <i18n
+        path="keymap-create-instructions"
+        tag="p"
+        class="text-toned text-sm"
+      >
         <template #afterEmphasis="{ afterLabel }">
           <em>{{ afterLabel }}</em>
         </template>
@@ -127,14 +209,14 @@ function moduleGitUrl(modId: ModuleId): string {
 
 /** List of enabled module IDs that conflict with the given module. */
 function moduleConflicts(modId: ModuleId): ModuleId[] {
-  return keyboard.modules.filter((enabled) => modulesConflict(modId, enabled));
+  return keyboard.modules.filter(enabled => modulesConflict(modId, enabled));
 }
 
 /** Device type names that require a specific module. */
 function getDevicesForModule(modId: ModuleId): string[] {
   return Object.values(DEVICE_REGISTRY)
-    .filter((meta) => meta.module === modId)
-    .map((meta) => meta.visual.name);
+    .filter(meta => meta.module === modId)
+    .map(meta => meta.visual.name);
 }
 </script>
 

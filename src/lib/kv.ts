@@ -6,7 +6,7 @@
 // Use `import { env } from "cloudflare:workers"` instead.
 // ─────────────────────────────────────────────────────────────
 
-import { env } from "cloudflare:workers";
+import { env } from 'cloudflare:workers';
 
 export const ExpirationTtlSeconds = 60 * 60 * 24; // 24 hours
 
@@ -23,8 +23,8 @@ export function getRepoKV(): {
       },
       setData: async (key: string, value: ReadableStream) => {
         await gitRepos.put(key, value, { expirationTtl: ExpirationTtlSeconds });
-      }
+      },
     };
   }
-  throw new Error("KV binding not found in environment.");
+  throw new Error('KV binding not found in environment.');
 }

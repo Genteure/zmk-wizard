@@ -12,14 +12,14 @@ export function physicalToLogical(keys: Key[], ignoreOrder: boolean): void {
 
   const posList = keys.map(k => keyCenter(k, { keySize: 1 }));
   const minPosY = Math.min(...posList.map(p => p.y));
-  posList.forEach(p => { p.y -= minPosY; });
+  posList.forEach((p) => { p.y -= minPosY; });
   const posMap = new Map<Key, Point>(keys.map((k, i) => [k, posList[i]]));
 
   if (ignoreOrder) {
     keys.sort(
       (a, b) =>
-        (Math.floor(posMap.get(a)?.y ?? 0) - Math.floor(posMap.get(b)?.y ?? 0)) ||
-        ((posMap.get(a)?.x ?? 0) - (posMap.get(b)?.x ?? 0))
+        (Math.floor(posMap.get(a)?.y ?? 0) - Math.floor(posMap.get(b)?.y ?? 0))
+        || ((posMap.get(a)?.x ?? 0) - (posMap.get(b)?.x ?? 0)),
     );
   }
 
@@ -31,7 +31,8 @@ export function physicalToLogical(keys: Key[], ignoreOrder: boolean): void {
     if (!currentPos || !prevPos) continue;
     if (currentPos.x < (prevPos.x + 0.4)) {
       rows.push([keys[i]]);
-    } else {
+    }
+    else {
       rows[rows.length - 1].push(keys[i]);
     }
   }
@@ -62,7 +63,8 @@ export function physicalToLogical(keys: Key[], ignoreOrder: boolean): void {
       const newCol: (Key | undefined)[] = [];
       newCol[minRowIndex] = minKey;
       cols.push(newCol);
-    } else {
+    }
+    else {
       cols[cols.length - 1][minRowIndex] = minKey;
     }
   }
@@ -221,7 +223,8 @@ export function parseLayoutJson(json: string): Key[] | null {
 
     if (keys.some(k => k.row < 0 || k.col < 0)) {
       physicalToLogical(keys, false);
-    } else {
+    }
+    else {
       for (let i = 1; i < keys.length; i++) {
         if ((keys[i].row < keys[i - 1].row) || (keys[i].row === keys[i - 1].row && keys[i].col <= keys[i - 1].col)) {
           physicalToLogical(keys, false);
@@ -231,7 +234,8 @@ export function parseLayoutJson(json: string): Key[] | null {
     }
 
     return keys;
-  } catch {
+  }
+  catch {
     return null;
   }
 }
@@ -247,7 +251,8 @@ export function parseKleJson(json: string): Key[] | null {
     if (isArray(root)) {
       if (root.length === 0) return null;
       kleArray = root;
-    } else if (isRecord(root) && 'layouts' in root && isRecord(root.layouts) && 'keymap' in root.layouts && isArray(root.layouts.keymap) && root.layouts.keymap.length > 0) {
+    }
+    else if (isRecord(root) && 'layouts' in root && isRecord(root.layouts) && 'keymap' in root.layouts && isArray(root.layouts.keymap) && root.layouts.keymap.length > 0) {
       kleArray = root.layouts.keymap;
     }
 
@@ -288,7 +293,8 @@ export function parseKleJson(json: string): Key[] | null {
 
     if (keys.some(k => k.row < 0 || k.col < 0)) {
       physicalToLogical(keys, false);
-    } else {
+    }
+    else {
       keys.sort((a, b) => (a.row - b.row) || (a.col - b.col));
     }
 
@@ -299,7 +305,8 @@ export function parseKleJson(json: string): Key[] | null {
     }
 
     return keys;
-  } catch {
+  }
+  catch {
     return null;
   }
 }
@@ -367,11 +374,11 @@ export function parseCsv(csv: string): Key[] | null {
  * Export keyboard layout to KLE JSON string.
  */
 export function exportKleJson(keys: Key[]): string {
-  if (!keys.length) return "[]";
+  if (!keys.length) return '[]';
 
   const kle = new KLEKeyboard();
 
-  keys.forEach(k => {
+  keys.forEach((k) => {
     const key = new KLEKey();
     key.width = k.w;
     key.height = k.h;
@@ -380,7 +387,7 @@ export function exportKleJson(keys: Key[]): string {
     key.rotation_angle = k.r;
     key.rotation_x = k.rx;
     key.rotation_y = k.ry;
-    key.labels[0] = k.row + "," + k.col;
+    key.labels[0] = k.row + ',' + k.col;
     kle.keys.push(key);
   });
 

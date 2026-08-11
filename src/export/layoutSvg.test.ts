@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
-import type { Key } from "~/types";
-import { generateLayoutSvg } from "./layoutSvg";
-import { DEFAULT_KEY_SIZE as KS, DEFAULT_PADDING as PAD } from "~/components/graphic/keyShape";
+import { describe, it, expect } from 'vitest';
+import type { Key } from '~/types';
+import { generateLayoutSvg } from './layoutSvg';
+import { DEFAULT_KEY_SIZE as KS, DEFAULT_PADDING as PAD } from '~/components/graphic/keyShape';
 
 function key(overrides: Partial<Key>): Key {
   return {
-    id: "k",
+    id: 'k',
     part: 0,
     row: 0,
     col: 0,
@@ -29,11 +29,11 @@ function rotateCenter(svg: string, index: number): [number, number] | null {
   return m ? [Number(m[2]), Number(m[3])] : null;
 }
 
-describe("generateLayoutSvg", () => {
+describe('generateLayoutSvg', () => {
   // Rotation-origin fallback: rx === 0 means "rotate around the key's own
   // top-left corner" (same for ry) — must match the editor (KeyEntity.vue).
-  describe("rotated key transforms", () => {
-    it("rotates a normalized key (rx=0, ry=0) around its own top-left corner", () => {
+  describe('rotated key transforms', () => {
+    it('rotates a normalized key (rx=0, ry=0) around its own top-left corner', () => {
       const svg = generateLayoutSvg({
         layout: [key({ x: 2.5, y: 1.5, r: 30 })],
       });
@@ -41,21 +41,21 @@ describe("generateLayoutSvg", () => {
       expect(rotateCenter(svg, 0)).toEqual([0, 0]);
     });
 
-    it("rotates around an explicit non-zero origin", () => {
+    it('rotates around an explicit non-zero origin', () => {
       const svg = generateLayoutSvg({
         layout: [key({ x: 5, y: 3, r: 20, rx: 6, ry: 3 })],
       });
       expect(rotateCenter(svg, 0)).toEqual([(6 - 5) * KS, (3 - 3) * KS]);
     });
 
-    it("applies the per-axis fallback (ry=0 → rotate around key y)", () => {
+    it('applies the per-axis fallback (ry=0 → rotate around key y)', () => {
       const svg = generateLayoutSvg({
         layout: [key({ x: 6, y: 2, r: 45, rx: 6 })],
       });
       expect(rotateCenter(svg, 0)).toEqual([0, 0]);
     });
 
-    it("leaves unrotated keys without a rotate()", () => {
+    it('leaves unrotated keys without a rotate()', () => {
       const svg = generateLayoutSvg({
         layout: [key({ x: 1, y: 1 }), key({ x: 2, y: 1, r: 10 })],
       });
@@ -64,8 +64,8 @@ describe("generateLayoutSvg", () => {
     });
   });
 
-  describe("viewBox containment", () => {
-    it("keeps rotated keys inside the viewBox", () => {
+  describe('viewBox containment', () => {
+    it('keeps rotated keys inside the viewBox', () => {
       const layout = [
         key({ x: 0, y: 0 }),
         key({ x: 4, y: 0 }),

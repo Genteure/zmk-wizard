@@ -1,8 +1,8 @@
-import { z } from "astro/zod";
-import { I2cDeviceSchema, SpiDeviceSchema } from "~/metadata/device";
+import { z } from 'astro/zod';
+import { I2cDeviceSchema, SpiDeviceSchema } from '~/metadata/device';
 
 // Re-export from utils and metadata — single source of truth lives there.
-export { DeviceIdSchema, type DeviceId } from "./utils";
+export { DeviceIdSchema, type DeviceId } from './utils';
 
 // Re-export device schemas + types from metadata.
 export {
@@ -17,20 +17,20 @@ export {
   I2cDeviceSchema, type I2cDevice,
   SpiDeviceSchema, type SpiDevice,
   AnyBusDeviceSchema, type AnyBusDevice,
-} from "~/metadata/device";
+} from '~/metadata/device';
 
 // ── Pin & Bus Identifiers ─────────────────────────────────
 
 /**
  * Pin identifier, e.g. d0, d1, p101, gp12, etc.
  */
-export const PinIdSchema = z.string().brand<"PinId">().max(40);
+export const PinIdSchema = z.string().brand<'PinId'>().max(40);
 export type PinId = z.infer<typeof PinIdSchema>;
 
-export const BusNameSchema = z.string().brand<"BusName">()
-  .min(1, "Bus name cannot be empty")
-  .max(16, "Bus name cannot be longer than 16 characters")
-  .regex(/^[a-zA-Z0-9_]+$/, "Bus name must contain only letters, numbers, and underscores");
+export const BusNameSchema = z.string().brand<'BusName'>()
+  .min(1, 'Bus name cannot be empty')
+  .max(16, 'Bus name cannot be longer than 16 characters')
+  .regex(/^[a-zA-Z0-9_]+$/, 'Bus name must contain only letters, numbers, and underscores');
 export type BusName = z.infer<typeof BusNameSchema>;
 
 // ── Bus Schemas ───────────────────────────────────────────
@@ -41,18 +41,18 @@ export type BusName = z.infer<typeof BusNameSchema>;
 // This keeps all pin assignments in one place.
 
 export const SpiBusSchema = z.object({
-  type: z.literal("spi"),
+  type: z.literal('spi'),
   devices: z.array(SpiDeviceSchema).default([]),
 });
 export type SpiBus = z.infer<typeof SpiBusSchema>;
 
 export const I2cBusSchema = z.object({
-  type: z.literal("i2c"),
+  type: z.literal('i2c'),
   devices: z.array(I2cDeviceSchema).default([]),
 });
 export type I2cBus = z.infer<typeof I2cBusSchema>;
 
-export const BusSchema = z.discriminatedUnion("type", [
+export const BusSchema = z.discriminatedUnion('type', [
   SpiBusSchema,
   I2cBusSchema,
 ]);

@@ -86,7 +86,7 @@ function convertFlatToTree(vfs: Record<string, string | Uint8Array<ArrayBuffer>>
 
 async function createGitObject(
   type: 'blob' | 'tree' | 'commit',
-  body: Uint8Array<ArrayBuffer>
+  body: Uint8Array<ArrayBuffer>,
 ): Promise<{ hash: string; content: Uint8Array<ArrayBuffer> }> {
   const hdr = new TextEncoder().encode(`${type} ${body.length}\0`);
   const content = concat([hdr, body]);
@@ -94,7 +94,7 @@ async function createGitObject(
 }
 
 async function createGitTree(
-  entries: { mode: string; name: string; hash: string }[]
+  entries: { mode: string; name: string; hash: string }[],
 ): Promise<{ hash: string; content: Uint8Array<ArrayBuffer> }> {
   // Git sorts tree entries as if directories have '/' appended to their name
   entries.sort((a, b) => {
@@ -113,14 +113,14 @@ async function createGitTree(
 async function createGitCommit(
   treeHash: string,
   author: string,
-  message: string
+  message: string,
 ): Promise<{ hash: string; content: Uint8Array<ArrayBuffer> }> {
   const ts = Math.floor(Date.now() / 1000);
-  const body =
-    `tree ${treeHash}\n` +
-    `author ${author} ${ts} +0000\n` +
-    `committer ${author} ${ts} +0000\n\n` +
-    `${message}\n`;
+  const body
+    = `tree ${treeHash}\n`
+      + `author ${author} ${ts} +0000\n`
+      + `committer ${author} ${ts} +0000\n\n`
+      + `${message}\n`;
   return createGitObject('commit', new TextEncoder().encode(body));
 }
 
@@ -163,21 +163,20 @@ function packObjectHeader(type: number, size: number): Uint8Array<ArrayBuffer> {
 interface PackEntry {
   hash: string;
   typeNum: number;
-  rawContent: Uint8Array<ArrayBuffer>;   // content without the "type size\0" header
-  compressed: Uint8Array<ArrayBuffer>;   // zlib(rawContent)
-  packHdr: Uint8Array<ArrayBuffer>;      // variable-length type+size header for the packfile
+  rawContent: Uint8Array<ArrayBuffer>; // content without the "type size\0" header
+  compressed: Uint8Array<ArrayBuffer>; // zlib(rawContent)
+  packHdr: Uint8Array<ArrayBuffer>; // variable-length type+size header for the packfile
 }
 
 async function buildPackfile(
-  allObjects: Map<string, Uint8Array<ArrayBuffer>> // hash → full git object ("type size\0" + content)
+  allObjects: Map<string, Uint8Array<ArrayBuffer>>, // hash → full git object ("type size\0" + content)
 ): Promise<{ packfile: Uint8Array<ArrayBuffer>; index: Uint8Array<ArrayBuffer>; packHash: string }> {
-
   // 1. Parse each full object to extract its type and raw content,
   //    then compress just the raw content.
   const entries: PackEntry[] = [];
   for (const [hash, fullContent] of allObjects) {
-    const spaceIdx = fullContent.indexOf(0x20);   // end of type name
-    const nullIdx = fullContent.indexOf(0x00);    // end of "type size"
+    const spaceIdx = fullContent.indexOf(0x20); // end of type name
+    const nullIdx = fullContent.indexOf(0x00); // end of "type size"
     const typeStr = new TextDecoder().decode(fullContent.subarray(0, spaceIdx));
     const typeNum = GIT_TYPE_NUM[typeStr];
     if (typeNum === undefined) continue;
@@ -198,8 +197,8 @@ async function buildPackfile(
   // 3. Build the packfile.
   const packChunks: Uint8Array<ArrayBuffer>[] = [
     new TextEncoder().encode('PACK'), // magic
-    u32(2),                            // version
-    u32(entries.length),               // object count
+    u32(2), // version
+    u32(entries.length), // object count
   ];
   let packOff = 12;
   const offsets = new Map<string, number>();
@@ -223,13 +222,13 @@ async function buildPackfile(
 
   const idxChunks: Uint8Array<ArrayBuffer>[] = [
     new Uint8Array([0xff, 0x74, 0x4f, 0x63]), // magic \377tOc
-    u32(2),                                     // version 2
+    u32(2), // version 2
   ];
-  for (let i = 0; i < 256; i++) idxChunks.push(u32(fanout[i]));      // fanout
-  for (const e of entries) idxChunks.push(fromHex(e.hash));           // SHA-1s
-  for (const e of entries) idxChunks.push(u32(crc32(concat([e.packHdr, e.compressed]))));  // CRC-32s
+  for (let i = 0; i < 256; i++) idxChunks.push(u32(fanout[i])); // fanout
+  for (const e of entries) idxChunks.push(fromHex(e.hash)); // SHA-1s
+  for (const e of entries) idxChunks.push(u32(crc32(concat([e.packHdr, e.compressed])))); // CRC-32s
   for (const e of entries) idxChunks.push(u32(offsets.get(e.hash)!)); // offsets
-  idxChunks.push(packSha1);                                           // pack checksum
+  idxChunks.push(packSha1); // pack checksum
 
   const idxBody = concat(idxChunks);
   const idxSha1 = await sha1(idxBody);
@@ -241,7 +240,7 @@ async function buildPackfile(
 // ── Main export ──────────────────────────────────────────────
 
 export async function createGitRepository(
-  files: Record<string, string | Uint8Array<ArrayBuffer>>
+  files: Record<string, string | Uint8Array<ArrayBuffer>>,
 ): Promise<Record<string, Uint8Array<ArrayBuffer>>> {
   const allObjects = new Map<string, Uint8Array<ArrayBuffer>>();
 

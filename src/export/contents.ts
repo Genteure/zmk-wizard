@@ -6,11 +6,11 @@
 // All Kconfig belongs in Kconfig.defconfig, not name.conf.
 // ─────────────────────────────────────────────────────────────
 
-import type { ControllerId, Keyboard, KeyboardPart, PinId } from "~/types";
-import { Controllers } from "~/metadata/controllers";
-import { getDeviceMeta } from "~/metadata/device";
-import { centralToPeripheralSnippetName } from "./paths";
-import { version } from "virtual:version";
+import type { ControllerId, Keyboard, KeyboardPart, PinId } from '~/types';
+import { Controllers } from '~/metadata/controllers';
+import { getDeviceMeta } from '~/metadata/device';
+import { centralToPeripheralSnippetName } from './paths';
+import { version } from 'virtual:version';
 
 // ── build.yaml ──────────────────────────────────────────────
 
@@ -20,11 +20,11 @@ export function build_yaml(keyboard: Keyboard): string {
     Controllers[controller]?.board ?? controller;
 
   const niceView = (part: KeyboardPart): string =>
-    Object.values(part.buses).some((bus) =>
-      bus.devices.some((d) => d.type === "niceview"),
+    Object.values(part.buses).some(bus =>
+      bus.devices.some(d => d.type === 'niceview'),
     )
-      ? " nice_view"
-      : "";
+      ? ' nice_view'
+      : '';
 
   let content = `# This file generates the GitHub Actions matrix.
 # For simple board + shield combinations, add them to the top level board and
@@ -87,7 +87,8 @@ include:
 #    artifact-name: ${keyboard.shield}_dongle_with_studio
 `;
     }
-  } else {
+  }
+  else {
     content += `
   - board: ${boardName(firstPart.controller)}
     shield: ${keyboard.shield}_${firstPart.name}${niceView(firstPart)}
@@ -132,7 +133,7 @@ include:
     }
 
     const uniqueControllers = Array.from(
-      new Set(keyboard.parts.map((p) => p.controller)),
+      new Set(keyboard.parts.map(p => p.controller)),
     );
     for (const controller of uniqueControllers) {
       content += `
@@ -153,9 +154,9 @@ export function config_west_yml(keyboard: Keyboard): string {
 
   const uniqueDeviceTypes = Array.from(
     new Set(
-      keyboard.parts.flatMap((part) =>
-        Object.values(part.buses).flatMap((bus) =>
-          bus.devices.map((d) => d.type),
+      keyboard.parts.flatMap(part =>
+        Object.values(part.buses).flatMap(bus =>
+          bus.devices.map(d => d.type),
         ),
       ),
     ),
@@ -171,10 +172,10 @@ export function config_west_yml(keyboard: Keyboard): string {
     }
     if (
       !extraModules.some(
-        (m) =>
-          m.repo === moduleInfo.repo &&
-          m.rev === moduleInfo.rev &&
-          m.remote === moduleInfo.remote,
+        m =>
+          m.repo === moduleInfo.repo
+          && m.rev === moduleInfo.rev
+          && m.remote === moduleInfo.remote,
       )
     ) {
       extraModules.push({
@@ -187,22 +188,22 @@ export function config_west_yml(keyboard: Keyboard): string {
 
   const extraRemotesYml = extraRemotes
     .map(
-      (remote) =>
+      remote =>
         `
     - name: ${remote}
       url-base: ${ZmkRemoteBases[remote]}`,
     )
-    .join("");
+    .join('');
 
   const extraModulesYml = extraModules
     .map(
-      (m) =>
+      m =>
         `
     - name: ${m.repo}
       remote: ${m.remote}
       revision: ${m.rev}`,
     )
-    .join("");
+    .join('');
 
   return `manifest:
   defaults:
@@ -222,39 +223,39 @@ export function config_west_yml(keyboard: Keyboard): string {
 }
 
 const ZmkRemoteBases: Record<string, string> = {
-  petejohanson: "https://github.com/petejohanson",
-  badjeff: "https://github.com/badjeff",
+  petejohanson: 'https://github.com/petejohanson',
+  badjeff: 'https://github.com/badjeff',
 };
 
 const ZmkModuleInfo: Record<
   string,
   { remote: string; repo: string; rev: string }
 > = {
-  "petejohanson/cirque": {
-    remote: "petejohanson",
-    repo: "cirque-input-module",
-    rev: "0de55f36bc720b5be3d8880dc856d4d78baf5214",
+  'petejohanson/cirque': {
+    remote: 'petejohanson',
+    repo: 'cirque-input-module',
+    rev: '0de55f36bc720b5be3d8880dc856d4d78baf5214',
   },
-  "badjeff/pmw3610": {
-    remote: "badjeff",
-    repo: "zmk-pmw3610-driver",
-    rev: "zmk-0.3",
+  'badjeff/pmw3610': {
+    remote: 'badjeff',
+    repo: 'zmk-pmw3610-driver',
+    rev: 'zmk-0.3',
   },
-  "badjeff/paw3395": {
-    remote: "badjeff",
-    repo: "zmk-paw3395-driver",
-    rev: "ab43c664cf84c94bd6b9839f3e4aa9517773de82",
+  'badjeff/paw3395': {
+    remote: 'badjeff',
+    repo: 'zmk-paw3395-driver',
+    rev: 'ab43c664cf84c94bd6b9839f3e4aa9517773de82',
   },
 };
 
 // ── zephyr/module.yml ───────────────────────────────────────
 
 export function zephyr_module_yml(keyboard: Keyboard): string {
-  return `name: zmk-keyboard-${keyboard.shield.replaceAll("_", "-")}
+  return `name: zmk-keyboard-${keyboard.shield.replaceAll('_', '-')}
 build:
   settings:
     board_root: .
-${keyboard.dongle ? "    snippet_root: .\n" : ""}`;
+${keyboard.dongle ? '    snippet_root: .\n' : ''}`;
 }
 
 // ── workflows/build.yml ─────────────────────────────────────
@@ -274,18 +275,18 @@ export function kconfig_shield(keyboard: Keyboard): string {
     return (
       keyboard.parts
         .map(
-          (part) =>
+          part =>
             `config SHIELD_${keyboard.shield.toUpperCase()}_${part.name.toUpperCase()}
     def_bool $(shields_list_contains,${keyboard.shield}_${part.name})
 `,
         )
-        .join("\n") +
-      (keyboard.dongle
-        ? `
+        .join('\n')
+        + (keyboard.dongle
+          ? `
 config SHIELD_${keyboard.shield.toUpperCase()}_DONGLE
     def_bool $(shields_list_contains,${keyboard.shield}_dongle)
 `
-        : "")
+          : '')
     );
   }
 
@@ -309,10 +310,10 @@ export function kconfig_defconfig(keyboard: Keyboard): string {
   const part0 = keyboard.parts[0];
   const shieldUpper0 = `${upper}_${part0.name.toUpperCase()}`;
 
-  const enablePointing = keyboard.parts.some((part) =>
-    Object.values(part.buses).some((bus) =>
+  const enablePointing = keyboard.parts.some(part =>
+    Object.values(part.buses).some(bus =>
       bus.devices.some(
-        (d) => getDeviceMeta(d.type as never)?.class === "pointing",
+        d => getDeviceMeta(d.type as never)?.class === 'pointing',
       ),
     ),
   );
@@ -322,7 +323,7 @@ export function kconfig_defconfig(keyboard: Keyboard): string {
 config ZMK_POINTING
     default y
 `
-    : "";
+    : '';
 
   let content: string;
 
@@ -354,15 +355,16 @@ config BT_L2CAP_TX_BUF_COUNT
 endif
 
 if ${keyboard.parts
-        .map((p) => `SHIELD_${upper}_${p.name.toUpperCase()}`)
-        .join(" || ")}
+  .map(p => `SHIELD_${upper}_${p.name.toUpperCase()}`)
+  .join(' || ')}
 
 config ZMK_SPLIT
     default y
 ${pointingConfig}
 endif
 `;
-  } else {
+  }
+  else {
     content = `if SHIELD_${upper}
 
 # Name must be less than 16 characters long!
@@ -405,11 +407,11 @@ endif
   }
 
   // NFC pins (P0.09/P0.10) used as GPIO on nRF52840 — enable NFCT_PINS_AS_GPIOS
-  const NFC_PINS = new Set(["0, 9", "0, 10"]);
+  const NFC_PINS = new Set(['0, 9', '0, 10']);
   for (const part of keyboard.parts) {
     if (part.controller === 'nice_nano_v2') continue; // specifically exclude nice_nano_v2
     const controllerMeta = Controllers[part.controller];
-    if (!controllerMeta || controllerMeta.soc !== "nrf52840") continue;
+    if (!controllerMeta || controllerMeta.soc !== 'nrf52840') continue;
 
     const usesNfcPins = Object.keys(part.pins).some((pinId) => {
       const pinMeta = controllerMeta.gpios[pinId as PinId];
@@ -438,7 +440,7 @@ endif
 export function config_conf(_keyboard: Keyboard): string {
   // User-facing config file — kept empty intentionally.
   // All Kconfig goes into Kconfig.defconfig.
-  return "# User Configuration\n# All driver Kconfig is in Kconfig.defconfig\n";
+  return '# User Configuration\n# All driver Kconfig is in Kconfig.defconfig\n';
 }
 
 // ── config/<shield>.keymap ─────────────────────────────────
@@ -452,18 +454,18 @@ export function config_keymap(keyboard: Keyboard): string {
     .map((key, index) => {
       const whitespace = key.row !== lastRow
         ? `\n                `
-        : " ";
+        : ' ';
       lastRow = key.row;
       return `${whitespace}&kp ${indexToAlphabet(index)}`;
     })
-    .join("");
+    .join('');
 
   const encoderCount = keyboard.parts.reduce(
     (sum, p) => sum + p.encoders.length,
     0,
   );
 
-  let sensorBindings = "";
+  let sensorBindings = '';
   if (encoderCount > 0) {
     const bindings = Array.from({ length: encoderCount })
       .map((_, idx) => {
@@ -471,7 +473,7 @@ export function config_keymap(keyboard: Keyboard): string {
         const b = indexToAlphabet(idx * 2 + 1);
         return `&inc_dec_kp ${a} ${b}`;
       })
-      .join(" ");
+      .join(' ');
     sensorBindings = `\n            sensor-bindings = <${bindings}>;`;
   }
 
@@ -521,7 +523,7 @@ export function config_json(keyboard: Keyboard): string {
       },
       null,
       2,
-    ).replace(/(?<!},|\[)\n {7,}(?= )/gm, "") + "\n"
+    ).replace(/(?<!},|\[)\n {7,}(?= )/gm, '') + '\n'
   );
 }
 

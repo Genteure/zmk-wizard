@@ -1,6 +1,6 @@
-import { z } from "astro/zod";
-import { DeviceIdSchema } from "~/types/utils";
-import type { DeviceMeta } from "./type";
+import { z } from 'astro/zod';
+import { DeviceIdSchema } from '~/types/utils';
+import type { DeviceMeta } from './type';
 
 // ── Shared Pinnacle Properties ──────────────────────────
 // Both I2C and SPI variants share the same touchpad configuration.
@@ -13,58 +13,57 @@ const pinnaclePropSchema = {
   noSecondaryTap: z.boolean().default(true),
   noTaps: z.boolean().default(true),
   sensitivity: z
-    .union([z.literal("1x"), z.literal("2x"), z.literal("3x"), z.literal("4x")])
-    .default("2x"),
+    .union([z.literal('1x'), z.literal('2x'), z.literal('3x'), z.literal('4x')])
+    .default('2x'),
 };
 
 const pinnacleProps = {
   rotate90: {
-    widget: "checkbox" as const,
-    label: "Rotate 90°",
+    widget: 'checkbox' as const,
+    label: 'Rotate 90°',
   },
   invertx: {
-    widget: "checkbox" as const,
-    label: "Invert X axis",
+    widget: 'checkbox' as const,
+    label: 'Invert X axis',
   },
   inverty: {
-    widget: "checkbox" as const,
-    label: "Invert Y axis",
+    widget: 'checkbox' as const,
+    label: 'Invert Y axis',
   },
   sleep: {
-    widget: "checkbox" as const,
-    label: "Enable Sleep Mode",
+    widget: 'checkbox' as const,
+    label: 'Enable Sleep Mode',
   },
   noSecondaryTap: {
-    widget: "checkbox" as const,
-    label: "Disable Secondary Tap",
+    widget: 'checkbox' as const,
+    label: 'Disable Secondary Tap',
   },
   noTaps: {
-    widget: "checkbox" as const,
-    label: "Disable All Taps",
+    widget: 'checkbox' as const,
+    label: 'Disable All Taps',
   },
   sensitivity: {
-    widget: "stringOptions" as const,
-    label: "Sensitivity",
-    options: ["1x", "2x", "3x", "4x"] as readonly string[],
+    widget: 'stringOptions' as const,
+    label: 'Sensitivity',
+    options: ['1x', '2x', '3x', '4x'] as readonly string[],
   },
 };
-
 
 // ── Pinnacle SPI ────────────────────────────────────────
 export const pinnacleSpiDeviceSchema = z.object({
   id: DeviceIdSchema,
-  type: z.literal("pinnacle_spi"),
+  type: z.literal('pinnacle_spi'),
   ...pinnaclePropSchema,
 });
 export type PinnacleSpiDevice = z.infer<typeof pinnacleSpiDeviceSchema>;
 
 export const pinnacleSpiMeta = {
-  type: "pinnacle_spi",
+  type: 'pinnacle_spi',
   schema: pinnacleSpiDeviceSchema,
-  bus: "spi",
-  class: "pointing",
+  bus: 'spi',
+  class: 'pointing',
   exclusive: false,
-  module: "petejohanson/cirque",
+  module: 'petejohanson/cirque',
   requiredBusPins: {
     mosi: true,
     miso: true,
@@ -72,19 +71,19 @@ export const pinnacleSpiMeta = {
   },
   gpio: {
     cs: {
-      label: "Chip Select",
+      label: 'Chip Select',
       required: true,
     },
     dr: {
-      label: "Data Ready",
-      desc: "Data Ready / Interrupt",
+      label: 'Data Ready',
+      desc: 'Data Ready / Interrupt',
       required: true,
     },
   },
   visual: {
-    name: "Cirque Pinnacle Trackpad (SPI)",
-    short: "Pinnacle SPI",
-    category: "pointing",
+    name: 'Cirque Pinnacle Trackpad (SPI)',
+    short: 'Pinnacle SPI',
+    category: 'pointing',
   },
   props: {
     ...pinnacleProps,
@@ -117,45 +116,45 @@ export const pinnacleSpiMeta = {
 
     return { deviceDts };
   },
-} satisfies DeviceMeta<"pinnacle_spi">;
+} satisfies DeviceMeta<'pinnacle_spi'>;
 
 // ── Pinnacle I2C ────────────────────────────────────────
 
 export const pinnacleI2cDeviceSchema = z.object({
   id: DeviceIdSchema,
-  type: z.literal("pinnacle_i2c"),
+  type: z.literal('pinnacle_i2c'),
   add: z.number().min(0).max(0x7f).default(0x2a),
   ...pinnaclePropSchema,
 });
 export type PinnacleI2cDevice = z.infer<typeof pinnacleI2cDeviceSchema>;
 
 export const pinnacleI2cMeta = {
-  type: "pinnacle_i2c",
+  type: 'pinnacle_i2c',
   schema: pinnacleI2cDeviceSchema,
-  bus: "i2c",
-  class: "pointing",
+  bus: 'i2c',
+  class: 'pointing',
   exclusive: false,
-  module: "petejohanson/cirque",
+  module: 'petejohanson/cirque',
   requiredBusPins: {
     // I2C always needs SDA + SCL, but they're standard bus pins
     // — not listed here because the bus itself requires them.
   },
   gpio: {
     dr: {
-      label: "Data Ready",
+      label: 'Data Ready',
       required: true,
-      desc: "Data Ready / Interrupt",
+      desc: 'Data Ready / Interrupt',
     },
   },
   visual: {
-    name: "Cirque Pinnacle Trackpad (I2C)",
-    short: "Pinnacle I2C",
-    category: "pointing",
+    name: 'Cirque Pinnacle Trackpad (I2C)',
+    short: 'Pinnacle I2C',
+    category: 'pointing',
   },
   props: {
     add: {
-      widget: "hex",
-      label: "I2C Address",
+      widget: 'hex',
+      label: 'I2C Address',
       required: true,
       min: 0x00,
       max: 0x7f,
@@ -190,4 +189,4 @@ export const pinnacleI2cMeta = {
 
     return { deviceDts };
   },
-} satisfies DeviceMeta<"pinnacle_i2c">;
+} satisfies DeviceMeta<'pinnacle_i2c'>;

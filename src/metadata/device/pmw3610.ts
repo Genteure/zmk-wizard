@@ -1,12 +1,12 @@
-import { z } from "astro/zod";
-import { DeviceIdSchema } from "~/types/utils";
-import type { DeviceMeta } from "./type";
+import { z } from 'astro/zod';
+import { DeviceIdSchema } from '~/types/utils';
+import type { DeviceMeta } from './type';
 
 // ── Zod Schema (data model — no pin refs) ───────────────
 
 export const pmw3610DeviceSchema = z.object({
   id: DeviceIdSchema,
-  type: z.literal("pmw3610"),
+  type: z.literal('pmw3610'),
   cpi: z.number().min(0).max(3200).default(600),
   swapxy: z.boolean().default(false),
   invertx: z.boolean().default(false),
@@ -24,12 +24,12 @@ export type Pmw3610Device = z.infer<typeof pmw3610DeviceSchema>;
  * BusPinRole). The bus metadata should flag this, not the device.
  */
 export const pmw3610Meta = {
-  type: "pmw3610",
+  type: 'pmw3610',
   schema: pmw3610DeviceSchema,
-  bus: "spi",
-  class: "pointing",
+  bus: 'spi',
+  class: 'pointing',
   exclusive: true, // Half-duplex SPI — cannot share bus with any other device.
-  module: "badjeff/pmw3610",
+  module: 'badjeff/pmw3610',
   requiredBusPins: {
     mosi: true,
     miso: true,
@@ -37,37 +37,37 @@ export const pmw3610Meta = {
   },
   gpio: {
     cs: {
-      label: "Chip Select",
+      label: 'Chip Select',
       required: true,
     },
     irq: {
-      label: "MOTION",
-      desc: "Motion / interrupt pin",
+      label: 'MOTION',
+      desc: 'Motion / interrupt pin',
     },
   },
   visual: {
-    name: "PMW3610 Optical Sensor",
-    short: "PMW3610",
-    category: "pointing",
+    name: 'PMW3610 Optical Sensor',
+    short: 'PMW3610',
+    category: 'pointing',
   },
   props: {
     cpi: {
-      widget: "numberOptions",
-      label: "CPI",
+      widget: 'numberOptions',
+      label: 'CPI',
       required: true,
       options: Array.from({ length: 16 }, (_, i) => (i + 1) * 200) as readonly number[],
     },
     swapxy: {
-      widget: "checkbox",
-      label: "Swap X/Y axes",
+      widget: 'checkbox',
+      label: 'Swap X/Y axes',
     },
     invertx: {
-      widget: "checkbox",
-      label: "Invert X axis",
+      widget: 'checkbox',
+      label: 'Invert X axis',
     },
     inverty: {
-      widget: "checkbox",
-      label: "Invert Y axis",
+      widget: 'checkbox',
+      label: 'Invert Y axis',
     },
   },
   template: (args) => {
@@ -104,7 +104,7 @@ export const pmw3610Meta = {
 
     return {
       deviceDts,
-      kconfig: ["\nconfig PMW3610\n    default y\n"],
+      kconfig: ['\nconfig PMW3610\n    default y\n'],
     };
   },
-} satisfies DeviceMeta<"pmw3610">;
+} satisfies DeviceMeta<'pmw3610'>;

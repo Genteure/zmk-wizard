@@ -1,12 +1,12 @@
-import { z } from "astro/zod";
-import { DeviceIdSchema } from "~/types/utils";
-import type { DeviceMeta } from "./type";
+import { z } from 'astro/zod';
+import { DeviceIdSchema } from '~/types/utils';
+import type { DeviceMeta } from './type';
 
 // ── Zod Schema (data model — no pin refs) ───────────────
 
 export const paw3395DeviceSchema = z.object({
   id: DeviceIdSchema,
-  type: z.literal("paw3395"),
+  type: z.literal('paw3395'),
   cpi: z.number().min(0).max(26000).default(800),
   swapxy: z.boolean().default(false),
   invertx: z.boolean().default(false),
@@ -23,12 +23,12 @@ export type Paw3395Device = z.infer<typeof paw3395DeviceSchema>;
  * steps of 400 up to 12000, then steps of 1000 up to 26000.
  */
 export const paw3395Meta = {
-  type: "paw3395",
+  type: 'paw3395',
   schema: paw3395DeviceSchema,
-  bus: "spi",
-  class: "pointing",
+  bus: 'spi',
+  class: 'pointing',
   exclusive: false,
-  module: "badjeff/paw3395",
+  module: 'badjeff/paw3395',
   requiredBusPins: {
     mosi: true,
     miso: true,
@@ -36,23 +36,23 @@ export const paw3395Meta = {
   },
   gpio: {
     cs: {
-      label: "Chip Select",
+      label: 'Chip Select',
       required: true,
     },
     irq: {
-      label: "MOTION",
-      desc: "Motion / Interrupt",
+      label: 'MOTION',
+      desc: 'Motion / Interrupt',
     },
   },
   visual: {
-    name: "PAW3395 Optical Sensor",
-    short: "PAW3395",
-    category: "pointing",
+    name: 'PAW3395 Optical Sensor',
+    short: 'PAW3395',
+    category: 'pointing',
   },
   props: {
     cpi: {
-      widget: "numberOptions",
-      label: "CPI",
+      widget: 'numberOptions',
+      label: 'CPI',
       required: true,
       options: [
         ...Array.from({ length: 15 }, (_, i) => (i + 1) * 200),
@@ -61,16 +61,16 @@ export const paw3395Meta = {
       ] as readonly number[],
     },
     swapxy: {
-      widget: "checkbox",
-      label: "Swap X/Y axes",
+      widget: 'checkbox',
+      label: 'Swap X/Y axes',
     },
     invertx: {
-      widget: "checkbox",
-      label: "Invert X axis",
+      widget: 'checkbox',
+      label: 'Invert X axis',
     },
     inverty: {
-      widget: "checkbox",
-      label: "Invert Y axis",
+      widget: 'checkbox',
+      label: 'Invert Y axis',
     },
   },
   template: (args) => {
@@ -107,7 +107,7 @@ export const paw3395Meta = {
 
     return {
       deviceDts,
-      kconfig: ["\nconfig PAW3395\n    default y\n"],
+      kconfig: ['\nconfig PAW3395\n    default y\n'],
     };
   },
-} satisfies DeviceMeta<"paw3395">;
+} satisfies DeviceMeta<'paw3395'>;

@@ -1,11 +1,11 @@
-import type { z } from "astro/zod";
-import { Controllers, SocBuses } from "~/metadata/controllers";
-import { DEVICE_CLASS_LIMITS, DEVICE_REGISTRY, SOC_BUS_CONFLICTS, getDeviceMeta } from "~/metadata/device";
-import { ZMK_MODULES, modulesConflict } from "~/metadata/modules";
-import { KeyboardSchema } from "~/types/keyboard";
-import type { BusName, PinId, PinUsage, PinUsageEncoder } from "~/types";
-import { resolvePinInventory } from "~/lib/pinInventory";
-import { ReservedNames } from "./shieldNames";
+import type { z } from 'astro/zod';
+import { Controllers, SocBuses } from '~/metadata/controllers';
+import { DEVICE_CLASS_LIMITS, DEVICE_REGISTRY, SOC_BUS_CONFLICTS, getDeviceMeta } from '~/metadata/device';
+import { ZMK_MODULES, modulesConflict } from '~/metadata/modules';
+import { KeyboardSchema } from '~/types/keyboard';
+import type { BusName, PinId, PinUsage, PinUsageEncoder } from '~/types';
+import { resolvePinInventory } from '~/lib/pinInventory';
+import { ReservedNames } from './shieldNames';
 
 // ───────────────────────────────────────────────────────────
 // Enhanced Keyboard Schema with superRefine validation
@@ -14,15 +14,15 @@ import { ReservedNames } from "./shieldNames";
 export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) => {
   // ── 1. Keyboard name ─────────────────────────────────────
   if (data.name !== data.name.trim()) {
-    ctx.addIssue({ code: "custom", message: "Keyboard name cannot start or end with spaces", path: ["name"] });
+    ctx.addIssue({ code: 'custom', message: 'Keyboard name cannot start or end with spaces', path: ['name'] });
   }
 
   // ── 2. Shield name ───────────────────────────────────────
   if (data.shield !== data.shield.trim()) {
-    ctx.addIssue({ code: "custom", message: "Shield name cannot start or end with spaces", path: ["shield"] });
+    ctx.addIssue({ code: 'custom', message: 'Shield name cannot start or end with spaces', path: ['shield'] });
   }
   if (ReservedNames.includes(data.shield)) {
-    ctx.addIssue({ code: "custom", message: "Shield name is reserved, please use a different name", path: ["shield"] });
+    ctx.addIssue({ code: 'custom', message: 'Shield name is reserved, please use a different name', path: ['shield'] });
   }
 
   // ── 3. Module conflicts — data-driven from ZMK_MODULES metadata ──
@@ -32,9 +32,9 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
         const modA = ZMK_MODULES[data.modules[i]];
         const modB = ZMK_MODULES[data.modules[j]];
         ctx.addIssue({
-          code: "custom",
+          code: 'custom',
           message: `Modules "${modA?.name ?? data.modules[i]}" and "${modB?.name ?? data.modules[j]}" conflict with each other`,
-          path: ["modules", i],
+          path: ['modules', i],
         });
       }
     }
@@ -42,7 +42,7 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
 
   // ── 4. Key count and logical layout ──────────────────────
   if (data.layout.length > 256) {
-    ctx.addIssue({ code: "custom", message: "Do you really have more than 256 keys?", path: ["layout"] });
+    ctx.addIssue({ code: 'custom', message: 'Do you really have more than 256 keys?', path: ['layout'] });
   }
 
   const posToKeys: Record<string, number[]> = {};
@@ -52,78 +52,78 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
   });
   for (const [pos, indices] of Object.entries(posToKeys)) {
     if (indices.length > 1) {
-      const [row, col] = pos.split(",");
+      const [row, col] = pos.split(',');
       ctx.addIssue({
-        code: "custom",
-        message: `Keys ${indices.join(", ")} share the same logical position at row ${row}, col ${col}`,
-        path: ["layout"],
+        code: 'custom',
+        message: `Keys ${indices.join(', ')} share the same logical position at row ${row}, col ${col}`,
+        path: ['layout'],
       });
     }
   }
 
   // ── 5. Split parts ───────────────────────────────────────
   if (data.parts.length > 5) {
-    ctx.addIssue({ code: "custom", message: "More than 5 parts are not supported", path: ["parts"] });
+    ctx.addIssue({ code: 'custom', message: 'More than 5 parts are not supported', path: ['parts'] });
   }
 
   const seenPartNames = new Set<string>();
   data.parts.forEach((part, i) => {
     if (!/^[a-z]+$/.test(part.name)) {
       ctx.addIssue({
-        code: "custom",
+        code: 'custom',
         message: `Part ${i} name is invalid; only lowercase letters (a-z) are allowed`,
-        path: ["parts", i, "name"],
+        path: ['parts', i, 'name'],
       });
     }
 
     if (seenPartNames.has(part.name)) {
       ctx.addIssue({
-        code: "custom",
+        code: 'custom',
         message: `Part ${i} and another part have the same name; part names must be unique`,
-        path: ["parts", i, "name"],
+        path: ['parts', i, 'name'],
       });
     }
     seenPartNames.add(part.name);
 
-    if (part.name === "dongle" && data.dongle) {
+    if (part.name === 'dongle' && data.dongle) {
       ctx.addIssue({
-        code: "custom",
+        code: 'custom',
         message: `Part name "dongle" is reserved for the auto-generated dongle part`,
-        path: ["parts", i, "name"],
+        path: ['parts', i, 'name'],
       });
     }
   });
 
   // ── 6. SoC-specific constraints ──────────────────────────
   // RP2040 unibody limitation — driven from Controllers metadata.
-  const usesRp2040 = data.parts.some((part) => Controllers[part.controller]?.soc === "rp2040");
+  const usesRp2040 = data.parts.some(part => Controllers[part.controller]?.soc === 'rp2040');
   if (usesRp2040) {
     if (data.parts.length !== 1) {
-      ctx.addIssue({ code: "custom", message: "RP2040-based controllers only support unibody keyboards", path: ["parts"] });
+      ctx.addIssue({ code: 'custom', message: 'RP2040-based controllers only support unibody keyboards', path: ['parts'] });
     }
     if (data.dongle) {
-      ctx.addIssue({ code: "custom", message: "RP2040-based controllers do not support dongle mode", path: ["dongle"] });
+      ctx.addIssue({ code: 'custom', message: 'RP2040-based controllers do not support dongle mode', path: ['dongle'] });
     }
   }
 
   // ── 7–11. Per-part validation ────────────────────────────
   data.parts.forEach((part, partIdx) => {
-    const pinPath = (pinId: string): (string | number)[] => ["parts", partIdx, "pins", pinId];
+    const pinPath = (pinId: string): (string | number)[] => ['parts', partIdx, 'pins', pinId];
     const pinEntries = Object.entries(part.pins) as [string, PinUsage][];
 
     const controller = Controllers[part.controller];
     if (!controller) {
       ctx.addIssue({
-        code: "custom",
+        code: 'custom',
         message: `Unknown controller "${part.controller}"`,
-        path: ["parts", partIdx, "controller"],
+        path: ['parts', partIdx, 'controller'],
       });
       return;
     }
 
     // Resolve full pin inventory (controller GPIOs + extension device pins)
     const inventory = resolvePinInventory(part);
-    const validPinIds = new Set<string>(inventory.allPins.map((p) => p.id));
+    const validPinIds = new Set<string>(inventory.allPins.map(p => p.id));
     const socId = controller.soc;
 
     // miosio is the half-duplex SPI role where one pin serves both MOSI and MISO
@@ -137,12 +137,12 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
     const busPinsByBus = new Map<string, BusPinEntry[]>();
 
     for (const [pinId, usage] of pinEntries) {
-      if (usage.usage !== "bus") continue;
+      if (usage.usage !== 'bus') continue;
       // usage is narrowed to PinUsageBus via discriminated union
 
       if (!validPinIds.has(pinId)) {
         ctx.addIssue({
-          code: "custom",
+          code: 'custom',
           message: `Pin "${pinId}" used for bus "${usage.bus}" does not exist on "${part.controller}" or connected devices`,
           path: pinPath(pinId),
         });
@@ -151,7 +151,7 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
       const suitablePins = controller.canBusPins(usage.bus, usage.role);
       if (suitablePins !== true && !suitablePins.includes(pinId as PinId)) {
         ctx.addIssue({
-          code: "custom",
+          code: 'custom',
           message: `Pin "${pinId}" cannot serve role "${usage.role}" on bus "${usage.bus}"`,
           path: pinPath(pinId),
         });
@@ -164,7 +164,7 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
 
     const seenBusNames = new Set<string>();
     const classCounts: Partial<Record<string, number>> = {};
-    const activeBuses: { name: string; type: "i2c" | "spi" }[] = [];
+    const activeBuses: { name: string; type: 'i2c' | 'spi' }[] = [];
 
     for (const [busName, bus] of Object.entries(part.buses)) {
       if (bus.devices.length === 0) continue;
@@ -172,9 +172,9 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
 
       if (seenBusNames.has(busName)) {
         ctx.addIssue({
-          code: "custom",
+          code: 'custom',
           message: `Bus name "${busName}" is duplicated`,
-          path: ["parts", partIdx, "buses", busName],
+          path: ['parts', partIdx, 'buses', busName],
         });
       }
       seenBusNames.add(busName);
@@ -182,30 +182,30 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
       const socBus = SocBuses[socId]?.[busName as BusName];
       if (!socBus) {
         ctx.addIssue({
-          code: "custom",
+          code: 'custom',
           message: `Controller "${part.controller}" (${socId}) does not have bus "${busName}"`,
-          path: ["parts", partIdx, "buses", busName],
+          path: ['parts', partIdx, 'buses', busName],
         });
         continue;
       }
 
       if (socBus.type !== bus.type) {
         ctx.addIssue({
-          code: "custom",
+          code: 'custom',
           message: `Bus "${busName}" is configured as ${bus.type.toUpperCase()} but controller expects ${socBus.type.toUpperCase()}`,
-          path: ["parts", partIdx, "buses", busName],
+          path: ['parts', partIdx, 'buses', busName],
         });
       }
 
       // Check required bus-level pins from SocBuses metadata
       if (bus.devices.length > 0) {
         for (const role of socBus.requires) {
-          const hasPin = busPinsByBus.get(busName)?.some((e) => e.role === role) ?? false;
+          const hasPin = busPinsByBus.get(busName)?.some(e => e.role === role) ?? false;
           if (!hasPin) {
             ctx.addIssue({
-              code: "custom",
+              code: 'custom',
               message: `Bus "${busName}" is missing required pin for ${role.toUpperCase()}`,
-              path: ["parts", partIdx, "buses", busName],
+              path: ['parts', partIdx, 'buses', busName],
             });
           }
         }
@@ -217,27 +217,27 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
 
         if (!meta) {
           ctx.addIssue({
-            code: "custom",
+            code: 'custom',
             message: `Unknown device type "${device.type}" on bus "${busName}"`,
-            path: ["parts", partIdx, "buses", busName, "devices"],
+            path: ['parts', partIdx, 'buses', busName, 'devices'],
           });
           continue;
         }
 
         if (meta.bus && meta.bus !== bus.type) {
           ctx.addIssue({
-            code: "custom",
+            code: 'custom',
             message: `Device type "${device.type}" is not allowed on ${bus.type.toUpperCase()} bus "${busName}"`,
-            path: ["parts", partIdx, "buses", busName, "devices"],
+            path: ['parts', partIdx, 'buses', busName, 'devices'],
           });
         }
 
         // Module requirement — driven from device metadata
         if (meta.module && !data.modules.includes(meta.module)) {
           ctx.addIssue({
-            code: "custom",
+            code: 'custom',
             message: `Device "${device.type}" requires external module "${meta.module}" which is not enabled`,
-            path: ["parts", partIdx, "buses", busName, "devices"],
+            path: ['parts', partIdx, 'buses', busName, 'devices'],
           });
         }
 
@@ -245,11 +245,11 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
         if (meta.class) {
           const current = classCounts[meta.class] ?? 0;
           const limit = DEVICE_CLASS_LIMITS[meta.class];
-          if (typeof limit === "number" && current >= limit) {
+          if (typeof limit === 'number' && current >= limit) {
             ctx.addIssue({
-              code: "custom",
+              code: 'custom',
               message: `Too many "${meta.class}" devices; only ${limit} per part is supported`,
-              path: ["parts", partIdx, "buses", busName, "devices"],
+              path: ['parts', partIdx, 'buses', busName, 'devices'],
             });
           }
           classCounts[meta.class] = current + 1;
@@ -258,9 +258,9 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
         // Exclusive device check — driven from device metadata
         if (meta.exclusive && bus.devices.length > 1) {
           ctx.addIssue({
-            code: "custom",
+            code: 'custom',
             message: `Bus "${busName}" contains exclusive device "${device.type}" and cannot share the bus with other devices`,
-            path: ["parts", partIdx, "buses", busName, "devices"],
+            path: ['parts', partIdx, 'buses', busName, 'devices'],
           });
         }
 
@@ -271,16 +271,16 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
 
             const hasDevicePin = pinEntries.some(
               ([, u]) =>
-                u.usage === "device" &&
-                u.deviceId === device.id &&
-                u.role === role,
+                u.usage === 'device'
+                && u.deviceId === device.id
+                && u.role === role,
             );
 
             if (!hasDevicePin) {
               ctx.addIssue({
-                code: "custom",
+                code: 'custom',
                 message: `Device "${device.type}" on bus "${busName}" requires GPIO pin for "${req.label ?? role}"`,
-                path: ["parts", partIdx, "buses", busName, "devices"],
+                path: ['parts', partIdx, 'buses', busName, 'devices'],
               });
             }
           }
@@ -291,12 +291,12 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
           for (const [roleStr, required] of Object.entries(meta.requiredBusPins)) {
             if (!required) continue;
             const busPins = busPinsByBus.get(busName);
-            const hasPin = busPins !== undefined && busPins.some((e) => pinMatchesRole(e.role, roleStr));
+            const hasPin = busPins !== undefined && busPins.some(e => pinMatchesRole(e.role, roleStr));
             if (!hasPin) {
               ctx.addIssue({
-                code: "custom",
+                code: 'custom',
                 message: `Device "${device.type}" on bus "${busName}" requires bus pin for ${roleStr.toUpperCase()}`,
-                path: ["parts", partIdx, "buses", busName, "devices"],
+                path: ['parts', partIdx, 'buses', busName, 'devices'],
               });
             }
           }
@@ -308,16 +308,16 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
     const conflicts = SOC_BUS_CONFLICTS[socId] ?? [];
     const seenConflicts = new Set<string>();
     for (const [busA, busB] of conflicts) {
-      const hasA = activeBuses.some((b) => b.name === busA);
-      const hasB = activeBuses.some((b) => b.name === busB);
+      const hasA = activeBuses.some(b => b.name === busA);
+      const hasB = activeBuses.some(b => b.name === busB);
       if (hasA && hasB) {
-        const key = [busA, busB].sort().join("|");
+        const key = [busA, busB].sort().join('|');
         if (!seenConflicts.has(key)) {
           seenConflicts.add(key);
           ctx.addIssue({
-            code: "custom",
+            code: 'custom',
             message: `Uses conflicting buses "${busA}" and "${busB}" simultaneously`,
-            path: ["parts", partIdx, "buses"],
+            path: ['parts', partIdx, 'buses'],
           });
         }
       }
@@ -330,16 +330,16 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
     for (const bus of Object.values(part.buses)) {
       for (const device of bus.devices) {
         const meta = getDeviceMeta(device.type);
-        if (meta.class === "display") {
+        if (meta.class === 'display') {
           displayDevices.push(meta.visual?.name ?? device.type);
         }
       }
     }
     if (displayDevices.length > 1) {
       ctx.addIssue({
-        code: "custom",
-        message: `Only one display device is supported per part; found ${displayDevices.join(", ")}`,
-        path: ["parts", partIdx, "buses"],
+        code: 'custom',
+        message: `Only one display device is supported per part; found ${displayDevices.join(', ')}`,
+        path: ['parts', partIdx, 'buses'],
       });
     }
 
@@ -351,53 +351,57 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
 
       // Find encoder pins from PinSelection
       const encPins = pinEntries
-        .filter(([, u]) => u.usage === "encoder" && u.encoderId === enc.id) as [string, PinUsageEncoder][];
+        .filter(([, u]) => u.usage === 'encoder' && u.encoderId === enc.id) as [string, PinUsageEncoder][];
 
-      const pinA = encPins.find(([, u]) => u.role === "pinA");
-      const pinB = encPins.find(([, u]) => u.role === "pinB");
+      const pinA = encPins.find(([, u]) => u.role === 'pinA');
+      const pinB = encPins.find(([, u]) => u.role === 'pinB');
 
       if (!pinA) {
         ctx.addIssue({
-          code: "custom",
+          code: 'custom',
           message: `${baseLabel} A pin is not set`,
-          path: ["parts", partIdx, "encoders", encIdx],
+          path: ['parts', partIdx, 'encoders', encIdx],
         });
-      } else {
+      }
+      else {
         const id = pinA[0];
         if (!validPinIds.has(id)) {
           ctx.addIssue({
-            code: "custom",
+            code: 'custom',
             message: `Pin "${id}" for ${baseLabel} A does not exist on "${part.controller}" or connected devices`,
-            path: ["parts", partIdx, "pins", id],
+            path: ['parts', partIdx, 'pins', id],
           });
         }
         const prev = encoderPinUsage.get(id);
         if (prev && prev !== `${baseLabel} A`) {
-          ctx.addIssue({ code: "custom", message: `Pin "${id}" is used for ${prev} and ${baseLabel} A; choose distinct pins`, path: ["parts", partIdx, "pins", id] });
-        } else {
+          ctx.addIssue({ code: 'custom', message: `Pin "${id}" is used for ${prev} and ${baseLabel} A; choose distinct pins`, path: ['parts', partIdx, 'pins', id] });
+        }
+        else {
           encoderPinUsage.set(id, `${baseLabel} A`);
         }
       }
 
       if (!pinB) {
         ctx.addIssue({
-          code: "custom",
+          code: 'custom',
           message: `${baseLabel} B pin is not set`,
-          path: ["parts", partIdx, "encoders", encIdx],
+          path: ['parts', partIdx, 'encoders', encIdx],
         });
-      } else {
+      }
+      else {
         const id = pinB[0];
         if (!validPinIds.has(id)) {
           ctx.addIssue({
-            code: "custom",
+            code: 'custom',
             message: `Pin "${id}" for ${baseLabel} B does not exist on "${part.controller}" or connected devices`,
-            path: ["parts", partIdx, "pins", id],
+            path: ['parts', partIdx, 'pins', id],
           });
         }
         const prev = encoderPinUsage.get(id);
         if (prev && prev !== `${baseLabel} B`) {
-          ctx.addIssue({ code: "custom", message: `Pin "${id}" is used for ${prev} and ${baseLabel} B; choose distinct pins`, path: ["parts", partIdx, "pins", id] });
-        } else {
+          ctx.addIssue({ code: 'custom', message: `Pin "${id}" is used for ${prev} and ${baseLabel} B; choose distinct pins`, path: ['parts', partIdx, 'pins', id] });
+        }
+        else {
           encoderPinUsage.set(id, `${baseLabel} B`);
         }
       }
@@ -405,9 +409,9 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
       // A and B must be distinct
       if (pinA && pinB && pinA[0] === pinB[0]) {
         ctx.addIssue({
-          code: "custom",
+          code: 'custom',
           message: `Encoder ${encIdx} must use different pins for A and B`,
-          path: ["parts", partIdx, "encoders", encIdx],
+          path: ['parts', partIdx, 'encoders', encIdx],
         });
       }
     });
@@ -419,18 +423,18 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
       const wiring = part.keys[key.id];
       if (!wiring) {
         ctx.addIssue({
-          code: "custom",
+          code: 'custom',
           message: `Key ${idx} is assigned to part ${partIdx} but has no wiring configuration`,
-          path: ["parts", partIdx, "keys", key.id],
+          path: ['parts', partIdx, 'keys', key.id],
         });
         return;
       }
 
       if (wiring.input && !validPinIds.has(wiring.input)) {
         ctx.addIssue({
-          code: "custom",
+          code: 'custom',
           message: `Key ${idx} uses unknown input pin "${wiring.input}"`,
-          path: ["parts", partIdx, "keys", key.id, "input"],
+          path: ['parts', partIdx, 'keys', key.id, 'input'],
         });
       }
 
@@ -438,24 +442,25 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
       if (wiring.output) {
         if (!validPinIds.has(wiring.output)) {
           ctx.addIssue({
-            code: "custom",
+            code: 'custom',
             message: `Key ${idx} uses unknown output pin "${wiring.output}"`,
-            path: ["parts", partIdx, "keys", key.id, "output"],
+            path: ['parts', partIdx, 'keys', key.id, 'output'],
           });
         }
-      } else {
+      }
+      else {
         // get the kscan type by the key's input pin (if any)
         const input = wiring.input;
         if (input) {
           const usage = part.pins[input];
-          if (usage && usage.usage === "kscan") {
+          if (usage && usage.usage === 'kscan') {
             const kscanType = part.kscans.find(k => k.id === usage.kscan)?.kind;
 
-            if (kscanType !== "direct") {
+            if (kscanType !== 'direct') {
               ctx.addIssue({
-                code: "custom",
-                message: `Key ${idx} has no output pin but is wired to a ${kscanType ?? "unknown type"} kscan; only direct kscans can have no output pin`,
-                path: ["parts", partIdx, "keys", key.id, "output"],
+                code: 'custom',
+                message: `Key ${idx} has no output pin but is wired to a ${kscanType ?? 'unknown type'} kscan; only direct kscans can have no output pin`,
+                path: ['parts', partIdx, 'keys', key.id, 'output'],
               });
             }
           }
@@ -465,9 +470,9 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
       // Input and output must be distinct pins
       if (wiring.input && wiring.output && wiring.input === wiring.output) {
         ctx.addIssue({
-          code: "custom",
+          code: 'custom',
           message: `Key ${idx} uses the same pin for both input and output; they must be different pins`,
-          path: ["parts", partIdx, "keys", key.id],
+          path: ['parts', partIdx, 'keys', key.id],
         });
       }
 
@@ -476,14 +481,14 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
         const inputUsage = part.pins[wiring.input];
         const outputUsage = part.pins[wiring.output];
         if (
-          inputUsage?.usage === "kscan" &&
-          outputUsage?.usage === "kscan" &&
-          inputUsage.kscan !== outputUsage.kscan
+          inputUsage?.usage === 'kscan'
+          && outputUsage?.usage === 'kscan'
+          && inputUsage.kscan !== outputUsage.kscan
         ) {
           ctx.addIssue({
-            code: "custom",
+            code: 'custom',
             message: `Key ${idx} uses input pin from kscan "${inputUsage.kscan}" and output pin from kscan "${outputUsage.kscan}"; both pins must belong to the same kscan instance`,
-            path: ["parts", partIdx, "keys", key.id],
+            path: ['parts', partIdx, 'keys', key.id],
           });
         }
       }
@@ -499,21 +504,21 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
       const wiring = part.keys[key.id];
       if (!wiring) return;
       // Use null byte as separator (cannot appear in a pin ID)
-      const combo = (wiring.input ?? "") + "\x00" + (wiring.output ?? "");
+      const combo = (wiring.input ?? '') + '\x00' + (wiring.output ?? '');
       const list = wiringKeyToKeys.get(combo) ?? [];
       list.push(idx);
       wiringKeyToKeys.set(combo, list);
     });
     for (const [combo, indices] of wiringKeyToKeys) {
       if (indices.length <= 1) continue;
-      const [input, output] = combo.split("\x00");
+      const [input, output] = combo.split('\x00');
       const pinDesc = output
         ? `input="${input}", output="${output}"`
         : `input="${input}" (direct kscan)`;
       ctx.addIssue({
-        code: "custom",
-        message: `Keys ${indices.join(", ")} share the same wiring (${pinDesc}); they are electrically identical`,
-        path: ["parts", partIdx],
+        code: 'custom',
+        message: `Keys ${indices.join(', ')} share the same wiring (${pinDesc}); they are electrically identical`,
+        path: ['parts', partIdx],
       });
     }
 
@@ -521,7 +526,7 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
     for (const pinId of Object.keys(part.pins)) {
       if (!validPinIds.has(pinId)) {
         ctx.addIssue({
-          code: "custom",
+          code: 'custom',
           message: `Pin "${pinId}" does not exist on "${part.controller}" or connected devices`,
           path: pinPath(pinId),
         });
@@ -535,35 +540,35 @@ export const ValidatedKeyboardSchema = KeyboardSchema.superRefine((data, ctx) =>
       const pinInfo = pinById.get(pinId as PinId);
       if (!pinInfo) {
         ctx.addIssue({
-          code: "custom",
+          code: 'custom',
           message: `Pin "${pinId}" does not exist on the controller or any active extension device`,
           path: pinPath(pinId),
         });
         continue;
       }
 
-      if (usage.usage === "bus" && pinInfo.source.type !== "controller") {
+      if (usage.usage === 'bus' && pinInfo.source.type !== 'controller') {
         ctx.addIssue({
-          code: "custom",
+          code: 'custom',
           message: `Bus pin "${pinId}" must be a native controller pin, not an extension device pin`,
           path: pinPath(pinId),
         });
       }
 
       // ── 14. Device pin capabilities — must be native ────
-      if (usage.usage === "device" && pinInfo.source.type !== "controller") {
+      if (usage.usage === 'device' && pinInfo.source.type !== 'controller') {
         ctx.addIssue({
-          code: "custom",
+          code: 'custom',
           message: `Device pin "${pinId}" must be a native controller pin, not an extension device pin`,
           path: pinPath(pinId),
         });
       }
 
       // ── 15. Encoder pin capabilities — must have gpioIn + interrupt
-      if (usage.usage === "encoder") {
+      if (usage.usage === 'encoder') {
         if (!pinInfo.capabilities.gpioIn || !pinInfo.capabilities.interrupt) {
           ctx.addIssue({
-            code: "custom",
+            code: 'custom',
             message: `Encoder pin "${pinId}" must support GPIO input and interrupts`,
             path: pinPath(pinId),
           });

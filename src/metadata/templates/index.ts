@@ -6,8 +6,8 @@
 //   generateBusPinctrl()     — SoC-specific pinctrl node for one bus (low-level)
 // ─────────────────────────────────────────────────────────────
 
-export { generatePartTemplates } from "./bus";
-export type { PartTemplateResult, GenerateBusSectionArgs } from "./bus";
+export { generatePartTemplates } from './bus';
+export type { PartTemplateResult, GenerateBusSectionArgs } from './bus';
 
-export { generateBusPinctrl } from "./pinctrl";
-export type { PinctrlArgs } from "./pinctrl";
+export { generateBusPinctrl } from './pinctrl';
+export type { PinctrlArgs } from './pinctrl';

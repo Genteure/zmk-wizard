@@ -31,7 +31,6 @@ const { allPins, getPin } = usePinInventory(partRef);
 
 const { $t } = useFluent();
 
-
 /** Look up the display label for a GPIO pin from controller metadata. */
 function pinLabel(pinId: PinId): string {
   return getPin(pinId)?.label ?? pinId;
@@ -96,7 +95,6 @@ function handleInterruptPin(kscanId: string, value: string) {
     emit('assignPin', { pinId: value as PinId, kscanId, role: 'interrupt' });
   }
 }
-
 </script>
 
 <template>
@@ -104,102 +102,185 @@ function handleInterruptPin(kscanId: string, value: string) {
     <template #header>
       <div class="flex justify-between items-center gap-2">
         <div>
-          <div class="text-highlighted font-semibold">{{ $t('kscan-drivers') }}</div>
+          <div class="text-highlighted font-semibold">
+            {{ $t('kscan-drivers') }}
+          </div>
           <div class="mt-1 text-muted text-sm">
             {{ $t('kscan-drivers-desc') }}
           </div>
         </div>
-        <UDropdownMenu v-model:open="showAddMenu" :items="addMenuItems">
-          <UButton :label="$t('add-kscan')" variant="outline" color="neutral" trailing-icon="i-lucide-chevron-down" />
+        <UDropdownMenu
+          v-model:open="showAddMenu"
+          :items="addMenuItems"
+        >
+          <UButton
+            :label="$t('add-kscan')"
+            variant="outline"
+            color="neutral"
+            trailing-icon="i-lucide-chevron-down"
+          />
         </UDropdownMenu>
       </div>
     </template>
 
-    <div v-if="part.kscans.length === 0" class="text-muted text-sm py-4 text-center">
+    <div
+      v-if="part.kscans.length === 0"
+      class="text-muted text-sm py-4 text-center"
+    >
       {{ $t('no-kscan-drivers') }}
     </div>
 
     <!-- Composite kscan0 — virtual, shown only when >1 real kscans exist -->
-    <div v-if="part.kscans.length > 1" class="rounded-xl p-3 bg-muted ring ring-default mb-3">
+    <div
+      v-if="part.kscans.length > 1"
+      class="rounded-xl p-3 bg-muted ring ring-default mb-3"
+    >
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2">
-          <UBadge variant="subtle" color="neutral" class="uppercase">composite</UBadge>
+          <UBadge
+            variant="subtle"
+            color="neutral"
+            class="uppercase"
+          >
+            composite
+          </UBadge>
           <span class="text-sm font-mono text-base-content/50">{{ part.name }}_kscan0</span>
         </div>
       </div>
       <!-- Fake properties: list all real kscans -->
       <div class="mt-3 flex flex-wrap gap-3">
-        <UFormField :label="$t('kscans-field')" class="w-auto">
+        <UFormField
+          :label="$t('kscans-field')"
+          class="w-auto"
+        >
           <div class="flex flex-wrap gap-1">
-            <span v-for="i in part.kscans.length" :key="i"
-              class="inline-flex items-center gap-1 rounded bg-default ring ring-accented px-2 py-0.5 text-xs font-mono">
+            <span
+              v-for="i in part.kscans.length"
+              :key="i"
+              class="inline-flex items-center gap-1 rounded bg-default ring ring-accented px-2 py-0.5 text-xs font-mono"
+            >
               {{ part.name }}_kscan{{ i }}
             </span>
           </div>
         </UFormField>
       </div>
     </div>
-    <div v-for="kscan in part.kscans" :key="kscan.id" class="rounded-xl p-3 bg-muted ring ring-default mb-3 last:mb-0">
+    <div
+      v-for="kscan in part.kscans"
+      :key="kscan.id"
+      class="rounded-xl p-3 bg-muted ring ring-default mb-3 last:mb-0"
+    >
       <!-- Header row -->
 
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2">
-          <UBadge variant="subtle" color="neutral" class="uppercase">
+          <UBadge
+            variant="subtle"
+            color="neutral"
+            class="uppercase"
+          >
             {{ kscan.kind }}
           </UBadge>
           <span class="text-sm font-mono text-base-content/50">{{ kscanLabel(part.name, part.kscans, kscan.id) }}</span>
         </div>
         <div class="flex items-center gap-1">
-          <UFieldGroup v-if="part.kscans.length > 1" size="xs">
-            <UButton icon="i-lucide-chevron-up" variant="subtle" color="neutral"
-              :disabled="part.kscans.indexOf(kscan) === 0" @click="emit('moveKscan', kscan.id, -1)" />
-            <UButton icon="i-lucide-chevron-down" variant="subtle" color="neutral"
+          <UFieldGroup
+            v-if="part.kscans.length > 1"
+            size="xs"
+          >
+            <UButton
+              icon="i-lucide-chevron-up"
+              variant="subtle"
+              color="neutral"
+              :disabled="part.kscans.indexOf(kscan) === 0"
+              @click="emit('moveKscan', kscan.id, -1)"
+            />
+            <UButton
+              icon="i-lucide-chevron-down"
+              variant="subtle"
+              color="neutral"
               :disabled="part.kscans.indexOf(kscan) === part.kscans.length - 1"
-              @click="emit('moveKscan', kscan.id, 1)" />
+              @click="emit('moveKscan', kscan.id, 1)"
+            />
           </UFieldGroup>
-          <UButton color="error" icon="i-lucide-trash" variant="subtle" size="xs"
-            @click="emit('removeKscan', kscan.id)" />
+          <UButton
+            color="error"
+            icon="i-lucide-trash"
+            variant="subtle"
+            size="xs"
+            @click="emit('removeKscan', kscan.id)"
+          />
         </div>
       </div>
 
       <!-- Properties -->
       <div class="mt-3 flex flex-wrap gap-3">
         <template v-if="kscan.kind === 'matrix'">
-          <UFormField :label="$t('kscan-matrix-diodes')" class="w-32">
-            <USelect :model-value="kscan.diodes ? 'true' : 'false'"
+          <UFormField
+            :label="$t('kscan-matrix-diodes')"
+            class="w-32"
+          >
+            <USelect
+              :model-value="kscan.diodes ? 'true' : 'false'"
               :items="[{ label: $t('kscan-matrix-diodes-yes'), value: 'true' }, { label: $t('kscan-matrix-diodes-no'), value: 'false' }]"
-              @update:model-value="emit('patchKscan', kscan.id, { diodes: $event === 'true' })" />
+              @update:model-value="emit('patchKscan', kscan.id, { diodes: $event === 'true' })"
+            />
           </UFormField>
         </template>
         <template v-else-if="kscan.kind === 'direct'">
-          <UFormField :label="$t('kscan-direct-mode')" class="w-32">
-            <USelect :model-value="kscan.mode" :items="[{ label: 'GND', value: 'gnd' }, { label: 'VCC', value: 'vcc' }]"
-              @update:model-value="emit('patchKscan', kscan.id, { mode: $event })" />
+          <UFormField
+            :label="$t('kscan-direct-mode')"
+            class="w-32"
+          >
+            <USelect
+              :model-value="kscan.mode"
+              :items="[{ label: 'GND', value: 'gnd' }, { label: 'VCC', value: 'vcc' }]"
+              @update:model-value="emit('patchKscan', kscan.id, { mode: $event })"
+            />
           </UFormField>
         </template>
         <template v-else-if="kscan.kind === 'charlieplex'">
-          <UFormField :label="$t('kscan-charlieplex-interrupt-pin')" class="w-48">
-            <USelect :model-value="kscanInterruptPin(kscan.id) ?? NONE_SENTINEL" :items="interruptPinOptions(kscan.id)"
-              @update:model-value="handleInterruptPin(kscan.id, $event)" />
+          <UFormField
+            :label="$t('kscan-charlieplex-interrupt-pin')"
+            class="w-48"
+          >
+            <USelect
+              :model-value="kscanInterruptPin(kscan.id) ?? NONE_SENTINEL"
+              :items="interruptPinOptions(kscan.id)"
+              @update:model-value="handleInterruptPin(kscan.id, $event)"
+            />
           </UFormField>
         </template>
       </div>
 
       <!-- Assigned pins -->
       <div class="mt-3">
-        <div v-if="kscanPins(kscan.id).length === 0" class="text-xs text-muted">{{ $t('no-pins-assigned') }}</div>
+        <div
+          v-if="kscanPins(kscan.id).length === 0"
+          class="text-xs text-muted"
+        >
+          {{ $t('no-pins-assigned') }}
+        </div>
         <div class="flex flex-wrap gap-1">
-          <div v-for="kp in kscanPins(kscan.id)" :key="kp.pinId"
-            class="flex items-center gap-1 rounded bg-default ring ring-accented px-2 py-0.5 text-xs">
+          <div
+            v-for="kp in kscanPins(kscan.id)"
+            :key="kp.pinId"
+            class="flex items-center gap-1 rounded bg-default ring ring-accented px-2 py-0.5 text-xs"
+          >
             <span class="font-bold">{{ pinLabel(kp.pinId) }}</span>
             <span class="text-base-content/50">({{ kp.role }})</span>
-            <UButton class="rounded-full -mr-1" color="error" icon="i-lucide-x" variant="ghost" size="xs"
-              @click="emit('releasePin', kp.pinId)" />
+            <UButton
+              class="rounded-full -mr-1"
+              color="error"
+              icon="i-lucide-x"
+              variant="ghost"
+              size="xs"
+              @click="emit('releasePin', kp.pinId)"
+            />
           </div>
         </div>
       </div>
     </div>
-
   </UCard>
 </template>
 

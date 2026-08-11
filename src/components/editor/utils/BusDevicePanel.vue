@@ -52,8 +52,8 @@ function busDropdownItems(deviceType: DeviceTypeName): DropdownMenuItem[] {
   const fullName = getDeviceMeta(deviceType).visual.name;
   const labelItem = { type: 'label' as const, label: fullName };
   const busItems = busStatuses.value
-    .filter((b) => canAddToBus(deviceType, b.name))
-    .map((bus) => ({
+    .filter(b => canAddToBus(deviceType, b.name))
+    .map(bus => ({
       label: bus.name + ' (' + bus.type.toUpperCase() + ')',
       onSelect: () => onAddDeviceToBus(bus.name, deviceType),
     }));
@@ -84,7 +84,7 @@ function freeBusPinOptions(busName: string, role: string, currentPin: string | u
       if (pairedRole && usage.usage === 'bus' && usage.bus === busName && usage.role === pairedRole) return true;
       return false;
     })
-    .map((p) => ({ label: p.label, value: p.id }));
+    .map(p => ({ label: p.label, value: p.id }));
 }
 
 function pinSelectBusOptions(busName: string, role: string, currentPin: string | undefined) {
@@ -100,7 +100,7 @@ function freeDevicePinOptions(currentPin: string | undefined) {
       const usage = props.part.pins[p.id];
       return !usage;
     })
-    .map((p) => ({ label: p.label, value: p.id }));
+    .map(p => ({ label: p.label, value: p.id }));
 }
 
 function pinSelectDeviceOptions(currentPin: string | undefined) {
@@ -137,7 +137,8 @@ function onBusPinChange(busName: string, role: BusPinRole, value: string) {
     if (pairedRole && currentUsage?.usage === 'bus' && currentUsage.role === 'miosio') {
       // Pin is shared as miosio. Converting to the other role keeps the pin assigned.
       keyboard.assignBusPin(partIdx, current, busName, pairedRole as BusPinRole);
-    } else {
+    }
+    else {
       keyboard.releasePin(partIdx, current);
     }
   }
@@ -150,7 +151,8 @@ function onBusPinChange(busName: string, role: BusPinRole, value: string) {
   if (pairedRole && busPin(busName, pairedRole) === targetPin) {
     const existingPin = busPin(busName, pairedRole)!;
     keyboard.assignBusPin(partIdx, existingPin, busName, 'miosio' as BusPinRole);
-  } else {
+  }
+  else {
     keyboard.assignBusPin(partIdx, targetPin, busName, role);
   }
 }
@@ -196,7 +198,6 @@ function statusBadgeColor(status: BusStatus) {
     case 'unavailable': return 'warning' as const;
   }
 }
-
 </script>
 
 <template>
@@ -208,13 +209,25 @@ function statusBadgeColor(status: BusStatus) {
       {{ $t('peripheral-devices-desc') }}
     </template>
 
-    <div class="text-sm font-medium text-base-content/70">{{ $t('add-peripheral-device') }}</div>
+    <div class="text-sm font-medium text-base-content/70">
+      {{ $t('add-peripheral-device') }}
+    </div>
 
     <div class="flex flex-wrap gap-2 mt-2">
-      <UDropdownMenu v-for="dtype in availableDeviceTypes" :key="dtype" :items="busDropdownItems(dtype)"
-        :disabled="!deviceAvailable(dtype)" :ui="{ itemWrapper: 'items-center' }">
-        <UButton :label="deviceMetaFor(dtype).visual.short" variant="subtle" size="sm" color="neutral"
-          :disabled="!deviceAvailable(dtype)" />
+      <UDropdownMenu
+        v-for="dtype in availableDeviceTypes"
+        :key="dtype"
+        :items="busDropdownItems(dtype)"
+        :disabled="!deviceAvailable(dtype)"
+        :ui="{ itemWrapper: 'items-center' }"
+      >
+        <UButton
+          :label="deviceMetaFor(dtype).visual.short"
+          variant="subtle"
+          size="sm"
+          color="neutral"
+          :disabled="!deviceAvailable(dtype)"
+        />
       </UDropdownMenu>
     </div>
 
@@ -223,102 +236,181 @@ function statusBadgeColor(status: BusStatus) {
     </div>
 
     <div class="flex flex-col gap-3 mt-4">
-      <div v-for="busStatus in busStatuses" :key="busStatus.name" class="rounded-xl p-3 ring ring-default"
-        :class="busStatus.status === 'active' ? 'bg-muted' : 'bg-muted/40'">
+      <div
+        v-for="busStatus in busStatuses"
+        :key="busStatus.name"
+        class="rounded-xl p-3 ring ring-default"
+        :class="busStatus.status === 'active' ? 'bg-muted' : 'bg-muted/40'"
+      >
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-2">
-            <UBadge variant="outline" size="sm">
+            <UBadge
+              variant="outline"
+              size="sm"
+            >
               {{ busStatus.type.toUpperCase() }}
             </UBadge>
             <span class="text-base font-medium">{{ busStatus.name }}</span>
           </div>
-          <UBadge :color="statusBadgeColor(busStatus.status)" variant="outline" size="sm">
-            {{ $t(busStatus.status === 'active' ? 'bus-status-active' : busStatus.status === 'inactive' ?
-              'bus-status-inactive' : 'bus-status-unavailable') }}
+          <UBadge
+            :color="statusBadgeColor(busStatus.status)"
+            variant="outline"
+            size="sm"
+          >
+            {{ $t(busStatus.status === 'active' ? 'bus-status-active' : busStatus.status === 'inactive'
+              ? 'bus-status-inactive' : 'bus-status-unavailable') }}
           </UBadge>
         </div>
 
         <template v-if="busStatus.status === 'active'">
-          <div v-if="busStatus.available.length" class="mt-2">
+          <div
+            v-if="busStatus.available.length"
+            class="mt-2"
+          >
             <span class="text-xs text-base-content/60 font-semibold">{{ $t('bus-pins') }}</span>
             <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 items-end mt-1">
-              <UFormField v-for="role in busStatus.available" :key="`${busStatus.name}-${role}`"
-                :label="role.toUpperCase()" :required="busStatus.requires.includes(role)" class="min-w-24">
-                <USelect :model-value="busPin(busStatus.name, role) ?? NONE_SENTINEL"
-                  :items="pinSelectBusOptions(busStatus.name, role, busPin(busStatus.name, role))" size="sm"
+              <UFormField
+                v-for="role in busStatus.available"
+                :key="`${busStatus.name}-${role}`"
+                :label="role.toUpperCase()"
+                :required="busStatus.requires.includes(role)"
+                class="min-w-24"
+              >
+                <USelect
+                  :model-value="busPin(busStatus.name, role) ?? NONE_SENTINEL"
+                  :items="pinSelectBusOptions(busStatus.name, role, busPin(busStatus.name, role))"
+                  size="sm"
                   class="w-full"
-                  @update:model-value="(v: string) => onBusPinChange(busStatus.name, role as BusPinRole, v)" />
+                  @update:model-value="(v: string) => onBusPinChange(busStatus.name, role as BusPinRole, v)"
+                />
               </UFormField>
             </div>
           </div>
 
           <div class="mt-3 flex flex-col gap-2">
-            <div v-for="device in (partBuses[busStatus.name]?.devices ?? [])" :key="device.id"
-              class="rounded-lg bg-default ring ring-accented px-3 py-2">
+            <div
+              v-for="device in (partBuses[busStatus.name]?.devices ?? [])"
+              :key="device.id"
+              class="rounded-lg bg-default ring ring-accented px-3 py-2"
+            >
               <div class="flex items-center justify-between gap-2">
                 <span>
                   <span class="font-medium text-sm">
                     {{ deviceMetaFor(device.type)?.visual.name ?? device.type }}
                   </span>
-                  <span v-if="deviceNodeLabels[device.id]"
-                    class="font-mono text-xs font-normal text-base-content/40">&nbsp;&mdash;&nbsp;{{
-                      deviceNodeLabels[device.id]
-                    }}</span>
+                  <span
+                    v-if="deviceNodeLabels[device.id]"
+                    class="font-mono text-xs font-normal text-base-content/40"
+                  >&nbsp;&mdash;&nbsp;{{
+                    deviceNodeLabels[device.id]
+                  }}</span>
                 </span>
-                <UButton icon="i-lucide-trash-2" color="error" variant="ghost" size="sm"
-                  @click.stop="onRemoveDevice(busStatus.name, device.id)" />
+                <UButton
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="ghost"
+                  size="sm"
+                  @click.stop="onRemoveDevice(busStatus.name, device.id)"
+                />
               </div>
               <div class="mt-3 space-y-3">
                 <div v-if="Object.keys(deviceMetaFor(device.type)?.gpio ?? {}).length">
-                  <div class="text-xs text-base-content/60 font-semibold mb-2">{{ $t('device-gpios') }}</div>
+                  <div class="text-xs text-base-content/60 font-semibold mb-2">
+                    {{ $t('device-gpios') }}
+                  </div>
                   <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 items-end">
-                    <UFormField v-for="(gpioMeta, gpioRole) in deviceMetaFor(device.type)!.gpio" :key="gpioRole"
-                      :label="gpioMeta.label" :description="gpioMeta.desc" :required="gpioMeta.required">
-                      <USelect :model-value="devicePin(device.id, gpioRole) ?? NONE_SENTINEL"
-                        :items="pinSelectDeviceOptions(devicePin(device.id, gpioRole))" size="sm" class="w-full"
-                        @update:model-value="(v: string) => onDevicePinChange(device.id, gpioRole, v)" />
+                    <UFormField
+                      v-for="(gpioMeta, gpioRole) in deviceMetaFor(device.type)!.gpio"
+                      :key="gpioRole"
+                      :label="gpioMeta.label"
+                      :description="gpioMeta.desc"
+                      :required="gpioMeta.required"
+                    >
+                      <USelect
+                        :model-value="devicePin(device.id, gpioRole) ?? NONE_SENTINEL"
+                        :items="pinSelectDeviceOptions(devicePin(device.id, gpioRole))"
+                        size="sm"
+                        class="w-full"
+                        @update:model-value="(v: string) => onDevicePinChange(device.id, gpioRole, v)"
+                      />
                     </UFormField>
                   </div>
                 </div>
 
                 <div v-if="deviceMetaFor(device.type)?.props">
-                  <div class="text-xs text-base-content/60 font-semibold mb-2">{{ $t('device-properties') }}</div>
+                  <div class="text-xs text-base-content/60 font-semibold mb-2">
+                    {{ $t('device-properties') }}
+                  </div>
                   <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 items-end">
-                    <template v-for="(propMeta, propKey) in deviceMetaFor(device.type)!.props" :key="propKey">
-                      <UFormField v-if="propMeta.widget === 'dec'" :label="propMeta.label ?? propKey"
-                        :required="propMeta.required">
-                        <UInput type="number" :model-value="Number((device as Record<string, unknown>)[propKey] ?? 0)"
-                          :min="propMeta.min" :max="propMeta.max" size="sm" class="w-full"
-                          @update:model-value="(v: number) => onDevicePropChange(busStatus.name, device.id, propKey, v)" />
+                    <template
+                      v-for="(propMeta, propKey) in deviceMetaFor(device.type)!.props"
+                      :key="propKey"
+                    >
+                      <UFormField
+                        v-if="propMeta.widget === 'dec'"
+                        :label="propMeta.label ?? propKey"
+                        :required="propMeta.required"
+                      >
+                        <UInput
+                          type="number"
+                          :model-value="Number((device as Record<string, unknown>)[propKey] ?? 0)"
+                          :min="propMeta.min"
+                          :max="propMeta.max"
+                          size="sm"
+                          class="w-full"
+                          @update:model-value="(v: number) => onDevicePropChange(busStatus.name, device.id, propKey, v)"
+                        />
                       </UFormField>
 
-                      <UFormField v-if="propMeta.widget === 'hex'" :label="propMeta.label ?? propKey"
-                        :required="propMeta.required">
+                      <UFormField
+                        v-if="propMeta.widget === 'hex'"
+                        :label="propMeta.label ?? propKey"
+                        :required="propMeta.required"
+                      >
                         <UInput
                           :model-value="'0x' + (Number((device as Record<string, unknown>)[propKey] ?? 0)).toString(16)"
-                          size="sm" class="w-full font-mono"
-                          @update:model-value="(v: string) => { const n = parseInt(v, 16); if (!isNaN(n)) onDevicePropChange(busStatus.name, device.id, propKey, n); }" />
+                          size="sm"
+                          class="w-full font-mono"
+                          @update:model-value="(v: string) => { const n = parseInt(v, 16); if (!isNaN(n)) onDevicePropChange(busStatus.name, device.id, propKey, n); }"
+                        />
                       </UFormField>
 
-                      <UFormField v-if="propMeta.widget === 'numberOptions'" :label="propMeta.label ?? propKey"
-                        :required="propMeta.required">
-                        <USelect :model-value="Number((device as Record<string, unknown>)[propKey]) || undefined"
+                      <UFormField
+                        v-if="propMeta.widget === 'numberOptions'"
+                        :label="propMeta.label ?? propKey"
+                        :required="propMeta.required"
+                      >
+                        <USelect
+                          :model-value="Number((device as Record<string, unknown>)[propKey]) || undefined"
                           :items="(propMeta.options ?? []).map(o => ({ label: String(o), value: o as number }))"
-                          size="sm" class="w-full"
-                          @update:model-value="(v) => onDevicePropChange(busStatus.name, device.id, propKey, Number(v))" />
+                          size="sm"
+                          class="w-full"
+                          @update:model-value="(v) => onDevicePropChange(busStatus.name, device.id, propKey, Number(v))"
+                        />
                       </UFormField>
 
-                      <UFormField v-if="propMeta.widget === 'stringOptions'" :label="propMeta.label ?? propKey"
-                        :required="propMeta.required">
-                        <USelect :model-value="String((device as Record<string, unknown>)[propKey] ?? '') || undefined"
+                      <UFormField
+                        v-if="propMeta.widget === 'stringOptions'"
+                        :label="propMeta.label ?? propKey"
+                        :required="propMeta.required"
+                      >
+                        <USelect
+                          :model-value="String((device as Record<string, unknown>)[propKey] ?? '') || undefined"
                           :items="Array.from(propMeta.options ?? []).map(o => ({ label: String(o), value: o as string }))"
-                          size="sm" class="w-full"
-                          @update:model-value="(v) => onDevicePropChange(busStatus.name, device.id, propKey, String(v))" />
+                          size="sm"
+                          class="w-full"
+                          @update:model-value="(v) => onDevicePropChange(busStatus.name, device.id, propKey, String(v))"
+                        />
                       </UFormField>
-                      <UFormField v-if="propMeta.widget === 'checkbox'" :label="propMeta.label ?? propKey"
-                        :required="propMeta.required">
-                        <UCheckbox :model-value="Boolean((device as Record<string, unknown>)[propKey])"
-                          @update:model-value="(v: boolean | 'indeterminate') => onDevicePropChange(busStatus.name, device.id, propKey, !!v)" />
+                      <UFormField
+                        v-if="propMeta.widget === 'checkbox'"
+                        :label="propMeta.label ?? propKey"
+                        :required="propMeta.required"
+                      >
+                        <UCheckbox
+                          :model-value="Boolean((device as Record<string, unknown>)[propKey])"
+                          @update:model-value="(v: boolean | 'indeterminate') => onDevicePropChange(busStatus.name, device.id, propKey, !!v)"
+                        />
                       </UFormField>
                     </template>
                   </div>
@@ -326,7 +418,8 @@ function statusBadgeColor(status: BusStatus) {
 
                 <div
                   v-if="!Object.keys(deviceMetaFor(device.type)?.props ?? {}).length && !Object.keys(deviceMetaFor(device.type)?.gpio ?? {}).length"
-                  class="text-xs text-base-content/40">
+                  class="text-xs text-base-content/40"
+                >
                   {{ $t('device-no-config') }}
                 </div>
               </div>
@@ -334,8 +427,10 @@ function statusBadgeColor(status: BusStatus) {
           </div>
         </template>
 
-        <div v-if="busStatus.status === 'inactive' || busStatus.status === 'unavailable'"
-          class="text-xs text-base-content/40 mt-2">
+        <div
+          v-if="busStatus.status === 'inactive' || busStatus.status === 'unavailable'"
+          class="text-xs text-base-content/40 mt-2"
+        >
           {{ busStatus.status === 'unavailable' ? $t('bus-unavailable-hint') : $t('bus-inactive-hint') }}
         </div>
       </div>

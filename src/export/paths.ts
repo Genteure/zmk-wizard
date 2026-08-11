@@ -5,7 +5,7 @@
 // the VirtualTextFolder structure.
 // ─────────────────────────────────────────────────────────────
 
-import type { Keyboard } from "~/types";
+import type { Keyboard } from '~/types';
 
 export function shieldRootPath(shield: string): string {
   return `boards/shields/${shield}`;
@@ -65,9 +65,9 @@ export function dongleOverlayPath(shield: string): string {
 
 export function centralToPeripheralSnippetName(keyboard: Keyboard): string {
   if (keyboard.parts.length === 1) {
-    return `${keyboard.shield.replaceAll("_", "-")}-as-peripheral`;
+    return `${keyboard.shield.replaceAll('_', '-')}-as-peripheral`;
   }
-  return `${keyboard.shield.replaceAll("_", "-")}-${keyboard.parts[0].name}-as-peripheral`;
+  return `${keyboard.shield.replaceAll('_', '-')}-${keyboard.parts[0].name}-as-peripheral`;
 }
 
 export function centralToPeripheralSnippetRoot(keyboard: Keyboard): string {
@@ -89,4 +89,3 @@ export function inputSplitNodeName(baseName: string): string {
 export function inputListenerNodeName(baseName: string): string {
   return `input_listener_${baseName}`;
 }
-

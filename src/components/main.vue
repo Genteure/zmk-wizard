@@ -26,9 +26,11 @@ onMounted(() => {
       keyboard.sortLayout();
       nav.activeTab = 'layout';
     }
-  } catch (err) {
+  }
+  catch (err) {
     console.error('Failed to import layout from URL hash:', err);
-  } finally {
+  }
+  finally {
     clearLayoutHash();
   }
 });
@@ -40,7 +42,7 @@ watch(
     const newBundle = localeBundleMap[newLocale];
     fluent.bundles = [newBundle, localeBundleMap['en']]; // Fallback to English for missing translations
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 // Set initial locale based on browser settings
@@ -61,5 +63,4 @@ for (const lang of navigator.languages) {
     break;
   }
 }
-
 </script>

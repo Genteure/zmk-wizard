@@ -123,7 +123,7 @@ describe('parseNotation', () => {
         { x: 1, y: 0.0 }, { x: 1, y: 1.0 },
       ];
       const expectedKeymap = [
-        { x: 0, y: 1 },        // round(0.5)+trunc(-0.5)=1+0=1
+        { x: 0, y: 1 }, // round(0.5)+trunc(-0.5)=1+0=1
         { x: 1, y: 0 }, { x: 1, y: 1 },
       ];
       expect(physical).toEqual(expectedPhysical);
@@ -174,12 +174,12 @@ describe('parseNotation', () => {
       const expectedPhysical = [
         { x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 2 },
         { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 1, y: 2 },
-        { x: 0.5, y: 3 }, { x: 1.5, y: 3 },  // right thumb y=3
+        { x: 0.5, y: 3 }, { x: 1.5, y: 3 }, // right thumb y=3
       ];
       const expectedKeymap = [
         { x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 2 },
         { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 1, y: 2 },
-        { x: 0, y: 3 }, { x: 1, y: 3 },        // trunc(0.5)=0
+        { x: 0, y: 3 }, { x: 1, y: 3 }, // trunc(0.5)=0
       ];
       expect(physical).toEqual(expectedPhysical);
       expect(keymap).toEqual(expectedKeymap);
@@ -210,7 +210,7 @@ describe('parseNotation', () => {
       const expectedPhysical = [
         { x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 2 },
         { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 1, y: 2 },
-        { x: 1, y: 3 },                        // right-aligned, c=2, k=1 → x=1
+        { x: 1, y: 3 }, // right-aligned, c=2, k=1 → x=1
       ];
       expect(physical).toEqual(expectedPhysical);
       expect(keymap).toEqual(expectedPhysical);
@@ -448,13 +448,13 @@ describe('parseNotation', () => {
       ['invalid character', 'a'],
       ['horizontal modifier in column', '1>'],
       ['vertical modifier in thumb', '2+1v'],
-      ['multiple multi‑entry chunks', '22+33'],   // |multi|=2
+      ['multiple multi‑entry chunks', '22+33'], // |multi|=2
       ['empty chunk (leading +)', '+2'],
       ['empty chunk (trailing +)', '2+'],
       ['empty chunk (double +)', '2++3'],
       ['chunk starting with non‑digit', '2+a'],
       ['chunk starting with modifier', 'v2'],
-      ['separator with invalid subsequent section', '2 +'],   // '+' yields empty chunks → error
+      ['separator with invalid subsequent section', '2 +'], // '+' yields empty chunks → error
       ['digit outside 1‑9 (0)', '33303'],
     ];
 

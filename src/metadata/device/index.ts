@@ -14,25 +14,25 @@
 //   devicesForBus("i2c") → ("ssd1306" | "pinnacle_i2c")[]
 // ─────────────────────────────────────────────────────────────
 
-import { z } from "astro/zod";
-import { shifter595DeviceSchema, shifter595Meta } from "./74hc595";
-import { niceViewDeviceSchema, niceViewMeta } from "./niceview";
-import { paw3395DeviceSchema, paw3395Meta } from "./paw3395";
-import { pinnacleI2cDeviceSchema, pinnacleI2cMeta, pinnacleSpiDeviceSchema, pinnacleSpiMeta } from "./pinnacle";
-import { pmw3610DeviceSchema, pmw3610Meta } from "./pmw3610";
-import { ssd1306DeviceSchema, ssd1306Meta } from "./ssd1306";
-import { ws2812DeviceSchema, ws2812Meta } from "./ws2812";
-import type { DeviceCategory, DeviceMeta } from "./type";
-import type { SocId } from "~/types";
+import { z } from 'astro/zod';
+import { shifter595DeviceSchema, shifter595Meta } from './74hc595';
+import { niceViewDeviceSchema, niceViewMeta } from './niceview';
+import { paw3395DeviceSchema, paw3395Meta } from './paw3395';
+import { pinnacleI2cDeviceSchema, pinnacleI2cMeta, pinnacleSpiDeviceSchema, pinnacleSpiMeta } from './pinnacle';
+import { pmw3610DeviceSchema, pmw3610Meta } from './pmw3610';
+import { ssd1306DeviceSchema, ssd1306Meta } from './ssd1306';
+import { ws2812DeviceSchema, ws2812Meta } from './ws2812';
+import type { DeviceCategory, DeviceMeta } from './type';
+import type { SocId } from '~/types';
 
 // Re-export device schemas and types — single source of truth.
-export { ssd1306DeviceSchema, type SSD1306Device } from "./ssd1306";
-export { niceViewDeviceSchema, type NiceViewDevice } from "./niceview";
-export { ws2812DeviceSchema, type WS2812Device } from "./ws2812";
-export { shifter595DeviceSchema, type Shifter595Device } from "./74hc595";
-export { pmw3610DeviceSchema, type Pmw3610Device } from "./pmw3610";
-export { paw3395DeviceSchema, type Paw3395Device } from "./paw3395";
-export { pinnacleSpiDeviceSchema, type PinnacleSpiDevice, pinnacleI2cDeviceSchema, type PinnacleI2cDevice } from "./pinnacle";
+export { ssd1306DeviceSchema, type SSD1306Device } from './ssd1306';
+export { niceViewDeviceSchema, type NiceViewDevice } from './niceview';
+export { ws2812DeviceSchema, type WS2812Device } from './ws2812';
+export { shifter595DeviceSchema, type Shifter595Device } from './74hc595';
+export { pmw3610DeviceSchema, type Pmw3610Device } from './pmw3610';
+export { paw3395DeviceSchema, type Paw3395Device } from './paw3395';
+export { pinnacleSpiDeviceSchema, type PinnacleSpiDevice, pinnacleI2cDeviceSchema, type PinnacleI2cDevice } from './pinnacle';
 
 /**
  * Central registry of all supported bus devices.
@@ -43,14 +43,14 @@ export { pinnacleSpiDeviceSchema, type PinnacleSpiDevice, pinnacleI2cDeviceSchem
  * validation; the registry widens them.
  */
 export const DEVICE_REGISTRY: Record<string, DeviceMeta> = {
-  ssd1306: ssd1306Meta,
-  niceview: niceViewMeta,
-  ws2812: ws2812Meta,
-  "74hc595": shifter595Meta,
-  pmw3610: pmw3610Meta,
-  paw3395: paw3395Meta,
-  pinnacle_spi: pinnacleSpiMeta,
-  pinnacle_i2c: pinnacleI2cMeta,
+  'ssd1306': ssd1306Meta,
+  'niceview': niceViewMeta,
+  'ws2812': ws2812Meta,
+  '74hc595': shifter595Meta,
+  'pmw3610': pmw3610Meta,
+  'paw3395': paw3395Meta,
+  'pinnacle_spi': pinnacleSpiMeta,
+  'pinnacle_i2c': pinnacleI2cMeta,
 };
 
 /** Union of all registered device type names */
@@ -71,7 +71,7 @@ export function getDeviceMeta(type: DeviceTypeName): DeviceMeta {
  *   devicesForBus("spi") // → ["niceview", "ws2812", "74hc595", "pmw3610", "paw3395", "pinnacle_spi"]
  *   devicesForBus("i2c") // → ["ssd1306", "pinnacle_i2c"]
  */
-export function devicesForBus(busType: "i2c" | "spi"): DeviceTypeName[] {
+export function devicesForBus(busType: 'i2c' | 'spi'): DeviceTypeName[] {
   return (Object.entries(DEVICE_REGISTRY) as [DeviceTypeName, DeviceMeta][])
     .filter(([, meta]) => meta.bus === busType)
     .map(([name]) => name);
@@ -106,13 +106,13 @@ export const DEVICE_CLASS_LIMITS: Partial<Record<DeviceCategory, number>> = {
 // Discriminated Unions — device schemas grouped by bus type
 // ─────────────────────────────────────────────────────────────
 
-export const I2cDeviceSchema = z.discriminatedUnion("type", [
+export const I2cDeviceSchema = z.discriminatedUnion('type', [
   ssd1306DeviceSchema,
   pinnacleI2cDeviceSchema,
 ]);
 export type I2cDevice = z.infer<typeof I2cDeviceSchema>;
 
-export const SpiDeviceSchema = z.discriminatedUnion("type", [
+export const SpiDeviceSchema = z.discriminatedUnion('type', [
   niceViewDeviceSchema,
   ws2812DeviceSchema,
   shifter595DeviceSchema,
@@ -122,7 +122,7 @@ export const SpiDeviceSchema = z.discriminatedUnion("type", [
 ]);
 export type SpiDevice = z.infer<typeof SpiDeviceSchema>;
 
-export const AnyBusDeviceSchema = z.discriminatedUnion("type", [
+export const AnyBusDeviceSchema = z.discriminatedUnion('type', [
   ssd1306DeviceSchema,
   niceViewDeviceSchema,
   ws2812DeviceSchema,
@@ -150,8 +150,8 @@ export type BusConflictGroup = [string, string];
 /** Bus conflict groups keyed by SoC ID. */
 export const SOC_BUS_CONFLICTS: Record<SocId, BusConflictGroup[]> = {
   nrf52840: [
-    ["i2c0", "spi0"],
-    ["i2c1", "spi1"],
+    ['i2c0', 'spi0'],
+    ['i2c1', 'spi1'],
   ],
   rp2040: [],
 };

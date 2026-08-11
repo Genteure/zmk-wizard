@@ -1,60 +1,122 @@
 <template>
-  <UModal v-model:open="open" :title="$t('title')">
+  <UModal
+    v-model:open="open"
+    :title="$t('title')"
+  >
     <template #body>
       <div class="flex flex-col gap-3">
         <!-- Preview -->
         <div
-          class="w-full h-48 flex items-center justify-center border rounded border-muted bg-muted select-none overflow-hidden">
+          class="w-full h-48 flex items-center justify-center border rounded border-muted bg-muted select-none overflow-hidden"
+        >
           <LayoutPreview :keys="bootstrapKeys" />
         </div>
 
         <!-- Tabs -->
-        <UTabs v-model="activeTab" :items="tabItems">
+        <UTabs
+          v-model="activeTab"
+          :items="tabItems"
+        >
           <template #grid>
             <div class="flex gap-4">
-              <UFormField :label="$t('grid-cols')" class="flex-1">
-                <UInputNumber v-model="cols" :min="1" :max="32" invert-wheel-change class="w-full" />
+              <UFormField
+                :label="$t('grid-cols')"
+                class="flex-1"
+              >
+                <UInputNumber
+                  v-model="cols"
+                  :min="1"
+                  :max="32"
+                  invert-wheel-change
+                  class="w-full"
+                />
               </UFormField>
-              <UFormField :label="$t('grid-rows')" class="flex-1">
-                <UInputNumber v-model="rows" :min="1" :max="16" invert-wheel-change class="w-full" />
+              <UFormField
+                :label="$t('grid-rows')"
+                class="flex-1"
+              >
+                <UInputNumber
+                  v-model="rows"
+                  :min="1"
+                  :max="16"
+                  invert-wheel-change
+                  class="w-full"
+                />
               </UFormField>
             </div>
           </template>
           <template #cols-thumbs>
             <div class="flex flex-col gap-2">
-              <UFormField :label="$t('cols-thumbs-notation-label')" :error="notationError || undefined">
-                <UInput v-model="notation" :placeholder="$t('cols-thumbs-notation-placeholder')"
-                  class="font-mono w-full" />
+              <UFormField
+                :label="$t('cols-thumbs-notation-label')"
+                :error="notationError || undefined"
+              >
+                <UInput
+                  v-model="notation"
+                  :placeholder="$t('cols-thumbs-notation-placeholder')"
+                  class="font-mono w-full"
+                />
               </UFormField>
-              <i18n path="bootstrap-tip" tag="div" class="text-sm/snug">
+              <i18n
+                path="bootstrap-tip"
+                tag="div"
+                class="text-sm/snug"
+              >
                 <template #tip_label="{ tipLabel }">
                   <span class="font-semibold">{{ tipLabel }}</span>
                 </template>
               </i18n>
               <div>
-                <div class="text-sm font-medium">{{ $t('examples-title') }}</div>
+                <div class="text-sm font-medium">
+                  {{ $t('examples-title') }}
+                </div>
                 <div class="flex gap-1 flex-wrap">
-                  <UButton size="sm" variant="subtle" color="secondary" @click="notation = '333333+3> 3<+333333'">
+                  <UButton
+                    size="sm"
+                    variant="subtle"
+                    color="secondary"
+                    @click="notation = '333333+3> 3<+333333'"
+                  >
                     {{ $t('corne-label') }}
                   </UButton>
-                  <UButton size="sm" variant="subtle" color="secondary" @click="notation = '133333+3> 3<+333331'">
+                  <UButton
+                    size="sm"
+                    variant="subtle"
+                    color="secondary"
+                    @click="notation = '133333+3> 3<+333331'"
+                  >
                     {{ $t('totem-label') }}
                   </UButton>
-                  <UButton size="sm" variant="subtle" color="secondary" @click="notation = '444444 444444 555'">
+                  <UButton
+                    size="sm"
+                    variant="subtle"
+                    color="secondary"
+                    @click="notation = '444444 444444 555'"
+                  >
                     {{ $t('ortho-numpad-label') }}
                   </UButton>
-                  <UButton size="sm" variant="subtle" color="secondary"
-                    @click="notation = '3L+2+55555+3>+1 44 5UUUU55'">
+                  <UButton
+                    size="sm"
+                    variant="subtle"
+                    color="secondary"
+                    @click="notation = '3L+2+55555+3>+1 44 5UUUU55'"
+                  >
                     {{ $t('syntax-label') }}
                   </UButton>
-                  <UButton size="sm" variant="subtle" color="secondary"
-                    @click="notation = '2+5432+3 2+2r+2rr+2rrr 4+3^^^3^^3^33v3vv3vvv+4'">
+                  <UButton
+                    size="sm"
+                    variant="subtle"
+                    color="secondary"
+                    @click="notation = '2+5432+3 2+2r+2rr+2rrr 4+3^^^3^^3^33v3vv3vvv+4'"
+                  >
                     {{ $t('showcase-label') }}
                   </UButton>
                 </div>
               </div>
               <div>
-                <div class="text-sm font-medium">{{ $t('syntax-title') }}</div>
+                <div class="text-sm font-medium">
+                  {{ $t('syntax-title') }}
+                </div>
 
                 <div class="flex items-center justify-center">
                   <div>
@@ -66,12 +128,14 @@
                           <span>+2+</span>
                         </span>
                         <span
-                          class="inline-flex size-5 items-center justify-center font-semibold select-none leading-none border-2 rounded-full border-warning shrink-0">1</span>
+                          class="inline-flex size-5 items-center justify-center font-semibold select-none leading-none border-2 rounded-full border-warning shrink-0"
+                        >1</span>
                       </span>
                       <span class="inline-flex flex-col items-center align-top">
                         <span class="underline underline-offset-2 decoration-2 decoration-success">55555</span>
                         <span
-                          class="inline-flex size-5 items-center justify-center font-semibold select-none leading-none border-2 rounded-full border-success shrink-0">2</span>
+                          class="inline-flex size-5 items-center justify-center font-semibold select-none leading-none border-2 rounded-full border-success shrink-0"
+                        >2</span>
                       </span>
                       <span class="inline-flex flex-col items-center align-top">
                         <span class="underline underline-offset-2 decoration-2 decoration-warning">
@@ -80,7 +144,8 @@
                           <span>+1</span>
                         </span>
                         <span
-                          class="inline-flex size-5 items-center justify-center font-semibold select-none leading-none border-2 rounded-full border-warning shrink-0">3</span>
+                          class="inline-flex size-5 items-center justify-center font-semibold select-none leading-none border-2 rounded-full border-warning shrink-0"
+                        >3</span>
                       </span>
                       <span class="bg-info/15">&nbsp;</span>
                       <span>44</span>
@@ -93,7 +158,10 @@
                 </div>
 
                 <ul class="text-sm text-toned mt-2 list-disc list-outside pl-4">
-                  <i18n path="syntax-separator" tag="li">
+                  <i18n
+                    path="syntax-separator"
+                    tag="li"
+                  >
                     <template #uscore>
                       <span class="font-mono bg-info/15">_</span>
                     </template>
@@ -101,26 +169,38 @@
                       <span class="font-mono bg-info/15">&nbsp;</span>
                     </template>
                   </i18n>
-                  <i18n path="syntax-consecutive" tag="li">
+                  <i18n
+                    path="syntax-consecutive"
+                    tag="li"
+                  >
                     <template #badge_num>
                       <span
-                        class="inline-flex size-5 items-center justify-center font-semibold select-none leading-none border-2 rounded-full border-success shrink-0 align-middle">2</span>
+                        class="inline-flex size-5 items-center justify-center font-semibold select-none leading-none border-2 rounded-full border-success shrink-0 align-middle"
+                      >2</span>
                     </template>
                   </i18n>
-                  <i18n path="syntax-thumb" tag="li">
+                  <i18n
+                    path="syntax-thumb"
+                    tag="li"
+                  >
                     <template #plus_char>
                       <span class="font-mono bg-info/15">+</span>
                     </template>
                     <template #badge1_num>
                       <span
-                        class="inline-flex size-5 items-center justify-center font-semibold select-none leading-none border-2 rounded-full border-warning shrink-0 align-middle">1</span>
+                        class="inline-flex size-5 items-center justify-center font-semibold select-none leading-none border-2 rounded-full border-warning shrink-0 align-middle"
+                      >1</span>
                     </template>
                     <template #badge3_num>
                       <span
-                        class="inline-flex size-5 items-center justify-center font-semibold select-none leading-none border-2 rounded-full border-warning shrink-0 align-middle">3</span>
+                        class="inline-flex size-5 items-center justify-center font-semibold select-none leading-none border-2 rounded-full border-warning shrink-0 align-middle"
+                      >3</span>
                     </template>
                   </i18n>
-                  <i18n path="syntax-modifiers" tag="li">
+                  <i18n
+                    path="syntax-modifiers"
+                    tag="li"
+                  >
                     <template #up_chars>
                       <span class="font-mono text-error">^ u U</span>
                     </template>
@@ -140,7 +220,12 @@
           </template>
         </UTabs>
 
-        <UButton :label="$t('generate')" color="primary" class="w-full justify-center" @click="generate" />
+        <UButton
+          :label="$t('generate')"
+          color="primary"
+          class="w-full justify-center"
+          @click="generate"
+        />
       </div>
     </template>
   </UModal>
@@ -192,7 +277,6 @@ const bootstrapKeys = computed<Key[]>(() => {
   }
 
   if (activeTabValue === 'cols-thumbs') {
-
     if (!trimmedNotation) return [];
 
     try {
@@ -210,7 +294,8 @@ const bootstrapKeys = computed<Key[]>(() => {
         rx: 0,
         ry: 0,
       }));
-    } catch {
+    }
+    catch {
       return [];
     }
   }
@@ -240,7 +325,8 @@ watch([activeTab, notation], () => {
   try {
     parseNotation(trimmed);
     notationError.value = '';
-  } catch (e) {
+  }
+  catch (e) {
     notationError.value = e instanceof Error ? e.message : String(e);
   }
 }, { immediate: true });

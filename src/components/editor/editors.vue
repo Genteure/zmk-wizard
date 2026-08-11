@@ -1,7 +1,14 @@
 <template>
-  <UTabs class="min-w-full" variant="link" :content=false :items="editorTabs" v-model="selectedEditorTab" />
+  <UTabs
+    v-model="selectedEditorTab"
+    class="min-w-full"
+    variant="link"
+    :content="false"
+    :items="editorTabs"
+  />
   <component :is="selectedEditorComponent" />
 </template>
+
 <script setup lang="ts">
 import type { TabsItem } from '@nuxt/ui';
 import { useFluent } from 'fluent-vue';

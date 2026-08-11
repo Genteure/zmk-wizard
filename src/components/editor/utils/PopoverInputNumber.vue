@@ -34,23 +34,50 @@ const closeOnEnter = (_event: KeyboardEvent) => {
 watch(isOpen, (open) => {
   if (open) {
     localModelCache.value = model.value;
-  } else {
+  }
+  else {
     model.value = localModelCache.value;
   }
 });
 </script>
 
 <template>
-  <UButton v-if="!isOpen" :label="buttonLabel" :title="props.title" :aria-label="props.title" color="neutral"
-    variant="ghost" class="w-full justify-center" @click="isOpen = true" />
-  <UPopover v-else v-model:open="isOpen" arrow modal>
+  <UButton
+    v-if="!isOpen"
+    :label="buttonLabel"
+    :title="props.title"
+    :aria-label="props.title"
+    color="neutral"
+    variant="ghost"
+    class="w-full justify-center"
+    @click="isOpen = true"
+  />
+  <UPopover
+    v-else
+    v-model:open="isOpen"
+    arrow
+    modal
+  >
     <!-- format model number according to input type for display in the button label -->
-    <UButton :label="buttonLabel" :title="props.title" :aria-label="props.title" color="neutral" variant="ghost"
-      class="w-full justify-center" />
+    <UButton
+      :label="buttonLabel"
+      :title="props.title"
+      :aria-label="props.title"
+      color="neutral"
+      variant="ghost"
+      class="w-full justify-center"
+    />
     <template #content>
       <div class="p-2 w-40">
-        <UInputNumber :step="step" :step-snapping="false" :format-options="formatOptions" invertWheelChange
-          class="w-full" v-model="localModelCache" @keydown.enter="closeOnEnter" />
+        <UInputNumber
+          v-model="localModelCache"
+          :step="step"
+          :step-snapping="false"
+          :format-options="formatOptions"
+          invertWheelChange
+          class="w-full"
+          @keydown.enter="closeOnEnter"
+        />
       </div>
     </template>
   </UPopover>

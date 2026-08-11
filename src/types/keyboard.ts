@@ -1,27 +1,27 @@
-import { z } from "astro/zod";
-import { BusNameSchema, BusSchema, DeviceIdSchema, PinIdSchema, type DeviceId, type PinId } from "./devices";
-import { UlidSchema } from "./utils";
+import { z } from 'astro/zod';
+import { BusNameSchema, BusSchema, DeviceIdSchema, PinIdSchema, type DeviceId, type PinId } from './devices';
+import { UlidSchema } from './utils';
 
 // ----------------
 // Keyboard types
 
 export const SocIdSchema = z.enum([
-  "nrf52840",
-  "rp2040",
+  'nrf52840',
+  'rp2040',
 ]);
 export type SocId = z.infer<typeof SocIdSchema>;
 
 // Note: when adding new controllers, also update src/components/editor/utils/ControllerChangeModal.vue
 
 export const ControllerIdSchema = z.enum([
-  "nice_nano_v2",
-  "xiao_ble",
-  "xiao_ble_plus",
-  "rpi_pico",
-  "xiao_rp2040",
-  "qt_py_rp2040",
-  "kb2040",
-  "sparkfun_pro_micro_rp2040",
+  'nice_nano_v2',
+  'xiao_ble',
+  'xiao_ble_plus',
+  'rpi_pico',
+  'xiao_rp2040',
+  'qt_py_rp2040',
+  'kb2040',
+  'sparkfun_pro_micro_rp2040',
 ]);
 
 export type ControllerId = z.infer<typeof ControllerIdSchema>;
@@ -38,10 +38,10 @@ export type ControllerId = z.infer<typeof ControllerIdSchema>;
  *   simultaneously. Each pin drives one line while sensing the others. Can have
  *   0 or 1 interrupt pin for efficient scanning.
  */
-export const KscanDriverKindSchema = z.enum(["matrix", "direct", "charlieplex"]);
+export const KscanDriverKindSchema = z.enum(['matrix', 'direct', 'charlieplex']);
 export type KscanDriverKind = z.infer<typeof KscanDriverKindSchema>;
 
-export const KscanIdSchema = z.string() // ULID string
+export const KscanIdSchema = z.string(); // ULID string
 // TODO add ulid validation here
 export type KscanId = z.infer<typeof KscanIdSchema>;
 
@@ -51,7 +51,7 @@ export type KscanId = z.infer<typeof KscanIdSchema>;
  * The `diodes` flag indicates whether the matrix uses diodes to prevent ghosting.
  */
 export const KscanMatrixDriverSchema = z.object({
-  kind: z.literal("matrix"),
+  kind: z.literal('matrix'),
   id: KscanIdSchema,
   diodes: z.boolean().default(true),
 });
@@ -63,9 +63,9 @@ export type KscanMatrixDriver = z.infer<typeof KscanMatrixDriverSchema>;
  * Only uses input pins — the driver senses voltage changes on each pin.
  */
 export const KscanDirectDriverSchema = z.object({
-  kind: z.literal("direct"),
+  kind: z.literal('direct'),
   id: KscanIdSchema,
-  mode: z.enum(["gnd", "vcc"]),
+  mode: z.enum(['gnd', 'vcc']),
 });
 export type KscanDirectDriver = z.infer<typeof KscanDirectDriverSchema>;
 
@@ -76,12 +76,12 @@ export type KscanDirectDriver = z.infer<typeof KscanDirectDriverSchema>;
  * Pins are internally marked with role "input" even though they dual-purpose.
  */
 export const KscanCharlieplexDriverSchema = z.object({
-  kind: z.literal("charlieplex"),
+  kind: z.literal('charlieplex'),
   id: KscanIdSchema,
 });
 export type KscanCharlieplexDriver = z.infer<typeof KscanCharlieplexDriverSchema>;
 
-export const KscanDriverSchema = z.discriminatedUnion("kind", [
+export const KscanDriverSchema = z.discriminatedUnion('kind', [
   KscanMatrixDriverSchema,
   KscanDirectDriverSchema,
   KscanCharlieplexDriverSchema,
@@ -91,7 +91,7 @@ export type KscanDriver = z.infer<typeof KscanDriverSchema>;
 // kscan end
 
 export const PinUsageKscanSchema = z.object({
-  usage: z.literal("kscan"),
+  usage: z.literal('kscan'),
   kscan: KscanIdSchema,
   /**
    * Pin role within the kscan driver. Meaning depends on driver type:
@@ -105,46 +105,46 @@ export const PinUsageKscanSchema = z.object({
    *
    * - **interrupt**: Optional pin for efficient scanning. Only used by charlieplex (0 or 1).
    */
-  role: z.enum(["input", "output", "interrupt"]),
+  role: z.enum(['input', 'output', 'interrupt']),
 });
 export type PinUsageKscan = z.infer<typeof PinUsageKscanSchema>;
 
 export const BusPinRoleSchema = z.enum([
   // I2C
-  "sda", "scl",
+  'sda', 'scl',
   // SPI
-  "mosi", "miso", "sck",
+  'mosi', 'miso', 'sck',
   /**
    * Both MISO and MOSI on this pin, for half-duplex SPI bus.
    */
-  "miosio",
+  'miosio',
 ]);
 export type BusPinRole = z.infer<typeof BusPinRoleSchema>;
 
 export const PinUsageBusSchema = z.object({
-  usage: z.literal("bus"),
+  usage: z.literal('bus'),
   bus: BusNameSchema,
   role: BusPinRoleSchema,
 });
 export type PinUsageBus = z.infer<typeof PinUsageBusSchema>;
 
 export const PinUsageDeviceSchema = z.object({
-  usage: z.literal("device"),
+  usage: z.literal('device'),
   deviceId: DeviceIdSchema, // TODO ADD ULID for each device to associate pins with specific devices
   role: z.string(), // e.g. "cs", "irq", "dr", etc. Specific to the device type.
 });
 export type PinUsageDevice = z.infer<typeof PinUsageDeviceSchema>;
-export const EncoderIdSchema = UlidSchema.brand<"EncoderId", "out">();
+export const EncoderIdSchema = UlidSchema.brand<'EncoderId', 'out'>();
 export type EncoderId = z.infer<typeof EncoderIdSchema>;
 
 export const PinUsageEncoderSchema = z.object({
-  usage: z.literal("encoder"),
+  usage: z.literal('encoder'),
   encoderId: EncoderIdSchema,
-  role: z.enum(["pinA", "pinB"]),
+  role: z.enum(['pinA', 'pinB']),
 });
 export type PinUsageEncoder = z.infer<typeof PinUsageEncoderSchema>;
 
-export const PinUsageSchema = z.discriminatedUnion("usage", [
+export const PinUsageSchema = z.discriminatedUnion('usage', [
   PinUsageKscanSchema,
   PinUsageBusSchema,
   PinUsageDeviceSchema,
@@ -157,11 +157,10 @@ export type PinUsage = z.infer<typeof PinUsageSchema>;
  * Hardware-level property of a physical pin.
  * Independent of software assignment — describes what the pin *can* do.
  */
-export type PinCapability =
-  | "gpioIn"     // Can sense voltage (kscan input, encoder, device IRQ)
-  | "gpioOut"    // Can drive voltage (kscan output, charlieplex, device CS)
-  | "interrupt"  // Can generate hardware interrupts
-  ;
+export type PinCapability
+  = | 'gpioIn' // Can sense voltage (kscan input, encoder, device IRQ)
+    | 'gpioOut' // Can drive voltage (kscan output, charlieplex, device CS)
+    | 'interrupt'; // Can generate hardware interrupts
 
 /**
  * Capabilities of a pin. Describes what the pin hardware can do.
@@ -169,9 +168,9 @@ export type PinCapability =
 export type PinCapabilities = Readonly<Record<PinCapability, boolean>>;
 
 /** Where a pin comes from. */
-export type PinSource =
-  | { type: "controller"; controllerId: ControllerId }
-  | { type: "device"; deviceId: DeviceId; deviceTypeName: string };
+export type PinSource
+  = | { type: 'controller'; controllerId: ControllerId }
+    | { type: 'device'; deviceId: DeviceId; deviceTypeName: string };
 
 /**
  * Full metadata for a pin in the system.
@@ -213,7 +212,6 @@ export function composeDtsRef(dtsNodeLabel: string, dtsPinNumber: string): strin
   return `&${dtsNodeLabel} ${dtsPinNumber}`;
 }
 
-
 // Sparse pin map: only pins that are actually assigned have entries.
 // "Is this pin free?" → !(pinId in part.pins)
 export const PinSelectionSchema = z.record(PinIdSchema, PinUsageSchema);
@@ -240,21 +238,20 @@ export const SingleKeyWiringSchema = z.object({
 });
 export type SingleKeyWiring = z.infer<typeof SingleKeyWiringSchema>;
 
-
 export const EncoderSchema = z.object({
   id: EncoderIdSchema,
   // TODO configure rotation steps?
 });
 export type Encoder = z.infer<typeof EncoderSchema>;
 
-export const KeyIdSchema = UlidSchema.brand<"KeyId", "inout">();
+export const KeyIdSchema = UlidSchema.brand<'KeyId', 'inout'>();
 export type KeyId = z.infer<typeof KeyIdSchema>;
 
 export const KeyboardPartSchema = z.object({
   name: z.string()
-    .min(1, "Part name cannot be empty")
-    .max(16, "Part name cannot be longer than 16 characters")
-    .regex(/^[a-z0-9]+$/, "Part name must contain only lowercase letters and numbers"),
+    .min(1, 'Part name cannot be empty')
+    .max(16, 'Part name cannot be longer than 16 characters')
+    .regex(/^[a-z0-9]+$/, 'Part name must contain only lowercase letters and numbers'),
   controller: ControllerIdSchema,
   // wiring: WiringTypeSchema, // TODO REMOOVE
   /**
@@ -330,23 +327,23 @@ export const KeySchema = z.object({
 export type Key = z.infer<typeof KeySchema>;
 
 export const KeyboardNameSchema = z.string()
-  .min(1, "Keyboard name cannot be empty")
-  .refine((name) => new TextEncoder().encode(name).length <= 16, "Keyboard name cannot be longer than 16 bytes");
+  .min(1, 'Keyboard name cannot be empty')
+  .refine(name => new TextEncoder().encode(name).length <= 16, 'Keyboard name cannot be longer than 16 bytes');
 export type KeyboardName = z.infer<typeof KeyboardNameSchema>;
 
 export const ShieldNameSchema = z.string()
-  .min(3, "Shield name must be at least 3 characters")
-  .regex(/^[a-z][a-z0-9_]*$/, "Shield name must start with a letter and contain only lowercase letters, numbers, and underscores")
-  .max(32, "Shield name cannot be longer than 32 characters");
+  .min(3, 'Shield name must be at least 3 characters')
+  .regex(/^[a-z][a-z0-9_]*$/, 'Shield name must start with a letter and contain only lowercase letters, numbers, and underscores')
+  .max(32, 'Shield name cannot be longer than 32 characters');
 export type ShieldName = z.infer<typeof ShieldNameSchema>;
 
 /**
  * Module ID is in the format "remote/repo", e.g. "petejohanson/cirque"
  */
 export const ModuleIdSchema = z.enum([
-  "petejohanson/cirque",
-  "badjeff/pmw3610",
-  "badjeff/paw3395",
+  'petejohanson/cirque',
+  'badjeff/pmw3610',
+  'badjeff/paw3395',
 ]);
 export type ModuleId = z.infer<typeof ModuleIdSchema>;
 
@@ -359,8 +356,8 @@ export const KeyboardSchema = z.object({
    * Devices from these modules can be added to the keyboard.
    */
   modules: z.array(ModuleIdSchema).default([]),
-  layout: z.array(KeySchema).min(1, "Keyboard must have at least one key"),
-  parts: z.array(KeyboardPartSchema).min(1, "Keyboard must have at least one part"),
+  layout: z.array(KeySchema).min(1, 'Keyboard must have at least one key'),
+  parts: z.array(KeyboardPartSchema).min(1, 'Keyboard must have at least one part'),
 });
 export type Keyboard = z.infer<typeof KeyboardSchema>;
 

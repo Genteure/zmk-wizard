@@ -1,34 +1,77 @@
 <template>
   <div class="shrink-0 p-1 flex items-center justify-between gap-1 flex-notIne">
-    <UTabs v-model="toolbarTool" class="min-w-0" :content="false" size="sm" :items="toolbarItems" />
+    <UTabs
+      v-model="toolbarTool"
+      class="min-w-0"
+      :content="false"
+      size="sm"
+      :items="toolbarItems"
+    />
     <HelpModal />
   </div>
   <div class="shrink-0 p-1 flex lg:hidden items-center">
-    <UTabs v-model="selectedGraphic" size="sm" class="w-full" :content="false" :items="graphicTabs" />
+    <UTabs
+      v-model="selectedGraphic"
+      size="sm"
+      class="w-full"
+      :content="false"
+      :items="graphicTabs"
+    />
   </div>
   <div class="flex-1 min-h-0 flex flex-col">
-    <div class="flex-1 min-h-0 bg-default lg:border-b border-default relative"
-      :class="selectedGraphic === 'physical' ? '' : 'hidden lg:block'">
-      <CanvasViewport ref="physicalCanvas" :bbox="keysBbox" :tool="toolbarTool" :entity-interaction="interactiveKeys"
-        :selection-b-box="physicalSelectionBBox" :show-rotate-handle="true" :space-held="spaceHeld"
-        :hit-test="wiringHitTest" :wire-callback="handleWireEntity"
-        @contextmenu="handleContextMenu('physical', $event)">
-        <KeyEntity v-for="(key, i) in keyboard.layout" :key="key.id" :key-data="key" :index="i"
-          :selected="selection.selectedIdSet.has(key.id)" :pending-selected="currentPendingIds.has(key.id)"
+    <div
+      class="flex-1 min-h-0 bg-default lg:border-b border-default relative"
+      :class="selectedGraphic === 'physical' ? '' : 'hidden lg:block'"
+    >
+      <CanvasViewport
+        ref="physicalCanvas"
+        :bbox="keysBbox"
+        :tool="toolbarTool"
+        :entity-interaction="interactiveKeys"
+        :selection-b-box="physicalSelectionBBox"
+        :show-rotate-handle="true"
+        :space-held="spaceHeld"
+        :hit-test="wiringHitTest"
+        :wire-callback="handleWireEntity"
+        @contextmenu="handleContextMenu('physical', $event)"
+      >
+        <KeyEntity
+          v-for="(key, i) in keyboard.layout"
+          :key="key.id"
+          :key-data="key"
+          :index="i"
+          :selected="selection.selectedIdSet.has(key.id)"
+          :pending-selected="currentPendingIds.has(key.id)"
           :input-pin-label="keyWiringLabels.get(key.id)?.inputPinLabel"
-          :output-pin-label="keyWiringLabels.get(key.id)?.outputPinLabel" :pin-active="isKeyPinActive(key.id)" />
+          :output-pin-label="keyWiringLabels.get(key.id)?.outputPinLabel"
+          :pin-active="isKeyPinActive(key.id)"
+        />
         <!-- Ghost entities during move/rotate (physical) -->
-        <g v-for="ghost in physicalGhosts" :key="'pg-' + ghost.id" :transform="ghost.transform" opacity="0.45">
-          <path :d="ghost.path" fill="var(--ui-bg)" stroke="var(--ui-text-muted)" stroke-width="1" />
+        <g
+          v-for="ghost in physicalGhosts"
+          :key="'pg-' + ghost.id"
+          :transform="ghost.transform"
+          opacity="0.45"
+        >
+          <path
+            :d="ghost.path"
+            fill="var(--ui-bg)"
+            stroke="var(--ui-text-muted)"
+            stroke-width="1"
+          />
         </g>
       </CanvasViewport>
       <!-- Overlay -->
       <div class="absolute inset-0 pointer-events-none">
         <div class="absolute top-0 left-0 bg-muted/80 border-accented border-r border-b rounded-br">
-          <div class="text-xs font-medium px-2 py-1">{{ $t('physical-layout') }}</div>
+          <div class="text-xs font-medium px-2 py-1">
+            {{ $t('physical-layout') }}
+          </div>
         </div>
-        <div v-if="toolbarTool === 'wire' && nav.wiringSelection"
-          class="absolute top-1 left-1/2 -translate-x-1/2 bg-muted/80 border-primary border rounded">
+        <div
+          v-if="toolbarTool === 'wire' && nav.wiringSelection"
+          class="absolute top-1 left-1/2 -translate-x-1/2 bg-muted/80 border-primary border rounded"
+        >
           <div class="text-sm px-2 py-1 text-primary font-medium">
             {{ $t('selected-pin', { pin: selectedPinLabel, role: nav.wiringSelection.role }) }}
           </div>
@@ -37,33 +80,73 @@
           <span class="text-xs text-foreground/50 bg-default/80 px-2 py-1 rounded">{{ operationHint }}</span>
         </div>
         <div class="absolute bottom-2 right-2 pointer-events-auto">
-          <UButton size="sm" color="neutral" variant="outline" @click="physicalCanvas?.fitAll()">
+          <UButton
+            size="sm"
+            color="neutral"
+            variant="outline"
+            @click="physicalCanvas?.fitAll()"
+          >
             Zoom to Fit
           </UButton>
         </div>
       </div>
     </div>
-    <div class="flex-1 min-h-0 bg-default relative" :class="selectedGraphic === 'keymap' ? '' : 'hidden lg:block'">
-      <CanvasViewport ref="keymapCanvas" :bbox="keymapBbox" :grid-cell-size="0" :grid-major-cell-size="DEFAULT_KEY_SIZE"
-        :tool="toolbarTool" :entity-interaction="interactiveKeys" :selection-b-box="keymapSelectionBBox"
-        :show-rotate-handle="false" :space-held="spaceHeld" :hit-test="wiringHitTestKeymap"
-        :wire-callback="handleWireEntity" @contextmenu="handleContextMenu('keymap', $event)">
-        <KeyEntity v-for="(key, i) in keyboard.layout" :key="key.id" :key-data="key" :index="i" position-mode="logical"
-          :selected="selection.selectedIdSet.has(key.id)" :pending-selected="currentPendingIds.has(key.id)"
+    <div
+      class="flex-1 min-h-0 bg-default relative"
+      :class="selectedGraphic === 'keymap' ? '' : 'hidden lg:block'"
+    >
+      <CanvasViewport
+        ref="keymapCanvas"
+        :bbox="keymapBbox"
+        :grid-cell-size="0"
+        :grid-major-cell-size="DEFAULT_KEY_SIZE"
+        :tool="toolbarTool"
+        :entity-interaction="interactiveKeys"
+        :selection-b-box="keymapSelectionBBox"
+        :show-rotate-handle="false"
+        :space-held="spaceHeld"
+        :hit-test="wiringHitTestKeymap"
+        :wire-callback="handleWireEntity"
+        @contextmenu="handleContextMenu('keymap', $event)"
+      >
+        <KeyEntity
+          v-for="(key, i) in keyboard.layout"
+          :key="key.id"
+          :key-data="key"
+          :index="i"
+          position-mode="logical"
+          :selected="selection.selectedIdSet.has(key.id)"
+          :pending-selected="currentPendingIds.has(key.id)"
           :input-pin-label="keyWiringLabels.get(key.id)?.inputPinLabel"
-          :output-pin-label="keyWiringLabels.get(key.id)?.outputPinLabel" :pin-active="isKeyPinActive(key.id)" />
+          :output-pin-label="keyWiringLabels.get(key.id)?.outputPinLabel"
+          :pin-active="isKeyPinActive(key.id)"
+        />
         <!-- Ghost entities during move (keymap) -->
-        <g v-for="ghost in keymapGhosts" :key="'kg-' + ghost.id" :transform="ghost.transform" opacity="0.45">
-          <path :d="ghost.path" fill="var(--ui-bg)" stroke="var(--ui-text-muted)" stroke-width="1" />
+        <g
+          v-for="ghost in keymapGhosts"
+          :key="'kg-' + ghost.id"
+          :transform="ghost.transform"
+          opacity="0.45"
+        >
+          <path
+            :d="ghost.path"
+            fill="var(--ui-bg)"
+            stroke="var(--ui-text-muted)"
+            stroke-width="1"
+          />
         </g>
       </CanvasViewport>
       <!-- Overlay -->
       <div class="absolute inset-0 pointer-events-none">
         <div class="absolute top-0 left-0 bg-muted/80 border-accented border-r border-b rounded-br">
-          <div class="text-xs font-medium px-2 py-1">{{ $t('keymap-layout') }}</div>
+          <div class="text-xs font-medium px-2 py-1">
+            {{ $t('keymap-layout') }}
+          </div>
         </div>
-        <div v-if="toolbarTool === 'wire' && nav.wiringSelection"
-          class="absolute top-1 left-1/2 -translate-x-1/2 bg-muted/80 border-primary border rounded">
+        <div
+          v-if="toolbarTool === 'wire' && nav.wiringSelection"
+          class="absolute top-1 left-1/2 -translate-x-1/2 bg-muted/80 border-primary border rounded"
+        >
           <div class="text-sm px-2 py-1 text-primary font-medium">
             {{ $t('selected-pin', { pin: selectedPinLabel, role: nav.wiringSelection.role }) }}
           </div>
@@ -72,14 +155,24 @@
           <span class="text-xs text-foreground/50 bg-default/80 px-2 py-1 rounded">{{ operationHint }}</span>
         </div>
         <div class="absolute bottom-2 right-2 pointer-events-auto">
-          <UButton size="sm" color="neutral" variant="outline" @click="keymapCanvas?.fitAll()">
+          <UButton
+            size="sm"
+            color="neutral"
+            variant="outline"
+            @click="keymapCanvas?.fitAll()"
+          >
             Zoom to Fit
           </UButton>
         </div>
       </div>
     </div>
-    <ContextMenu :visible="contextMenu.visible" :x="contextMenu.x" :y="contextMenu.y" :items="contextMenu.items"
-      @close="closeContextMenu" />
+    <ContextMenu
+      :visible="contextMenu.visible"
+      :x="contextMenu.x"
+      :y="contextMenu.y"
+      :items="contextMenu.items"
+      @close="closeContextMenu"
+    />
   </div>
 </template>
 
@@ -156,7 +249,7 @@ const keyWiringLabels = computed(() => {
 
   // Resolve all pins (controller + device) and index by id for O(1) label lookup.
   const { allPins } = resolvePinInventory(part);
-  const pinLabelMap = new Map<string, string>(allPins.map((p) => [p.id, p.label]));
+  const pinLabelMap = new Map<string, string>(allPins.map(p => [p.id, p.label]));
 
   for (const [keyId, wiring] of Object.entries(part.keys)) {
     if (!wiring) continue;
@@ -164,7 +257,7 @@ const keyWiringLabels = computed(() => {
     if (!anyPinId) continue;
     const pinUsage = part.pins[anyPinId];
     if (pinUsage?.usage !== 'kscan') continue;
-    const kscan = part.kscans.find((k) => k.id === pinUsage.kscan);
+    const kscan = part.kscans.find(k => k.id === pinUsage.kscan);
     if (!kscan) continue;
 
     const needsOutput = kscan.kind !== 'direct';
@@ -192,7 +285,7 @@ const selectedPinLabel = computed(() => {
   const part = keyboard.parts[nav.activePart];
   if (!part) return '';
   const { allPins } = resolvePinInventory(part);
-  const pinMap = new Map<string, string>(allPins.map((p) => [p.id, p.label]));
+  const pinMap = new Map<string, string>(allPins.map(p => [p.id, p.label]));
   return pinMap.get(ws.pinId) ?? '???';
 });
 
@@ -223,7 +316,8 @@ function onCancelGesture(canvas: 'physical' | 'keymap') {
   if (canvas === 'physical') {
     prevPhysicalGesture = { mode: 'idle' };
     lastSelectingPhysical.value = null;
-  } else {
+  }
+  else {
     prevKeymapGesture = { mode: 'idle' };
     lastSelectingKeymap.value = null;
   }
@@ -268,7 +362,8 @@ function handleContextMenu(
       { label: 'Select All', action: actions.selectAll },
       { label: 'Zoom to Fit', action: actions.fitAll },
     ];
-  } else {
+  }
+  else {
     // Right-click on entity — select it if not already, then show entity actions
     if (!selection.selectedIdSet.has(entityId)) {
       selection.setSelected([entityId]);
@@ -297,10 +392,10 @@ const keymapBbox = computed(() => logicalKeysBoundingBox(keyboard.layout, DEFAUL
 
 // ─── Entity bounding boxes for hit testing ─────────────────────
 const physicalEntities = computed(() =>
-  keyboard.layout.map((k) => ({ id: k.id, bbox: keyBoundingBox(k, DEFAULT_KEY_SIZE) })),
+  keyboard.layout.map(k => ({ id: k.id, bbox: keyBoundingBox(k, DEFAULT_KEY_SIZE) })),
 );
 const keymapEntities = computed(() =>
-  keyboard.layout.map((k) => ({ id: k.id, bbox: logicalKeyBoundingBox(k, DEFAULT_KEY_SIZE) })),
+  keyboard.layout.map(k => ({ id: k.id, bbox: logicalKeyBoundingBox(k, DEFAULT_KEY_SIZE) })),
 );
 // ─── Wiring mode ─────────────────────────────────────────────
 
@@ -346,7 +441,7 @@ function handleWireEntity(entityId: string) {
 // ─── Selection bounding boxes (for overlay + handles) ──────────
 
 const selectedKeys = computed(() =>
-  keyboard.layout.filter((k) => selection.selectedIdSet.has(k.id)),
+  keyboard.layout.filter(k => selection.selectedIdSet.has(k.id)),
 );
 
 const physicalSelectionBBox = computed(() => {
@@ -446,7 +541,8 @@ watch(() => physicalCanvas.value?.gesture, (g) => {
   // ── Selection ──
   if (g.mode === 'selecting') {
     lastSelectingPhysical.value = { sx: g.sx, sy: g.sy, shift: g.shift, alt: g.alt, cmd: g.cmd, confirmed: g.confirmed };
-  } else if (lastSelectingPhysical.value) {
+  }
+  else if (lastSelectingPhysical.value) {
     handleSelectEnd(lastSelectingPhysical.value, physicalCanvas.value, physicalEntities.value);
     lastSelectingPhysical.value = null;
   }
@@ -465,7 +561,8 @@ watch(() => keymapCanvas.value?.gesture, (g) => {
   // ── Selection ──
   if (g.mode === 'selecting') {
     lastSelectingKeymap.value = { sx: g.sx, sy: g.sy, shift: g.shift, alt: g.alt, cmd: g.cmd, confirmed: g.confirmed };
-  } else if (lastSelectingKeymap.value) {
+  }
+  else if (lastSelectingKeymap.value) {
     handleSelectEnd(lastSelectingKeymap.value, keymapCanvas.value, keymapEntities.value);
     lastSelectingKeymap.value = null;
   }
@@ -486,13 +583,16 @@ function handleSelectEnd(
     if (entityId) {
       if (state.shift || state.cmd) {
         selection.toggleSelected([entityId]);
-      } else {
+      }
+      else {
         selection.setSelected([entityId]);
       }
-    } else if (!state.shift) {
+    }
+    else if (!state.shift) {
       selection.clearSelected();
     }
-  } else {
+  }
+  else {
     // Box selection commit
     const cp = canvas.currentPointer;
     const p = canvas.pan;
@@ -510,9 +610,11 @@ function handleSelectEnd(
 
     if (state.alt) {
       selection.removeSelected(ids);
-    } else if (state.shift || state.cmd) {
+    }
+    else if (state.shift || state.cmd) {
       selection.addSelected(ids);
-    } else {
+    }
+    else {
       selection.setSelected(ids);
     }
   }
@@ -578,7 +680,6 @@ function handleMoveEnd(g: Extract<Gesture, { mode: 'moving' }>, canvas: CanvasHa
   }));
 }
 
-
 function handleRotateEnd(g: Extract<Gesture, { mode: 'rotating' }>, canvas: CanvasHandle | undefined) {
   if (!canvas) return;
   const delta = computeRotateDelta(g.svx, g.svy, g.cvx, g.cvy, g.cx, g.cy, g.shift, canvas.pan, canvas.zoom);
@@ -593,7 +694,8 @@ function handleRotateEnd(g: Extract<Gesture, { mode: 'rotating' }>, canvas: Canv
         changes: { x: result.x, y: result.y, r: result.r, rx: 0, ry: 0 },
       };
     }));
-  } else {
+  }
+  else {
     // Rotate around group center — use correct algorithm + normalize
     const cxU = g.cx / DEFAULT_KEY_SIZE, cyU = g.cy / DEFAULT_KEY_SIZE;
     keyboard.patchKeys(selectedKeys.value.map((k) => {
@@ -608,7 +710,7 @@ function handleRotateEnd(g: Extract<Gesture, { mode: 'rotating' }>, canvas: Canv
 
 // ─── Ghost entities (during move/rotate) ───────────────────────
 
-interface GhostEntity { id: string; transform: string; path: string; }
+interface GhostEntity { id: string; transform: string; path: string }
 
 function ghostPath(k: { w: number; h: number }) {
   return keyToSvgPath({ w: k.w, h: k.h }, { keySize: DEFAULT_KEY_SIZE, padding: DEFAULT_PADDING, borderRadius: DEFAULT_BORDER_RADIUS });
@@ -665,7 +767,7 @@ const keymapGhosts = computed<GhostEntity[]>(() => {
   if (!g || g.mode !== 'moving' || selectedKeys.value.length === 0) return [];
   const d = computeMoveDelta(g.svx, g.svy, g.cvx, g.cvy, g.shift, keymapCanvas.value!.zoom, false);
   if (!d) return [];
-  return selectedKeys.value.map((k) => ({
+  return selectedKeys.value.map(k => ({
     id: k.id,
     path: keyToSvgPath({ w: 1, h: 1 }, { keySize: DEFAULT_KEY_SIZE, padding: DEFAULT_PADDING, borderRadius: DEFAULT_BORDER_RADIUS }),
     transform: `translate(${(k.col + d.dU) * DEFAULT_KEY_SIZE},${(k.row + d.dV) * DEFAULT_KEY_SIZE})`,
@@ -676,11 +778,13 @@ const keymapGhosts = computed<GhostEntity[]>(() => {
 watch(() => nav.activeTab, (newTab) => {
   if (newTab === 'layout') {
     toolbarTool.value = 'select';
-  } else if (newTab === 'parts') {
+  }
+  else if (newTab === 'parts') {
     if (!['pan', 'wire'].includes(toolbarTool.value)) {
       toolbarTool.value = 'wire';
     }
-  } else {
+  }
+  else {
     toolbarTool.value = 'pan';
   }
 });

@@ -11,16 +11,16 @@
 // ---------------------------------------------------------------------------
 
 interface KeyEntry {
-  count: number;       // 1–9
+  count: number; // 1–9
   modifiers: string[]; // normalized lowercase: v d ^ u > r < l
 }
 
 interface PlacedKey {
-  origX: number;       // structural position before normalization
-  origY: number;       // (preserved for keymap computation)
-  offsetX: number;     // modifier displacement
+  origX: number; // structural position before normalization
+  origY: number; // (preserved for keymap computation)
+  offsetX: number; // modifier displacement
   offsetY: number;
-  physBaseX: number;   // structural position after normalization + section offset
+  physBaseX: number; // structural position after normalization + section offset
   physBaseY: number;
 }
 
@@ -34,22 +34,22 @@ interface Section {
 // Constants & helpers
 // ---------------------------------------------------------------------------
 
-const VALID_CHARS = new Set("123456789vVdD^uUrRlL<>+ _");
+const VALID_CHARS = new Set('123456789vVdD^uUrRlL<>+ _');
 const SEPARATOR = /[ _]+/;
 
 function isVerticalMod(ch: string): boolean {
-  return ch === "v" || ch === "d" || ch === "^" || ch === "u";
+  return ch === 'v' || ch === 'd' || ch === '^' || ch === 'u';
 }
 
 function isHorizontalMod(ch: string): boolean {
-  return ch === ">" || ch === "r" || ch === "<" || ch === "l";
+  return ch === '>' || ch === 'r' || ch === '<' || ch === 'l';
 }
 
 function netVerticalShift(mods: string[]): number {
   let delta = 0;
   for (const m of mods) {
-    if (m === "v" || m === "d") delta++;
-    else if (m === "^" || m === "u") delta--;
+    if (m === 'v' || m === 'd') delta++;
+    else if (m === '^' || m === 'u') delta--;
   }
   return delta * 0.5;
 }
@@ -57,8 +57,8 @@ function netVerticalShift(mods: string[]): number {
 function netHorizontalShift(mods: string[]): number {
   let delta = 0;
   for (const m of mods) {
-    if (m === ">" || m === "r") delta++;
-    else if (m === "<" || m === "l") delta--;
+    if (m === '>' || m === 'r') delta++;
+    else if (m === '<' || m === 'l') delta--;
   }
   return delta * 0.5;
 }
@@ -69,8 +69,8 @@ function netHorizontalShift(mods: string[]): number {
 
 /** Parse a chunk string into entries. Each digit (1–9) starts a new entry. */
 function parseChunk(raw: string): KeyEntry[] {
-  if (raw.length === 0) throw new Error("Empty chunk");
-  if (!(raw[0] >= "1" && raw[0] <= "9")) {
+  if (raw.length === 0) throw new Error('Empty chunk');
+  if (!(raw[0] >= '1' && raw[0] <= '9')) {
     throw new Error(`Chunk must start with a digit (1–9): "${raw}"`);
   }
 
@@ -85,7 +85,8 @@ function parseChunk(raw: string): KeyEntry[] {
       if (isVerticalMod(m) || isHorizontalMod(m)) {
         entries[entries.length - 1].modifiers.push(m);
         i++;
-      } else {
+      }
+      else {
         break;
       }
     }
@@ -105,16 +106,16 @@ function parseSections(notation: string): Section[] {
 
   const sectionStrs = notation.split(SEPARATOR).filter(s => s.length > 0);
   if (sectionStrs.length === 0) {
-    throw new Error("Empty notation");
+    throw new Error('Empty notation');
   }
 
   const sections: Section[] = [];
 
   for (const secStr of sectionStrs) {
-    const chunkStrs = secStr.split("+");
+    const chunkStrs = secStr.split('+');
     if (chunkStrs.some(c => c.length === 0)) {
       throw new Error(
-        `Empty chunk in "${secStr}" (leading, trailing, or consecutive '+' sign)`
+        `Empty chunk in "${secStr}" (leading, trailing, or consecutive '+' sign)`,
       );
     }
 
@@ -127,7 +128,7 @@ function parseSections(notation: string): Section[] {
 
     if (multiIdx.length >= 2) {
       throw new Error(
-        `Section "${secStr}" has ${multiIdx.length} multi-entry chunks; at most 1 allowed`
+        `Section "${secStr}" has ${multiIdx.length} multi-entry chunks; at most 1 allowed`,
       );
     }
 
@@ -137,12 +138,14 @@ function parseSections(notation: string): Section[] {
 
     if (chunks.length === 1) {
       columnPart = chunks[0];
-    } else if (multiIdx.length === 1) {
+    }
+    else if (multiIdx.length === 1) {
       const colIdx = multiIdx[0];
       columnPart = chunks[colIdx];
       leftThumbs = chunks.slice(0, colIdx).map(c => c[0]);
       rightThumbs = chunks.slice(colIdx + 1).map(c => c[0]);
-    } else {
+    }
+    else {
       // All single-entry chunks → thumbs only, all left-aligned
       leftThumbs = chunks.map(c => c[0]);
     }
@@ -258,7 +261,7 @@ function placeSection(section: Section): { keys: PlacedKey[]; maxXPhys: number }
 // ---------------------------------------------------------------------------
 
 export function parseNotation(
-  notation: string
+  notation: string,
 ): { keymap: { x: number; y: number }[]; physical: { x: number; y: number }[] } {
   // 1. Parse notation into classified sections
   const sections = parseSections(notation);

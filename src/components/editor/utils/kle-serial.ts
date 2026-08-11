@@ -7,14 +7,15 @@
 export type Array12<T> = [T, T, T, T, T, T, T, T, T, T, T, T];
 
 export class Key {
-  color: string = "#cccccc";
+  color: string = '#cccccc';
   labels: Array12<string>;
   textColor: Array12<string>;
   textSize: Array12<number>;
   default: { textColor: string; textSize: number } = {
-    textColor: "#000000",
+    textColor: '#000000',
     textSize: 3,
   };
+
   x: number = 0;
   y: number = 0;
   width: number = 1;
@@ -30,30 +31,30 @@ export class Key {
   ghost: boolean = false;
   stepped: boolean = false;
   nub: boolean = false;
-  profile: string = "";
-  sm: string = ""; // switch mount
-  sb: string = ""; // switch brand
-  st: string = ""; // switch type
+  profile: string = '';
+  sm: string = ''; // switch mount
+  sb: string = ''; // switch brand
+  st: string = ''; // switch type
 
   constructor() {
     // Initialize all arrays to 12 elements
     // labels and colors are initialized to empty strings, textColor to 0
-    this.labels = Array(12).fill("") as Array12<string>;
-    this.textColor = Array(12).fill("") as Array12<string>;
+    this.labels = Array(12).fill('') as Array12<string>;
+    this.textColor = Array(12).fill('') as Array12<string>;
     this.textSize = Array(12).fill(0) as Array12<number>;
   }
 }
 
 export class KeyboardMetadata {
-  author: string = "";
-  backcolor: string = "#eeeeee";
+  author: string = '';
+  backcolor: string = '#eeeeee';
   background: { name: string; style: string } | null = null;
-  name: string = "";
-  notes: string = "";
-  radii: string = "";
-  switchBrand: string = "";
-  switchMount: string = "";
-  switchType: string = "";
+  name: string = '';
+  notes: string = '';
+  radii: string = '';
+  switchBrand: string = '';
+  switchMount: string = '';
+  switchType: string = '';
   // Store custom metadata fields that aren't part of standard KLE format
   [key: string]: any;
 }
@@ -73,7 +74,7 @@ export namespace Serial {
   // depending on the alignment flags.
   // prettier-ignore
   const labelMap: Array<Array<number>> = [
-    //0  1  2  3  4  5  6  7  8  9 10 11   // align flags
+    // 0  1  2  3  4  5  6  7  8  9 10 11   // align flags
     [0, 6, 2, 8, 9, 11, 3, 5, 1, 4, 7, 10], // 0 = no centering
     [1, 7, -1, -1, 9, 11, 4, -1, -1, -1, -1, 10], // 1 = center x
     [3, -1, 5, -1, 9, 11, -1, -1, 4, -1, -1, 10], // 2 = center y
@@ -101,10 +102,10 @@ export namespace Serial {
     // Count occurrences of each non-empty color
     const counts: Record<string, number> = {};
     let maxCount = 0;
-    let mostCommon = "";
+    let mostCommon = '';
 
     for (const color of colors) {
-      if (color && color.trim() !== "") {
+      if (color && color.trim() !== '') {
         counts[color] = (counts[color] || 0) + 1;
         if (counts[color] > maxCount) {
           maxCount = counts[color];
@@ -113,16 +114,16 @@ export namespace Serial {
       }
     }
 
-    return mostCommon || "#000000"; // Default to black if no colors found
+    return mostCommon || '#000000'; // Default to black if no colors found
   }
 
   function deserializeError(msg: string, data?: any): never {
-    throw new Error("Error: " + msg + (data ? ":\n  " + JSON.stringify(data) : ""));
+    throw new Error('Error: ' + msg + (data ? ':\n  ' + JSON.stringify(data) : ''));
   }
 
   export function deserialize(rows: Array<any>): Keyboard {
     if (!(rows instanceof Array))
-      deserializeError("expected an array of objects");
+      deserializeError('expected an array of objects');
 
     // Initialize with defaults
     const current: Key = new Key();
@@ -134,7 +135,7 @@ export namespace Serial {
       if (rows[r] instanceof Array) {
         for (let k = 0; k < rows[r].length; ++k) {
           const item = rows[r][k];
-          if (typeof item === "string") {
+          if (typeof item === 'string') {
             const newKey: Key = {
               ...current,
               labels: [...current.labels],
@@ -144,11 +145,11 @@ export namespace Serial {
             };
 
             // Calculate some generated values
-            newKey.width2 =
-              newKey.width2 === 0 ? current.width : current.width2;
-            newKey.height2 =
-              newKey.height2 === 0 ? current.height : current.height2;
-            newKey.labels = reorderLabelsIn(item.split("\n"), align, "");
+            newKey.width2
+              = newKey.width2 === 0 ? current.width : current.width2;
+            newKey.height2
+              = newKey.height2 === 0 ? current.height : current.height2;
+            newKey.labels = reorderLabelsIn(item.split('\n'), align, '');
             // textSize is already in normalized format (from f/f2/fa), don't reorder it
             // textColor is also already normalized, don't reorder it
 
@@ -156,7 +157,7 @@ export namespace Serial {
             for (let i = 0; i < 12; ++i) {
               if (!newKey.labels[i]) {
                 newKey.textSize[i] = 0;
-                newKey.textColor[i] = "";
+                newKey.textColor[i] = '';
               }
             }
 
@@ -168,13 +169,14 @@ export namespace Serial {
             current.width = current.height = 1;
             current.x2 = current.y2 = current.width2 = current.height2 = 0;
             current.nub = current.stepped = current.decal = false;
-          } else {
+          }
+          else {
             if (
-              k != 0 &&
-              (item.r != null || item.rx != null || item.ry != null)
+              k != 0
+              && (item.r != null || item.rx != null || item.ry != null)
             ) {
               deserializeError(
-                "rotation can only be specified on the first key in a row",
+                'rotation can only be specified on the first key in a row',
                 item,
               );
             }
@@ -214,20 +216,21 @@ export namespace Serial {
                 }
               }
             }
-            if ("p" in item) current.profile = item.p;
+            if ('p' in item) current.profile = item.p;
             if (item.c) current.color = item.c;
             // Handle text color: 't' for default, 'ta' for per-label array
-            if ("t" in item) {
-              if (item.t.indexOf("\n") === -1) {
+            if ('t' in item) {
+              if (item.t.indexOf('\n') === -1) {
                 // New format: 't' is just the default color (single value)
                 current.default.textColor = item.t;
-              } else {
+              }
+              else {
                 // Legacy format: 't' contains both default and per-label colors
-                const split = item.t.split("\n");
+                const split = item.t.split('\n');
                 // Set default: if first value is non-empty, use most common color
                 // (to handle cases like "#111111\n#222222\n#222222" where #222222 is most common)
                 // If first value is empty, don't change default (backward compatible)
-                if (split[0] && split[0].trim() !== "") {
+                if (split[0] && split[0].trim() !== '') {
                   current.default.textColor = findMostCommonColor(split);
                 }
                 current.textColor = reorderLabelsIn(
@@ -238,19 +241,19 @@ export namespace Serial {
                 // Clean up values that equal the default
                 for (let j = 0; j < 12; ++j) {
                   if (current.textColor[j] === current.default.textColor) {
-                    current.textColor[j] = "";
+                    current.textColor[j] = '';
                   }
                 }
               }
             }
-            if ("ta" in item) {
+            if ('ta' in item) {
               // New format: 'ta' is per-label colors (newline-delimited string)
-              const taSplit = item.ta.split("\n");
-              current.textColor = reorderLabelsIn(taSplit, align, "");
+              const taSplit = item.ta.split('\n');
+              current.textColor = reorderLabelsIn(taSplit, align, '');
               // Clean up values that equal the default
               for (let j = 0; j < 12; ++j) {
                 if (current.textColor[j] === current.default.textColor) {
-                  current.textColor[j] = "";
+                  current.textColor[j] = '';
                 }
               }
             }
@@ -266,19 +269,20 @@ export namespace Serial {
             if (item.l) current.stepped = item.l;
             if (item.d) current.decal = item.d;
             if (item.g != null) current.ghost = item.g;
-            if ("sm" in item) current.sm = item.sm;
-            if ("sb" in item) current.sb = item.sb;
-            if ("st" in item) current.st = item.st;
+            if ('sm' in item) current.sm = item.sm;
+            if ('sb' in item) current.sb = item.sb;
+            if ('st' in item) current.st = item.st;
           }
         }
 
         // End of the row
         current.y++;
         current.x = current.rotation_x;
-      } else if (typeof rows[r] === "object") {
+      }
+      else if (typeof rows[r] === 'object') {
         if (r != 0) {
           deserializeError(
-            "keyboard metadata must the be first element",
+            'keyboard metadata must the be first element',
             rows[r],
           );
         }
@@ -286,8 +290,9 @@ export namespace Serial {
         for (const prop in rows[r]) {
           if (rows[r][prop]) kbd.meta[prop] = rows[r][prop];
         }
-      } else {
-        deserializeError("unexpected", rows[r]);
+      }
+      else {
+        deserializeError('unexpected', rows[r]);
       }
     }
     return kbd;
@@ -295,7 +300,7 @@ export namespace Serial {
 
   // prettier-ignore
   const reverseLabelMap: Array<Array<number>> = [
-    //0  1  2  3  4  5  6  7  8  9 10 11   // align flags
+    // 0  1  2  3  4  5  6  7  8  9 10 11   // align flags
     [0, 8, 2, 6, 9, 7, 1, 10, 3, 4, 11, 5], // 0 = no centering
     [-1, 0, -1, -1, 6, -1, -1, 1, -1, 4, 11, 5], // 1 = center x
     [-1, -1, -1, 0, 8, 2, -1, -1, -1, 4, 11, 5], // 2 = center y
@@ -326,7 +331,7 @@ export namespace Serial {
   function findBestLabelAlignment(labels: any[]): [number, any[]] {
     const results: Record<number, any[]> = {}; // Explicitly type results
     for (let align = 7; align >= 0; align--) {
-      const ret = reorderLabelsKle(labels, align, "");
+      const ret = reorderLabelsKle(labels, align, '');
       if (ret.length > 0) {
         results[align] = ret;
       }
@@ -341,12 +346,11 @@ export namespace Serial {
     return [0, []];
   }
 
-
   export function serialize(kbd: Keyboard): Array<any> {
     const rows: any[] = [];
     let row: any[] = [];
     const current = new Key();
-    let current_textColor_str: string = "";
+    let current_textColor_str: string = '';
     let current_textSize_arr: number[] = [];
     let current_alignment = 4;
     const cluster = { r: 0, rx: 0, ry: 0 };
@@ -371,7 +375,8 @@ export namespace Serial {
         if (Array.isArray(value) && Array.isArray(def)) {
           if (value.length != def.length) {
             different = true;
-          } else {
+          }
+          else {
             for (let i = 0; i < value.length; ++i) {
               if (value[i] !== def[i]) {
                 different = true;
@@ -379,7 +384,8 @@ export namespace Serial {
               }
             }
           }
-        } else {
+        }
+        else {
           if (value !== def) {
             different = true;
           }
@@ -397,7 +403,8 @@ export namespace Serial {
         if (!key.labels[i]) {
           delete key.textSize[i];
           delete key.textColor[i];
-        } else {
+        }
+        else {
           // Also delete values equal to default to optimize serialization
           if (key.textSize[i] === key.default.textSize) {
             delete key.textSize[i];
@@ -410,10 +417,10 @@ export namespace Serial {
 
       const [alignment, labels] = findBestLabelAlignment(key.labels);
 
-      const new_cluster =
-        key.rotation_angle !== cluster.r ||
-        key.rotation_x !== cluster.rx ||
-        key.rotation_y !== cluster.ry;
+      const new_cluster
+        = key.rotation_angle !== cluster.r
+          || key.rotation_x !== cluster.rx
+          || key.rotation_y !== cluster.ry;
 
       // Don't overwrite new_row for the first key to allow proper y normalization
       if (!(rows.length === 0 && row.length === 0)) {
@@ -438,46 +445,46 @@ export namespace Serial {
       }
 
       current.rotation_angle = add_prop(
-        "r",
+        'r',
         key.rotation_angle,
         current.rotation_angle,
       );
-      current.rotation_x = add_prop("rx", key.rotation_x, current.rotation_x);
-      current.rotation_y = add_prop("ry", key.rotation_y, current.rotation_y);
+      current.rotation_x = add_prop('rx', key.rotation_x, current.rotation_x);
+      current.rotation_y = add_prop('ry', key.rotation_y, current.rotation_y);
 
-      const x_offset = add_prop("x", key.x - current.x, 0);
-      const y_offset = add_prop("y", key.y - current.y, 0);
+      const x_offset = add_prop('x', key.x - current.x, 0);
+      const y_offset = add_prop('y', key.y - current.y, 0);
       current.x = current.x + key.width + x_offset;
       current.y = current.y + y_offset;
 
-      current.color = add_prop("c", key.color, current.color);
+      current.color = add_prop('c', key.color, current.color);
 
       // Output 't' when default changes
       current.default.textColor = add_prop(
-        "t",
+        't',
         key.default.textColor,
         current.default.textColor,
       );
 
       // Output 'ta' when per-label colors exist
-      const textColor = reorderLabelsKle(key.textColor, alignment, "");
-      const textColorStr = textColor.join("\n").replace(/\n+$/, "");
+      const textColor = reorderLabelsKle(key.textColor, alignment, '');
+      const textColorStr = textColor.join('\n').replace(/\n+$/, '');
       current_textColor_str = add_prop(
-        "ta",
+        'ta',
         textColorStr,
         current_textColor_str,
       );
 
-      current.ghost = add_prop("g", key.ghost, current.ghost);
-      current.profile = add_prop("p", key.profile, current.profile);
-      current.sm = add_prop("sm", key.sm, current.sm);
-      current.sb = add_prop("sb", key.sb, current.sb);
-      current.st = add_prop("st", key.st, current.st);
-      current_alignment = add_prop("a", alignment, current_alignment);
+      current.ghost = add_prop('g', key.ghost, current.ghost);
+      current.profile = add_prop('p', key.profile, current.profile);
+      current.sm = add_prop('sm', key.sm, current.sm);
+      current.sb = add_prop('sb', key.sb, current.sb);
+      current.st = add_prop('st', key.st, current.st);
+      current_alignment = add_prop('a', alignment, current_alignment);
 
       // Output 'f' when default changes
       current.default.textSize = add_prop(
-        "f",
+        'f',
         key.default.textSize,
         current.default.textSize,
       );
@@ -488,17 +495,17 @@ export namespace Serial {
         // remove trailing 0 values
         textSize.pop();
       }
-      current_textSize_arr = add_prop("fa", textSize, current_textSize_arr);
+      current_textSize_arr = add_prop('fa', textSize, current_textSize_arr);
 
-      add_prop("w", key.width, 1);
-      add_prop("h", key.height, 1);
-      add_prop("w2", key.width2, key.width);
-      add_prop("h2", key.height2, key.height);
-      add_prop("x2", key.x2, 0);
-      add_prop("y2", key.y2, 0);
-      add_prop("l", key.stepped, false);
-      add_prop("n", key.nub, false);
-      add_prop("d", key.decal, false);
+      add_prop('w', key.width, 1);
+      add_prop('h', key.height, 1);
+      add_prop('w2', key.width2, key.width);
+      add_prop('h2', key.height2, key.height);
+      add_prop('x2', key.x2, 0);
+      add_prop('y2', key.y2, 0);
+      add_prop('l', key.stepped, false);
+      add_prop('n', key.nub, false);
+      add_prop('d', key.decal, false);
 
       if (Object.keys(props).length > 0) {
         row.push(props);
@@ -507,9 +514,9 @@ export namespace Serial {
       current.labels = labels as Array12<string>;
       row.push(
         labels
-          .map((l) => l || "")
-          .join("\n")
-          .replace(/\n+$/, ""),
+          .map(l => l || '')
+          .join('\n')
+          .replace(/\n+$/, ''),
       );
     }
 

@@ -21,7 +21,11 @@ const badgeUi = computed(() => {
 </script>
 
 <template>
-  <UBadge class="select-none" :color="badgeUi.color" :variant="badgeUi.variant">
+  <UBadge
+    class="select-none"
+    :color="badgeUi.color"
+    :variant="badgeUi.variant"
+  >
     {{ badgeUi.label }}
   </UBadge>
 </template>

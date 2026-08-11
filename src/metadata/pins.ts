@@ -8,7 +8,7 @@ export type PinVisual = {
   /**
    * Show an interactive element on the UI for this IO pin.
    */
-  kind: 'gpio'
+  kind: 'gpio';
 } | {
   text: string;
   /**
@@ -28,7 +28,7 @@ export interface ControllerPinVisual {
 }
 
 export const ControllerPinVisuals: Record<ControllerId, ControllerPinVisual> = {
-  "nice_nano_v2": {
+  nice_nano_v2: {
     left: [
       { kind: 'gnd', text: 'GND' },
       { kind: 'gpio', pinId: 'd1' as PinId },
@@ -70,7 +70,7 @@ export const ControllerPinVisuals: Record<ControllerId, ControllerPinVisual> = {
       { kind: 'gpio', pinId: 'p107' as PinId },
     ],
   },
-  "xiao_ble": {
+  xiao_ble: {
     left: [
       { kind: 'gpio', pinId: 'd0' as PinId },
       { kind: 'gpio', pinId: 'd1' as PinId },
@@ -90,7 +90,7 @@ export const ControllerPinVisuals: Record<ControllerId, ControllerPinVisual> = {
       { kind: 'gpio', pinId: 'd7' as PinId },
     ],
   },
-  "xiao_rp2040": {
+  xiao_rp2040: {
     left: [
       { kind: 'gpio', pinId: 'd0' as PinId },
       { kind: 'gpio', pinId: 'd1' as PinId },
@@ -110,7 +110,7 @@ export const ControllerPinVisuals: Record<ControllerId, ControllerPinVisual> = {
       { kind: 'gpio', pinId: 'd7' as PinId },
     ],
   },
-  "rpi_pico": {
+  rpi_pico: {
     left: [
       { kind: 'gpio', pinId: 'gp0' as PinId },
       { kind: 'gpio', pinId: 'gp1' as PinId },
@@ -156,7 +156,7 @@ export const ControllerPinVisuals: Record<ControllerId, ControllerPinVisual> = {
       { kind: 'gpio', pinId: 'gp16' as PinId },
     ],
   },
-  "xiao_ble_plus": {
+  xiao_ble_plus: {
     left: [
       { kind: 'gpio', pinId: 'd0' as PinId },
       { kind: 'gpio', pinId: 'd1' as PinId },
@@ -194,7 +194,7 @@ export const ControllerPinVisuals: Record<ControllerId, ControllerPinVisual> = {
       { kind: 'ctl', text: 'D16' },
     ],
   },
-  "qt_py_rp2040": {
+  qt_py_rp2040: {
     left: [
       { kind: 'gpio', pinId: 'd0' as PinId },
       { kind: 'gpio', pinId: 'd1' as PinId },
@@ -222,7 +222,7 @@ export const ControllerPinVisuals: Record<ControllerId, ControllerPinVisual> = {
       { kind: 'gpio', pinId: 'gp23' as PinId },
     ],
   },
-  "kb2040": {
+  kb2040: {
     left: [
       { kind: 'ctl', text: 'D+' },
       { kind: 'gpio', pinId: 'd1' as PinId },
@@ -262,7 +262,7 @@ export const ControllerPinVisuals: Record<ControllerId, ControllerPinVisual> = {
       { kind: 'gpio', pinId: 'gp13' as PinId },
     ],
   },
-  "sparkfun_pro_micro_rp2040": {
+  sparkfun_pro_micro_rp2040: {
     left: [
       { kind: 'gpio', pinId: 'd1' as PinId },
       { kind: 'gpio', pinId: 'd0' as PinId },

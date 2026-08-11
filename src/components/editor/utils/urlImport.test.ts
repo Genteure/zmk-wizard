@@ -35,7 +35,7 @@ describe('extractLayoutFromHash', () => {
     expect(keys!.length).toBe(2);
     expect(keys![0].x).toBe(0);
     expect(keys![1].x).toBe(1);
-    expect(keys!.every((k) => k.w === 1 && k.h === 1)).toBe(true);
+    expect(keys!.every(k => k.w === 1 && k.h === 1)).toBe(true);
   });
 
   test('returns null when there is no #kle= hash', () => {

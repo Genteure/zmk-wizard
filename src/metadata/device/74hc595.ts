@@ -1,7 +1,7 @@
-import { z } from "astro/zod";
-import { DeviceIdSchema } from "~/types/utils";
-import type { AnyBusDevice, PinCapabilities, PinId, PinInfo } from "~/types";
-import type { DeviceMeta } from "./type";
+import { z } from 'astro/zod';
+import { DeviceIdSchema } from '~/types/utils';
+import type { AnyBusDevice, PinCapabilities, PinId, PinInfo } from '~/types';
+import type { DeviceMeta } from './type';
 
 // ── Zod Schema (data model — no pin refs) ───────────────
 // 74HC595 shift register on SPI. ngpios determines how many
@@ -9,7 +9,7 @@ import type { DeviceMeta } from "./type";
 
 export const shifter595DeviceSchema = z.object({
   id: DeviceIdSchema,
-  type: z.literal("74hc595"),
+  type: z.literal('74hc595'),
   ngpios: z
     .union([z.literal(8), z.literal(16), z.literal(24), z.literal(32)])
     .default(8),
@@ -19,10 +19,10 @@ export type Shifter595Device = z.infer<typeof shifter595DeviceSchema>;
 // ── Metadata ────────────────────────────────────────────
 
 export const shifter595Meta = {
-  type: "74hc595",
+  type: '74hc595',
   schema: shifter595DeviceSchema,
-  bus: "spi",
-  class: "shift_register",
+  bus: 'spi',
+  class: 'shift_register',
   exclusive: false,
   requiredBusPins: {
     mosi: true,
@@ -30,19 +30,19 @@ export const shifter595Meta = {
   },
   gpio: {
     cs: {
-      label: "Chip Select",
+      label: 'Chip Select',
       required: true,
     },
   },
   visual: {
-    name: "74HC595 Shift Register",
-    short: "74HC595",
-    category: "shift_register",
+    name: '74HC595 Shift Register',
+    short: '74HC595',
+    category: 'shift_register',
   },
   props: {
     ngpios: {
-      widget: "numberOptions",
-      label: "Number of GPIOs",
+      widget: 'numberOptions',
+      label: 'Number of GPIOs',
       required: true,
       options: [8, 16, 24, 32] as readonly number[],
     },
@@ -68,7 +68,7 @@ export const shifter595Meta = {
 
     return { deviceDts };
   },
-  dtsNodeLabel: "shifter",
+  dtsNodeLabel: 'shifter',
   pins: (device: AnyBusDevice, deviceNodeLabel: string): PinInfo[] => {
     const shifter = device as Shifter595Device;
     const ngpios = shifter.ngpios ?? 8;
@@ -85,9 +85,9 @@ export const shifter595Meta = {
         dtsNodeLabel: deviceNodeLabel,
         dtsPinNumber: String(i),
         capabilities,
-        source: { type: "device", deviceId: shifter.id, deviceTypeName: "74hc595" },
+        source: { type: 'device', deviceId: shifter.id, deviceTypeName: '74hc595' },
       });
     }
     return pins;
   },
-} satisfies DeviceMeta<"74hc595">;
+} satisfies DeviceMeta<'74hc595'>;

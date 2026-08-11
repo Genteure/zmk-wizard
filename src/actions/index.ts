@@ -18,38 +18,40 @@ export const server = {
       // captcha validation — skip verification when TURNSTILE_SECRET is not configured
       // (e.g. local dev without the secret set)
       if (TURNSTILE_SECRET) {
-        const verifyRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             secret: TURNSTILE_SECRET,
             response: input.captcha,
           }),
         });
-        const verifyJson = await verifyRes.json() as { success: boolean;[key: string]: unknown };
+        const verifyJson = await verifyRes.json() as { success: boolean; [key: string]: unknown };
         if (!verifyJson.success) {
-          const msg = "Captcha validation failed: " + ((verifyJson["error-codes"] as string[])?.join(", ") || "unknown error");
+          const msg = 'Captcha validation failed: ' + ((verifyJson['error-codes'] as string[])?.join(', ') || 'unknown error');
           console.log(msg);
           throw new ActionError({
-            code: "UNAUTHORIZED",
+            code: 'UNAUTHORIZED',
             message: msg,
           });
         }
-      } else if (import.meta.env.DEV) {
+      }
+      else if (import.meta.env.DEV) {
         // add 3 sec delay if running locally in dev mode without captcha secret
-        console.log("Dev mode: adding delay to simulate captcha verification");
+        console.log('Dev mode: adding delay to simulate captcha verification');
         const { promise, resolve } = Promise.withResolvers<undefined>();
         setTimeout(resolve, 3000);
         await promise;
-      } else {
-        console.warn("TURNSTILE_SECRET not configured, skipping captcha verification for repository build")
+      }
+      else {
+        console.warn('TURNSTILE_SECRET not configured, skipping captcha verification for repository build');
       }
 
-      console.log("Building repository for keyboard:", input.keyboard.name);
+      console.log('Building repository for keyboard:', input.keyboard.name);
       const keyboardConfig = createZMKConfig(input.keyboard);
       const gitRepo = await createGitRepository(keyboardConfig);
 
-      gitRepo[".shield-wizard.json"] = new TextEncoder().encode(JSON.stringify(input.keyboard) + "\n");
+      gitRepo['.shield-wizard.json'] = new TextEncoder().encode(JSON.stringify(input.keyboard) + '\n');
 
       const tarStream = createTarGzipStream(
         Object
@@ -58,19 +60,19 @@ export const server = {
             ([filePath, content]) => ({
               name: filePath,
               data: content,
-            })
-          )
-      )
+            }),
+          ),
+      );
 
       const kv = getRepoKV();
       const repoId = ulid();
-      console.log("Storing repository in KV with id:", repoId);
+      console.log('Storing repository in KV with id:', repoId);
       await kv.setData(repoId, tarStream);
 
       return {
         repoId,
-      }
-    }
+      };
+    },
   }),
   sendFeedback: defineAction({
     input: z.object({
@@ -86,30 +88,32 @@ export const server = {
     async handler(input, context) {
       // captcha validation
       if (TURNSTILE_SECRET) {
-        const verifyRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             secret: TURNSTILE_SECRET,
             response: input.captcha,
           }),
         });
-        const verifyJson = await verifyRes.json() as { success: boolean;[key: string]: unknown };
+        const verifyJson = await verifyRes.json() as { success: boolean; [key: string]: unknown };
         if (!verifyJson.success) {
-          const msg = "Captcha validation failed: " + ((verifyJson["error-codes"] as string[])?.join(", ") || "unknown error");
+          const msg = 'Captcha validation failed: ' + ((verifyJson['error-codes'] as string[])?.join(', ') || 'unknown error');
           console.log(msg);
           throw new ActionError({
-            code: "UNAUTHORIZED",
+            code: 'UNAUTHORIZED',
             message: msg,
           });
         }
-      } else if (import.meta.env.DEV) {
-        console.log("Dev mode: adding delay to simulate captcha verification");
+      }
+      else if (import.meta.env.DEV) {
+        console.log('Dev mode: adding delay to simulate captcha verification');
         const { promise, resolve } = Promise.withResolvers<undefined>();
         setTimeout(resolve, 3000);
         await promise;
-      } else {
-        console.warn("TURNSTILE_SECRET not configured, skipping captcha verification for feedback submission");
+      }
+      else {
+        console.warn('TURNSTILE_SECRET not configured, skipping captcha verification for feedback submission');
       }
 
       // Build Discord embed
@@ -119,9 +123,9 @@ export const server = {
         other: 'Other / Not Sure',
       };
       const colorMap: Record<string, number> = {
-        bug: 0xf54242,    // red
+        bug: 0xf54242, // red
         feature: 0x42a5f5, // blue
-        other: 0x9e9e9e,  // grey
+        other: 0x9e9e9e, // grey
       };
 
       const fields: Array<{ name: string; value: string; inline?: boolean }> = [
@@ -158,7 +162,8 @@ export const server = {
           (kb.parts as Array<{ controller?: unknown }>).forEach((part) => {
             if (typeof part.controller === 'string') {
               controllers.push(`${part.controller}`);
-            } else {
+            }
+            else {
               controllers.push(`(unknown)`);
             }
           });
@@ -206,15 +211,17 @@ export const server = {
             console.log(`Feedback webhook failed (${res.status}): ${errText}`);
             throw new Error('Webhook returned non-OK status');
           }
-        } catch (error) {
+        }
+        catch (error) {
           console.log('Failed to send feedback webhook:', error);
           throw new ActionError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to send feedback' });
         }
-      } else {
+      }
+      else {
         console.log('FEEDBACK_WEBHOOK_URL not configured, logging feedback:', JSON.stringify(payload));
       }
 
       return { success: true };
     },
   }),
-}
+};

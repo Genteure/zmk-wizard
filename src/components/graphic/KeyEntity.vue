@@ -1,41 +1,77 @@
 <template>
-  <g :transform="keyTransform" :data-graphic-entity="keyData.id">
+  <g
+    :transform="keyTransform"
+    :data-graphic-entity="keyData.id"
+  >
     <!-- Key shape -->
-    <path :d="pathData" :fill="pathFill" :stroke="pathStroke" :stroke-width="pathStrokeWidth" :opacity="pathOpacity"
-      :stroke-dasharray="isDashed ? '4 2' : undefined" />
+    <path
+      :d="pathData"
+      :fill="pathFill"
+      :stroke="pathStroke"
+      :stroke-width="pathStrokeWidth"
+      :opacity="pathOpacity"
+      :stroke-dasharray="isDashed ? '4 2' : undefined"
+    />
 
     <!-- HTML overlay inside key -->
-    <foreignObject :x="padding / 2" :y="padding / 2" :width="foreignObjectWidth" :height="foreignObjectHeight">
-      <div xmlns="http://www.w3.org/1999/xhtml" class="relative w-full h-full select-none">
-
+    <foreignObject
+      :x="padding / 2"
+      :y="padding / 2"
+      :width="foreignObjectWidth"
+      :height="foreignObjectHeight"
+    >
+      <div
+        xmlns="http://www.w3.org/1999/xhtml"
+        class="relative w-full h-full select-none"
+      >
         <!-- Key index: centered large in layout + parts-inactive, small top-left otherwise -->
-        <div class="absolute inset-0" :class="indexContainerClass">
-          <span class="tabular-nums" :class="indexTextClass">{{ index }}</span>
+        <div
+          class="absolute inset-0"
+          :class="indexContainerClass"
+        >
+          <span
+            class="tabular-nums"
+            :class="indexTextClass"
+          >{{ index }}</span>
         </div>
 
         <!-- Keymap key code: keyboard tab (or preview mode), centered -->
-        <div v-if="previewMode || nav.activeTab === 'keyboard'"
-          class="absolute inset-0 flex items-center justify-center pointer-events-none leading-none tabular-nums">
+        <div
+          v-if="previewMode || nav.activeTab === 'keyboard'"
+          class="absolute inset-0 flex items-center justify-center pointer-events-none leading-none tabular-nums"
+        >
           <span class="text-sm font-semibold tracking-tighter">&amp;kp&nbsp;</span>
           <span class="text-xl font-medium text-highlighted">{{ keyLabel }}</span>
         </div>
 
         <!-- Part label: layout tab only, bottom center -->
-        <div v-if="isLayoutTab"
-          class="absolute bottom-0 inset-x-0 flex items-center justify-center pointer-events-none pb-0.5">
+        <div
+          v-if="isLayoutTab"
+          class="absolute bottom-0 inset-x-0 flex items-center justify-center pointer-events-none pb-0.5"
+        >
           <div class="flex items-center gap-1">
-            <span class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: partColor }"></span>
+            <span
+              class="w-2 h-2 rounded-full shrink-0"
+              :style="{ backgroundColor: partColor }"
+            />
             <span class="text-xs/tight text-toned leading-none">{{ partLabel }}</span>
           </div>
         </div>
 
-
         <!-- Wiring pin labels: parts tab, active part only (§4.4) -->
-        <div v-if="isInActivePart && (outputPinLabel !== undefined || inputPinLabel !== undefined)"
-          class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5">
-          <span v-if="outputPinLabel !== undefined" class="font-mono font-semibold text-kscanout leading-none">{{
+        <div
+          v-if="isInActivePart && (outputPinLabel !== undefined || inputPinLabel !== undefined)"
+          class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5"
+        >
+          <span
+            v-if="outputPinLabel !== undefined"
+            class="font-mono font-semibold text-kscanout leading-none"
+          >{{
             outputPinLabel }}</span>
-          <span v-if="inputPinLabel !== undefined" class="font-mono font-semibold text-kscanin leading-none">{{
+          <span
+            v-if="inputPinLabel !== undefined"
+            class="font-mono font-semibold text-kscanin leading-none"
+          >{{
             inputPinLabel }}</span>
         </div>
       </div>

@@ -37,8 +37,8 @@ const NONE_SENTINEL = '__none__';
 function encoderPhaseOptions(encoderId: string, phase: 'pinA' | 'pinB') {
   const current = encoderPin(encoderId, phase);
   const free = allPins.value.filter(p =>
-    (p.capabilities.gpioIn && p.capabilities.interrupt) &&
-    (!(p.id in props.part.pins) || p.id === current)
+    (p.capabilities.gpioIn && p.capabilities.interrupt)
+    && (!(p.id in props.part.pins) || p.id === current),
   ).map(p => ({ label: p.label, value: p.id }));
   return [{ label: $t('none-option'), value: NONE_SENTINEL }, ...free];
 }
@@ -49,48 +49,86 @@ function encoderPhaseOptions(encoderId: string, phase: 'pinA' | 'pinB') {
     <template #header>
       <div class="flex justify-between items-center gap-2">
         <div>
-          <div class="text-highlighted font-semibold">{{ $t('encoders-title') }}</div>
+          <div class="text-highlighted font-semibold">
+            {{ $t('encoders-title') }}
+          </div>
           <div class="mt-1 text-muted text-sm">
             {{ $t('encoders-desc') }}
           </div>
         </div>
-        <UButton :label="$t('add-encoder')" variant="outline" color="neutral"
-          @click="emit('addEncoder')" />
+        <UButton
+          :label="$t('add-encoder')"
+          variant="outline"
+          color="neutral"
+          @click="emit('addEncoder')"
+        />
       </div>
     </template>
 
-    <div v-if="part.encoders.length === 0" class="text-muted text-sm py-4 text-center">
+    <div
+      v-if="part.encoders.length === 0"
+      class="text-muted text-sm py-4 text-center"
+    >
       {{ $t('no-encoders') }}
     </div>
 
-    <div v-for="encoder in part.encoders" :key="encoder.id"
-      class="rounded-xl p-3 bg-muted ring ring-default mb-3 last:mb-0">
+    <div
+      v-for="encoder in part.encoders"
+      :key="encoder.id"
+      class="rounded-xl p-3 bg-muted ring ring-default mb-3 last:mb-0"
+    >
       <div class="flex items-center justify-between gap-2">
         <span class="text-sm font-mono text-base-content/50">{{ encoderLabel(part.name, part.encoders, encoder.id) }}</span>
-          <div class="flex items-center gap-1">
-          <UFieldGroup v-if="part.encoders.length > 1" size="xs">
-            <UButton icon="i-lucide-chevron-up" variant="subtle" color="neutral"
+        <div class="flex items-center gap-1">
+          <UFieldGroup
+            v-if="part.encoders.length > 1"
+            size="xs"
+          >
+            <UButton
+              icon="i-lucide-chevron-up"
+              variant="subtle"
+              color="neutral"
               :disabled="part.encoders.indexOf(encoder) === 0"
-              @click="emit('moveEncoder', encoder.id, -1)" />
-            <UButton icon="i-lucide-chevron-down" variant="subtle" color="neutral"
+              @click="emit('moveEncoder', encoder.id, -1)"
+            />
+            <UButton
+              icon="i-lucide-chevron-down"
+              variant="subtle"
+              color="neutral"
               :disabled="part.encoders.indexOf(encoder) === part.encoders.length - 1"
-              @click="emit('moveEncoder', encoder.id, 1)" />
+              @click="emit('moveEncoder', encoder.id, 1)"
+            />
           </UFieldGroup>
-          <UButton color="error" icon="i-lucide-trash" variant="subtle" size="xs"
-            @click="emit('removeEncoder', encoder.id)" />
-          </div>
+          <UButton
+            color="error"
+            icon="i-lucide-trash"
+            variant="subtle"
+            size="xs"
+            @click="emit('removeEncoder', encoder.id)"
+          />
         </div>
+      </div>
 
       <div class="mt-3 flex gap-4">
-        <UFormField :label="$t('encoder-pin-a')" class="w-40">
-          <USelect :model-value="encoderPin(encoder.id, 'pinA') ?? NONE_SENTINEL"
+        <UFormField
+          :label="$t('encoder-pin-a')"
+          class="w-40"
+        >
+          <USelect
+            :model-value="encoderPin(encoder.id, 'pinA') ?? NONE_SENTINEL"
             :items="encoderPhaseOptions(encoder.id, 'pinA')"
-            @update:model-value="emit('setPin', { encoderId: encoder.id, phase: 'pinA', pinId: $event === NONE_SENTINEL ? undefined : $event })" />
+            @update:model-value="emit('setPin', { encoderId: encoder.id, phase: 'pinA', pinId: $event === NONE_SENTINEL ? undefined : $event })"
+          />
         </UFormField>
-        <UFormField :label="$t('encoder-pin-b')" class="w-40">
-          <USelect :model-value="encoderPin(encoder.id, 'pinB') ?? NONE_SENTINEL"
+        <UFormField
+          :label="$t('encoder-pin-b')"
+          class="w-40"
+        >
+          <USelect
+            :model-value="encoderPin(encoder.id, 'pinB') ?? NONE_SENTINEL"
             :items="encoderPhaseOptions(encoder.id, 'pinB')"
-            @update:model-value="emit('setPin', { encoderId: encoder.id, phase: 'pinB', pinId: $event === NONE_SENTINEL ? undefined : $event })" />
+            @update:model-value="emit('setPin', { encoderId: encoder.id, phase: 'pinB', pinId: $event === NONE_SENTINEL ? undefined : $event })"
+          />
         </UFormField>
       </div>
     </div>

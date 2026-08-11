@@ -7,7 +7,7 @@ export default getViteConfig({
     environment: 'node',
     exclude: [
       ...configDefaults.exclude,
-      '**/e2e/**'
+      '**/e2e/**',
     ],
   },
 });

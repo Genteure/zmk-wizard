@@ -56,7 +56,7 @@ export const useKeyboardStore = defineStore('keyboard', {
       if (ids.size === 0) return;
 
       this.$patch((state) => {
-        state.layout = state.layout.filter((key) => !ids.has(key.id));
+        state.layout = state.layout.filter(key => !ids.has(key.id));
         for (const part of state.parts) {
           for (const keyId of ids) {
             delete part.keys[keyId as KeyId];
@@ -75,10 +75,10 @@ export const useKeyboardStore = defineStore('keyboard', {
       let y = 0;
 
       if (layout.length > 0) {
-        row = Math.max(...layout.map((k) => k.row));
-        col = 1 + Math.max(...layout.map((k) => k.col));
-        x = 1 + Math.ceil(Math.max(...layout.map((k) => k.x)));
-        y = Math.ceil(Math.max(...layout.map((k) => k.y)));
+        row = Math.max(...layout.map(k => k.row));
+        col = 1 + Math.max(...layout.map(k => k.col));
+        x = 1 + Math.ceil(Math.max(...layout.map(k => k.x)));
+        y = Math.ceil(Math.max(...layout.map(k => k.y)));
       }
 
       const key: Key = KeySchema.parse({
@@ -121,7 +121,7 @@ export const useKeyboardStore = defineStore('keyboard', {
 
     patchKey(id: KeyId, changes: Partial<Omit<Key, 'id'>>) {
       this.$patch((state) => {
-        const key = state.layout.find((k) => k.id === id);
+        const key = state.layout.find(k => k.id === id);
         if (key) Object.assign(key, changes);
       });
       if ('row' in changes || 'col' in changes) this.sortLayout();
@@ -130,7 +130,7 @@ export const useKeyboardStore = defineStore('keyboard', {
     patchKeys(patches: Array<{ id: KeyId; changes: Partial<Omit<Key, 'id'>> }>) {
       this.$patch((state) => {
         for (const { id, changes } of patches) {
-          const key = state.layout.find((k) => k.id === id);
+          const key = state.layout.find(k => k.id === id);
           if (key) Object.assign(key, changes);
         }
       });
@@ -181,7 +181,7 @@ export const useKeyboardStore = defineStore('keyboard', {
       this.$patch((state) => {
         const part = state.parts[partIdx];
         if (!part) return;
-        part.kscans = part.kscans.filter((k) => k.id !== kscanId);
+        part.kscans = part.kscans.filter(k => k.id !== kscanId);
         // Collect released pin IDs for wiring cleanup.
         const releasedPins: PinId[] = [];
         for (const [pinId, usage] of Object.entries(part.pins)) {
@@ -208,7 +208,7 @@ export const useKeyboardStore = defineStore('keyboard', {
       this.$patch((state) => {
         const part = state.parts[partIdx];
         if (!part) return;
-        const kscan = part.kscans.find((k) => k.id === kscanId);
+        const kscan = part.kscans.find(k => k.id === kscanId);
         if (kscan) Object.assign(kscan, changes);
       });
     },
@@ -217,7 +217,7 @@ export const useKeyboardStore = defineStore('keyboard', {
       this.$patch((state) => {
         const part = state.parts[partIdx];
         if (!part) return;
-        const idx = part.kscans.findIndex((k) => k.id === kscanId);
+        const idx = part.kscans.findIndex(k => k.id === kscanId);
         const target = idx + direction;
         if (idx < 0 || target < 0 || target >= part.kscans.length) return;
         const temp = part.kscans[idx];
@@ -241,7 +241,7 @@ export const useKeyboardStore = defineStore('keyboard', {
       this.$patch((state) => {
         const part = state.parts[partIdx];
         if (!part) return;
-        const idx = part.encoders.findIndex((e) => e.id === encoderId);
+        const idx = part.encoders.findIndex(e => e.id === encoderId);
         const target = idx + direction;
         if (idx < 0 || target < 0 || target >= part.encoders.length) return;
         const temp = part.encoders[idx];
@@ -259,7 +259,7 @@ export const useKeyboardStore = defineStore('keyboard', {
             delete part.pins[pinId as PinId];
           }
         }
-        part.encoders = part.encoders.filter((e) => e.id !== encoderId);
+        part.encoders = part.encoders.filter(e => e.id !== encoderId);
       });
     },
 
@@ -269,7 +269,7 @@ export const useKeyboardStore = defineStore('keyboard', {
       this.$patch((state) => {
         const part = state.parts[partIdx];
         if (!part) return;
-        if (!part.kscans.some((k) => k.id === kscanId)) return;
+        if (!part.kscans.some(k => k.id === kscanId)) return;
         if (pinId in part.pins) return; // pin already in use
         part.pins[pinId] = { usage: 'kscan', kscan: kscanId, role };
       });
@@ -299,13 +299,12 @@ export const useKeyboardStore = defineStore('keyboard', {
       });
     },
 
-
     /** Assign a pin to an encoder phase (pinA/pinB). */
     setEncoderPin(partIdx: number, encoderId: string, phase: 'pinA' | 'pinB', pinId: string | undefined) {
       this.$patch((state) => {
         const part = state.parts[partIdx];
         if (!part) return;
-        const encoder = part.encoders.find((e) => e.id === encoderId);
+        const encoder = part.encoders.find(e => e.id === encoderId);
         if (!encoder) return;
         // Find and release old pin for this encoder+phase
         for (const [pid, usage] of Object.entries(part.pins)) {
@@ -336,9 +335,9 @@ export const useKeyboardStore = defineStore('keyboard', {
           const newUsage = part.pins[wiring.pinId];
           const existingUsage = part.pins[oppositePinId];
           if (
-            newUsage?.usage === 'kscan' &&
-            existingUsage?.usage === 'kscan' &&
-            newUsage.kscan !== existingUsage.kscan
+            newUsage?.usage === 'kscan'
+            && existingUsage?.usage === 'kscan'
+            && newUsage.kscan !== existingUsage.kscan
           ) {
             // Replace: clear the opposite pin so it's no longer cross-kscan
             const current = part.keys[keyId] ?? {};
@@ -406,7 +405,7 @@ export const useKeyboardStore = defineStore('keyboard', {
             delete part.pins[pinId as PinId];
           }
         }
-        const idx = bus.devices.findIndex((d) => d.id === deviceId);
+        const idx = bus.devices.findIndex(d => d.id === deviceId);
         if (idx !== -1) bus.devices.splice(idx, 1);
         // If the bus is now empty, remove it and release its bus pins
         if (bus.devices.length === 0) {
@@ -420,7 +419,6 @@ export const useKeyboardStore = defineStore('keyboard', {
       });
     },
 
-
     /** Patch properties on a device (e.g., CPI, address, dimensions). */
     patchDevice(partIdx: number, busName: string, deviceId: string, changes: Record<string, unknown>) {
       this.$patch((state) => {
@@ -428,7 +426,7 @@ export const useKeyboardStore = defineStore('keyboard', {
         if (!part) return;
         const bus = part.buses[busName as BusName];
         if (!bus) return;
-        const device = bus.devices.find((d) => d.id === deviceId);
+        const device = bus.devices.find(d => d.id === deviceId);
         if (device) Object.assign(device, changes);
       });
     },
@@ -462,7 +460,7 @@ export const useKeyboardStore = defineStore('keyboard', {
      * then copies the wiring (input/output pin references) and kscan pin
      * assignments. Kscan drivers are cloned with new IDs.
      */
-    copyFromPart(partIdx: number, sourcePartIdx: number, transform: WiringTransform = "none") {
+    copyFromPart(partIdx: number, sourcePartIdx: number, transform: WiringTransform = 'none') {
       if (partIdx === sourcePartIdx) return;
       this.$patch((state) => {
         const target = state.parts[partIdx];
@@ -484,23 +482,23 @@ export const useKeyboardStore = defineStore('keyboard', {
           const newId = ulid();
           kscanIdMap.set(kscan.id, newId);
           switch (kscan.kind) {
-            case "matrix":
-              return { kind: "matrix" as const, id: newId, diodes: kscan.diodes };
-            case "direct":
-              return { kind: "direct" as const, id: newId, mode: kscan.mode };
-            case "charlieplex":
-              return { kind: "charlieplex" as const, id: newId };
+            case 'matrix':
+              return { kind: 'matrix' as const, id: newId, diodes: kscan.diodes };
+            case 'direct':
+              return { kind: 'direct' as const, id: newId, mode: kscan.mode };
+            case 'charlieplex':
+              return { kind: 'charlieplex' as const, id: newId };
           }
         });
 
         // 3. Copy kscan pin assignments from source (updated kscan IDs)
         const newPins = { ...target.pins };
         for (const [pinId, usage] of Object.entries(source.pins)) {
-          if (usage.usage !== "kscan") continue;
+          if (usage.usage !== 'kscan') continue;
           const newKscanId = kscanIdMap.get(usage.kscan);
           if (!newKscanId) continue;
           newPins[pinId as PinId] = {
-            usage: "kscan",
+            usage: 'kscan',
             kscan: newKscanId,
             role: usage.role,
           };
@@ -567,12 +565,12 @@ export const useNavigationStore = defineStore('navigation', () => {
 });
 
 export const useSelectionStore = defineStore('selection', () => {
-  const navigation = useNavigationStore()
+  const navigation = useNavigationStore();
 
   // ─── Canonical state ─────────────────────────────────────────
   // May contain `false` entries written by TanStack on user deselect.
   // Use the filtered getters below for actual selected-entity data.
-  const rowSelection = ref<Record<string, boolean>>({})
+  const rowSelection = ref<Record<string, boolean>>({});
 
   // ─── Invariant enforcement ───────────────────────────────────
   // Clear selection when navigating away from the keyboard tab.
@@ -580,10 +578,10 @@ export const useSelectionStore = defineStore('selection', () => {
     () => navigation.activeTab,
     (tab, previousTab) => {
       if (previousTab === 'layout' && tab !== 'layout') {
-        rowSelection.value = {}
+        rowSelection.value = {};
       }
     },
-  )
+  );
 
   // ─── Filtered derived state ──────────────────────────────────
   // Only entries where value === true. Safe for graphics consumers.
@@ -591,14 +589,14 @@ export const useSelectionStore = defineStore('selection', () => {
     Object.entries(rowSelection.value)
       .filter(([, selected]) => selected)
       .map(([id]) => id),
-  )
+  );
 
-  const selectedIdSet = computed(() => new Set(selectedIds.value))
-  const selectedCount = computed(() => selectedIds.value.length)
+  const selectedIdSet = computed(() => new Set(selectedIds.value));
+  const selectedCount = computed(() => selectedIds.value.length);
 
   // ─── Guard ───────────────────────────────────────────────────
   function isLayoutTab(): boolean {
-    return navigation.activeTab === 'layout'
+    return navigation.activeTab === 'layout';
   }
 
   // ─── Mutations ───────────────────────────────────────────────
@@ -607,46 +605,47 @@ export const useSelectionStore = defineStore('selection', () => {
 
   /** Replace the entire selection with the given ids. */
   function setSelected(ids: string[]) {
-    if (!isLayoutTab()) return
-    rowSelection.value = Object.fromEntries(ids.map((id) => [id, true]))
+    if (!isLayoutTab()) return;
+    rowSelection.value = Object.fromEntries(ids.map(id => [id, true]));
   }
 
   /** Add ids to the current selection. */
   function addSelected(ids: string[]) {
-    if (!isLayoutTab()) return
-    const next = { ...rowSelection.value }
+    if (!isLayoutTab()) return;
+    const next = { ...rowSelection.value };
     for (const id of ids) {
-      next[id] = true
+      next[id] = true;
     }
-    rowSelection.value = next
+    rowSelection.value = next;
   }
 
   /** Remove ids from the current selection (safe on any tab). */
   function removeSelected(ids: string[]) {
-    const next = { ...rowSelection.value }
+    const next = { ...rowSelection.value };
     for (const id of ids) {
-      delete next[id]
+      delete next[id];
     }
-    rowSelection.value = next
+    rowSelection.value = next;
   }
 
   /** Toggle each id in/out of the current selection. */
   function toggleSelected(ids: string[]) {
-    if (!isLayoutTab()) return
-    const next = { ...rowSelection.value }
+    if (!isLayoutTab()) return;
+    const next = { ...rowSelection.value };
     for (const id of ids) {
       if (next[id]) {
-        delete next[id]
-      } else {
-        next[id] = true
+        delete next[id];
+      }
+      else {
+        next[id] = true;
       }
     }
-    rowSelection.value = next
+    rowSelection.value = next;
   }
 
   /** Clear all selection. */
   function clearSelected() {
-    rowSelection.value = {}
+    rowSelection.value = {};
   }
 
   return {
@@ -662,5 +661,5 @@ export const useSelectionStore = defineStore('selection', () => {
     removeSelected,
     toggleSelected,
     clearSelected,
-  }
-})
+  };
+});

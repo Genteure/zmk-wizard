@@ -1,4 +1,4 @@
-import type { APIRoute } from "astro";
+import type { APIRoute } from 'astro';
 
 export const prerender = true;
 
@@ -39,10 +39,10 @@ export const GET: APIRoute = async (context) => {
         fetch = +refs/heads/*:refs/remotes/upstream/*
 `);
     case '.git/HEAD':
-      return new Response("ref: refs/heads/main\n");
+      return new Response('ref: refs/heads/main\n');
     case '.git/refs/heads/main':
-      return new Response("0000000000000000000000000000000000000000\n");
+      return new Response('0000000000000000000000000000000000000000\n');
     default:
-      return new Response("Not Found", { status: 404 });
+      return new Response('Not Found', { status: 404 });
   }
-}
+};

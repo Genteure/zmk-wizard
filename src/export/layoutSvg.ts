@@ -2,21 +2,21 @@
 // Layout SVG — Keyboard visualization for the generated repo
 // ─────────────────────────────────────────────────────────────
 
-import type { Key } from "~/types";
+import type { Key } from '~/types';
 import {
   keyToSvgPath,
   DEFAULT_KEY_SIZE,
   DEFAULT_PADDING,
   DEFAULT_BORDER_RADIUS,
-} from "~/components/graphic/keyShape";
+} from '~/components/graphic/keyShape';
 
 /** Part color hex values matching the Nuxt UI theme (Tailwind 400 shades). */
 const PART_COLORS = [
-  "#fb923c", // orange-400  (part0)
-  "#38bdf8", // sky-400     (part1)
-  "#f472b6", // pink-400    (part2)
-  "#a78bfa", // violet-400  (part3)
-  "#22d3ee", // cyan-400    (part4)
+  '#fb923c', // orange-400  (part0)
+  '#38bdf8', // sky-400     (part1)
+  '#f472b6', // pink-400    (part2)
+  '#a78bfa', // violet-400  (part3)
+  '#22d3ee', // cyan-400    (part4)
 ];
 
 /**
@@ -28,7 +28,7 @@ export function generateLayoutSvg(keyboard: { layout: Key[] }): string {
   const PAD = DEFAULT_PADDING;
   const FOOTER_HEIGHT = 28;
   const MARGIN = 24;
-  const FONT = "system-ui, -apple-system, sans-serif";
+  const FONT = 'system-ui, -apple-system, sans-serif';
 
   const keys = keyboard.layout;
 
@@ -138,14 +138,14 @@ export function generateLayoutSvg(keyboard: { layout: Key[] }): string {
     const effRx = key.rx === 0 ? key.x : key.rx;
     const effRy = key.ry === 0 ? key.y : key.ry;
     // Group transform: translate + optional rotation (shared by shadow and body)
-    const groupTransform =
-      key.r === 0
+    const groupTransform
+      = key.r === 0
         ? `translate(${tx},${ty})`
         : `translate(${tx},${ty}) rotate(${key.r},${(effRx - key.x) * KS},${(effRy - key.y) * KS})`;
 
     const textEl = key.w >= 1 && key.h >= 0.6
       ? `<text x="${pw / 2}" y="${ph / 2 + 1}" text-anchor="middle" dominant-baseline="central" font-family="${FONT}" font-size="${Math.min(14, pw * 0.28)}" class="key-label">${i}</text>`
-      : "";
+      : '';
 
     elements.push(
       `<g transform="${groupTransform}">`,
@@ -154,7 +154,7 @@ export function generateLayoutSvg(keyboard: { layout: Key[] }): string {
       // Key body
       `  <path class="key-body" d="${path}" stroke="${partColor}" stroke-width="1.5"/>`,
       // Key index (local coords — rotates with the key)
-      textEl ? `  ${textEl}` : "",
+      textEl ? `  ${textEl}` : '',
       `</g>`,
     );
   }
@@ -165,6 +165,6 @@ export function generateLayoutSvg(keyboard: { layout: Key[] }): string {
   );
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${vw} ${vh}">
-${elements.filter(Boolean).join("\n")}
+${elements.filter(Boolean).join('\n')}
 </svg>`;
 }

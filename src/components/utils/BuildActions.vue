@@ -1,13 +1,28 @@
 <template>
   <div class="inline-flex items-center">
     <!-- Error modal -->
-    <UModal v-model:open="errorModalOpen" :title="$t('error-modal-title')" :close="true">
+    <UModal
+      v-model:open="errorModalOpen"
+      :title="$t('error-modal-title')"
+      :close="true"
+    >
       <template #body>
         <div class="flex flex-col gap-4 text-sm">
-          <div v-for="(errors, groupName) in validationErrorGroups" :key="groupName">
-            <h4 class="font-semibold text-sm mb-1.5">{{ groupName }}</h4>
+          <div
+            v-for="(errors, groupName) in validationErrorGroups"
+            :key="groupName"
+          >
+            <h4 class="font-semibold text-sm mb-1.5">
+              {{ groupName }}
+            </h4>
             <ul class="list-disc list-inside space-y-1">
-              <li v-for="err in errors" :key="err" class="text-error leading-relaxed">{{ err }}</li>
+              <li
+                v-for="err in errors"
+                :key="err"
+                class="text-error leading-relaxed"
+              >
+                {{ err }}
+              </li>
             </ul>
           </div>
         </div>
@@ -15,62 +30,112 @@
     </UModal>
 
     <!-- Keymap layout confirmation modal -->
-    <LayoutConfirmModal v-model:open="confirmModalOpen" :keys="keyboard.layout" @confirm="onLayoutConfirmed"
-      @edit="onEditLayout" />
+    <LayoutConfirmModal
+      v-model:open="confirmModalOpen"
+      :keys="keyboard.layout"
+      @confirm="onLayoutConfirmed"
+      @edit="onEditLayout"
+    />
 
     <!-- Preview modal -->
-    <UModal v-model:open="previewModalOpen" :title="$t('preview-modal-title')" :close="true"
-      :ui="{ content: 'max-w-4xl' }">
+    <UModal
+      v-model:open="previewModalOpen"
+      :title="$t('preview-modal-title')"
+      :close="true"
+      :ui="{ content: 'max-w-4xl' }"
+    >
       <template #body>
         <div class="flex gap-4 h-[65vh]">
           <div class="w-60 shrink-0 overflow-y-auto">
-            <UTree size="sm" :items="previewTreeItems" @select="(e: any, item: any) => onPreviewFileSelect(item)" />
+            <UTree
+              size="sm"
+              :items="previewTreeItems"
+              @select="(e: any, item: any) => onPreviewFileSelect(item)"
+            />
           </div>
           <div class="flex-1 min-w-0 min-h-0 flex flex-col">
-            <div class="text-xs text-toned font-mono px-1 pb-1.5 truncate shrink-0"
-              :class="selectedFilePath ? 'visible' : 'invisible'">
+            <div
+              class="text-xs text-toned font-mono px-1 pb-1.5 truncate shrink-0"
+              :class="selectedFilePath ? 'visible' : 'invisible'"
+            >
               {{ selectedFilePath ?? $t('preview-select-file') }}
             </div>
-            <UTextarea readonly class="w-full h-full font-mono" size="sm" :ui="{ base: 'h-full resize-none' }"
-              :value="selectedFileContent" :placeholder="$t('preview-select-file')" />
+            <UTextarea
+              readonly
+              class="w-full h-full font-mono"
+              size="sm"
+              :ui="{ base: 'h-full resize-none' }"
+              :value="selectedFileContent"
+              :placeholder="$t('preview-select-file')"
+            />
           </div>
         </div>
       </template>
     </UModal>
 
-    <UDropdownMenu v-model:open="dropdownOpen" size="lg" :items="menuItems" :content="{ align: 'end', sideOffset: 8 }"
-      @update:open="onDropdownOpenChange">
-      <UButton color="primary" size="xl" variant="outline" :loading="isBuilding">
+    <UDropdownMenu
+      v-model:open="dropdownOpen"
+      size="lg"
+      :items="menuItems"
+      :content="{ align: 'end', sideOffset: 8 }"
+      @update:open="onDropdownOpenChange"
+    >
+      <UButton
+        color="primary"
+        size="xl"
+        variant="outline"
+        :loading="isBuilding"
+      >
         {{ $t('build') }}
       </UButton>
     </UDropdownMenu>
 
     <!-- Import link slideover -->
-    <USlideover v-model:open="slideoverOpen" :title="$t('build-import-link')" side="right" class="max-w-xl"
-      :description="$t('import-slideover-description')">
+    <USlideover
+      v-model:open="slideoverOpen"
+      :title="$t('build-import-link')"
+      side="right"
+      class="max-w-xl"
+      :description="$t('import-slideover-description')"
+    >
       <template #body>
         <div class="flex flex-col gap-6 m-3">
           <div class="flex flex-col gap-4">
             <template v-if="!importResultUrl">
-
               <div class="flex items-center justify-center">
                 <div style="width: 300px; height: 65px; position: relative;">
                   <span
                     class="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center rounded-sm bg-accented"
-                    style="z-index:0;">
+                    style="z-index:0;"
+                  >
                     {{ $t('captcha-loading') }}
                   </span>
 
-                  <div v-if="slideoverOpen" class="absolute left-0 right-0 top-0 bottom-0" style="z-index:1;">
-                    <VueTurnstile v-model="captchaToken" :site-key="PUBLIC_TURNSTILE_SITEKEY" theme="auto" size="normal"
-                      @expired="captchaToken = ''" />
+                  <div
+                    v-if="slideoverOpen"
+                    class="absolute left-0 right-0 top-0 bottom-0"
+                    style="z-index:1;"
+                  >
+                    <VueTurnstile
+                      v-model="captchaToken"
+                      :site-key="PUBLIC_TURNSTILE_SITEKEY"
+                      theme="auto"
+                      size="normal"
+                      @expired="captchaToken = ''"
+                    />
                   </div>
                 </div>
               </div>
 
               <div class="flex items-center justify-center pt-2">
-                <UButton :label="$t('import-generate-link')" color="primary" size="lg" :loading="isBuilding"
-                  :disabled="isBuilding || !captchaToken" @click="submitBuild" />
+                <UButton
+                  :label="$t('import-generate-link')"
+                  color="primary"
+                  size="lg"
+                  :loading="isBuilding"
+                  :disabled="isBuilding || !captchaToken"
+                  @click="submitBuild"
+                />
               </div>
 
               <div class="text-xs text-toned flex flex-col gap-1 justify-center items-center text-center px-2">
@@ -84,16 +149,31 @@
                   {{ $t('import-zip-fallback') }}
                 </div>
               </div>
-
             </template>
             <template v-else>
               <div class="flex items-center justify-center">
-                <UInput ref="importLinkInput" v-model="importResultUrl" icon="i-lucide-folder-git-2"
-                  readonly class="font-mono max-w-sm flex-1" size="lg" @focus="selectImportLinkText">
+                <UInput
+                  ref="importLinkInput"
+                  v-model="importResultUrl"
+                  icon="i-lucide-folder-git-2"
+                  readonly
+                  class="font-mono max-w-sm flex-1"
+                  size="lg"
+                  @focus="selectImportLinkText"
+                >
                   <template #trailing>
-                    <UTooltip :text="$t('copy-to-clipboard')" :content="{ side: 'right' }">
-                      <UButton color="neutral" variant="link" size="sm" icon="i-lucide-copy"
-                        :aria-label="$t('copy-to-clipboard')" @click="copyImportLink" />
+                    <UTooltip
+                      :text="$t('copy-to-clipboard')"
+                      :content="{ side: 'right' }"
+                    >
+                      <UButton
+                        color="neutral"
+                        variant="link"
+                        size="sm"
+                        icon="i-lucide-copy"
+                        :aria-label="$t('copy-to-clipboard')"
+                        @click="copyImportLink"
+                      />
                     </UTooltip>
                   </template>
                 </UInput>
@@ -101,21 +181,35 @@
 
               <div class="flex flex-col items-center justify-center mt-4 gap-2 text-sm text-toned">
                 <div>
-                  <i18n path="import-instructions" tag="span">
+                  <i18n
+                    path="import-instructions"
+                    tag="span"
+                  >
                     <template #importUrl>
-                      <ULink href="https://github.com/new/import" class="underline" target="_blank">
+                      <ULink
+                        href="https://github.com/new/import"
+                        class="underline"
+                        target="_blank"
+                      >
                         https://github.com/new/import
                       </ULink>
                     </template>
                   </i18n>
                 </div>
-                <i18n path="recommended-repo-name" tag="div">
+                <i18n
+                  path="recommended-repo-name"
+                  tag="div"
+                >
                   <template #name>
                     <code class="font-mono font-semibold">{{ recommendedRepoName }}</code>
                   </template>
                 </i18n>
                 <div>
-                  <ULink href="/docs/next-steps/" class="underline" target="_blank">
+                  <ULink
+                    href="/docs/next-steps/"
+                    class="underline"
+                    target="_blank"
+                  >
                     {{ $t('import-next-steps') }}
                   </ULink>
                 </div>
@@ -130,11 +224,16 @@
                 <div>
                   {{
                     $t('import-repo-expires-at', {
-                      date: new Date(decodeTime(navigation.build.repoId) + 24 * 60 * 60 * 1000)
+                      date: new Date(decodeTime(navigation.build.repoId) + 24 * 60 * 60 * 1000),
                     })
                   }}
                 </div>
-                <UButton size="sm" color="neutral" variant="outline" @click="resetImportFlow">
+                <UButton
+                  size="sm"
+                  color="neutral"
+                  variant="outline"
+                  @click="resetImportFlow"
+                >
                   {{ $t('create-another-repo') }}
                 </UButton>
               </div>
@@ -145,24 +244,44 @@
 
           <div class="text-sm text-toned flex flex-col gap-1 justify-center items-center text-center px-2">
             <span>
-              <UIcon name="i-lucide-triangle-alert" class="size-6 text-warning inline-block" />
+              <UIcon
+                name="i-lucide-triangle-alert"
+                class="size-6 text-warning inline-block"
+              />
               {{ $t('no-guarantee') }}
             </span>
-            <i18n path="report-issues" tag="span">
+            <i18n
+              path="report-issues"
+              tag="span"
+            >
               <template #githubRepo="{ githubRepoLabel }">
-                <ULink href="https://github.com/genteure/zmk-wizard/issues" class="underline" target="_blank">
+                <ULink
+                  href="https://github.com/genteure/zmk-wizard/issues"
+                  class="underline"
+                  target="_blank"
+                >
                   {{ githubRepoLabel }}
                 </ULink>
               </template>
               <template #discord="{ discordLabel }">
-                <ULink href="https://zmk.dev/community/discord/invite" class="underline" target="_blank">
+                <ULink
+                  href="https://zmk.dev/community/discord/invite"
+                  class="underline"
+                  target="_blank"
+                >
                   {{ discordLabel }}
                 </ULink>
               </template>
             </i18n>
           </div>
 
-          <UStepper orientation="vertical" :items="stepperItems" disabled model-value="0" class="w-full" />
+          <UStepper
+            orientation="vertical"
+            :items="stepperItems"
+            disabled
+            model-value="0"
+            class="w-full"
+          />
         </div>
       </template>
     </USlideover>
@@ -197,7 +316,8 @@ const previewFiles = computed(() => {
   if (!validatedData.value) return {};
   try {
     return createZMKConfig(validatedData.value);
-  } catch (e) {
+  }
+  catch (e) {
     console.error('Error generating preview files:', e);
     return {};
   }
@@ -239,7 +359,7 @@ interface IconRule {
 
 const FILE_ICON_RULES: IconRule[] = [
   { icon: 'material-icon-theme:svg', match: (_, p) => p.endsWith('.svg') },
-  { icon: 'material-icon-theme:readme', match: (n) => n.startsWith('README') },
+  { icon: 'material-icon-theme:readme', match: n => n.startsWith('README') },
   { icon: 'material-icon-theme:markdown', match: (_, p) => p.endsWith('.md') },
   {
     icon: 'material-icon-theme:github-actions-workflow',
@@ -258,9 +378,9 @@ function getFileIcon(name: string, fullPath: string): string {
 const FOLDER_ICON_RULES: IconRule[] = [
   { icon: 'material-icon-theme:folder-github', match: (_, p) => p === '.github' },
   { icon: 'material-icon-theme:folder-gh-workflows', match: (_, p) => p === '.github/workflows' },
-  { icon: 'material-icon-theme:folder-src', match: (n) => n === 'boards' },
-  { icon: 'material-icon-theme:folder-config', match: (n) => n === 'config' },
-  { icon: 'material-icon-theme:folder-meta', match: (n) => n === 'zephyr' },
+  { icon: 'material-icon-theme:folder-src', match: n => n === 'boards' },
+  { icon: 'material-icon-theme:folder-config', match: n => n === 'config' },
+  { icon: 'material-icon-theme:folder-meta', match: n => n === 'zephyr' },
 ];
 
 function getFolderIcon(name: string, fullPath: string): string | undefined {
@@ -281,7 +401,8 @@ function buildPreviewTree(files: Record<string, string>): PreviewTreeItem[] {
 
       if (isLast) {
         current[name] = { name, fullPath, type: 'file', icon: getFileIcon(name, fullPath) };
-      } else {
+      }
+      else {
         const existing = current[name];
         if (!existing || existing.type === 'file') {
           current[name] = {
@@ -318,7 +439,7 @@ function buildPreviewTree(files: Record<string, string>): PreviewTreeItem[] {
   }
 
   function collapseSingleFolders(items: PreviewTreeItem[]): PreviewTreeItem[] {
-    return items.flatMap(item => {
+    return items.flatMap((item) => {
       if (!item.children) return [item];
       const collapsed = collapseSingleFolders(item.children);
       // merge: single child that's itself a folder (has children)
@@ -363,7 +484,7 @@ let acceptedLayoutHash: string | null = null;
 
 /** Compute a hash of physical-layout props (order, position, rotation, size) to detect layout changes. */
 function computePhysicalLayoutHash(keys: Key[]): string {
-  return JSON.stringify(keys.map((k) => [k.id, k.x, k.y, k.w, k.h, k.r, k.rx, k.ry]));
+  return JSON.stringify(keys.map(k => [k.id, k.x, k.y, k.w, k.h, k.r, k.rx, k.ry]));
 }
 
 const slideoverOpen = ref(false);
@@ -394,7 +515,8 @@ function onDropdownOpenChange(open: boolean) {
         groupName = part?.name
           ? $t('error-group-part', { index: partIndex, name: part.name })
           : $t('error-group-part-simple', { index: partIndex });
-      } else {
+      }
+      else {
         groupName = $t('error-group-general');
       }
 
@@ -447,7 +569,8 @@ function downloadZip() {
     });
 
     selfPromoToast();
-  } catch (e) {
+  }
+  catch (e) {
     console.error('Error generating ZIP:', e);
     // toast.add();
   }
@@ -491,14 +614,16 @@ async function submitBuild() {
     navigation.build.repoId = data.repoId;
 
     selfPromoToast();
-  } catch (e) {
+  }
+  catch (e) {
     toast.add({
       title: $t('network-error-title'),
       description: $t('import-unexpected-error', { message: (e as Error).message }),
       color: 'error',
       icon: 'i-lucide-wifi-off',
     });
-  } finally {
+  }
+  finally {
     isBuilding.value = false;
   }
 }
@@ -581,23 +706,23 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
 const stepperItems = computed<StepperItem[]>(() => [
   {
     title: $t('step1-title'),
-    description: $t('step1-desc')
+    description: $t('step1-desc'),
   },
   {
     title: $t('step2-title'),
-    description: $t('step2-desc')
+    description: $t('step2-desc'),
   },
   {
     title: $t('step3-title'),
-    description: $t('step3-desc')
+    description: $t('step3-desc'),
   },
   {
     title: $t('step4-title'),
-    description: $t('step4-desc')
+    description: $t('step4-desc'),
   },
   {
     title: $t('step5-title'),
-    description: $t('step5-desc')
+    description: $t('step5-desc'),
   },
 ]);
 </script>

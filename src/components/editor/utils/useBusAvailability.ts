@@ -1,19 +1,19 @@
-import { computed, type ComputedRef } from "vue";
-import type { Bus, BusName, BusPinRole, ControllerId, KeyboardPart, ModuleId } from "~/types";
-import { Controllers, SocBuses } from "~/metadata/controllers";
-import { DEVICE_CLASS_LIMITS, getDeviceMeta, SOC_BUS_CONFLICTS, type DeviceTypeName } from "~/metadata/device";
-import { ZMK_MODULES } from "~/metadata/modules";
-import type { DeviceCategory } from "~/metadata/device/type";
+import { computed, type ComputedRef } from 'vue';
+import type { Bus, BusName, BusPinRole, ControllerId, KeyboardPart, ModuleId } from '~/types';
+import { Controllers, SocBuses } from '~/metadata/controllers';
+import { DEVICE_CLASS_LIMITS, getDeviceMeta, SOC_BUS_CONFLICTS, type DeviceTypeName } from '~/metadata/device';
+import { ZMK_MODULES } from '~/metadata/modules';
+import type { DeviceCategory } from '~/metadata/device/type';
 
 // ─────────────────────────────────────────────────────────────
 // Bus Status — per-bus availability state
 // ─────────────────────────────────────────────────────────────
 
-export type BusStatus = "active" | "inactive" | "unavailable";
+export type BusStatus = 'active' | 'inactive' | 'unavailable';
 
 export interface BusStatusEntry {
   name: string;
-  type: "i2c" | "spi";
+  type: 'i2c' | 'spi';
   status: BusStatus;
   /** Roles that devices on this bus need (e.g., ["sck", "mosi"]). */
   requires: readonly BusPinRole[];
@@ -104,9 +104,9 @@ function buildConflictMap(controllerId: ControllerId): Record<string, Record<str
 }
 
 /** All possible pin roles for each bus type. */
-const BUS_PIN_ROLES: Readonly<Record<"i2c" | "spi", readonly BusPinRole[]>> = {
-  i2c: ["sda", "scl"],
-  spi: ["sck", "mosi", "miso"],
+const BUS_PIN_ROLES: Readonly<Record<'i2c' | 'spi', readonly BusPinRole[]>> = {
+  i2c: ['sda', 'scl'],
+  spi: ['sck', 'mosi', 'miso'],
 };
 
 /**
@@ -145,7 +145,7 @@ export function computeBusStatuses(
       results.push({
         name,
         type: busMeta.type,
-        status: "active",
+        status: 'active',
         requires: effectiveBusRequires(busMeta.requires, bus.devices),
         available: BUS_PIN_ROLES[busMeta.type],
       });
@@ -153,13 +153,13 @@ export function computeBusStatuses(
     }
 
     // Inactive by default — check for conflicts that make it unavailable
-    let status: BusStatus = "inactive";
+    let status: BusStatus = 'inactive';
 
     const conflicting = conflictMap[name];
     if (conflicting) {
       for (const conflictName of Object.keys(conflicting)) {
         if (activeBuses[conflictName]) {
-          status = "unavailable";
+          status = 'unavailable';
           break;
         }
       }
@@ -198,10 +198,10 @@ export function canAddDeviceToBus(
 
   // Check bus exists and type matches
   const busStatuses = computeBusStatuses(part, controllerId);
-  const busEntry = busStatuses.find((b) => b.name === busName);
-  if (!busEntry) return "Bus not found on this controller.";
-  if (busEntry.type !== meta.bus) return "Bus type mismatch.";
-  if (busEntry.status === "unavailable") return "Bus unavailable due to SoC conflicts.";
+  const busEntry = busStatuses.find(b => b.name === busName);
+  if (!busEntry) return 'Bus not found on this controller.';
+  if (busEntry.type !== meta.bus) return 'Bus type mismatch.';
+  if (busEntry.status === 'unavailable') return 'Bus unavailable due to SoC conflicts.';
 
   // Class limit
   if (deviceClassLimitReached(part, deviceType)) {
@@ -212,12 +212,12 @@ export function canAddDeviceToBus(
 
   // If this device requires exclusive bus and bus already has devices
   if (meta.exclusive && bus && bus.devices.length > 0) {
-    return "This device requires a dedicated bus.";
+    return 'This device requires a dedicated bus.';
   }
 
   // If bus has an exclusive device
   if (bus && busHasExclusiveDevice(bus)) {
-    return "Bus already has an exclusive device that cannot share.";
+    return 'Bus already has an exclusive device that cannot share.';
   }
 
   return null; // OK
@@ -240,7 +240,7 @@ export function useBusAvailability(
 
   function deviceAvailable(deviceType: DeviceTypeName): boolean {
     return busStatuses.value.some(
-      (b) => canAddDeviceToBus(part(), controllerId(), deviceType, b.name, modules.value) === null,
+      b => canAddDeviceToBus(part(), controllerId(), deviceType, b.name, modules.value) === null,
     );
   }
 

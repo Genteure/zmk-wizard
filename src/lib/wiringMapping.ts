@@ -1,4 +1,4 @@
-import type { Key, SingleKeyWiring } from "~/types";
+import type { Key, SingleKeyWiring } from '~/types';
 
 // ─────────────────────────────────────────────────────────────
 // Wiring Mapping — copy key wiring between parts with transforms
@@ -8,7 +8,7 @@ import type { Key, SingleKeyWiring } from "~/types";
 // then applies the specified transform before pairing.
 // ─────────────────────────────────────────────────────────────
 
-export type WiringTransform = "none" | "flip-vert" | "flip-horiz" | "flip-both";
+export type WiringTransform = 'none' | 'flip-vert' | 'flip-horiz' | 'flip-both';
 
 interface PartKey {
   id: string;
@@ -31,8 +31,8 @@ type BoundingBox = {
 
 function toPartKeys(layout: Key[], partIndex: number, keys: Record<string, SingleKeyWiring | undefined>): PartKey[] {
   return layout
-    .filter((k) => k.part === partIndex)
-    .map((k) => ({
+    .filter(k => k.part === partIndex)
+    .map(k => ({
       id: k.id,
       row: k.row,
       col: k.col,
@@ -62,13 +62,13 @@ function computeBoundingBox(keys: PartKey[]): BoundingBox {
 }
 
 function transformKeys(keys: PartKey[], transform: WiringTransform): PartKey[] {
-  if (transform === "none") return keys.map((k) => ({ ...k }));
+  if (transform === 'none') return keys.map(k => ({ ...k }));
 
   const box = computeBoundingBox(keys);
-  const flipHoriz = transform === "flip-horiz" || transform === "flip-both";
-  const flipVert = transform === "flip-vert" || transform === "flip-both";
+  const flipHoriz = transform === 'flip-horiz' || transform === 'flip-both';
+  const flipVert = transform === 'flip-vert' || transform === 'flip-both';
 
-  return keys.map((k) => ({
+  return keys.map(k => ({
     ...k,
     row: flipVert ? box.minRow + (box.maxRow - k.row) : k.row,
     col: flipHoriz ? box.minCol + (box.maxCol - k.col) : k.col,
@@ -79,7 +79,7 @@ function normalizeKeys(keys: PartKey[]): NormalizedKey[] {
   if (keys.length === 0) return [];
 
   const box = computeBoundingBox(keys);
-  return keys.map((k) => ({
+  return keys.map(k => ({
     ...k,
     normRow: k.row - box.minRow,
     normCol: k.col - box.minCol,
@@ -96,10 +96,10 @@ function pairKeys(source: PartKey[], target: PartKey[]): Map<string, PartKey> {
   // Exact coordinate matches first
   for (const targetKey of normalizedTarget) {
     const match = normalizedSource.find(
-      (s) =>
-        !usedSource.has(s.id) &&
-        s.normRow === targetKey.normRow &&
-        s.normCol === targetKey.normCol,
+      s =>
+        !usedSource.has(s.id)
+        && s.normRow === targetKey.normRow
+        && s.normCol === targetKey.normCol,
     );
     if (match) {
       usedSource.add(match.id);
@@ -109,10 +109,10 @@ function pairKeys(source: PartKey[], target: PartKey[]): Map<string, PartKey> {
 
   // Best-effort pairing for remaining keys
   const remainingTargets = normalizedTarget
-    .filter((t) => !mapping.has(t.id))
+    .filter(t => !mapping.has(t.id))
     .sort((a, b) => a.normRow - b.normRow || a.normCol - b.normCol);
   const remainingSources = normalizedSource
-    .filter((s) => !usedSource.has(s.id))
+    .filter(s => !usedSource.has(s.id))
     .sort((a, b) => a.normRow - b.normRow || a.normCol - b.normCol);
 
   const pairCount = Math.min(remainingTargets.length, remainingSources.length);

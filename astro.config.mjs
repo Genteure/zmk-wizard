@@ -24,9 +24,9 @@ export default defineConfig({
 
   env: {
     schema: {
-      TURNSTILE_SECRET: envField.string({ context: "server", access: "secret", optional: true }),
-      PUBLIC_TURNSTILE_SITEKEY: envField.string({ context: "client", access: "public" }),
-      FEEDBACK_WEBHOOK_URL: envField.string({ context: "server", access: "secret", optional: true }),
+      TURNSTILE_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
+      PUBLIC_TURNSTILE_SITEKEY: envField.string({ context: 'client', access: 'public' }),
+      FEEDBACK_WEBHOOK_URL: envField.string({ context: 'server', access: 'secret', optional: true }),
     },
   },
 
@@ -46,9 +46,9 @@ export default defineConfig({
         {
           label: 'Shield Wizard Docs',
           items: [
-            { autogenerate: { directory: 'docs' } }
-          ]
-        }
+            { autogenerate: { directory: 'docs' } },
+          ],
+        },
       ],
     }),
   ],
@@ -115,16 +115,16 @@ export default defineConfig({
           config.environments.ssr.resolve.external = [];
         },
       },
-    ]
+    ],
   },
 
   // TODO: Remove once cloudflare/workers-sdk#14218 is released.
   adapter: process.env.VITEST
     ? undefined
     : cloudflare({
-      imageService: {
-        build: 'compile',
-        runtime: 'passthrough',
-      }
-    }),
+        imageService: {
+          build: 'compile',
+          runtime: 'passthrough',
+        },
+      }),
 });

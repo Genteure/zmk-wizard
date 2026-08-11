@@ -6,21 +6,21 @@
 // layout .dtsi, per-part overlays, encoder DTS, and wires
 // pinctrl via the existing src/metadata/templates layer.
 
-import { composeDtsRef, type Key, type Keyboard, type EncoderId, type KeyboardPart } from "~/types";
-import { Controllers } from "~/metadata/controllers";
-import { resolvePinInventory } from "~/lib/pinInventory";
-import { generatePartTemplates } from "~/metadata/templates";
+import { composeDtsRef, type Key, type Keyboard, type EncoderId, type KeyboardPart } from '~/types';
+import { Controllers } from '~/metadata/controllers';
+import { resolvePinInventory } from '~/lib/pinInventory';
+import { generatePartTemplates } from '~/metadata/templates';
 import {
   collectInputDevices,
   inputDevicesDtsi,
   inputDevicesOverlay,
   centralToPeripheralInputOverlay,
   type PointingDeviceInfo,
-} from "./pointing";
+} from './pointing';
 import {
   kconfig_defconfig,
   kconfig_shield,
-} from "./contents";
+} from './contents';
 import {
   boardOverlayPath,
   dongleOverlayPath,
@@ -33,7 +33,7 @@ import {
   shieldLayoutsPath,
   centralToPeripheralSnippetName,
   centralToPeripheralSnippetRoot,
-} from "./paths";
+} from './paths';
 
 /** Record of generated file paths → content */
 export type BuildFiles = Record<string, string>;
@@ -87,7 +87,7 @@ ${mtDts}
 
 ${encoderDtsi(keyboard)}
 ${inputDtsi}
-`.replace(/\n{3,}/g, "\n\n");
+`.replace(/\n{3,}/g, '\n\n');
 
   // Kconfig files (shield + defconfig with ZMK_KEYBOARD_NAME, ZMK_SPLIT, etc.)
   files[kconfigShieldPath(keyboard.shield)] = kconfig_shield(keyboard);
@@ -103,7 +103,7 @@ ${inputDtsi}
     row-offset = <${rowOff}>;
 };
 `
-      : "";
+      : '';
 
     files[partOverlayPath(keyboard, idx)] = `#include "${shieldDtsiFilename(keyboard.shield)}"
 
@@ -114,7 +114,7 @@ ${offsetBlock}
 };
 ${inputDevicesOverlay(idx, inputDevices)}
 ${encoderOverlay(keyboard, idx)}
-`.replace(/\n{3,}/g, "\n\n");
+`.replace(/\n{3,}/g, '\n\n');
 
     // Pinctrl overlay for this part
     const part = keyboard.parts[idx];
@@ -137,19 +137,19 @@ ${encoderOverlay(keyboard, idx)}
     }
     if (pinctrlResult.kconfig.length > 0) {
       const defconfigPath = kconfigDefconfigPath(keyboard.shield);
-      const existing = (files[defconfigPath] ?? "") as string;
-      const boardKconfig =
-        Controllers[part.controller]?.boardKconfig ?? `BOARD_${part.controller.toUpperCase()}`;
+      const existing = (files[defconfigPath] ?? '') as string;
+      const boardKconfig
+        = Controllers[part.controller]?.boardKconfig ?? `BOARD_${part.controller.toUpperCase()}`;
       const upper = keyboard.shield.toUpperCase();
-      const shieldCondef =
-        partCount > 1
+      const shieldCondef
+        = partCount > 1
           ? `SHIELD_${upper}_${part.name.toUpperCase()}`
           : `SHIELD_${upper}`;
       const block = `
 # --- Pinctrl Kconfig for part "${part.name}" ---
 if ${boardKconfig} && ${shieldCondef}
 
-${pinctrlResult.kconfig.join("\n")}
+${pinctrlResult.kconfig.join('\n')}
 
 endif
 `;
@@ -184,8 +184,8 @@ append:
 CONFIG_ZMK_SPLIT_ROLE_CENTRAL=n
 `;
 
-    files[`${snippetRoot}/${snippetName}.overlay`] =
-      centralToPeripheralInputOverlay(inputDevices);
+    files[`${snippetRoot}/${snippetName}.overlay`]
+      = centralToPeripheralInputOverlay(inputDevices);
   }
 
   return files;
@@ -195,13 +195,12 @@ CONFIG_ZMK_SPLIT_ROLE_CENTRAL=n
 
 function buildEmptyPart(): KscanSinglePartResult {
   return {
-    kscanDts: "",
+    kscanDts: '',
     mtCols: 0,
     mtRows: 0,
     mtMapping: [],
   };
 }
-
 
 // ── Helpers ────────────────────────────────────────────────
 
@@ -219,9 +218,6 @@ function pinDtsResolver(part: KeyboardPart): (pinId: string) => string {
   };
 }
 
-
-
-
 // ── Preference sort (stable pin ordering) ─────────────────
 
 function preferenceSort(
@@ -237,7 +233,7 @@ function preferenceSort(
 
   const n = input.length;
   const positions: (Item | null)[] = Array(n).fill(null);
-  const items: Item[] = input.map((p) => ({
+  const items: Item[] = input.map(p => ({
     ...p,
     nextIndex: 0,
     assignedPosition: null,
@@ -258,7 +254,8 @@ function preferenceSort(
           break;
         }
       }
-    } else {
+    }
+    else {
       const pos = p.pref[p.nextIndex];
       if (pos < 0 || pos >= n) {
         p.nextIndex++;
@@ -271,11 +268,13 @@ function preferenceSort(
         positions[pos] = p;
         p.assignedPosition = pos;
         p.usedPreferenceIndex = p.nextIndex;
-      } else {
+      }
+      else {
         if (currentOccupant.usedPreferenceIndex === -1) {
           p.nextIndex++;
           queue.push(p);
-        } else {
+        }
+        else {
           if (p.nextIndex < currentOccupant.usedPreferenceIndex) {
             positions[pos] = null;
             currentOccupant.assignedPosition = null;
@@ -286,7 +285,8 @@ function preferenceSort(
             positions[pos] = p;
             p.assignedPosition = pos;
             p.usedPreferenceIndex = p.nextIndex;
-          } else {
+          }
+          else {
             p.nextIndex++;
             queue.push(p);
           }
@@ -295,7 +295,7 @@ function preferenceSort(
     }
   }
 
-  return positions.map((p) => p!.value);
+  return positions.map(p => p!.value);
 }
 
 // ── Physical layout helpers ───────────────────────────────
@@ -310,13 +310,12 @@ interface BoundingBox2D {
 function getKeysBoundingBox(
   keys: { x: number; y: number; w: number; h: number }[],
 ): BoundingBox2D {
-  const minX = Math.min(...keys.map((k) => k.x));
-  const minY = Math.min(...keys.map((k) => k.y));
-  const maxX = Math.max(...keys.map((k) => k.x + k.w));
-  const maxY = Math.max(...keys.map((k) => k.y + k.h));
+  const minX = Math.min(...keys.map(k => k.x));
+  const minY = Math.min(...keys.map(k => k.y));
+  const maxX = Math.max(...keys.map(k => k.x + k.w));
+  const maxY = Math.max(...keys.map(k => k.y + k.h));
   return { minX, minY, maxX, maxY };
 }
-
 
 /** Format a number for DTS physical layout (hundredths of a unit) */
 function dtsNum(n: number, pad: number): string {
@@ -337,7 +336,7 @@ export function exportPhysicalLayoutDts(
     const rx = key.rx === 0 ? key.x : key.rx;
     const ry = key.ry === 0 ? key.y : key.ry;
     return `<&key_physical_attrs${dtsNum(key.w, 4)}${dtsNum(key.h, 4)}${dtsNum(key.x, 5)}${dtsNum(key.y, 5)}${dtsNum(key.r, 8)}${dtsNum(rx, 6)}${dtsNum(ry, 6)}>`;
-  }).join("\n            , ");
+  }).join('\n            , ');
 
   return `#include <physical_layouts.dtsi>
 
@@ -355,10 +354,10 @@ export function exportPhysicalLayoutDts(
 // ── DTS generation helpers ────────────────────────────────
 
 function makeMatrixTransform(mte: MatrixTransformEntry[]): string {
-  if (mte.length === 0) return "";
+  if (mte.length === 0) return '';
 
-  const maxRow = Math.max(...mte.map((e) => e.kscanRow));
-  const maxCol = Math.max(...mte.map((e) => e.kscanCol));
+  const maxRow = Math.max(...mte.map(e => e.kscanRow));
+  const maxCol = Math.max(...mte.map(e => e.kscanCol));
 
   let lastRow = -1;
   const mapEntries = mte
@@ -371,7 +370,7 @@ function makeMatrixTransform(mte: MatrixTransformEntry[]): string {
       }
       return rc;
     })
-    .join("");
+    .join('');
 
   return `/ {
     matrix_transform0: matrix_transform0 {
@@ -388,8 +387,8 @@ function makeMatrixTransform(mte: MatrixTransformEntry[]): string {
 // ── Encoders ──────────────────────────────────────────────
 
 function encoderDtsi(keyboard: Keyboard): string {
-  if (keyboard.parts.every((p) => p.encoders.length === 0)) {
-    return "";
+  if (keyboard.parts.every(p => p.encoders.length === 0)) {
+    return '';
   }
 
   const dts: string[] = [];
@@ -398,8 +397,8 @@ function encoderDtsi(keyboard: Keyboard): string {
   for (let pi = 0; pi < keyboard.parts.length; pi++) {
     const part = keyboard.parts[pi];
     for (let ei = 0; ei < part.encoders.length; ei++) {
-      const label =
-        keyboard.parts.length > 1
+      const label
+        = keyboard.parts.length > 1
           ? `encoder_${part.name}${ei}`
           : `encoder${ei}`;
 
@@ -419,11 +418,11 @@ function encoderDtsi(keyboard: Keyboard): string {
 // All pin assignments are done in the part overlays.
 
 / {
-${dts.join("\n").split("\n").map((line) => "    " + line).join("\n")}
+${dts.join('\n').split('\n').map(line => '    ' + line).join('\n')}
 
     sensors: sensors {
         compatible = "zmk,keymap-sensors";
-        sensors = <${names.join(" ")}>;
+        sensors = <${names.join(' ')}>;
         triggers-per-rotation = <20>;
     };
 };
@@ -435,17 +434,17 @@ function encoderOverlay(keyboard: Keyboard, partIndex: number): string {
     (p, idx) => idx !== partIndex && p.encoders.length > 0,
   );
   const part = partIndex >= 0 ? keyboard.parts[partIndex] : null;
-  let dts = "";
+  let dts = '';
 
   /** Look up an encoder pin from part.pins by encoder ID and role */
-  function encoderPin(pid: EncoderId, role: "pinA" | "pinB"): string | undefined {
+  function encoderPin(pid: EncoderId, role: 'pinA' | 'pinB'): string | undefined {
     if (!part) return undefined;
     for (const [pinId, usage] of Object.entries(part.pins)) {
       if (
-        usage &&
-        usage.usage === "encoder" &&
-        usage.encoderId === pid &&
-        usage.role === role
+        usage
+        && usage.usage === 'encoder'
+        && usage.encoderId === pid
+        && usage.role === role
       ) {
         return pinId;
       }
@@ -457,12 +456,12 @@ function encoderOverlay(keyboard: Keyboard, partIndex: number): string {
     const dtsRef = pinDtsResolver(part);
     for (let ei = 0; ei < part.encoders.length; ei++) {
       const enc = part.encoders[ei];
-      const label =
-        keyboard.parts.length > 1
+      const label
+        = keyboard.parts.length > 1
           ? `encoder_${part.name}${ei}`
           : `encoder${ei}`;
-      const pinA = encoderPin(enc.id, "pinA");
-      const pinB = encoderPin(enc.id, "pinB");
+      const pinA = encoderPin(enc.id, 'pinA');
+      const pinB = encoderPin(enc.id, 'pinB');
       if (!pinA || !pinB) continue;
 
       dts += `&${label} {
@@ -479,7 +478,7 @@ function encoderOverlay(keyboard: Keyboard, partIndex: number): string {
     const firstPinId = resolvePinInventory(part).allPins[0]?.id;
     const dummyPin = firstPinId
       ? dtsRef(firstPinId)
-      : "&gpio0 0";
+      : '&gpio0 0';
 
     dts += `
 // Assigning dummy pins to other part's encoders
@@ -490,8 +489,8 @@ function encoderOverlay(keyboard: Keyboard, partIndex: number): string {
       if (pi === partIndex) continue;
       const otherPart = keyboard.parts[pi];
       for (let ei = 0; ei < otherPart.encoders.length; ei++) {
-        const label =
-          keyboard.parts.length > 1
+        const label
+          = keyboard.parts.length > 1
             ? `encoder_${otherPart.name}${ei}`
             : `encoder${ei}`;
         dts += `&${label} {
@@ -571,12 +570,12 @@ function pinsForKscan(
   keyboard: Keyboard,
   partIndex: number,
   kscanId: string,
-): Record<string, { mode: "input" | "output" | "interrupt"; keys: number[] }> {
+): Record<string, { mode: 'input' | 'output' | 'interrupt'; keys: number[] }> {
   const part = keyboard.parts[partIndex];
-  const pins: Record<string, { mode: "input" | "output" | "interrupt"; keys: number[] }> = {};
+  const pins: Record<string, { mode: 'input' | 'output' | 'interrupt'; keys: number[] }> = {};
 
   for (const [pinId, usage] of Object.entries(part.pins)) {
-    if (!usage || usage.usage !== "kscan" || usage.kscan !== kscanId) continue;
+    if (!usage || usage.usage !== 'kscan' || usage.kscan !== kscanId) continue;
     pins[pinId] = { mode: usage.role, keys: [] };
   }
 
@@ -605,30 +604,31 @@ function isInputRowKscan(
   const pinEntries = Object.values(pinsForKscan(keyboard, partIndex, kscanId));
 
   for (const pinInfo of pinEntries) {
-    if (pinInfo.keys.length === 0 || pinInfo.mode === "interrupt") continue;
+    if (pinInfo.keys.length === 0 || pinInfo.mode === 'interrupt') continue;
     const bbox = getKeysBoundingBox(
-      pinInfo.keys.map((index) => keyboard.layout[index]),
+      pinInfo.keys.map(index => keyboard.layout[index]),
     );
     const width = bbox.maxX - bbox.minX;
     const height = bbox.maxY - bbox.minY;
-    if (pinInfo.mode === "input") {
+    if (pinInfo.mode === 'input') {
       inputShapeRatio.push(width / height);
-    } else if (pinInfo.mode === "output") {
+    }
+    else if (pinInfo.mode === 'output') {
       outputShapeRatio.push(width / height);
     }
   }
 
   const REASONABLE_RATIO = 25;
   const filteredInput = inputShapeRatio.filter(
-    (r) => !isNaN(r) && r > 1 / REASONABLE_RATIO && r < REASONABLE_RATIO,
+    r => !isNaN(r) && r > 1 / REASONABLE_RATIO && r < REASONABLE_RATIO,
   );
   const filteredOutput = outputShapeRatio.filter(
-    (r) => !isNaN(r) && r > 1 / REASONABLE_RATIO && r < REASONABLE_RATIO,
+    r => !isNaN(r) && r > 1 / REASONABLE_RATIO && r < REASONABLE_RATIO,
   );
-  const inputAvg =
-    filteredInput.reduce((a, b) => a + b, 0) / filteredInput.length || 1;
-  const outputAvg =
-    filteredOutput.reduce((a, b) => a + b, 0) / filteredOutput.length || 1;
+  const inputAvg
+    = filteredInput.reduce((a, b) => a + b, 0) / filteredInput.length || 1;
+  const outputAvg
+    = filteredOutput.reduce((a, b) => a + b, 0) / filteredOutput.length || 1;
 
   return inputAvg >= outputAvg;
 }
@@ -645,9 +645,9 @@ function matrixKscanOrderKscan(
   const pinMap = pinsForKscan(keyboard, partIndex, kscanId);
   const popularIndexs = Object.entries(pinMap)
     .map(([pin, pinInfo]) => {
-      if (pinInfo.mode !== "input" && pinInfo.mode !== "output") return null;
+      if (pinInfo.mode !== 'input' && pinInfo.mode !== 'output') return null;
 
-      const readRow = inputIsRow ? pinInfo.mode === "input" : pinInfo.mode === "output";
+      const readRow = inputIsRow ? pinInfo.mode === 'input' : pinInfo.mode === 'output';
       const highestOccurrence: Record<number, number> = {};
 
       for (const keyIndex of pinInfo.keys) {
@@ -665,7 +665,7 @@ function matrixKscanOrderKscan(
 
       return {
         pin,
-        indexs: sortedOccurrences.map((item) => item.rowOrCol),
+        indexs: sortedOccurrences.map(item => item.rowOrCol),
         weight: sortedOccurrences.length ? sortedOccurrences[0].count : 0,
         isRow: readRow,
       };
@@ -675,8 +675,8 @@ function matrixKscanOrderKscan(
 
   const rowPins: string[] = preferenceSort(
     popularIndexs
-      .filter((item) => item.isRow)
-      .map((item) => ({
+      .filter(item => item.isRow)
+      .map(item => ({
         value: item.pin,
         pref: item.indexs,
       })),
@@ -684,8 +684,8 @@ function matrixKscanOrderKscan(
 
   const colPins: string[] = preferenceSort(
     popularIndexs
-      .filter((item) => !item.isRow)
-      .map((item) => ({
+      .filter(item => !item.isRow)
+      .map(item => ({
         value: item.pin,
         pref: item.indexs,
       })),
@@ -704,15 +704,15 @@ function buildDirectKscanUnit(
 ): KscanUnitResult | null {
   const part = keyboard.parts[partIndex];
   const kscan = part.kscans[_kscanIndex];
-  if (!kscan || kscan.kind !== "direct") return null;
+  if (!kscan || kscan.kind !== 'direct') return null;
 
-  const pinFlag = kscan.mode === "gnd"
-    ? "(GPIO_ACTIVE_LOW | GPIO_PULL_UP)"
-    : "(GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)";
+  const pinFlag = kscan.mode === 'gnd'
+    ? '(GPIO_ACTIVE_LOW | GPIO_PULL_UP)'
+    : '(GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)';
 
   const pinData = pinsForKscan(keyboard, partIndex, kscan.id);
   const pins = Object.entries(pinData)
-    .filter(([_, info]) => info.mode === "input")
+    .filter(([_, info]) => info.mode === 'input')
     .sort((a, b) => {
       const aIndex = Math.min(...a[1].keys, 99999);
       const bIndex = Math.min(...b[1].keys, 99999);
@@ -723,7 +723,7 @@ function buildDirectKscanUnit(
   if (pins.length === 0) return null;
   const dtsRef = pinDtsResolver(part);
 
-  const dtsRefs = pins.map((pin) => dtsRef(pin));
+  const dtsRefs = pins.map(pin => dtsRef(pin));
 
   const kscanDts = `/ {
     ${label}: ${label} {
@@ -731,14 +731,13 @@ function buildDirectKscanUnit(
         wakeup-source;
 
         input-gpios
-            = ${dtsRefs.map((ref) => `<${ref} ${pinFlag}>`).join("\n            , ")}
+            = ${dtsRefs.map(ref => `<${ref} ${pinFlag}>`).join('\n            , ')}
             ;
     };
 };
 `;
 
-
-  const keyMappings: KscanUnitResult["keyMappings"] = keyboard.layout
+  const keyMappings: KscanUnitResult['keyMappings'] = keyboard.layout
     .map((key, index) => {
       if (key.part !== partIndex) return null;
       const wiring = part.keys[key.id];
@@ -760,26 +759,26 @@ function buildMatrixKscanUnit(
 ): KscanUnitResult | null {
   const part = keyboard.parts[partIndex];
   const kscan = part.kscans[_kscanIndex];
-  if (!kscan || kscan.kind !== "matrix") return null;
+  if (!kscan || kscan.kind !== 'matrix') return null;
 
-  const inputPinFlag = "(GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)";
-  const outputPinFlag = kscan.diodes ? "GPIO_ACTIVE_HIGH" : "GPIO_OPEN_SOURCE";
+  const inputPinFlag = '(GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)';
+  const outputPinFlag = kscan.diodes ? 'GPIO_ACTIVE_HIGH' : 'GPIO_OPEN_SOURCE';
   const inputIsRow = isInputRowKscan(keyboard, partIndex, kscan.id);
   const kscanOrder = matrixKscanOrderKscan(keyboard, inputIsRow, partIndex, kscan.id);
   const dtsRef = pinDtsResolver(part);
 
-  const colPins = kscanOrder.colPins.map((pin) =>
+  const colPins = kscanOrder.colPins.map(pin =>
     dtsRef(pin),
   );
-  const rowPins = kscanOrder.rowPins.map((pin) =>
+  const rowPins = kscanOrder.rowPins.map(pin =>
     dtsRef(pin),
   );
 
   if (colPins.length === 0 || rowPins.length === 0) return null;
 
   const diodeProp = kscan.diodes
-    ? `        diode-direction = "${inputIsRow ? "col2row" : "row2col"}";\n`
-    : "";
+    ? `        diode-direction = "${inputIsRow ? 'col2row' : 'row2col'}";\n`
+    : '';
 
   const kscanDts = `/ {
     ${label}: ${label} {
@@ -787,26 +786,26 @@ function buildMatrixKscanUnit(
         ${diodeProp}        wakeup-source;
 
         col-gpios
-            = ${colPins.map((ref) => `<${ref} ${inputIsRow ? outputPinFlag : inputPinFlag}>`).join("\n            , ")}
+            = ${colPins.map(ref => `<${ref} ${inputIsRow ? outputPinFlag : inputPinFlag}>`).join('\n            , ')}
             ;
 
         row-gpios
-            = ${rowPins.map((ref) => `<${ref} ${inputIsRow ? inputPinFlag : outputPinFlag}>`).join("\n            , ")}
+            = ${rowPins.map(ref => `<${ref} ${inputIsRow ? inputPinFlag : outputPinFlag}>`).join('\n            , ')}
             ;
     };
 };
 `;
 
-  const keyMappings: KscanUnitResult["keyMappings"] = keyboard.layout
+  const keyMappings: KscanUnitResult['keyMappings'] = keyboard.layout
     .map((key, index) => {
       if (key.part !== partIndex) return null;
       const wiring = part.keys[key.id];
       if (!wiring?.input && !wiring?.output) return null;
       const row = kscanOrder.rowPins.indexOf(
-        inputIsRow ? (wiring.input ?? "") : (wiring.output ?? ""),
+        inputIsRow ? (wiring.input ?? '') : (wiring.output ?? ''),
       );
       const col = kscanOrder.colPins.indexOf(
-        inputIsRow ? (wiring.output ?? "") : (wiring.input ?? ""),
+        inputIsRow ? (wiring.output ?? '') : (wiring.input ?? ''),
       );
       if (row === -1 || col === -1) return null;
       return { keyIndex: index, kscanRow: row, kscanCol: col };
@@ -824,11 +823,11 @@ function buildCharlieplexKscanUnit(
 ): KscanUnitResult | null {
   const part = keyboard.parts[partIndex];
   const kscan = part.kscans[_kscanIndex];
-  if (!kscan || kscan.kind !== "charlieplex") return null;
+  if (!kscan || kscan.kind !== 'charlieplex') return null;
 
   const pinData = pinsForKscan(keyboard, partIndex, kscan.id);
   const gpios = Object.entries(pinData)
-    .filter(([_, info]) => info.mode === "input" || info.mode === "output")
+    .filter(([_, info]) => info.mode === 'input' || info.mode === 'output')
     .sort((a, b) => {
       const aIndex = Math.min(...a[1].keys, 99999);
       const bIndex = Math.min(...b[1].keys, 99999);
@@ -839,13 +838,13 @@ function buildCharlieplexKscanUnit(
   if (gpios.length < 2) return null;
 
   const interruptPin = Object.entries(pinData).find(
-    ([_, info]) => info.mode === "interrupt",
+    ([_, info]) => info.mode === 'interrupt',
   );
   const dtsRef = pinDtsResolver(part);
-  const dtsRefs = gpios.map((pin) => dtsRef(pin));
+  const dtsRefs = gpios.map(pin => dtsRef(pin));
   const interruptDts = interruptPin
     ? `\n        interrupt-gpios = <${dtsRef(interruptPin[0])} (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;`
-    : "";
+    : '';
 
   const kscanDts = `/ {
     ${label}: ${label} {
@@ -853,7 +852,7 @@ function buildCharlieplexKscanUnit(
         wakeup-source;
 
         gpios
-            = ${dtsRefs.map((ref) => `<${ref} GPIO_ACTIVE_HIGH>`).join("\n            , ")}
+            = ${dtsRefs.map(ref => `<${ref} GPIO_ACTIVE_HIGH>`).join('\n            , ')}
             ;${interruptDts}
     };
 };
@@ -862,7 +861,7 @@ function buildCharlieplexKscanUnit(
   // Charlieplex: row = driven pin (output), col = receiving pin (input)
   // RC(r, c): r != c (same pin can't be both)
   const n = gpios.length;
-  const keyMappings: KscanUnitResult["keyMappings"] = keyboard.layout
+  const keyMappings: KscanUnitResult['keyMappings'] = keyboard.layout
     .map((key, index) => {
       if (key.part !== partIndex) return null;
       const wiring = part.keys[key.id];
@@ -881,7 +880,7 @@ function buildCharlieplexKscanUnit(
 
 /**
  * Build all kscans for a keyboard part.
- * 
+ *
  * If the part has 0 kscans → empty result.
  * If the part has 1 kscan → single kscan0 node.
  * If the part has N kscans → individual sub-nodes (kscan1..N) + composite kscan0 wrapper
@@ -901,13 +900,13 @@ function buildPartKscans(
     const placeholder = `_ks${i}`;
     let unit: KscanUnitResult | null = null;
     switch (kscans[i].kind) {
-      case "direct":
+      case 'direct':
         unit = buildDirectKscanUnit(keyboard, partIndex, i, placeholder);
         break;
-      case "matrix":
+      case 'matrix':
         unit = buildMatrixKscanUnit(keyboard, partIndex, i, placeholder);
         break;
-      case "charlieplex":
+      case 'charlieplex':
         unit = buildCharlieplexKscanUnit(keyboard, partIndex, i, placeholder);
         break;
     }
@@ -919,18 +918,19 @@ function buildPartKscans(
   // Assign final labels based on actual surviving unit count
   const multiple = rawUnits.length > 1;
   const units: KscanUnitResult[] = rawUnits.map(({ unit }, idx) => {
-    const newLabel = multiple ? `kscan${idx + 1}` : "kscan0";
+    const newLabel = multiple ? `kscan${idx + 1}` : 'kscan0';
     const dtsFixed = unit.kscanDts.replaceAll(unit.label, newLabel);
     return { ...unit, label: newLabel, kscanDts: dtsFixed };
   });
 
-  const totalRows = Math.max(...units.map((u) => u.rows), 0);
+  const totalRows = Math.max(...units.map(u => u.rows), 0);
   let kscanDts: string;
-  const subDts = units.map((u) => u.kscanDts).join("\n");
+  const subDts = units.map(u => u.kscanDts).join('\n');
 
   if (!multiple) {
     kscanDts = subDts;
-  } else {
+  }
+  else {
     let colAcc = 0;
     const subNodes: string[] = [];
     for (const unit of units) {
@@ -947,11 +947,11 @@ function buildPartKscans(
         rows = <${totalRows}>;
         columns = <${colAcc}>;
 
-${subNodes.join("\n")}
+${subNodes.join('\n')}
     };
 };
 `;
-    kscanDts = subDts + "\n" + compositeDts;
+    kscanDts = subDts + '\n' + compositeDts;
   }
 
   // Merge per-kscan mappings into part-level mtMapping with col offsets

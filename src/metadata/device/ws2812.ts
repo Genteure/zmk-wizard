@@ -1,13 +1,13 @@
-import { z } from "astro/zod";
-import { DeviceIdSchema } from "~/types/utils";
-import type { DeviceMeta } from "./type";
+import { z } from 'astro/zod';
+import { DeviceIdSchema } from '~/types/utils';
+import type { DeviceMeta } from './type';
 
 // ── Zod Schema (data model — no pin refs) ───────────────
 // WS2812 LED strip uses SPI MOSI only. No device-level GPIOs.
 
 export const ws2812DeviceSchema = z.object({
   id: DeviceIdSchema,
-  type: z.literal("ws2812"),
+  type: z.literal('ws2812'),
   len: z.number().min(1).max(256).default(8),
 });
 export type WS2812Device = z.infer<typeof ws2812DeviceSchema>;
@@ -15,10 +15,10 @@ export type WS2812Device = z.infer<typeof ws2812DeviceSchema>;
 // ── Metadata ────────────────────────────────────────────
 
 export const ws2812Meta = {
-  type: "ws2812",
+  type: 'ws2812',
   schema: ws2812DeviceSchema,
-  bus: "spi",
-  class: "rgb",
+  bus: 'spi',
+  class: 'rgb',
   exclusive: true, // Only one WS2812 strip per bus
   requiredBusPins: {
     mosi: true,
@@ -27,14 +27,14 @@ export const ws2812Meta = {
     // WS2812 has no device-level GPIOs.
   },
   visual: {
-    name: "WS2812 LED Strip",
-    short: "WS2812",
-    category: "rgb",
+    name: 'WS2812 LED Strip',
+    short: 'WS2812',
+    category: 'rgb',
   },
   props: {
     len: {
-      widget: "dec",
-      label: "Number of LEDs",
+      widget: 'dec',
+      label: 'Number of LEDs',
       min: 1,
       max: 256,
       required: true,
@@ -69,7 +69,7 @@ export const ws2812Meta = {
 
     return {
       deviceDts,
-      kconfig: ["\nconfig WS2812_STRIP\n    default y\n"],
+      kconfig: ['\nconfig WS2812_STRIP\n    default y\n'],
     };
   },
-} satisfies DeviceMeta<"ws2812">;
+} satisfies DeviceMeta<'ws2812'>;

@@ -13,9 +13,9 @@ export const locales = Object.values(localeMap);
 export type LocaleKey = keyof typeof localeMap;
 
 export const localeBundleMap = {
-  en: new FluentBundle('en'),
+  'en': new FluentBundle('en'),
   'zh-CN': new FluentBundle('zh-CN'),
-  ja: new FluentBundle('ja'),
+  'ja': new FluentBundle('ja'),
 } satisfies Record<LocaleKey, FluentBundle>;
 
 // Global terms that are shared across all components.

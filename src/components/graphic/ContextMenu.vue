@@ -1,7 +1,12 @@
 <template>
   <Teleport to="body">
     <!-- Invisible backdrop catches clicks outside the menu -->
-    <div v-if="visible" class="fixed inset-0 z-49" @click="emit('close')" @contextmenu.prevent="emit('close')" />
+    <div
+      v-if="visible"
+      class="fixed inset-0 z-49"
+      @click="emit('close')"
+      @contextmenu.prevent="emit('close')"
+    />
     <div
       v-if="visible"
       ref="menuEl"
@@ -18,7 +23,10 @@
         @click="handleClick(item)"
       >
         <span>{{ item.label }}</span>
-        <span v-if="item.shortcut" class="text-muted text-xs">{{ item.shortcut }}</span>
+        <span
+          v-if="item.shortcut"
+          class="text-muted text-xs"
+        >{{ item.shortcut }}</span>
       </button>
     </div>
   </Teleport>

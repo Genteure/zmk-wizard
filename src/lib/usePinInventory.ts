@@ -5,14 +5,14 @@
  * Used by UI components that need reactive pin access.
  */
 
-import type { ComputedRef } from "vue";
-import { computed } from "vue";
-import type { BusName, BusPinRole, KeyboardPart, PinId, PinInfo } from "~/types";
+import type { ComputedRef } from 'vue';
+import { computed } from 'vue';
+import type { BusName, BusPinRole, KeyboardPart, PinId, PinInfo } from '~/types';
 import {
   type PinInventory,
   resolvePinInventory,
-} from "./pinInventory";
-import { Controllers } from "~/metadata/controllers";
+} from './pinInventory';
+import { Controllers } from '~/metadata/controllers';
 
 /** Re-export the pure-function types for convenience. */
 export type { PinInventory };
@@ -30,7 +30,7 @@ export function usePinInventory(part: ComputedRef<KeyboardPart>) {
 
   /** Get a specific pin by ID. */
   const getPin = (id: PinId): PinInfo | undefined =>
-    allPins.value.find((p) => p.id === id);
+    allPins.value.find(p => p.id === id);
 
   /** Get all pins that can serve a specific bus role. */
   const getPinsForBus = (busName: BusName, role: BusPinRole): PinInfo[] => {
@@ -38,7 +38,7 @@ export function usePinInventory(part: ComputedRef<KeyboardPart>) {
     if (!ctrl) return [];
     const result = ctrl.canBusPins(busName, role);
     const ids = result === true ? Object.keys(ctrl.gpios) as PinId[] : result;
-    return ids.map((id) => ({
+    return ids.map(id => ({
       id,
       label: ctrl.gpios[id].label,
       aka: ctrl.gpios[id].aka,
@@ -46,7 +46,7 @@ export function usePinInventory(part: ComputedRef<KeyboardPart>) {
       dtsPinNumber: ctrl.gpios[id].dtsPinNumber,
       pinctrlRef: ctrl.gpios[id].pinctrlRef,
       capabilities: ctrl.pinCapabilities[id],
-      source: { type: "controller" as const, controllerId: part.value.controller },
+      source: { type: 'controller' as const, controllerId: part.value.controller },
     }));
   };
 

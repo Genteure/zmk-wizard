@@ -15,10 +15,10 @@ interface Pointer {
   clientY: number;
 }
 
-export type Gesture =
-  | { mode: 'idle' }
-  | { mode: 'panning'; sx: number; sy: number; px: number; py: number }
-  | {
+export type Gesture
+  = | { mode: 'idle' }
+    | { mode: 'panning'; sx: number; sy: number; px: number; py: number }
+    | {
       mode: 'pinching';
       startDist: number;
       startMidX: number;
@@ -27,7 +27,7 @@ export type Gesture =
       startPanY: number;
       startZoom: number;
     }
-  | {
+    | {
       mode: 'selecting';
       sx: number;
       sy: number;
@@ -36,7 +36,7 @@ export type Gesture =
       cmd: boolean;
       confirmed: boolean;
     }
-  | {
+    | {
       mode: 'moving';
       /** Start position in viewport coords */
       svx: number;
@@ -46,7 +46,7 @@ export type Gesture =
       cvy: number;
       shift: boolean;
     }
-  | {
+    | {
       mode: 'rotating';
       /** Start position in viewport coords */
       svx: number;
@@ -63,7 +63,7 @@ export type Gesture =
       alt: boolean;
       ctrl: boolean;
     }
-  | {
+    | {
       mode: 'scrubbing';
       /** Entity IDs activated (callback fired) during this drag. */
       activatedIds: Set<string>;
@@ -179,8 +179,8 @@ export function useCanvasGestures(options: CanvasGesturesOptions) {
 
     if (isInteractiveTarget(e.target)) return;
 
-    if (entityInteraction && e.button !== 1 &&
-        (e.target as HTMLElement)?.closest('foreignObject')) {
+    if (entityInteraction && e.button !== 1
+      && (e.target as HTMLElement)?.closest('foreignObject')) {
       return;
     }
 
@@ -313,7 +313,8 @@ export function useCanvasGestures(options: CanvasGesturesOptions) {
       if (pointers.size <= 1) {
         pan.x = g.px + (e.clientX - g.sx);
         pan.y = g.py + (e.clientY - g.sy);
-      } else {
+      }
+      else {
         startPinch();
       }
       return;
@@ -398,7 +399,8 @@ export function useCanvasGestures(options: CanvasGesturesOptions) {
 
     try {
       svgRef.value?.releasePointerCapture(e.pointerId);
-    } catch {
+    }
+    catch {
       // ignore
     }
   }
@@ -425,7 +427,6 @@ export function useCanvasGestures(options: CanvasGesturesOptions) {
     const factor = (e.metaKey || e.ctrlKey) ? (e.deltaY < 0 ? 1.05 : 1 / 1.05) : base;
     applyZoom(vp.x, vp.y, factor);
   }
-
 
   return {
     gesture,

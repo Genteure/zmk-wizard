@@ -14,20 +14,27 @@
     @contextmenu.prevent="onContextMenu"
   >
     <defs>
-      <CanvasGrid :cell-size="gridCellSize" :major-cell-size="gridMajorCellSize" />
+      <CanvasGrid
+        :cell-size="gridCellSize"
+        :major-cell-size="gridMajorCellSize"
+      />
     </defs>
 
     <g :transform="worldTransform">
       <rect
         v-if="minorVisible"
-        :x="gridRect.x" :y="gridRect.y"
-        :width="gridRect.width" :height="gridRect.height"
+        :x="gridRect.x"
+        :y="gridRect.y"
+        :width="gridRect.width"
+        :height="gridRect.height"
         fill="url(#canvas-grid-minor)"
       />
       <rect
         v-if="majorVisible"
-        :x="gridRect.x" :y="gridRect.y"
-        :width="gridRect.width" :height="gridRect.height"
+        :x="gridRect.x"
+        :y="gridRect.y"
+        :width="gridRect.width"
+        :height="gridRect.height"
         fill="url(#canvas-grid-major)"
       />
 
@@ -51,7 +58,7 @@
         <circle
           :cx="selectionCenterX"
           :cy="selectionCenterY"
-:r="6 / zoom"
+          :r="6 / zoom"
           fill="white"
           stroke="rgba(59,130,246,0.8)"
           stroke-width="1.5"
@@ -66,15 +73,15 @@
             :x1="selectionCenterX"
             :y1="selectionBBox.min.y"
             :x2="selectionCenterX"
-:y2="selectionBBox.min.y - 20 / zoom"
+            :y2="selectionBBox.min.y - 20 / zoom"
             stroke="rgba(59,130,246,0.5)"
             stroke-width="1"
             vector-effect="non-scaling-stroke"
           />
           <circle
             :cx="selectionCenterX"
-:cy="selectionBBox.min.y - 20 / zoom"
-:r="6 / zoom"
+            :cy="selectionBBox.min.y - 20 / zoom"
+            :r="6 / zoom"
             fill="white"
             stroke="rgba(59,130,246,0.8)"
             stroke-width="1.5"
@@ -122,10 +129,10 @@ const props = withDefaults(defineProps<{
   /** True while Space is held for temporary pan override. */
   spaceHeld?: boolean;
   /** Hit-test: returns entity ID at viewport position, or null. Only active (non-dimmed) entities should match. */
-  // eslint-disable-next-line vue/require-default-prop -- function prop; optional by design (LayoutConfirmModal omits it)
+
   hitTest?: (vpX: number, vpY: number) => string | null;
   /** Called once per entity when the pointer first enters it during a wiring scrub drag. */
-  // eslint-disable-next-line vue/require-default-prop -- function prop; optional by design
+
   wireCallback?: (entityId: string) => void;
 }>(), {
   bbox: null,
@@ -295,5 +302,4 @@ defineExpose({
   setZoom,
   cancelGesture,
 });
-
 </script>

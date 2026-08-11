@@ -1,6 +1,6 @@
-import { z } from "astro/zod";
-import { DeviceIdSchema } from "~/types/utils";
-import type { DeviceMeta } from "./type";
+import { z } from 'astro/zod';
+import { DeviceIdSchema } from '~/types/utils';
+import type { DeviceMeta } from './type';
 
 // ── Zod Schema (data model — no pin refs) ───────────────
 // nice!view is a display shield that uses an SPI bus.
@@ -10,17 +10,17 @@ import type { DeviceMeta } from "./type";
 
 export const niceViewDeviceSchema = z.object({
   id: DeviceIdSchema,
-  type: z.literal("niceview"),
+  type: z.literal('niceview'),
 });
 export type NiceViewDevice = z.infer<typeof niceViewDeviceSchema>;
 
 // ── Metadata ────────────────────────────────────────────
 
 export const niceViewMeta = {
-  type: "niceview",
+  type: 'niceview',
   schema: niceViewDeviceSchema,
-  bus: "spi",
-  class: "display",
+  bus: 'spi',
+  class: 'display',
   exclusive: false,
   requiredBusPins: {
     mosi: true,
@@ -28,14 +28,14 @@ export const niceViewMeta = {
   },
   gpio: {
     cs: {
-      label: "Chip Select",
+      label: 'Chip Select',
       required: true,
     },
   },
   visual: {
-    name: "nice!view",
-    short: "nice!view",
-    category: "display",
+    name: 'nice!view',
+    short: 'nice!view',
+    category: 'display',
   },
   props: {
     // nice!view has no configurable properties beyond CS (which is a GPIO).
@@ -45,4 +45,4 @@ export const niceViewMeta = {
     const deviceDts = `nice_view_spi: &${args.bus} { };\n`;
     return { deviceDts };
   },
-} satisfies DeviceMeta<"niceview">;
+} satisfies DeviceMeta<'niceview'>;

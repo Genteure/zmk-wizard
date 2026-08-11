@@ -48,7 +48,7 @@ function rc(r: number, c: number): RC {
 interface LayoutSourceDir {
   name: string;
   dir: string;
-  rcOverride?: { [file: string]: RC[]; }
+  rcOverride?: { [file: string]: RC[] };
 }
 
 interface LayoutSourceFiles {
@@ -137,8 +137,8 @@ const layoutSources: LayoutSource[] = [
           // R5
           rc(4, 2), rc(4, 3), rc(4, 4), rc(4, 5), rc(4, 6), rc(4, 7), rc(4, 8), rc(4, 9), rc(4, 10), rc(4, 11),
         ],
-      }
-    ]
+      },
+    ],
   },
   {
     name: 'Corne',
@@ -235,7 +235,7 @@ const layoutSources: LayoutSource[] = [
         // left, down, right
         rc(5, 15), rc(5, 16), rc(5, 17),
       ],
-    }
+    },
   },
 ];
 
@@ -271,7 +271,7 @@ function parseFile(filePath: string, rcOverride: RC[] | undefined): Layout {
   // console.log(`Parsed layout: ${displayName} with ${pkeys.length} keys from ${filePath}\n\n`);
   // console.log(`Keys: ${JSON.stringify(keys, null, 2)}`);
 
-  return { displayName, keys, };
+  return { displayName, keys };
 
   function matchRC(pkeys: PhysicalLayoutKey[], content: string): Key[] {
     if (rcOverride) {
@@ -286,7 +286,7 @@ function parseFile(filePath: string, rcOverride: RC[] | undefined): Layout {
     }
 
     // find position map
-    const regexPositionMap = /positions[\s=,<>\d]+?;/
+    const regexPositionMap = /positions[\s=,<>\d]+?;/;
     const positionMapMatch = content.match(regexPositionMap);
     if (!positionMapMatch) {
       console.warn(`!!! No position map found in ${filePath}`);
@@ -310,7 +310,7 @@ function parseFile(filePath: string, rcOverride: RC[] | undefined): Layout {
     // compact row and column
     const minRow = Math.min(...rcFromPM.map(p => p.row));
     const minCol = Math.min(...rcFromPM.map(p => p.col));
-    rcFromPM.forEach(p => {
+    rcFromPM.forEach((p) => {
       p.row -= minRow;
       p.col -= minCol;
     });
@@ -445,7 +445,8 @@ function main() {
         const layout = parseFile(filePath, rcOverride ? rcOverride[file] : undefined);
         layouts[source.name].push(toCompactLayout(layout));
       }
-    } else if ('dtsi' in source) {
+    }
+    else if ('dtsi' in source) {
       layouts[source.name] = [];
       for (const dtsi of source.dtsi) {
         const filePath = path.join(layoutsPath, dtsi.file);
@@ -459,10 +460,10 @@ function main() {
       }
     }
   }
-  const replaceRegex = /\n {8,}/g
+  const replaceRegex = /\n {8,}/g;
   fs.writeFileSync(outputPath, JSON.stringify(layouts, null, 2).replace(replaceRegex, ''), 'utf-8');
 
   console.log(`Layouts written to ${outputPath}`);
 }
 
-main()
+main();

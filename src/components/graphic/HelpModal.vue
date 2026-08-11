@@ -1,46 +1,69 @@
 <template>
   <UModal :title="$t('help-title')">
-    <UButton icon="i-lucide-circle-question-mark" color="neutral" variant="ghost" class="shrink-0" :aria-label="$t('help-open')" />
+    <UButton
+      icon="i-lucide-circle-question-mark"
+      color="neutral"
+      variant="ghost"
+      class="shrink-0"
+      :aria-label="$t('help-open')"
+    />
     <template #body>
       <div class="space-y-5 text-sm max-h-[70vh] overflow-y-auto pr-2">
-
         <USeparator :label="$t('help-general')" />
         <!-- ── General ──────────────────────────────────────── -->
         <section>
-          <h4 class="font-medium m-1">{{ $t('help-panning') }}</h4>
+          <h4 class="font-medium m-1">
+            {{ $t('help-panning') }}
+          </h4>
           <table class="m-1 w-full text-sm rounded-lg overflow-hidden ring-1 ring-default">
             <tbody class="divide-y divide-default">
               <tr class="hover:bg-muted/30">
-                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">{{ $t('help-middle-drag') }}</td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-pan-canvas') }}</td>
+                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
+                  {{ $t('help-middle-drag') }}
+                </td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-pan-canvas') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
                   <UKbd value="meta" /> + drag
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-pan-any-tool') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-pan-any-tool') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
                   <UKbd value="space" /> held
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-temporary-pan') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-temporary-pan') }}
+                </td>
               </tr>
             </tbody>
           </table>
 
-          <h4 class="font-medium m-1 mt-3">{{ $t('help-zooming') }}</h4>
+          <h4 class="font-medium m-1 mt-3">
+            {{ $t('help-zooming') }}
+          </h4>
           <table class="m-1 w-full text-sm rounded-lg overflow-hidden ring-1 ring-default">
             <tbody class="divide-y divide-default">
               <tr class="hover:bg-muted/30">
-                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">{{ $t('help-scroll') }}</td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-zoom-centered') }}</td>
+                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
+                  {{ $t('help-scroll') }}
+                </td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-zoom-centered') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
                   <UKbd value="meta" /> + scroll
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-fine-zoom') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-fine-zoom') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
@@ -48,7 +71,9 @@
                   <span> + </span>
                   <UKbd value="+" />
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-zoom-in') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-zoom-in') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
@@ -56,7 +81,9 @@
                   <span> + </span>
                   <UKbd value="-" />
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-zoom-out') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-zoom-out') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
@@ -64,7 +91,9 @@
                   <span> + </span>
                   <UKbd value="0" />
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-fit-all') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-fit-all') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
@@ -72,7 +101,9 @@
                   <span> + </span>
                   <UKbd value="1" />
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-reset-100') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-reset-100') }}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -84,12 +115,20 @@
           <table class="m-1 w-full text-sm rounded-lg overflow-hidden ring-1 ring-default">
             <tbody class="divide-y divide-default">
               <tr class="hover:bg-muted/30">
-                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">{{ $t('help-click-key') }}</td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-assign-pin') }}</td>
+                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
+                  {{ $t('help-click-key') }}
+                </td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-assign-pin') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
-                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">{{ $t('help-drag-across') }}</td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-assign-same-pin') }}</td>
+                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
+                  {{ $t('help-drag-across') }}
+                </td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-assign-same-pin') }}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -98,43 +137,67 @@
         <!-- ── Layout ───────────────────────────────────────── -->
         <USeparator :label="$t('help-layout')" />
         <section>
-          <h4 class="font-medium m-1">{{ $t('help-selection') }}</h4>
+          <h4 class="font-medium m-1">
+            {{ $t('help-selection') }}
+          </h4>
           <table class="m-1 w-full text-sm rounded-lg overflow-hidden ring-1 ring-default">
             <tbody class="divide-y divide-default">
               <tr class="hover:bg-muted/30">
-                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">{{ $t('help-click-key') }}</td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-select') }}</td>
+                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
+                  {{ $t('help-click-key') }}
+                </td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-select') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
-                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">{{ $t('help-click-empty') }}</td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-deselect-all') }}</td>
+                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
+                  {{ $t('help-click-empty') }}
+                </td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-deselect-all') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
                   <UKbd value="shift" /> /
                   <UKbd value="meta" /> + click
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-toggle-selection') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-toggle-selection') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
-                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">{{ $t('help-drag-right') }}</td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-box-select-enclosed') }}</td>
+                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
+                  {{ $t('help-drag-right') }}
+                </td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-box-select-enclosed') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
-                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">{{ $t('help-drag-left') }}</td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-box-select-touching') }}</td>
+                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
+                  {{ $t('help-drag-left') }}
+                </td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-box-select-touching') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
                   <UKbd value="shift" /> + drag
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-add-to-selection') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-add-to-selection') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
                   <UKbd value="alt" /> + drag
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-subtract-from-selection') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-subtract-from-selection') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
@@ -142,76 +205,106 @@
                   <span> + </span>
                   <UKbd value="a" />
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-select-all') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-select-all') }}
+                </td>
               </tr>
             </tbody>
           </table>
 
-          <h4 class="font-medium m-1 mt-3">{{ $t('help-move') }}</h4>
+          <h4 class="font-medium m-1 mt-3">
+            {{ $t('help-move') }}
+          </h4>
           <table class="m-1 w-full text-sm rounded-lg overflow-hidden ring-1 ring-default">
             <tbody class="divide-y divide-default">
               <tr class="hover:bg-muted/30">
-                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">{{ $t('help-drag-move') }}</td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-move-keys') }}</td>
+                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
+                  {{ $t('help-drag-move') }}
+                </td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-move-keys') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
                   <UKbd value="shift" /> + drag
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-constrain-axis') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-constrain-axis') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
                   <UKbd value="arrow" /> keys
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-nudge-quarter') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-nudge-quarter') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
                   <UKbd value="shift" /> +
                   <UKbd value="arrow" />
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-nudge-one') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-nudge-one') }}
+                </td>
               </tr>
             </tbody>
           </table>
 
-          <h4 class="font-medium m-1 mt-3">{{ $t('help-rotate') }}</h4>
+          <h4 class="font-medium m-1 mt-3">
+            {{ $t('help-rotate') }}
+          </h4>
           <table class="m-1 w-full text-sm rounded-lg overflow-hidden ring-1 ring-default">
             <tbody class="divide-y divide-default">
               <tr class="hover:bg-muted/30">
-                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">{{ $t('help-drag-rotate') }}</td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-rotate-center') }}</td>
+                <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
+                  {{ $t('help-drag-rotate') }}
+                </td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-rotate-center') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
                   <UKbd value="shift" /> + drag
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-snap-15') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-snap-15') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
                   <UKbd value="alt" /> + drag
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-rotate-origin') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-rotate-origin') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
                   <UKbd value="r" />
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-rotate-cw') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-rotate-cw') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
                   <UKbd value="shift" />
                   <UKbd value="r" />
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-rotate-ccw') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-rotate-ccw') }}
+                </td>
               </tr>
             </tbody>
           </table>
 
-          <h4 class="font-medium m-1 mt-3">{{ $t('help-editing') }}</h4>
+          <h4 class="font-medium m-1 mt-3">
+            {{ $t('help-editing') }}
+          </h4>
           <table class="m-1 w-full text-sm rounded-lg overflow-hidden ring-1 ring-default">
             <tbody class="divide-y divide-default">
               <tr class="hover:bg-muted/30">
@@ -219,7 +312,9 @@
                   <UKbd value="delete" /> /
                   <UKbd value="backspace" />
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-delete-selection') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-delete-selection') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
@@ -229,7 +324,9 @@
                   <UKbd value="v" /> /
                   <UKbd value="d" />
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-copy-paste') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-copy-paste') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
@@ -237,7 +334,9 @@
                   <span> + </span>
                   <UKbd value="z" />
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-undo') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-undo') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
@@ -247,19 +346,25 @@
                   <span> + </span>
                   <UKbd value="z" />
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-redo') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-redo') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
                   <UKbd value="escape" />
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-deselect-cancel') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-deselect-cancel') }}
+                </td>
               </tr>
               <tr class="hover:bg-muted/30">
                 <td class="pr-3 py-1.5 pl-2 align-top whitespace-nowrap">
                   <UKbd value="g" />
                 </td>
-                <td class="py-1.5 pr-2 text-muted">{{ $t('help-toggle-grid') }}</td>
+                <td class="py-1.5 pr-2 text-muted">
+                  {{ $t('help-toggle-grid') }}
+                </td>
               </tr>
             </tbody>
           </table>

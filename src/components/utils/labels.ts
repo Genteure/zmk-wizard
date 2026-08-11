@@ -13,7 +13,7 @@ export function kscanLabel(
   kscans: readonly { id: string }[],
   kscanId: string,
 ): string {
-  const idx = kscans.findIndex((k) => k.id === kscanId);
+  const idx = kscans.findIndex(k => k.id === kscanId);
   const displayIdx = kscans.length > 1 ? idx + 1 : 0;
   return `${partName}_kscan${displayIdx}`;
 }
@@ -24,6 +24,6 @@ export function encoderLabel(
   encoders: readonly { id: string }[],
   encoderId: string,
 ): string {
-  const idx = encoders.findIndex((e) => e.id === encoderId);
+  const idx = encoders.findIndex(e => e.id === encoderId);
   return `${partName}_encoder${idx}`;
 }

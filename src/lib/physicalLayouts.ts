@@ -15,7 +15,7 @@ export type Layouts = Record<string, LayoutEntry[]>;
 export function getLayouts(): Layouts {
   const layouts: Layouts = {};
   for (const [category, compactLayouts] of Object.entries(data)) {
-    layouts[category] = compactLayouts.map((compact) => ({
+    layouts[category] = compactLayouts.map(compact => ({
       name: compact.name,
       keys: compact.keys.map((key) => {
         const [row, col, w, h, x, y, r, rx, ry] = key;

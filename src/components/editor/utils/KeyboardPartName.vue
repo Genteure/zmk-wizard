@@ -8,9 +8,9 @@ import { KeyboardPartSchema } from '~/types';
 const { $t } = useFluent();
 
 export interface KeyboardPartNameProps {
-  label?: string
-  placeholder?: string
-  description?: string
+  label?: string;
+  placeholder?: string;
+  description?: string;
 }
 
 withDefaults(defineProps<KeyboardPartNameProps>(), {
@@ -40,22 +40,58 @@ function onSubmit(event: FormSubmitEvent<FormSchema>) {
 
 <template>
   <UFieldGroup>
-    <UInput :model-value="modelValue" readonly class="w-24" @click="open = true" />
+    <UInput
+      :model-value="modelValue"
+      readonly
+      class="w-24"
+      @click="open = true"
+    />
 
-    <UPopover v-model:open="open" :content="{ side: 'bottom', sideOffset: 6 }" arrow>
-      <UButton icon="i-lucide-pencil" variant="outline" color="neutral" />
+    <UPopover
+      v-model:open="open"
+      :content="{ side: 'bottom', sideOffset: 6 }"
+      arrow
+    >
+      <UButton
+        icon="i-lucide-pencil"
+        variant="outline"
+        color="neutral"
+      />
 
       <template #content>
         <div class="p-3 w-64">
-          <UForm ref="form" :schema="formSchema" :state="formState" class="flex flex-col gap-3" @submit="onSubmit">
-            <UFormField name="value" :label="label" :description="description">
-              <UInput v-model="formState.value" :placeholder="placeholder" class="w-full" autofocus
-                pattern="[a-z0-9]+" />
+          <UForm
+            ref="form"
+            :schema="formSchema"
+            :state="formState"
+            class="flex flex-col gap-3"
+            @submit="onSubmit"
+          >
+            <UFormField
+              name="value"
+              :label="label"
+              :description="description"
+            >
+              <UInput
+                v-model="formState.value"
+                :placeholder="placeholder"
+                class="w-full"
+                autofocus
+                pattern="[a-z0-9]+"
+              />
             </UFormField>
 
             <div class="flex justify-end gap-2">
-              <UButton :label="$t('cancel')" color="neutral" variant="ghost" @click="open = false" />
-              <UButton type="submit" :label="$t('part-name-save')" />
+              <UButton
+                :label="$t('cancel')"
+                color="neutral"
+                variant="ghost"
+                @click="open = false"
+              />
+              <UButton
+                type="submit"
+                :label="$t('part-name-save')"
+              />
             </div>
           </UForm>
         </div>

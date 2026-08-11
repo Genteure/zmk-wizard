@@ -5,9 +5,9 @@
  * usePinInventory composable (which wraps these in computed()).
  */
 
-import type { DeviceId, KeyboardPart, PinId, PinInfo } from "~/types";
-import { Controllers } from "~/metadata/controllers";
-import { getDeviceMeta } from "~/metadata/device";
+import type { DeviceId, KeyboardPart, PinId, PinInfo } from '~/types';
+import { Controllers } from '~/metadata/controllers';
+import { getDeviceMeta } from '~/metadata/device';
 
 // ── Types ─────────────────────────────────────────────────
 
@@ -35,7 +35,7 @@ export function resolveControllerPins(part: KeyboardPart): PinInfo[] {
     dtsPinNumber: gpio.dtsPinNumber,
     pinctrlRef: gpio.pinctrlRef,
     capabilities: meta.pinCapabilities[id as PinId],
-    source: { type: "controller", controllerId: part.controller },
+    source: { type: 'controller', controllerId: part.controller },
   }));
 }
 

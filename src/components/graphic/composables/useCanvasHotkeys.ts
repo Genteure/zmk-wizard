@@ -82,7 +82,7 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
   }
 
   function selectedKeys() {
-    return keyboard.layout.filter((k) => selection.selectedIdSet.has(k.id));
+    return keyboard.layout.filter(k => selection.selectedIdSet.has(k.id));
   }
 
   /** Shared placement algorithm for paste & duplicate (§5.10). */
@@ -100,11 +100,12 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
     if (allKeys.length > 0) {
       if (srcW >= srcH) {
         // Place below — new top edge = max(existing bottom) + 0.25U gap
-        const maxBottom = Math.max(...allKeys.map((k) => (k.y + k.h) * DEFAULT_KEY_SIZE));
+        const maxBottom = Math.max(...allKeys.map(k => (k.y + k.h) * DEFAULT_KEY_SIZE));
         pyOffset = maxBottom + DEFAULT_KEY_SIZE * 0.25 - srcBbox.min.y;
-      } else {
+      }
+      else {
         // Place to the right — new left edge = max(existing right) + 0.25U gap
-        const maxRight = Math.max(...allKeys.map((k) => (k.x + k.w) * DEFAULT_KEY_SIZE));
+        const maxRight = Math.max(...allKeys.map(k => (k.x + k.w) * DEFAULT_KEY_SIZE));
         pxOffset = maxRight + DEFAULT_KEY_SIZE * 0.25 - srcBbox.min.x;
       }
     }
@@ -117,10 +118,11 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
       const srcLCols = (srcLBox.max.x - srcLBox.min.x) / DEFAULT_KEY_SIZE;
       const srcLRows = (srcLBox.max.y - srcLBox.min.y) / DEFAULT_KEY_SIZE;
       if (srcLCols >= srcLRows) {
-        const maxRow = Math.max(...allKeys.map((k) => k.row + 1));
+        const maxRow = Math.max(...allKeys.map(k => k.row + 1));
         rowOffset = maxRow - srcLBox.min.y / DEFAULT_KEY_SIZE;
-      } else {
-        const maxCol = Math.max(...allKeys.map((k) => k.col + 1));
+      }
+      else {
+        const maxCol = Math.max(...allKeys.map(k => k.col + 1));
         colOffset = maxCol - srcLBox.min.x / DEFAULT_KEY_SIZE;
       }
     }
@@ -128,7 +130,7 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
     // ── Create new keys ──
     const xOff = pxOffset / DEFAULT_KEY_SIZE;
     const yOff = pyOffset / DEFAULT_KEY_SIZE;
-    const newIds = keyboard.addKeys(src.map((k) => ({
+    const newIds = keyboard.addKeys(src.map(k => ({
       part: k.part,
       row: k.row + rowOffset,
       col: k.col + colOffset,
@@ -152,11 +154,11 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
     },
 
     selectAll() {
-      selection.setSelected(keyboard.layout.map((k) => k.id));
+      selection.setSelected(keyboard.layout.map(k => k.id));
     },
 
     copy() {
-      clipboard.value = selectedKeys().map((k) => ({ ...k }));
+      clipboard.value = selectedKeys().map(k => ({ ...k }));
     },
 
     paste() {
@@ -400,13 +402,13 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
 
     // Arrow keys → nudge (0.25U, or 1U with ⇧)
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)
-        && selection.selectedCount > 0) {
+      && selection.selectedCount > 0) {
       e.preventDefault();
       const step = shift ? 1 : 0.25;
       switch (e.key) {
-        case 'ArrowUp':    actions.nudge(0, -step); break;
-        case 'ArrowDown':  actions.nudge(0, step); break;
-        case 'ArrowLeft':  actions.nudge(-step, 0); break;
+        case 'ArrowUp': actions.nudge(0, -step); break;
+        case 'ArrowDown': actions.nudge(0, step); break;
+        case 'ArrowLeft': actions.nudge(-step, 0); break;
         case 'ArrowRight': actions.nudge(step, 0); break;
       }
       return;
@@ -438,5 +440,4 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
   useEventListener(window, 'keydown', onKeyDown);
   useEventListener(window, 'keyup', onKeyUp);
   return { spaceHeld, gridSnap, hasClipboard, actions };
-
 }

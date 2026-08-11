@@ -1,18 +1,30 @@
 <template>
   <UModal :title="$t('title')">
-    <UButton :label="$t('help-button-label')" icon="i-lucide-help-circle" variant="outline" color="neutral" size="sm" />
+    <UButton
+      :label="$t('help-button-label')"
+      icon="i-lucide-help-circle"
+      variant="outline"
+      color="neutral"
+      size="sm"
+    />
 
     <template #body>
       <div class="p-4">
         <div class="light bg-elevated rounded-lg">
           <div class="relative inline-block">
-            <img :src="schematic.src" :alt="$t('alt-schematic')" draggable="false" />
+            <img
+              :src="schematic.src"
+              :alt="$t('alt-schematic')"
+              draggable="false"
+            >
             <span
-              class="absolute left-[52%] top-[88%] -translate-y-1/2 bg-accented text-highlighted font-semibold rounded border-2 border-kscanin p-1">
+              class="absolute left-[52%] top-[88%] -translate-y-1/2 bg-accented text-highlighted font-semibold rounded border-2 border-kscanin p-1"
+            >
               {{ $t('input') }}
             </span>
             <span
-              class="absolute left-[52%] top-[35%] -translate-y-1/2 bg-accented text-highlighted font-semibold rounded border-2 border-kscanout p-1">
+              class="absolute left-[52%] top-[35%] -translate-y-1/2 bg-accented text-highlighted font-semibold rounded border-2 border-kscanout p-1"
+            >
               {{ $t('output') }}
             </span>
           </div>
@@ -20,7 +32,11 @@
 
         <div class="mt-4 text-sm text-toned space-y-3">
           <div>
-            <i18n path="input-s1" tag="p" :args="{ input: $t('input') }">
+            <i18n
+              path="input-s1"
+              tag="p"
+              :args="{ input: $t('input') }"
+            >
               <template #input="{ input }">
                 <span class="text-default font-semibold">{{ input }}</span>
               </template>
@@ -28,7 +44,11 @@
             <p>{{ $t('input-s2') }}</p>
           </div>
           <div>
-            <i18n path="output-s1" tag="p" :args="{ output: $t('output') }">
+            <i18n
+              path="output-s1"
+              tag="p"
+              :args="{ output: $t('output') }"
+            >
               <template #output="{ output }">
                 <span class="text-default font-semibold">{{ output }}</span>
               </template>

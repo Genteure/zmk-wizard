@@ -1,27 +1,27 @@
-import type { z } from "astro/zod";
-import type { AnyBusDevice, BusPinRole, ControllerId, ModuleId, PinInfo } from "~/types";
+import type { z } from 'astro/zod';
+import type { AnyBusDevice, BusPinRole, ControllerId, ModuleId, PinInfo } from '~/types';
 
 // ─────────────────────────────────────────────────────────────
 // Widget Types — what UI widget to render for a device property
 // ─────────────────────────────────────────────────────────────
 
-export type WidgetType =
-  | "pin"            // Pin selector drop-down
-  | "dec"            // Decimal number input
-  | "hex"            // Hexadecimal number input
-  | "numberOptions"  // Select from a list of numbers
-  | "stringOptions"  // Select from a list of strings
-  | "checkbox";      // Boolean toggle
+export type WidgetType
+  = | 'pin' // Pin selector drop-down
+    | 'dec' // Decimal number input
+    | 'hex' // Hexadecimal number input
+    | 'numberOptions' // Select from a list of numbers
+    | 'stringOptions' // Select from a list of strings
+    | 'checkbox'; // Boolean toggle
 
 // ─────────────────────────────────────────────────────────────
 // Device Category — groups devices for UI and validation limits
 // ─────────────────────────────────────────────────────────────
 
-export type DeviceCategory =
-  | "display"
-  | "rgb"
-  | "shift_register"
-  | "pointing";
+export type DeviceCategory
+  = | 'display'
+    | 'rgb'
+    | 'shift_register'
+    | 'pointing';
 
 // ─────────────────────────────────────────────────────────────
 // GPIO Requirements — what GPIO roles a device type needs
@@ -189,7 +189,7 @@ export interface DeviceMeta<TType extends string = string> {
   /** Zod schema for device properties — does NOT include pin references */
   schema: z.ZodTypeAny;
   /** Which bus type this device connects to */
-  bus: "i2c" | "spi";
+  bus: 'i2c' | 'spi';
   /** Device class for grouping and per-class limits (maxPerPart) */
   class: DeviceCategory;
   /**

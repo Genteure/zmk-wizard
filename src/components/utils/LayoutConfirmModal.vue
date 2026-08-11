@@ -1,22 +1,50 @@
 <template>
-  <UModal v-model:open="isOpen" :title="$t('confirm-modal-title')" :description="$t('confirm-modal-description')"
-    :close="true" :ui="{ content: 'max-w-2xl', footer: 'justify-end' }">
+  <UModal
+    v-model:open="isOpen"
+    :title="$t('confirm-modal-title')"
+    :description="$t('confirm-modal-description')"
+    :close="true"
+    :ui="{ content: 'max-w-2xl', footer: 'justify-end' }"
+  >
     <template #body>
       <div class="flex flex-col gap-3">
         <div class="min-h-0 h-[40vh] w-full rounded-md border border-default bg-elevated overflow-hidden">
-          <CanvasViewport :bbox="physicalBbox" tool="pan" :entity-interaction="false">
-            <KeyEntity v-for="(key, i) in keys" :key="key.id" :key-data="key" :index="i" preview-mode />
+          <CanvasViewport
+            :bbox="physicalBbox"
+            tool="pan"
+            :entity-interaction="false"
+          >
+            <KeyEntity
+              v-for="(key, i) in keys"
+              :key="key.id"
+              :key-data="key"
+              :index="i"
+              preview-mode
+            />
           </CanvasViewport>
         </div>
-        <div class="text-sm text-toned">{{ $t('confirm-question') }}</div>
+        <div class="text-sm text-toned">
+          {{ $t('confirm-question') }}
+        </div>
       </div>
     </template>
 
     <template #footer>
-      <UButton color="neutral" variant="outline" size="md" icon="i-lucide-pencil" @click="onEdit">
+      <UButton
+        color="neutral"
+        variant="outline"
+        size="md"
+        icon="i-lucide-pencil"
+        @click="onEdit"
+      >
         {{ $t('confirm-edit') }}
       </UButton>
-      <UButton color="primary" size="md" icon="i-lucide-check" @click="onConfirm">
+      <UButton
+        color="primary"
+        size="md"
+        icon="i-lucide-check"
+        @click="onConfirm"
+      >
         {{ $t('confirm-continue') }}
       </UButton>
     </template>

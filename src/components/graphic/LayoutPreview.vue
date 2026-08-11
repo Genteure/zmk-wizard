@@ -1,20 +1,52 @@
 <template>
-  <div v-if="!keys.length" class="w-full h-full flex items-center justify-center select-none">
+  <div
+    v-if="!keys.length"
+    class="w-full h-full flex items-center justify-center select-none"
+  >
     <!-- <span class="text-sm text-muted">&mdash;</span> -->
     <picture alt="waga">
-      <source srcset="https://cdn.7tv.app/emote/01JA78H1M8000E34SZ69AYAM77/1x.avif" width="48" height="32"
-        type="image/avif">
-      <source srcset="https://cdn.7tv.app/emote/01JA78H1M8000E34SZ69AYAM77/1x.webp" width="48" height="32"
-        type="image/webp">
-      <source srcset="https://cdn.7tv.app/emote/01JA78H1M8000E34SZ69AYAM77/1x.gif" width="48" height="32"
-        type="image/gif">
-      <img alt="waga" src="https://cdn.7tv.app/emote/01JA78H1M8000E34SZ69AYAM77/1x.avif"
-        style="width: 48px; height: 32px;">
+      <source
+        srcset="https://cdn.7tv.app/emote/01JA78H1M8000E34SZ69AYAM77/1x.avif"
+        width="48"
+        height="32"
+        type="image/avif"
+      >
+      <source
+        srcset="https://cdn.7tv.app/emote/01JA78H1M8000E34SZ69AYAM77/1x.webp"
+        width="48"
+        height="32"
+        type="image/webp"
+      >
+      <source
+        srcset="https://cdn.7tv.app/emote/01JA78H1M8000E34SZ69AYAM77/1x.gif"
+        width="48"
+        height="32"
+        type="image/gif"
+      >
+      <img
+        alt="waga"
+        src="https://cdn.7tv.app/emote/01JA78H1M8000E34SZ69AYAM77/1x.avif"
+        style="width: 48px; height: 32px;"
+      >
     </picture>
   </div>
-  <svg v-else class="w-full h-full overflow-hidden" xmlns="http://www.w3.org/2000/svg" :viewBox="viewBox">
-    <g v-for="key in keys" :key="key.id" :transform="computeTransform(key)">
-      <path :d="computePath(key)" fill="var(--ui-bg-elevated)" stroke="var(--ui-text)" stroke-width="1" />
+  <svg
+    v-else
+    class="w-full h-full overflow-hidden"
+    xmlns="http://www.w3.org/2000/svg"
+    :viewBox="viewBox"
+  >
+    <g
+      v-for="key in keys"
+      :key="key.id"
+      :transform="computeTransform(key)"
+    >
+      <path
+        :d="computePath(key)"
+        fill="var(--ui-bg-elevated)"
+        stroke="var(--ui-text)"
+        stroke-width="1"
+      />
     </g>
   </svg>
 </template>

@@ -1,6 +1,6 @@
-import type { BusPinRole } from "~/types";
-import type { PinTemplateInfo } from "~/metadata/device/type";
-import type { ControllerMetadata } from "~/metadata/controllers";
+import type { BusPinRole } from '~/types';
+import type { PinTemplateInfo } from '~/metadata/device/type';
+import type { ControllerMetadata } from '~/metadata/controllers';
 
 // ─────────────────────────────────────────────────────────────
 // Pinctrl Generation — SoC-specific pinctrl nodes + bus enable
@@ -14,7 +14,7 @@ import type { ControllerMetadata } from "~/metadata/controllers";
 
 export interface PinctrlArgs {
   busName: string;
-  busType: "i2c" | "spi";
+  busType: 'i2c' | 'spi';
   busPins: Partial<Record<BusPinRole, PinTemplateInfo>>;
   controller: ControllerMetadata;
 }
@@ -27,12 +27,12 @@ export function generateBusPinctrl(args: PinctrlArgs): string {
   const { controller } = args;
 
   switch (controller.soc) {
-    case "nrf52840":
+    case 'nrf52840':
       return nrf52840Pinctrl(args);
-    case "rp2040":
+    case 'rp2040':
       return rp2040Pinctrl(args);
     default:
-      return "";
+      return '';
   }
 }
 
@@ -43,7 +43,7 @@ function nrf52840Pinctrl(args: PinctrlArgs): string {
   const pselsArray: string[] = [];
   const pselsComments: string[] = [];
 
-  if (busType === "i2c") {
+  if (busType === 'i2c') {
     if (busPins.sda) {
       pselsArray.push(`<NRF_PSEL(TWIM_SDA, ${busPins.sda.pinctrlRef})>`);
       pselsComments.push(`SDA on ${busPins.sda.displayName}`);
@@ -52,7 +52,8 @@ function nrf52840Pinctrl(args: PinctrlArgs): string {
       pselsArray.push(`<NRF_PSEL(TWIM_SCL, ${busPins.scl.pinctrlRef})>`);
       pselsComments.push(`SCL on ${busPins.scl.displayName}`);
     }
-  } else {
+  }
+  else {
     if (busPins.sck) {
       pselsArray.push(`<NRF_PSEL(SPIM_SCK, ${busPins.sck.pinctrlRef})>`);
       pselsComments.push(`SCK on ${busPins.sck.displayName}`);
@@ -78,16 +79,16 @@ function nrf52840Pinctrl(args: PinctrlArgs): string {
     throw new Error(`No PSEL entries generated for ${busName}`);
   }
 
-  const psels = pselsArray.join(",\n                    ");
+  const psels = pselsArray.join(',\n                    ');
 
-  const compatible =
-    busType === "i2c" ? "nordic,nrf-twim" : "nordic,nrf-spim";
-  const clockFreq =
-    busType === "i2c" ? `\n    clock-frequency = <I2C_BITRATE_FAST>;` : "";
+  const compatible
+    = busType === 'i2c' ? 'nordic,nrf-twim' : 'nordic,nrf-spim';
+  const clockFreq
+    = busType === 'i2c' ? `\n    clock-frequency = <I2C_BITRATE_FAST>;` : '';
 
   const comments = pselsComments
-    .map((c) => `// - ${c}`)
-    .join("\n");
+    .map(c => `// - ${c}`)
+    .join('\n');
 
   return `
 // pin control for ${busName}
@@ -125,7 +126,7 @@ function rp2040Pinctrl(args: PinctrlArgs): string {
   const rxEntries: string[] = [];
   const pinComments: string[] = [];
 
-  if (busType === "i2c") {
+  if (busType === 'i2c') {
     if (busPins.sda) {
       pinmuxEntries.push(
         `<${busName.toUpperCase()}_SDA_P${busPins.sda.pinctrlRef}>`,
@@ -138,7 +139,8 @@ function rp2040Pinctrl(args: PinctrlArgs): string {
       );
       pinComments.push(`SCL on ${busPins.scl.displayName}`);
     }
-  } else {
+  }
+  else {
     if (busPins.sck) {
       pinmuxEntries.push(
         `<${busName.toUpperCase()}_SCK_P${busPins.sck.pinctrlRef}>`,
@@ -173,26 +175,26 @@ function rp2040Pinctrl(args: PinctrlArgs): string {
   if (pinmuxEntries.length === 0 && rxEntries.length === 0) {
     throw new Error(`No pinmux entries generated for ${busName}`);
   }
-  const comments = pinComments.map((c) => `// ${c}`).join("\n");
+  const comments = pinComments.map(c => `// ${c}`).join('\n');
 
   const groups: string[] = [];
 
   if (pinmuxEntries.length > 0) {
-    const pinmux = pinmuxEntries.join(", ");
+    const pinmux = pinmuxEntries.join(', ');
     groups.push(
       `        group1 {
             pinmux = ${pinmux};
 ${
-  busType === "i2c"
-    ? "            input-enable;\n            input-schmitt-enable;\n"
-    : ""
+  busType === 'i2c'
+    ? '            input-enable;\n            input-schmitt-enable;\n'
+    : ''
 }        };`,
     );
   }
 
   if (rxEntries.length > 0) {
-    const rxPinmux = rxEntries.join(", ");
-    const groupName = groups.length > 0 ? "group2" : "group1";
+    const rxPinmux = rxEntries.join(', ');
+    const groupName = groups.length > 0 ? 'group2' : 'group1';
     groups.push(
       `        ${groupName} {
             pinmux = ${rxPinmux};
@@ -201,15 +203,15 @@ ${
     );
   }
 
-  const clockFreq =
-    busType === "i2c" ? `\n    clock-frequency = <I2C_BITRATE_FAST>;` : "";
+  const clockFreq
+    = busType === 'i2c' ? `\n    clock-frequency = <I2C_BITRATE_FAST>;` : '';
 
   return `
 // pin control for ${busName}
 ${comments}
 &pinctrl {
     ${busName}_default: ${busName}_default {
-${groups.join("\n")}
+${groups.join('\n')}
     };
 };
 &${busName} {
