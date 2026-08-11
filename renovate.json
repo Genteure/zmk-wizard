@@ -13,7 +13,9 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["(^|/)package\\.json$"],
+      "managerFilePatterns": [
+        "/(^|/)package\\.json$/"
+      ],
       "datasourceTemplate": "node-version",
       "versioningTemplate": "node",
       "depNameTemplate": "node",
