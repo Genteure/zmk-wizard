@@ -4,6 +4,7 @@ packages:
 allowBuilds:
   esbuild: true
   sharp: true
+  simple-git-hooks: true
   unrs-resolver: true
   vue-demi: true
   workerd: true

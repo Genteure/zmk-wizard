@@ -15,6 +15,7 @@
   "compilerOptions": {
     "jsx": "preserve",
     "jsxImportSource": "vue",
+    "noUnusedLocals": true,
     "paths": {
       "~/*": [
         "./src/*"

@@ -20,49 +20,57 @@
     "test:e2e": "playwright test",
     "test:all": "pnpm -s -w -r test:node && pnpm -s test:e2e",
     "astro": "astro",
-    "check": "pnpm -s lint && pnpm -s check:vue && vue-tsc --noEmit && astro check",
+    "check": "pnpm -s generate-types && astro sync && pnpm -s lint && pnpm -s check:vue && vue-tsc --noEmit && astro check",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "check:vue": "jiti scripts/check-vue-sfc.ts",
     "layouts": "jiti scripts/updatePhysicalLayouts.ts",
     "smoke": "jiti scripts/smoke.ts",
-    "generate-types": "wrangler types"
+    "generate-types": "wrangler types",
+    "prepare": "simple-git-hooks"
+  },
+  "lint-staged": {
+    "*.{js,mjs,cjs,ts,vue,astro}": "eslint --fix"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm exec lint-staged"
   },
   "devDependencies": {
-    "@nuxt/eslint-config": "1.17.0",
-    "@types/node": "25.9.5",
-    "@vueuse/core": "14.4.0",
-    "eslint": "10.8.1",
-    "eslint-plugin-astro": "3.1.0",
-    "jiti": "2.7.0",
-    "reka-ui": "2.10.1",
-    "typescript": "6.0.3",
-    "unplugin-fluent-vue": "1.4.1",
-    "vitest": "4.1.10",
-    "vue-tsc": "3.3.8",
-    "yaml": "2.9.0"
-  },
-  "dependencies": {
     "@astrojs/check": "0.9.10",
     "@astrojs/cloudflare": "14.1.4",
     "@astrojs/starlight": "0.41.4",
     "@astrojs/vue": "7.0.1",
+    "@nuxt/eslint-config": "1.17.0",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": "24.13.3",
+    "astro": "7.1.3",
+    "eslint": "10.8.1",
+    "eslint-plugin-astro": "3.1.0",
+    "jiti": "2.7.0",
+    "lint-staged": "17.3.0",
+    "simple-git-hooks": "2.13.1",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3",
+    "unplugin-fluent-vue": "1.4.1",
+    "vitest": "4.1.10",
+    "vue-tsc": "3.3.8",
+    "wrangler": "4.114.0",
+    "yaml": "2.9.0"
+  },
+  "dependencies": {
     "@fluent/bundle": "0.19.1",
     "@iconify-json/lucide": "1.2.120",
     "@nuxt/ui": "4.10.0",
     "@standard-schema/spec": "1.1.0",
-    "@tailwindcss/vite": "4.3.3",
-    "@vue/devtools-api": "^8.1.5",
-    "astro": "7.1.3",
+    "@vueuse/core": "14.4.0",
     "fluent-vue": "3.8.2",
     "jszip": "3.10.1",
     "lz-string": "1.5.0",
     "nanotar": "0.3.0",
     "pinia": "4.0.2",
-    "tailwindcss": "4.3.3",
+    "reka-ui": "2.10.1",
     "ulidx": "2.4.1",
     "vue": "3.5.40",
-    "vue-turnstile": "1.0.11",
-    "wrangler": "4.114.0"
+    "vue-turnstile": "1.0.11"
   }
 }

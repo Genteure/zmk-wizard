@@ -3,5 +3,23 @@
   "extends": [
     "config:best-practices",
     "config:js-app"
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["@types/node"],
+      "allowedVersions": "24.x"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["(^|/)package\\.json$"],
+      "datasourceTemplate": "node-version",
+      "versioningTemplate": "node",
+      "depNameTemplate": "node",
+      "matchStrings": [
+        "\"devEngines\"\\s*:\\s*\\{[^}]*\"runtime\"\\s*:\\s*\\{[^}]*\"version\"\\s*:\\s*\"(?<currentValue>[^\"]+)\""
+      ]
+    }
   ]
 }

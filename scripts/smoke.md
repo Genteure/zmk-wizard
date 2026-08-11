@@ -4,7 +4,7 @@ This smoke test exercises every example keyboard fixture by generating a ZMK use
 
 ## Fixtures
 
-- Fixtures live under `examples/json`. Each fixture is a `Keyboard` JSON in the internal format defined in `typedef.ts`.
+- Fixtures live under `examples/json`. Each fixture is a `Keyboard` JSON in the internal format defined in `src/types/keyboard.ts`.
 - Matrix fan-out uses the relative POSIX paths (e.g. `unibody/rpi_pico_basic.json`).
 
 ## Helper script: [scripts/smoke.ts](scripts/smoke.ts)

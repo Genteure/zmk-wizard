@@ -17,8 +17,19 @@ jobs:
       - run: pnpm install --frozen-lockfile
         env:
           CXXFLAGS: "-std=c++20"
-      - name: Run unit tests
-        run: pnpm test
+      - name: Test
+        run: pnpm test:node
+      # Build first: the Nuxt UI Vite plugin only writes the complete
+      # `components.d.ts` (with U* global component types) during a real
+      # build/dev run. `astro sync` writes an incomplete declaration on a
+      # fresh checkout, so `vue-tsc` inside `pnpm check` fails unless the
+      # build artifacts already exist. See:
+      # https://ui.nuxt.com/docs/getting-started/installation/vue#type-declarations
+      - name: Build
+        run: pnpm build
+      - name: Check
+        run: pnpm check
+
       # - name: Install Playwright Browsers
       #   run: pnpm exec playwright install --with-deps
       # - name: Run Playwright tests

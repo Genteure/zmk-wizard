@@ -2,7 +2,7 @@
 import { useFluent } from 'fluent-vue';
 import type { FormSubmitEvent } from '@nuxt/ui';
 import { z } from 'astro/zod';
-import { reactive, ref, useTemplateRef, watch } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { KeyboardPartSchema } from '~/types';
 
 const { $t } = useFluent();
@@ -22,7 +22,6 @@ withDefaults(defineProps<KeyboardPartNameProps>(), {
 const modelValue = defineModel<string>({ required: true });
 
 const open = ref(false);
-const form = useTemplateRef('form');
 
 const formSchema = z.object({ value: KeyboardPartSchema.shape.name });
 type FormSchema = z.output<typeof formSchema>;
