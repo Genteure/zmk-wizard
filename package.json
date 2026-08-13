@@ -59,7 +59,7 @@
   },
   "dependencies": {
     "@fluent/bundle": "0.19.1",
-    "@iconify-json/lucide": "1.2.120",
+    "@iconify-json/lucide": "1.2.123",
     "@nuxt/ui": "4.10.0",
     "@standard-schema/spec": "1.1.0",
     "@vueuse/core": "14.4.0",
