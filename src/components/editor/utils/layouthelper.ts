@@ -1,82 +1,42 @@
 import { ulid } from 'ulidx';
-import { keyCenter, type Point } from '~/types/geometry';
+import { keyCenter } from '~/types/geometry';
 import type { Key, KeyId } from '~/types';
+import { gridfit, type Rect } from '~/lib/autolayout';
 import { Serial, Keyboard as KLEKeyboard, Key as KLEKey } from './kle-serial';
 
 /**
  * Convert physical key positions to logical row/col layout.
+ *
+ * Uses the gridfit pipeline (`findNeighbors` → `bridgeSets` → `layout`):
+ * neighbor relations are derived from the physical geometry of the keys,
+ * then every key is assigned a unique `(row, col)` cell such that keys to
+ * the left get a smaller col and keys above get a smaller row.
+ *
+ * The `ignoreOrder` parameter is kept for API compatibility; the algorithm
+ * derives ordering from geometry, so the input order does not matter.
  * Mutates the keys array in place and sorts by row then col.
  */
-export function physicalToLogical(keys: Key[], ignoreOrder: boolean): void {
+export function physicalToLogical(keys: Key[], _ignoreOrder: boolean): void {
   if (keys.length === 0) return;
 
-  const posList = keys.map(k => keyCenter(k, { keySize: 1 }));
-  const minPosY = Math.min(...posList.map(p => p.y));
-  posList.forEach((p) => { p.y -= minPosY; });
-  const posMap = new Map<Key, Point>(keys.map((k, i) => [k, posList[i]]));
+  // Normalize each Key into a Rect: centered coordinates (accounting for
+  // rotation), unrotated size, and clockwise rotation in degrees.
+  const rects: Rect[] = keys.map((k) => {
+    const kc = keyCenter(k, { keySize: 1 });
+    return { id: k.id, x: kc.x, y: kc.y, width: k.w, height: k.h, degree: k.r };
+  });
 
-  if (ignoreOrder) {
-    keys.sort(
-      (a, b) =>
-        (Math.floor(posMap.get(a)?.y ?? 0) - Math.floor(posMap.get(b)?.y ?? 0))
-        || ((posMap.get(a)?.x ?? 0) - (posMap.get(b)?.x ?? 0)),
-    );
-  }
+  const fitted = gridfit({ objects: rects, threshold: 0.1 });
 
-  // Group keys into logical rows based on x coordinate breaks
-  const rows: Key[][] = [[keys[0]]];
-  for (let i = 1; i < keys.length; i++) {
-    const currentPos = posMap.get(keys[i]);
-    const prevPos = posMap.get(keys[i - 1]);
-    if (!currentPos || !prevPos) continue;
-    if (currentPos.x < (prevPos.x + 0.4)) {
-      rows.push([keys[i]]);
+  for (const key of keys) {
+    const pos = fitted.positions.get(key.id);
+    if (pos) {
+      key.row = pos.row;
+      key.col = pos.col;
     }
     else {
-      rows[rows.length - 1].push(keys[i]);
-    }
-  }
-
-  // Match cols based on x coordinate
-  const cols: (Key | undefined)[][] = [[]];
-  const rowCursors: number[] = new Array(rows.length).fill(0) as number[];
-
-  while (true) {
-    let minKey: Key | null = null;
-    let minRowIndex = -1;
-    for (let r = 0; r < rows.length; r++) {
-      const cursor = rowCursors[r];
-      if (cursor < rows[r].length) {
-        const key = rows[r][cursor];
-        const keyPos = posMap.get(key);
-        if (!keyPos) continue;
-        if (minKey === null || keyPos.x < (posMap.get(minKey)?.x ?? Infinity)) {
-          minKey = key;
-          minRowIndex = r;
-        }
-      }
-    }
-    if (minKey === null) break;
-    rowCursors[minRowIndex]++;
-
-    if (cols[cols.length - 1][minRowIndex]) {
-      const newCol: (Key | undefined)[] = [];
-      newCol[minRowIndex] = minKey;
-      cols.push(newCol);
-    }
-    else {
-      cols[cols.length - 1][minRowIndex] = minKey;
-    }
-  }
-
-  // Assign row and col to each key and sort
-  for (let c = 0; c < cols.length; c++) {
-    for (let r = 0; r < cols[c].length; r++) {
-      const key = cols[c][r];
-      if (key) {
-        key.row = r;
-        key.col = c;
-      }
+      key.row = 0;
+      key.col = 0;
     }
   }
   keys.sort((a, b) => (a.row - b.row) || (a.col - b.col));
