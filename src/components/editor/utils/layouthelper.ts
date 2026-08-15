@@ -43,9 +43,48 @@ export function physicalToLogical(keys: Key[], _ignoreOrder: boolean): void {
 }
 
 /**
- * Parse ZMK Physical Layout DTS text into Key array.
+ * Result of parsing an imported physical layout, carrying both possible
+ * keymap row/col assignments so the caller can let the user choose:
+ *
+ * - `original`: row/col values that were part of the imported data.
+ * - `generated`: row/col values produced from physical geometry by
+ *   {@link physicalToLogical}.
  */
-export function parsePhysicalLayoutDts(dts: string): Key[] | null {
+export interface ImportedLayout {
+  /** Whether the imported data provided row/col for every key. */
+  hasRowCol: boolean;
+  /** Keys with the imported row/col values, sorted by row then col. `null` when `hasRowCol` is false. */
+  original: Key[] | null;
+  /** Keys with algorithm-generated row/col values, sorted by row then col. */
+  generated: Key[];
+}
+
+/** Sort a copy of `keys` by row then col. */
+function sortKeysByRowCol(keys: readonly Key[]): Key[] {
+  return [...keys].sort((a, b) => (a.row - b.row) || (a.col - b.col));
+}
+
+/**
+ * Build the original/generated candidate pair for a parsed key array.
+ * Never mutates the input array.
+ */
+function buildImportedLayout(keys: Key[], hasRowCol: boolean): ImportedLayout {
+  const generated = structuredClone(keys);
+  physicalToLogical(generated, false);
+
+  if (!hasRowCol) {
+    return { hasRowCol: false, original: null, generated };
+  }
+
+  return {
+    hasRowCol: true,
+    original: sortKeysByRowCol(keys),
+    generated,
+  };
+}
+
+/** Parse a ZMK Physical Layout DTS without assigning generated row/col yet. */
+function parsePhysicalLayoutDtsRaw(dts: string): Key[] | null {
   const layoutRegex = /\{[^}]*?compatible *?= *?"zmk,physical-layout";.+?\}/s;
   const keyRegex = /&key_physical_attrs\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*\(?(-?\d+)\)?\s*/g;
   const keys: Key[] = [];
@@ -98,10 +137,30 @@ export function parsePhysicalLayoutDts(dts: string): Key[] | null {
     }
   }
 
-  if (keys.length === 0) return null;
+  return keys.length > 0 ? keys : null;
+}
+
+/**
+ * Parse ZMK Physical Layout DTS text into Key array.
+ */
+export function parsePhysicalLayoutDts(dts: string): Key[] | null {
+  const keys = parsePhysicalLayoutDtsRaw(dts);
+  if (!keys) return null;
 
   physicalToLogical(keys, false);
   return keys;
+}
+
+/**
+ * Parse ZMK Physical Layout DTS text into import candidates.
+ * Physical Layout DTS never carries row/col data, so only the generated
+ * candidate exists.
+ */
+export function parsePhysicalLayoutDtsWithChoice(dts: string): ImportedLayout | null {
+  const keys = parsePhysicalLayoutDtsRaw(dts);
+  if (!keys) return null;
+
+  return buildImportedLayout(keys, false);
 }
 
 /** Guard: check if value is a non-null object */
@@ -119,77 +178,99 @@ function isNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+interface ParsedLayoutJson {
+  keys: Key[];
+  hasRowCol: boolean;
+}
+
+/**
+ * Parse QMK-like layout JSON without applying a row/col strategy.
+ * Expected format: { "layouts": { "name": { "layout": [...] } } }
+ */
+function parseLayoutJsonRaw(json: string): ParsedLayoutJson | null {
+  const root: unknown = JSON.parse(json);
+  if (!isRecord(root)) return null;
+
+  const layouts = root.layouts;
+  if (!isRecord(layouts)) return null;
+
+  const firstLayoutName = Object.keys(layouts)[0];
+  if (!firstLayoutName) return null;
+
+  const firstLayout = layouts[firstLayoutName];
+  if (!isRecord(firstLayout)) return null;
+
+  const layout = firstLayout.layout;
+  if (!isArray(layout) || layout.length === 0) return null;
+
+  const keys: Key[] = [];
+  let hasRowCol = true;
+
+  for (const item of layout) {
+    if (!isRecord(item)) return null;
+
+    const row = isNumber(item.row) ? item.row : -1;
+    const col = isNumber(item.col) ? item.col : -1;
+    const w = isNumber(item.w) && item.w > 0 ? item.w : 1;
+    const h = isNumber(item.h) && item.h > 0 ? item.h : 1;
+    const x = isNumber(item.x) ? item.x : NaN;
+    const y = isNumber(item.y) ? item.y : NaN;
+    const r = isNumber(item.r) ? item.r : 0;
+    const rx = isNumber(item.rx) ? item.rx : 0;
+    const ry = isNumber(item.ry) ? item.ry : 0;
+
+    if (isNaN(x) || isNaN(y)) return null;
+    if (w <= 0 || h <= 0) return null;
+
+    let finalRow = row;
+    let finalCol = col;
+
+    if (finalRow < 0 || finalCol < 0) {
+      const matrix = item.matrix;
+      if (isArray(matrix) && matrix.length === 2
+        && isNumber(matrix[0]) && isNumber(matrix[1])) {
+        finalRow = matrix[0];
+        finalCol = matrix[1];
+      }
+    }
+
+    if (finalRow < 0 || finalCol < 0) {
+      hasRowCol = false;
+    }
+
+    keys.push({
+      id: ulid() as KeyId,
+      part: 0,
+      row: finalRow,
+      col: finalCol,
+      w, h, x, y, r, rx, ry,
+    });
+  }
+
+  if (keys.length === 0) return null;
+
+  return { keys, hasRowCol };
+}
+
 /**
  * Parse QMK-like layout JSON into Key array.
  * Expected format: { "layouts": { "name": { "layout": [...] } } }
  */
 export function parseLayoutJson(json: string): Key[] | null {
   try {
-    const root: unknown = JSON.parse(json);
-    if (!isRecord(root)) return null;
+    const parsed = parseLayoutJsonRaw(json);
+    if (!parsed) return null;
+    const { keys, hasRowCol } = parsed;
 
-    const layouts = root.layouts;
-    if (!isRecord(layouts)) return null;
-
-    const firstLayoutName = Object.keys(layouts)[0];
-    if (!firstLayoutName) return null;
-
-    const firstLayout = layouts[firstLayoutName];
-    if (!isRecord(firstLayout)) return null;
-
-    const layout = firstLayout.layout;
-    if (!isArray(layout) || layout.length === 0) return null;
-
-    const keys: Key[] = [];
-
-    for (const item of layout) {
-      if (!isRecord(item)) return null;
-
-      const row = isNumber(item.row) ? item.row : -1;
-      const col = isNumber(item.col) ? item.col : -1;
-      const w = isNumber(item.w) && item.w > 0 ? item.w : 1;
-      const h = isNumber(item.h) && item.h > 0 ? item.h : 1;
-      const x = isNumber(item.x) ? item.x : NaN;
-      const y = isNumber(item.y) ? item.y : NaN;
-      const r = isNumber(item.r) ? item.r : 0;
-      const rx = isNumber(item.rx) ? item.rx : 0;
-      const ry = isNumber(item.ry) ? item.ry : 0;
-
-      if (isNaN(x) || isNaN(y)) return null;
-      if (w <= 0 || h <= 0) return null;
-
-      let finalRow = row;
-      let finalCol = col;
-
-      if (finalRow < 0 || finalCol < 0) {
-        const matrix = item.matrix;
-        if (isArray(matrix) && matrix.length === 2
-          && isNumber(matrix[0]) && isNumber(matrix[1])) {
-          finalRow = matrix[0];
-          finalCol = matrix[1];
-        }
-      }
-
-      keys.push({
-        id: ulid() as KeyId,
-        part: 0,
-        row: finalRow,
-        col: finalCol,
-        w, h, x, y, r, rx, ry,
-      });
-    }
-
-    if (keys.length === 0) return null;
-
-    if (keys.some(k => k.row < 0 || k.col < 0)) {
+    if (!hasRowCol) {
       physicalToLogical(keys, false);
+      return keys;
     }
-    else {
-      for (let i = 1; i < keys.length; i++) {
-        if ((keys[i].row < keys[i - 1].row) || (keys[i].row === keys[i - 1].row && keys[i].col <= keys[i - 1].col)) {
-          physicalToLogical(keys, false);
-          break;
-        }
+
+    for (let i = 1; i < keys.length; i++) {
+      if ((keys[i].row < keys[i - 1].row) || (keys[i].row === keys[i - 1].row && keys[i].col <= keys[i - 1].col)) {
+        physicalToLogical(keys, false);
+        break;
       }
     }
 
@@ -201,57 +282,88 @@ export function parseLayoutJson(json: string): Key[] | null {
 }
 
 /**
+ * Parse QMK-like layout JSON into original/generated import candidates.
+ */
+export function parseLayoutJsonWithChoice(json: string): ImportedLayout | null {
+  try {
+    const parsed = parseLayoutJsonRaw(json);
+    if (!parsed) return null;
+
+    return buildImportedLayout(parsed.keys, parsed.hasRowCol);
+  }
+  catch {
+    return null;
+  }
+}
+
+interface ParsedKleJson {
+  keys: Key[];
+  hasRowCol: boolean;
+}
+
+/**
+ * Parse KLE / VIA / VIAL JSON without applying a row/col strategy.
+ */
+function parseKleJsonRaw(json: string): ParsedKleJson | null {
+  const root: unknown = JSON.parse(json);
+
+  let kleArray: unknown;
+  if (isArray(root)) {
+    if (root.length === 0) return null;
+    kleArray = root;
+  }
+  else if (isRecord(root) && 'layouts' in root && isRecord(root.layouts) && 'keymap' in root.layouts && isArray(root.layouts.keymap) && root.layouts.keymap.length > 0) {
+    kleArray = root.layouts.keymap;
+  }
+
+  if (!kleArray || !isArray(kleArray)) return null;
+
+  const parsed = Serial.deserialize(kleArray as Parameters<typeof Serial.deserialize>[0]);
+  if (!parsed || !parsed.keys || parsed.keys.length === 0) return null;
+
+  const sepRegex = /\s*(-?\d+)\s*[,/x]\s*(-?\d+)\s*$/i;
+
+  const keys: Key[] = parsed.keys.map((k) => {
+    let row = -1;
+    let col = -1;
+
+    const labelCandidate = (k.labels || []).find((l): l is string => typeof l === 'string' && l.trim().length > 0);
+    if (labelCandidate) {
+      const m = labelCandidate.trim().match(sepRegex);
+      if (m) {
+        row = parseInt(m[1], 10);
+        col = parseInt(m[2], 10);
+      }
+    }
+
+    return {
+      id: ulid() as KeyId,
+      part: 0,
+      row,
+      col,
+      w: k.width,
+      h: k.height,
+      x: k.x,
+      y: k.y,
+      r: k.rotation_angle,
+      rx: k.rotation_x,
+      ry: k.rotation_y,
+    } satisfies Key;
+  });
+
+  return { keys, hasRowCol: keys.every(k => k.row >= 0 && k.col >= 0) };
+}
+
+/**
  * Parse KLE / VIA / VIAL JSON into Key array.
  */
 export function parseKleJson(json: string): Key[] | null {
   try {
-    const root: unknown = JSON.parse(json);
+    const parsed = parseKleJsonRaw(json);
+    if (!parsed) return null;
+    const { keys, hasRowCol } = parsed;
 
-    let kleArray: unknown;
-    if (isArray(root)) {
-      if (root.length === 0) return null;
-      kleArray = root;
-    }
-    else if (isRecord(root) && 'layouts' in root && isRecord(root.layouts) && 'keymap' in root.layouts && isArray(root.layouts.keymap) && root.layouts.keymap.length > 0) {
-      kleArray = root.layouts.keymap;
-    }
-
-    if (!kleArray || !isArray(kleArray)) return null;
-
-    const parsed = Serial.deserialize(kleArray as Parameters<typeof Serial.deserialize>[0]);
-    if (!parsed || !parsed.keys || parsed.keys.length === 0) return null;
-
-    const sepRegex = /\s*(-?\d+)\s*[,/x]\s*(-?\d+)\s*$/i;
-
-    const keys: Key[] = parsed.keys.map((k) => {
-      let row = -1;
-      let col = -1;
-
-      const labelCandidate = (k.labels || []).find((l): l is string => typeof l === 'string' && l.trim().length > 0);
-      if (labelCandidate) {
-        const m = labelCandidate.trim().match(sepRegex);
-        if (m) {
-          row = parseInt(m[1], 10);
-          col = parseInt(m[2], 10);
-        }
-      }
-
-      return {
-        id: ulid() as KeyId,
-        part: 0,
-        row,
-        col,
-        w: k.width,
-        h: k.height,
-        x: k.x,
-        y: k.y,
-        r: k.rotation_angle,
-        rx: k.rotation_x,
-        ry: k.rotation_y,
-      } satisfies Key;
-    });
-
-    if (keys.some(k => k.row < 0 || k.col < 0)) {
+    if (!hasRowCol) {
       physicalToLogical(keys, false);
     }
     else {
@@ -272,11 +384,22 @@ export function parseKleJson(json: string): Key[] | null {
 }
 
 /**
- * Parse CSV text into Key array.
- * Expected headers: row,col,x,y,w,h,r,rx,ry[,part]
- * The `part` column is optional and defaults to 0.
+ * Parse KLE / VIA / VIAL JSON into original/generated import candidates.
  */
-export function parseCsv(csv: string): Key[] | null {
+export function parseKleJsonWithChoice(json: string): ImportedLayout | null {
+  try {
+    const parsed = parseKleJsonRaw(json);
+    if (!parsed) return null;
+
+    return buildImportedLayout(parsed.keys, parsed.hasRowCol);
+  }
+  catch {
+    return null;
+  }
+}
+
+/** Parse CSV without applying a row/col strategy. */
+function parseCsvRaw(csv: string): Key[] | null {
   const lines = csv.trim().split('\n').filter(line => line.trim().length > 0);
   if (lines.length < 2) return null;
 
@@ -326,6 +449,26 @@ export function parseCsv(csv: string): Key[] | null {
   }
 
   return keys.length > 0 ? keys : null;
+}
+
+/**
+ * Parse CSV text into Key array.
+ * Expected headers: row,col,x,y,w,h,r,rx,ry[,part]
+ * The `part` column is optional and defaults to 0.
+ */
+export function parseCsv(csv: string): Key[] | null {
+  return parseCsvRaw(csv);
+}
+
+/**
+ * Parse CSV text into original/generated import candidates.
+ * CSV always carries row/col data (they are required headers).
+ */
+export function parseCsvWithChoice(csv: string): ImportedLayout | null {
+  const keys = parseCsvRaw(csv);
+  if (!keys) return null;
+
+  return buildImportedLayout(keys, true);
 }
 
 // ── Export helpers (counterparts to parse functions above) ──

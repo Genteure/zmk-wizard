@@ -230,22 +230,37 @@
       </div>
     </template>
   </UModal>
+  <LayoutImportChoiceModal
+    v-model:open="rowColChoiceOpen"
+    :result="pendingRowColChoice"
+    @select="applyRowColChoice"
+  />
   <BootstrapLayout v-model:open="bootstrapOpen" />
 </template>
 
 <script setup lang="ts">
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui';
 import { useFluent } from 'fluent-vue';
-import { computed, ref } from 'vue';
+import { computed, ref, shallowRef, toRaw } from 'vue';
 import type { Key } from '~/types';
 
 import { useKeyboardStore, useSelectionStore } from '../stores';
-import { parsePhysicalLayoutDts, parseLayoutJson, parseKleJson, parseCsv, exportKleJson, exportCsv, physicalToLogical } from './utils/layouthelper';
+import {
+  exportCsv,
+  exportKleJson,
+  parseCsvWithChoice,
+  parseKleJsonWithChoice,
+  parseLayoutJsonWithChoice,
+  parsePhysicalLayoutDtsWithChoice,
+  physicalToLogical,
+  type ImportedLayout,
+} from './utils/layouthelper';
 import { exportPhysicalLayoutDts } from '~/export/shield';
 import { config_json } from '~/export/contents';
 import { getLayouts } from '~/lib/physicalLayouts';
 import LayoutPreview from '../graphic/LayoutPreview.vue';
 import BootstrapLayout from './BootstrapLayout.vue';
+import LayoutImportChoiceModal from './utils/LayoutImportChoiceModal.vue';
 import PopoverInputNumber from './utils/PopoverInputNumber.vue';
 
 const { $t } = useFluent();
@@ -325,6 +340,11 @@ const importText = ref('');
 const importError = ref('');
 const importFormat = ref<'dts' | 'qmk' | 'kle' | 'csv'>('dts');
 
+const rowColChoiceOpen = ref(false);
+// shallowRef: candidates are only replaced wholesale, never deeply mutated.
+// Deep reactivity would wrap Key arrays in proxies that structuredClone rejects.
+const pendingRowColChoice = shallowRef<ImportedLayout | null>(null);
+
 const exportOpen = ref(false);
 const exportText = ref('');
 const exportCopied = ref(false);
@@ -338,19 +358,19 @@ function openImport(format: 'dts' | 'qmk' | 'kle' | 'csv') {
 
 function doImport() {
   const text = importText.value;
-  let parsed: Key[] | null = null;
+  let parsed: ImportedLayout | null = null;
 
   if (importFormat.value === 'dts') {
-    parsed = parsePhysicalLayoutDts(text);
+    parsed = parsePhysicalLayoutDtsWithChoice(text);
   }
   else if (importFormat.value === 'qmk') {
-    parsed = parseLayoutJson(text);
+    parsed = parseLayoutJsonWithChoice(text);
   }
   else if (importFormat.value === 'kle') {
-    parsed = parseKleJson(text);
+    parsed = parseKleJsonWithChoice(text);
   }
   else {
-    parsed = parseCsv(text);
+    parsed = parseCsvWithChoice(text);
   }
 
   if (!parsed) {
@@ -358,7 +378,19 @@ function doImport() {
     return;
   }
 
-  keyboard.$patch({ layout: parsed });
+  if (parsed.hasRowCol && parsed.original) {
+    pendingRowColChoice.value = parsed;
+    importOpen.value = false;
+    rowColChoiceOpen.value = true;
+    return;
+  }
+
+  applyImportedLayout(parsed.generated);
+}
+
+function applyImportedLayout(keys: Key[]) {
+  keyboard.$patch({ layout: structuredClone(toRaw(keys)) });
+  keyboard.sortLayout();
 
   toast.add({
     title: $t('imported-toast-title'),
@@ -369,6 +401,18 @@ function doImport() {
   });
 
   importOpen.value = false;
+  rowColChoiceOpen.value = false;
+  pendingRowColChoice.value = null;
+}
+
+function applyRowColChoice(choice: 'original' | 'generated') {
+  const pending = pendingRowColChoice.value;
+  if (!pending) return;
+
+  const keys = choice === 'original' ? pending.original : pending.generated;
+  if (!keys) return;
+
+  applyImportedLayout(keys);
 }
 
 function openExport(format: 'dts' | 'json' | 'kle' | 'csv') {

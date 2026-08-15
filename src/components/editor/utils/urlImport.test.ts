@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import LZString from 'lz-string';
-import { extractLayoutFromHash, clearLayoutHash } from './urlImport';
+import { clearLayoutHash, extractLayoutChoiceFromHash, extractLayoutFromHash } from './urlImport';
 
 /** Set a fake `window` with the given hash for the duration of a test. */
 function stubWindow(hash: string) {
@@ -56,6 +56,32 @@ describe('extractLayoutFromHash', () => {
   test('returns null when window is undefined (SSR)', () => {
     vi.stubGlobal('window', undefined);
     expect(extractLayoutFromHash()).toBeNull();
+  });
+});
+
+describe('extractLayoutChoiceFromHash', () => {
+  test('exposes both candidates when KLE labels carry row/col', () => {
+    const payload = encodeKle([['0,0', '0,1']]);
+    stubWindow(`#kle=${payload}`);
+
+    const parsed = extractLayoutChoiceFromHash();
+    expect(parsed).not.toBeNull();
+    expect(parsed!.hasRowCol).toBe(true);
+    expect(parsed!.original!.map(k => [k.row, k.col])).toEqual([
+      [0, 0], [0, 1],
+    ]);
+    expect(parsed!.generated).toHaveLength(2);
+  });
+
+  test('returns generated-only result when KLE labels have no row/col', () => {
+    const payload = encodeKle([['', '']]);
+    stubWindow(`#kle=${payload}`);
+
+    const parsed = extractLayoutChoiceFromHash();
+    expect(parsed).not.toBeNull();
+    expect(parsed!.hasRowCol).toBe(false);
+    expect(parsed!.original).toBeNull();
+    expect(parsed!.generated).toHaveLength(2);
   });
 });
 
