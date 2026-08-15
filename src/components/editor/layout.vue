@@ -240,7 +240,7 @@ import { computed, ref } from 'vue';
 import type { Key } from '~/types';
 
 import { useKeyboardStore, useSelectionStore } from '../stores';
-import { parsePhysicalLayoutDts, parseLayoutJson, parseKleJson, parseCsv, exportKleJson, exportCsv } from './utils/layouthelper';
+import { parsePhysicalLayoutDts, parseLayoutJson, parseKleJson, parseCsv, exportKleJson, exportCsv, physicalToLogical } from './utils/layouthelper';
 import { exportPhysicalLayoutDts } from '~/export/shield';
 import { config_json } from '~/export/contents';
 import { getLayouts } from '~/lib/physicalLayouts';
@@ -443,9 +443,27 @@ const layoutTools = computed<DropdownMenuItem[][]>(() => [
       children: [
         {
           label: $t('tools-convert-p2k'),
+          onSelect() {
+            keyboard.$patch((state) => {
+              physicalToLogical(state.layout, true);
+            });
+          },
         },
         {
           label: $t('tools-convert-k2p'),
+          onSelect() {
+            keyboard.$patch((state) => {
+              for (const key of state.layout) {
+                key.x = key.col;
+                key.y = key.row;
+                key.w = 1;
+                key.h = 1;
+                key.rx = 0;
+                key.ry = 0;
+                key.r = 0;
+              }
+            });
+          },
         },
       ],
     },
