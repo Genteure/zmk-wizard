@@ -1,0 +1,232 @@
+name: Compile Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore:
+      - renovate/**
+  pull_request:
+    branches-ignore:
+      - renovate/**
+
+env:
+  base_root: /tmp/zmk-compile
+
+jobs:
+  generate:
+    name: Generate test configs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c # v2.0.0
+        with:
+          cache: true
+          install: false
+      - run: pnpm install --frozen-lockfile
+        env:
+          CXXFLAGS: "-std=c++20"
+      - id: generate_config
+        name: Generate ZMK config files
+        run: |
+          config_workspace="$(mktemp -d)"
+          echo "config_workspace=${config_workspace}" >> "$GITHUB_OUTPUT"
+          pnpm run smoke generate-all "${config_workspace}"
+      - name: Upload generated config
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: zmk-compile-config
+          path: ${{ steps.generate_config.outputs.config_workspace }}
+          retention-days: 1
+
+  compile:
+    runs-on: ubuntu-latest
+    container:
+      image: zmkfirmware/zmk-build-arm:stable@sha256:edb1c953438c6f720ddb79c3762f3972013b7fbbaf4fff3592fc869983e7afc5
+    needs: generate
+    name: Compile all fixtures
+    steps:
+      - name: Download generated config
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: zmk-compile-config
+          path: ${{ github.workspace }}/generated
+
+      - name: Prepare variables
+        run: |
+          echo "zephyr_version=${ZEPHYR_VERSION}" >> $GITHUB_ENV
+
+      - name: Cache west modules
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        continue-on-error: true
+        env:
+          cache_name: cache-zephyr-${{ env.zephyr_version }}-modules
+        with:
+          path: |
+            ${{ env.base_root }}/modules/
+            ${{ env.base_root }}/tools/
+            ${{ env.base_root }}/zephyr/
+            ${{ env.base_root }}/bootloader/
+            ${{ env.base_root }}/zmk/
+          key: ${{ runner.os }}-compile-${{ env.cache_name }}-${{ hashFiles('generated/**/west.yml', 'generated/**/build.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-compile-${{ env.cache_name }}-
+            ${{ runner.os }}-compile-
+            ${{ runner.os }}-
+
+      - name: West Init
+        run: |
+          mkdir -p "${base_root}/config"
+          cp -R "${GITHUB_WORKSPACE}/generated/config/." "${base_root}/config/"
+          (cd "${base_root}" && west init -l "${base_root}/config")
+
+      - name: West Update
+        run: |
+          (cd "${base_root}" && west update --fetch-opt=--filter=tree:0)
+
+      - name: West Zephyr export
+        run: |
+          (cd "${base_root}" && west zephyr-export)
+
+      - name: West Build (all fixtures)
+        env:
+          PYTHONUNBUFFERED: "1"
+          generated_root: ${{ github.workspace }}/generated
+        run: |
+          python3 - "${generated_root}" "${base_root}" <<'PY'
+          import json
+          import os
+          import re
+          import shlex
+          import shutil
+          import subprocess
+          import sys
+          import tempfile
+          from pathlib import Path
+
+          generated_root = Path(sys.argv[1])
+          base_root = Path(sys.argv[2])
+          base_dir = base_root
+          fixtures_file = generated_root / "fixtures.txt"
+
+          issue_pattern = re.compile(r"(error|warn|fatal)", re.IGNORECASE)
+          skip_pattern = re.compile(r"/(fatal|error)\.c\.obj", re.IGNORECASE)
+          ignored_warnings = {
+              "warning: Deprecated symbol KSCAN is enabled.",
+              "warning: Deprecated symbol NRF_STORE_REBOOT_TYPE_GPREGRET is enabled.",
+          }
+
+          completed: list[str] = []
+          failed: list[str] = []
+          issues: list[str] = []
+
+          def collect_issues(fixture: str, display_name: str, log_file: Path) -> None:
+              with open(log_file, encoding="utf-8", errors="replace") as fh:
+                  for idx, line in enumerate(fh, start=1):
+                      if skip_pattern.search(line):
+                          continue
+                      if line.strip() in ignored_warnings:
+                          continue
+                      if issue_pattern.search(line):
+                          issues.append(f"{fixture} / {display_name}: {idx}: {line.rstrip()}")
+
+          def print_debug_output(build_dir: Path) -> None:
+              kconfig = build_dir / "zephyr" / ".config"
+              if kconfig.exists():
+                  print("--- Kconfig ---")
+                  for line in sorted(
+                      line for line in kconfig.read_text(encoding="utf-8", errors="replace").splitlines()
+                      if line and not line.startswith("#")
+                  ):
+                      print(line)
+
+              devicetree = build_dir / "zephyr" / "zephyr.dts"
+              if not devicetree.exists():
+                  devicetree = build_dir / "zephyr" / "zephyr.dts.pre"
+              if devicetree.exists():
+                  print("--- Devicetree ---")
+                  print(devicetree.read_text(encoding="utf-8", errors="replace"))
+
+          for fixture in fixtures_file.read_text(encoding="utf-8").splitlines():
+              fixture = fixture.strip()
+              if not fixture:
+                  continue
+
+              fixture_root = generated_root / fixture
+              matrix_path = fixture_root / "build-matrix.json"
+              matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
+
+              for entry in matrix.get("include", []):
+                  board = entry.get("board")
+                  if not board:
+                      print(f"::error title=Invalid build matrix::Skipping entry without board in {fixture}")
+                      failed.append(f"{fixture}: entry without board")
+                      continue
+
+                  shield = str(entry.get("shield") or "")
+                  snippet = str(entry.get("snippet") or "")
+                  cmake_args = entry.get("cmake-args") or ""
+                  display_name = f"{shield} - {board}" if shield else board
+                  description = f"{fixture} / {display_name}"
+                  if snippet:
+                      description += f" [{snippet}]"
+
+                  build_dir = tempfile.mkdtemp(prefix="zmk-build-")
+                  log_file = Path(build_dir) / "west-build.log"
+
+                  command = ["west", "build", "-s", "zmk/app", "-d", build_dir, "-b", board]
+                  if snippet:
+                      command += ["-S", snippet]
+                  command += [
+                      "--",
+                      f"-DZMK_CONFIG={fixture_root}/config",
+                      f"-DZMK_EXTRA_MODULES={fixture_root}",
+                  ]
+                  if shield:
+                      command.append(f"-DSHIELD={shield}")
+                  if isinstance(cmake_args, str):
+                      command += shlex.split(cmake_args)
+                  else:
+                      command += [str(argument) for argument in cmake_args]
+
+                  shell_command = (
+                      "set -o pipefail; "
+                      + " ".join(shlex.quote(part) for part in command)
+                      + f" 2>&1 | tee {shlex.quote(str(log_file))}"
+                  )
+
+                  print(f"\n===== {description} =====")
+                  result = subprocess.run(
+                      shell_command,
+                      shell=True,
+                      executable="/bin/bash",
+                      cwd=base_dir,
+                  )
+
+                  collect_issues(fixture, display_name, log_file)
+
+                  if result.returncode != 0:
+                      failed.append(description)
+                      print(f"::error title=Compile failed::{description}")
+                      print_debug_output(Path(build_dir))
+                  else:
+                      completed.append(description)
+
+                  shutil.rmtree(build_dir, ignore_errors=True)
+
+          if issues:
+              summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+              if summary_path:
+                  with open(summary_path, "a", encoding="utf-8") as fh:
+                      fh.write("## Potential Issues Found in Build Logs\n\n")
+                      fh.write("The following lines were extracted from the build logs:\n\n")
+                      fh.write("```\n")
+                      fh.write("\n".join(issues))
+                      fh.write("\n```\n")
+
+          print(f"\nCompiled {len(completed)} build(s), {len(failed)} failed.")
+          if failed:
+              print("Failed builds:")
+              for failure in failed:
+                  print(f" - {failure}")
+              sys.exit(1)
+          PY

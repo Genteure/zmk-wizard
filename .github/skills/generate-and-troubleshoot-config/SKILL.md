@@ -64,7 +64,7 @@ Use an absolute fixture path when the repro comes from outside `examples/json`, 
 ### 4. Build matrix problems
 
 - Open the generated `build.yaml` and verify the matrix content.
-- Make sure optional sample builds and commented sections are handled the same way as the smoke script.
+- Make sure optional sample builds and commented sections are handled the same way as the compile test script.
 - If the matrix is wrong, inspect `scripts/smoke.ts` and the `build.yaml` template together.
 
 ## Decision Points
@@ -86,5 +86,5 @@ Use an absolute fixture path when the repro comes from outside `examples/json`, 
 
 ## References
 
-- How smoke test works `<project_root>/scripts/smoke.md`
-- Smoke test generator `<project_root>/scripts/smoke.ts`
+- How the compile test works `<project_root>/scripts/smoke.md`
+- Compile test generator `<project_root>/scripts/smoke.ts`
