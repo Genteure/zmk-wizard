@@ -1,6 +1,7 @@
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref } from 'vue';
 import { useEventListener } from '@vueuse/core';
+import { useHistoryStore } from '../../history';
 import { useKeyboardStore, useSelectionStore } from '../../stores';
 import type { KeyId } from '~/types/keyboard';
 import type { Gesture } from './useCanvasGestures';
@@ -65,6 +66,7 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
   const { activeTab, physicalCanvas, keymapCanvas, onCancelGesture } = options;
   const selection = useSelectionStore();
   const keyboard = useKeyboardStore();
+  const history = useHistoryStore();
 
   const spaceHeld = ref(false);
   const gridSnap = ref(false);
@@ -170,13 +172,11 @@ export function useCanvasHotkeys(options: CanvasHotkeysOptions): CanvasHotkeysRe
     },
 
     undo() {
-      // TODO: implement undo stack (interaction-design §1.4)
-      console.log('[hotkey] undo: not yet implemented');
+      history.undo();
     },
 
     redo() {
-      // TODO: implement redo stack (interaction-design §1.4)
-      console.log('[hotkey] redo: not yet implemented');
+      history.redo();
     },
 
     nudge(dxU: number, dyU: number) {

@@ -26,7 +26,29 @@
       </div>
     </template>
     <template #right>
-      <BuildActions />
+      <div class="flex items-center gap-1">
+        <UButton
+          icon="i-lucide-undo-2"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          :disabled="!history.canUndo"
+          :title="$t('undo')"
+          :aria-label="$t('undo')"
+          @click="history.undo()"
+        />
+        <UButton
+          icon="i-lucide-redo-2"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          :disabled="!history.canRedo"
+          :title="$t('redo')"
+          :aria-label="$t('redo')"
+          @click="history.redo()"
+        />
+        <BuildActions />
+      </div>
     </template>
     <template #body>
       <div class="flex flex-col gap-4">
@@ -99,6 +121,7 @@ import { KeyboardSchema } from '~/types';
 
 import Editors from './editor/editors.vue';
 import Graphics from './graphic/graphics.vue';
+import { useHistoryStore } from './history.ts';
 import { locales } from './locales';
 import { useKeyboardStore, useNavigationStore } from './stores.ts';
 import BuildActions from './utils/BuildActions.vue';
@@ -111,6 +134,7 @@ const { $t } = useFluent();
 
 const keyboard = useKeyboardStore();
 const nav = useNavigationStore();
+const history = useHistoryStore();
 
 const versionLabel = `${version.branch || ''}${version.dirty ? ' • dirty' : ''} ${version.short || version.commit || 'unknown'}`.trim();
 
@@ -301,6 +325,9 @@ const navItems = computed<NavigationMenuItem[][]>(() => [
 <ftl locale="en">
 build = Build
 
+undo = Undo
+redo = Redo
+
 menu-zmk-docs = ZMK Documentation
 menu-community = Community
 menu-next-steps = What to do after this?
@@ -324,6 +351,9 @@ host-action = Go to shield-wizard.genteure.com
 <ftl locale="zh-CN">
 build = 生成
 
+undo = 撤销
+redo = 重做
+
 menu-discord = ZMK 社区 Discord
 menu-zmk-docs = ZMK 文档
 menu-community = 社区
@@ -346,6 +376,9 @@ host-action = 打开 shield-wizard.genteure.com
 
 <ftl locale="ja">
 build = 生成
+
+undo = 元に戻す
+redo = やり直し
 
 menu-zmk-docs = ZMK ドキュメント
 menu-next-steps = この後どうする？
