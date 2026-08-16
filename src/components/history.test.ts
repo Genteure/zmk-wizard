@@ -218,4 +218,26 @@ describe('useHistoryStore', () => {
     expect(kb.layout).toEqual([key]);
     expect(selection.selectedCount).toBe(0);
   });
+
+  test('deleteSelected with remaining keys can be snapshotted and undone', async () => {
+    const kb = useKeyboardStore();
+    const selection = useSelectionStore();
+    const history = useHistoryStore();
+    const keep = makeKey({ id: keyId('keep') });
+    const remove = makeKey({ id: keyId('remove') });
+    kb.$patch({ layout: [keep, remove] });
+    await settle();
+
+    selection.setSelected([remove.id]);
+    // Vue's reactive `filter` used to hand out nested proxies here, which
+    // made the history snapshot throw "Proxy object could not be cloned".
+    expect(() => kb.deleteSelected()).not.toThrow();
+    await settle();
+
+    expect(kb.layout.map(k => k.id)).toEqual([keep.id]);
+    expect(history.canUndo).toBe(true);
+
+    history.undo();
+    expect(kb.layout.map(k => k.id)).toEqual([keep.id, remove.id]);
+  });
 });

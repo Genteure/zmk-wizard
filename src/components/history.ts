@@ -6,9 +6,31 @@ import type { Keyboard } from '~/types';
 
 const HISTORY_CAPACITY = 50;
 
+/**
+ * Recursively strip Vue reactivity from a value. `toRaw` only unwraps the
+ * top-level proxy, while reactive array/object reads (and array methods
+ * such as `filter`) can hand out newly-created nested proxies. Those make
+ * `structuredClone` throw `DataCloneError`, so walk every level before
+ * cloning.
+ */
+function detachRaw<T>(value: T): unknown {
+  const raw = toRaw(value);
+  if (Array.isArray(raw)) {
+    return raw.map(item => detachRaw(item));
+  }
+  if (raw !== null && typeof raw === 'object') {
+    const copy: Record<string, unknown> = {};
+    for (const key of Object.keys(raw)) {
+      copy[key] = detachRaw((raw as Record<string, unknown>)[key]);
+    }
+    return copy;
+  }
+  return raw;
+}
+
 /** Plain, detached snapshot of the reactive keyboard state. */
 function snapshot(state: Keyboard): Keyboard {
-  return structuredClone(toRaw(state));
+  return structuredClone(detachRaw(state)) as Keyboard;
 }
 
 /**

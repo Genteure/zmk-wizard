@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { ulid } from 'ulidx';
+import { nextTick, toRaw, watchEffect } from 'vue';
 import type {
   BusName,
   EncoderId,
@@ -175,6 +176,20 @@ describe('useKeyboardStore', () => {
       expect(kb.parts[0].keys[keyId('k0')]).toBeUndefined();
       expect(kb.parts[1].keys[keyId('k1')]).toBeUndefined();
       expect(sel.selectedCount).toBe(0);
+    });
+
+    test('remaining keys stay plain objects so history snapshots can clone them', () => {
+      const kb = useKeyboardStore();
+      const k0 = makeKey({ id: keyId('k0') });
+      const k1 = makeKey({ id: keyId('k1') });
+      kb.$patch({ layout: [k0, k1] });
+
+      const sel = useSelectionStore();
+      sel.rowSelection = { [k0.id]: true };
+      kb.deleteSelected();
+
+      expect(kb.layout.map(k => k.id)).toEqual([k1.id]);
+      expect(() => structuredClone(toRaw(kb.$state))).not.toThrow();
     });
   });
 
@@ -386,6 +401,19 @@ describe('useKeyboardStore', () => {
       kb.removeKscan(0, 'nonexistent');
       expect(kb.parts[0].kscans).toHaveLength(0);
     });
+
+    test('remaining kscans stay plain objects so history snapshots can clone them', () => {
+      const kb = useKeyboardStore();
+      kb.addKscan(0, 'matrix');
+      const removedId = kb.parts[0].kscans[0].id;
+      kb.addKscan(0, 'direct');
+      const remainingId = kb.parts[0].kscans[1].id;
+
+      kb.removeKscan(0, removedId);
+
+      expect(kb.parts[0].kscans.map(k => k.id)).toEqual([remainingId]);
+      expect(() => structuredClone(toRaw(kb.$state))).not.toThrow();
+    });
   });
 
   describe('patchKscan', () => {
@@ -540,6 +568,19 @@ describe('useKeyboardStore', () => {
       kb.addEncoder(0);
       kb.removeEncoder(0, 'nonexistent');
       expect(kb.parts[0].encoders).toHaveLength(1);
+    });
+
+    test('remaining encoders stay plain objects so history snapshots can clone them', () => {
+      const kb = useKeyboardStore();
+      kb.addEncoder(0);
+      const removedId = kb.parts[0].encoders[0].id;
+      kb.addEncoder(0);
+      const remainingId = kb.parts[0].encoders[1].id;
+
+      kb.removeEncoder(0, removedId);
+
+      expect(kb.parts[0].encoders.map(e => e.id)).toEqual([remainingId]);
+      expect(() => structuredClone(toRaw(kb.$state))).not.toThrow();
     });
   });
 
@@ -753,6 +794,51 @@ describe('useKeyboardStore', () => {
       expect(kb.parts[0].keys[key.id]?.input).toBe(pinId('d3'));
       // Output should be cleared since it belonged to a different kscan
       expect(kb.parts[0].keys[key.id]?.output).toBeUndefined();
+    });
+
+    test('replacing opposite pin across kscans still triggers reactive effects', async () => {
+      const kb = useKeyboardStore();
+      const key = makeKey();
+      kb.$patch({
+        layout: [key],
+        parts: [
+          {
+            name: 'left',
+            controller: 'nice_nano_v2',
+            pins: {
+              [pinId('d0')]: { usage: 'kscan', kscan: 'k1', role: 'input' },
+              [pinId('d1')]: { usage: 'kscan', kscan: 'k1', role: 'output' },
+              [pinId('d2')]: { usage: 'kscan', kscan: 'k2', role: 'output' },
+            },
+            kscans: [
+              { id: 'k1', kind: 'matrix', diodes: true },
+              { id: 'k2', kind: 'matrix', diodes: true },
+            ],
+            keys: {},
+            encoders: [],
+            buses: {},
+          },
+        ],
+      });
+
+      kb.setKeyWiring(0, key.id, { pinId: pinId('d0'), role: 'input' });
+      kb.setKeyWiring(0, key.id, { pinId: pinId('d1'), role: 'output' });
+
+      let seen = '';
+      const stop = watchEffect(() => {
+        seen = JSON.stringify(kb.parts[0].keys[key.id]);
+      });
+      await nextTick();
+      expect(seen).toBe(JSON.stringify({ input: pinId('d0'), output: pinId('d1') }));
+
+      // This goes through the "different kscan" replacement branch.
+      kb.setKeyWiring(0, key.id, { pinId: pinId('d2'), role: 'output' });
+      await nextTick();
+
+      expect(seen).toBe(JSON.stringify({ output: pinId('d2') }));
+      expect(kb.parts[0].keys[key.id]?.output).toBe(pinId('d2'));
+      expect(kb.parts[0].keys[key.id]?.input).toBeUndefined();
+      stop();
     });
 
     test('does not clear opposite pin when same kscan instance', () => {

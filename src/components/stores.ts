@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ulid } from 'ulidx';
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref, toRaw, watch } from 'vue';
 import { KeyboardPartSchema, KeySchema, type AnyBusDevice, type Bus, type BusName, type BusPinRole, type ControllerId, type DeviceId, type EncoderId, type I2cBus, type I2cDevice, type Key, type Keyboard, type KeyId, type KscanDriver, type ModuleId, type PinId, type SpiBus, type SpiDevice } from '~/types';
 import type { localeMap } from './locales';
 import { getDeviceMeta, type DeviceTypeName } from '~/metadata/device';
@@ -56,7 +56,11 @@ export const useKeyboardStore = defineStore('keyboard', {
       if (ids.size === 0) return;
 
       this.$patch((state) => {
-        state.layout = state.layout.filter(key => !ids.has(key.id));
+        // Vue wraps the items returned by a reactive array's `filter()` in
+        // new reactive proxies. Clone from the raw array so the remaining
+        // keys stay plain objects (otherwise history snapshots throw
+        // "Proxy object could not be cloned" on the next commit).
+        state.layout = toRaw(state.layout).filter(key => !ids.has(key.id));
         for (const part of state.parts) {
           for (const keyId of ids) {
             delete part.keys[keyId as KeyId];
@@ -181,7 +185,7 @@ export const useKeyboardStore = defineStore('keyboard', {
       this.$patch((state) => {
         const part = state.parts[partIdx];
         if (!part) return;
-        part.kscans = part.kscans.filter(k => k.id !== kscanId);
+        part.kscans = toRaw(part.kscans).filter(k => k.id !== kscanId);
         // Collect released pin IDs for wiring cleanup.
         const releasedPins: PinId[] = [];
         for (const [pinId, usage] of Object.entries(part.pins)) {
@@ -220,8 +224,8 @@ export const useKeyboardStore = defineStore('keyboard', {
         const idx = part.kscans.findIndex(k => k.id === kscanId);
         const target = idx + direction;
         if (idx < 0 || target < 0 || target >= part.kscans.length) return;
-        const temp = part.kscans[idx];
-        part.kscans[idx] = part.kscans[target];
+        const temp = toRaw(part.kscans[idx]);
+        part.kscans[idx] = toRaw(part.kscans[target]);
         part.kscans[target] = temp;
       });
     },
@@ -244,8 +248,8 @@ export const useKeyboardStore = defineStore('keyboard', {
         const idx = part.encoders.findIndex(e => e.id === encoderId);
         const target = idx + direction;
         if (idx < 0 || target < 0 || target >= part.encoders.length) return;
-        const temp = part.encoders[idx];
-        part.encoders[idx] = part.encoders[target];
+        const temp = toRaw(part.encoders[idx]);
+        part.encoders[idx] = toRaw(part.encoders[target]);
         part.encoders[target] = temp;
       });
     },
@@ -259,7 +263,7 @@ export const useKeyboardStore = defineStore('keyboard', {
             delete part.pins[pinId as PinId];
           }
         }
-        part.encoders = part.encoders.filter(e => e.id !== encoderId);
+        part.encoders = toRaw(part.encoders).filter(e => e.id !== encoderId);
       });
     },
 
@@ -339,8 +343,10 @@ export const useKeyboardStore = defineStore('keyboard', {
             && existingUsage?.usage === 'kscan'
             && newUsage.kscan !== existingUsage.kscan
           ) {
-            // Replace: clear the opposite pin so it's no longer cross-kscan
-            const current = part.keys[keyId] ?? {};
+            // Replace: clear the opposite pin so it's no longer cross-kscan.
+            // Copy before mutating: mutating the raw object in place and
+            // assigning it back would bypass Vue reactivity.
+            const current = part.keys[keyId] ? { ...toRaw(part.keys[keyId]) } : {};
             delete current[oppositeRole];
             current[wiring.role] = wiring.pinId;
             part.keys[keyId] = current;
@@ -492,7 +498,7 @@ export const useKeyboardStore = defineStore('keyboard', {
         });
 
         // 3. Copy kscan pin assignments from source (updated kscan IDs)
-        const newPins = { ...target.pins };
+        const newPins = { ...toRaw(target.pins) };
         for (const [pinId, usage] of Object.entries(source.pins)) {
           if (usage.usage !== 'kscan') continue;
           const newKscanId = kscanIdMap.get(usage.kscan);
@@ -505,7 +511,7 @@ export const useKeyboardStore = defineStore('keyboard', {
         }
 
         // 4. Set key wiring from mapped result
-        const newKeys = { ...target.keys };
+        const newKeys = { ...toRaw(target.keys) };
         for (const [targetKeyId, wiring] of Object.entries(result.keyWirings)) {
           newKeys[targetKeyId as KeyId] = wiring;
         }
