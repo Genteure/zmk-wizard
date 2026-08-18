@@ -53,7 +53,7 @@
     "typescript": "6.0.3",
     "unplugin-fluent-vue": "1.4.1",
     "vitest": "4.1.10",
-    "vue-tsc": "3.3.9",
+    "vue-tsc": "3.3.10",
     "wrangler": "4.122.0",
     "yaml": "2.9.0"
   },
