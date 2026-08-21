@@ -54,7 +54,7 @@
     "unplugin-fluent-vue": "1.4.1",
     "vitest": "4.1.10",
     "vue-tsc": "3.3.9",
-    "wrangler": "4.122.0",
+    "wrangler": "4.124.0",
     "yaml": "2.9.0"
   },
   "dependencies": {
