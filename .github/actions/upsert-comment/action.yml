@@ -1,0 +1,60 @@
+name: Upsert comment
+description: >-
+  Create or update an issue/PR comment identified by a unique marker string.
+  Used to keep preview URL comments sticky across workflow runs. The marker is
+  appended to the body if missing, and comment listing is paginated so a
+  marker buried among many comments is still found.
+inputs:
+  marker:
+    description: Unique marker string that identifies the comment in its body.
+    required: true
+  body:
+    description: Full markdown body. The marker is appended if not present.
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      with:
+        script: |
+          const marker = core.getInput('marker').trim();
+          if (!marker) {
+            throw new Error('marker input must not be empty');
+          }
+          let body = core.getInput('body');
+          if (!body.includes(marker)) {
+            body = `${body}\n\n${marker}`;
+          }
+
+          const params = {
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          };
+
+          // List all comments, paginating so a marker among many comments is found.
+          let existing = null;
+          for (let page = 1; ; page++) {
+            const { data: comments } = await github.rest.issues.listComments({
+              ...params,
+              per_page: 100,
+              page,
+            });
+            existing = comments.find((c) => c.body && c.body.includes(marker)) || null;
+            if (existing || comments.length < 100) break;
+          }
+
+          if (existing) {
+            await github.rest.issues.updateComment({
+              ...params,
+              comment_id: existing.id,
+              body,
+            });
+            core.info(`Updated comment ${existing.id}`);
+          } else {
+            const { data: created } = await github.rest.issues.createComment({
+              ...params,
+              body,
+            });
+            core.info(`Created comment ${created.id}`);
+          }

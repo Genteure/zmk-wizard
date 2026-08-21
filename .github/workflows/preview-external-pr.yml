@@ -1,0 +1,266 @@
+name: External PR preview
+
+# External (fork) PR previews.
+#
+# Same-repository PRs need no approval (deploy.yml deploys them). Fork PRs are
+# different: GitHub does not pass secrets to `pull_request` workflows from
+# forks, so this workflow uses `pull_request_target` and `issue_comment`, which
+# run with base-repository secrets.
+#
+# By design, external PR code is only checked out and built after a maintainer
+# has approved it. The workflow file itself is always the base branch's.
+#
+# Approval model (the ONLY ways an external PR gets a preview):
+#   - Persistent approval: a maintainer adds the `preview-approved` label. This
+#     is intended for trusted contributors; every push then deploys
+#     automatically without waiting for per-commit maintainer approval.
+#   - One-shot approval: a maintainer checks the "Approve preview" box in the
+#     PR comment. This deploys exactly once for the current head SHA; the next
+#     push resets the comment and requires re-approval.
+#   Removing the label stops future auto-deploys (but does not undeploy).
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  check-label:
+    # Gate: only fork PRs. Determine persistent (label) vs one-shot approval.
+    if: >-
+      github.event_name == 'pull_request_target'
+      && github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      has-label: ${{ steps.check.outputs.has-label }}
+      head-sha: ${{ steps.check.outputs.head-sha }}
+    steps:
+      - name: Check external PR label
+        id: check
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+            });
+            const hasLabel = labels.some(l => l.name === 'preview-approved');
+            core.setOutput('has-label', hasLabel ? 'true' : 'false');
+            core.setOutput('head-sha', pr.head.sha);
+
+  auto-deploy:
+    # Persistent approval: the `preview-approved` label. Runs on every
+    # push/synchronize while the label is present.
+    needs: [check-label]
+    if: needs.check-label.outputs.has-label == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+    concurrency:
+      group: preview-external-deploy-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Server-side merge ref maintained by GitHub; never take a clone URL
+          # from the PR payload.
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          # This job runs only after the persistent approval label is present.
+          allow-unsafe-pr-checkout: true
+      - name: Build and upload preview version
+        id: deploy
+        # https://github.blog/changelog/2026-07-30-reference-same-repository-actions-with-self-repository-syntax/
+        # A uses: value that starts with $/ resolves to your workflow’s own repository at the exact commit that is running, with no checkout required.
+        # It works everywhere the workspace-relative ./ syntax works, including workflow steps, composite action steps, nested composition, and reusable workflow calls.
+        uses: $/.github/actions/deploy-worker
+        with:
+          alias: pr-${{ github.event.pull_request.number }}
+          cloudflare-api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          cloudflare-account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          public-turnstile-sitekey: ${{ secrets.PUBLIC_TURNSTILE_SITEKEY || vars.PUBLIC_TURNSTILE_SITEKEY || '1x00000000000000000000AA' }}
+      - name: Comment preview URL (success)
+        if: steps.deploy.outcome == 'success'
+        uses: $/.github/actions/upsert-comment
+        with:
+          marker: "<!-- shield-wizard-preview-url -->"
+          body: |
+            🚀 **Preview deployment**: ${{ steps.deploy.outputs.alias-url || steps.deploy.outputs.preview-url || 'No URL matched.' }}
+
+            <!-- shield-wizard-preview-url -->
+      - name: Comment deployment failure
+        if: failure() && steps.deploy.outcome != 'success'
+        uses: $/.github/actions/upsert-comment
+        with:
+          marker: "<!-- shield-wizard-preview-url -->"
+          body: |
+            ❌ **Preview deployment failed**
+
+            The preview deployment failed. Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+
+            <!-- shield-wizard-preview-url -->
+
+  comment:
+    # Post/refresh the approval comment on fork PRs that are NOT auto-approved
+    # by the label. New commits reset the one-shot approval (unchecked box),
+    # so the maintainer must re-approve for the new head.
+    needs: [check-label]
+    if: >-
+      github.event_name == 'pull_request_target'
+      && github.event.pull_request.head.repo.full_name != github.repository
+      && needs.check-label.outputs.has-label != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    concurrency:
+      # Share the deploy group so comment refreshes and one-shot deploys cannot
+      # race on the approval comment. `cancel-in-progress: false` keeps a new
+      # comment refresh from cancelling an in-flight preview deploy.
+      group: preview-external-deploy-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    steps:
+      # No checkout is needed here: `$/.github/actions/...` resolves to the
+      # base repository, and this job only writes a PR comment via the API.
+      - name: Get current head SHA
+        id: head-sha
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            core.setOutput('sha', pr.head.sha);
+      - name: Post or refresh preview approval comment
+        uses: $/.github/actions/upsert-comment
+        with:
+          marker: "<!-- shield-wizard-preview-approval -->"
+          body: |
+            <!-- shield-wizard-preview-approval -->
+            <!-- head-sha: ${{ steps.head-sha.outputs.sha }} -->
+            ⏳ **Preview not deployed yet.**
+
+            - [ ] Approve preview
+
+  deploy:
+    # One-shot approval: a maintainer checks the "Approve preview" box in the
+    # PR comment. This is the ONLY one-time approval path.
+    # `edited` events from the bot itself have `sender = github-actions[bot]`
+    # and never match, so no self-trigger loop.
+    if: >-
+      github.event_name == 'issue_comment'
+      && github.event.action == 'edited'
+      && github.event.issue.pull_request
+      && (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER')
+      && contains(github.event.comment.body, '- [x]')
+      && contains(github.event.changes.body.from, '- [ ]')
+      && contains(github.event.comment.body, 'shield-wizard-preview-approval')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+    concurrency:
+      group: preview-external-deploy-${{ github.event.issue.number }}
+      cancel-in-progress: true
+    steps:
+      - name: Resolve external PR head
+        id: resolve
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            core.setOutput('is-fork', pr.head.repo.full_name !== context.repo.owner + '/' + context.repo.repo ? 'true' : 'false');
+            core.setOutput('head-sha', pr.head.sha);
+
+            // Extract SHA from comment body
+            const commentBody = context.payload.comment.body;
+            const shaMatch = commentBody.match(/<!-- head-sha: ([a-f0-9]{40}) -->/);
+            if (shaMatch) {
+              core.setOutput('approved-sha', shaMatch[1]);
+            } else {
+              core.setOutput('approved-sha', '');
+            }
+      - name: Verify head SHA matches approval
+        if: steps.resolve.outputs.is-fork == 'true'
+        run: |
+          APPROVED_SHA="${{ steps.resolve.outputs.approved-sha }}"
+          HEAD_SHA="${{ steps.resolve.outputs.head-sha }}"
+          if [ -z "$APPROVED_SHA" ]; then
+            echo "::error::Approval comment is missing head-sha. Please re-approve the PR."
+            exit 1
+          fi
+          if [ "$HEAD_SHA" != "$APPROVED_SHA" ]; then
+            echo "::error::The PR head SHA has changed since approval. Please review the new changes and re-approve."
+            exit 1
+          fi
+      - name: Checkout external PR merge ref
+        # Safe: server-side ref, never a fork-provided clone URL.
+        if: steps.resolve.outputs.is-fork == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/merge
+          # This job runs only after a maintainer approved this exact head SHA.
+          allow-unsafe-pr-checkout: true
+      - name: Verify checked out PR head
+        if: steps.resolve.outputs.is-fork == 'true'
+        run: |
+          CHECKED_HEAD=$(git rev-parse HEAD^2)
+          APPROVED_SHA="${{ steps.resolve.outputs.approved-sha }}"
+          if [ "$CHECKED_HEAD" != "$APPROVED_SHA" ]; then
+            echo "::error::Checked out merge ref no longer matches the approved head SHA. Please re-approve the PR."
+            exit 1
+          fi
+      - name: Build and upload preview version
+        id: deploy
+        if: steps.resolve.outputs.is-fork == 'true'
+        uses: $/.github/actions/deploy-worker
+        with:
+          alias: pr-${{ github.event.issue.number }}
+          cloudflare-api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          cloudflare-account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          public-turnstile-sitekey: ${{ secrets.PUBLIC_TURNSTILE_SITEKEY || vars.PUBLIC_TURNSTILE_SITEKEY || '1x00000000000000000000AA' }}
+      - name: Update approval comment after deploy
+        if: >-
+          steps.resolve.outputs.is-fork == 'true'
+          && steps.deploy.outcome == 'success'
+        uses: $/.github/actions/upsert-comment
+        with:
+          marker: "<!-- shield-wizard-preview-approval -->"
+          body: |
+            <!-- shield-wizard-preview-approval -->
+            <!-- head-sha: ${{ steps.resolve.outputs.head-sha }} -->
+            🚀 **Preview deployed**: ${{ steps.deploy.outputs.alias-url || steps.deploy.outputs.preview-url || 'No URL matched.' }}
+
+            New commits will make this preview stale.
+
+            - [ ] Approve preview
+      - name: Update approval comment after failed deploy
+        if: >-
+          failure()
+          && steps.resolve.outputs.is-fork == 'true'
+          && steps.deploy.outcome != 'success'
+        uses: $/.github/actions/upsert-comment
+        with:
+          marker: "<!-- shield-wizard-preview-approval -->"
+          body: |
+            <!-- shield-wizard-preview-approval -->
+            <!-- head-sha: ${{ steps.resolve.outputs.head-sha }} -->
+            ❌ **Preview deployment failed**
+
+            See the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+
+            - [ ] Approve preview

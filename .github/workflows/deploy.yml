@@ -1,0 +1,146 @@
+name: Deploy
+
+# Production and same-repository preview deployments.
+#
+# Policy (matches the repo's deploy rules):
+#   - Every push to `main` deploys to production.
+#   - Every push to any other branch uploads a preview version under a stable
+#     `<sanitized-branch>` alias.
+#   - Every update of a *same-repository* pull request deploys a preview under
+#     `pr-<number>` — same-repo PRs need no approval.
+#   - Fork PRs are handled by `.github/workflows/preview-external-pr.yml`
+#     (approval by `preview-approved` label, or a one-shot checkbox approval).
+
+on:
+  push:
+    # All branch pushes; tags are ignored.
+    tags-ignore:
+      - "**"
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+concurrency:
+  # Same-repo PRs deploy under `pr-<n>`, branch pushes under the branch name.
+  # Keying on the alias keeps a PR deploy from canceling the branch deploy of
+  # the same head, and vice versa. Production (`main` push) has its own group.
+  group: deploy-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || (github.event_name == 'workflow_dispatch' && 'production') || (github.ref == 'refs/heads/main' && 'production') || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-production:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        with:
+          cache: true
+          install: false
+      - run: pnpm install --frozen-lockfile
+        env:
+          CXXFLAGS: "-std=c++20"
+      - name: Build
+        run: pnpm build
+        env:
+          # Public Turnstile site key, inlined into the client bundle at build
+          # time. Keep the same value as the current production deployment.
+          PUBLIC_TURNSTILE_SITEKEY: ${{ secrets.PUBLIC_TURNSTILE_SITEKEY || vars.PUBLIC_TURNSTILE_SITEKEY || '1x00000000000000000000AA' }}
+      - name: Deploy to production
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+
+  deploy-preview:
+    # Any push to a non-main branch, or any same-repository pull request.
+    # Fork PRs are intentionally excluded (no secrets on `pull_request` from
+    # forks); they are handled by preview-external-pr.yml.
+    if: >-
+      github.event_name != 'workflow_dispatch'
+      && (github.event_name == 'pull_request' || github.ref != 'refs/heads/main')
+      && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Compute preview alias
+        id: alias
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            # PR numbers are unique and injection-safe; no sanitization needed.
+            echo "alias=pr-${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+          else
+            # Sanitize branch name into a valid preview alias:
+            # lowercase, alphanumeric + dashes, no leading/trailing dashes,
+            # must start with a letter, capped so
+            # `<alias>-<branch-hash>-shield-wizard` stays within the 63-char
+            # DNS label.
+            ALIAS=$(printf '%s' "$BRANCH" | tr '[:upper:]' '[:lower:]' \
+              | sed 's/[^a-z0-9-]/-/g; s/-\{2,\}/-/g; s/^-//; s/-$//')
+            BRANCH_HASH=$(printf '%s' "$BRANCH" | sha256sum | cut -c1-8)
+            if [ -n "$ALIAS" ]; then
+              case "$ALIAS" in
+                [a-z]*) ;;
+                *) ALIAS="b-${ALIAS}" ;;
+              esac
+              # Keep the name-derived alias stable across pushes while avoiding
+              # collisions between branches that sanitize to the same alias.
+              # The hash leaves room for the separating dash and 8 characters.
+              ALIAS=$(printf '%s' "$ALIAS" | cut -c1-40 | sed 's/-*$//')
+            fi
+
+            # If alias is empty (e.g., branch name was all non-alphanumeric chars),
+            # use a fallback with the stable branch-name hash.
+            if [ -z "$ALIAS" ]; then
+              ALIAS="branch-${BRANCH_HASH}"
+            else
+              ALIAS="${ALIAS}-${BRANCH_HASH}"
+            fi
+
+            echo "alias=$ALIAS" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build and upload preview version
+        id: deploy
+        uses: $/.github/actions/deploy-worker
+        with:
+          alias: ${{ steps.alias.outputs.alias }}
+          cloudflare-api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          cloudflare-account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          public-turnstile-sitekey: ${{ secrets.PUBLIC_TURNSTILE_SITEKEY || vars.PUBLIC_TURNSTILE_SITEKEY || '1x00000000000000000000AA' }}
+      - name: Comment preview URL on PR (success)
+        if: >-
+          github.event_name == 'pull_request'
+          && steps.deploy.outcome == 'success'
+        uses: $/.github/actions/upsert-comment
+        with:
+          marker: "<!-- shield-wizard-preview-url -->"
+          body: |
+            🚀 **Preview deployment**: ${{ steps.deploy.outputs.alias-url || steps.deploy.outputs.preview-url || 'No URL matched.' }}
+
+            <!-- shield-wizard-preview-url -->
+      - name: Comment deployment failure on PR
+        if: >-
+          github.event_name == 'pull_request'
+          && failure()
+          && steps.deploy.outcome != 'success'
+        uses: $/.github/actions/upsert-comment
+        with:
+          marker: "<!-- shield-wizard-preview-url -->"
+          body: |
+            ❌ **Preview deployment failed**
+
+            The preview deployment failed. Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+
+            <!-- shield-wizard-preview-url -->

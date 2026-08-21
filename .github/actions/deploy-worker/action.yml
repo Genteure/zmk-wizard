@@ -1,0 +1,93 @@
+name: Build and upload worker version
+description: >-
+  Install dependencies, build the site, and upload a Cloudflare Worker version
+  (optionally with a preview alias). Outputs the versioned preview URL and the
+  stable alias preview URL (when requested). The caller is responsible for
+  checking out the code to build (this action does not run `actions/checkout`,
+  so the caller's checked-out ref is preserved).
+inputs:
+  alias:
+    description: >-
+      Optional preview alias. When set, `wrangler versions upload` is run with
+      `--preview-alias <alias>` and the alias URL is expected in the output.
+    required: false
+  cloudflare-api-token:
+    description: "Cloudflare API token used by wrangler (Workers Scripts: Edit)."
+    required: true
+  cloudflare-account-id:
+    description: "Cloudflare account ID used by wrangler."
+    required: true
+  public-turnstile-sitekey:
+    description: >-
+      Public Turnstile site key, inlined into the client bundle at build time.
+      Callers resolve it from `secrets`/`vars`; composite actions cannot read
+      the `secrets` context directly.
+    required: true
+outputs:
+  preview-url:
+    description: >-
+      The versioned preview URL of the uploaded version
+      (`https://<sha>-shield-wizard.genteure.workers.dev`).
+    value: ${{ steps.extract.outputs.preview-url }}
+  alias-url:
+    description: >-
+      The stable alias preview URL
+      (`https://<alias>-shield-wizard.genteure.workers.dev`). Only set when a
+      valid alias was requested and reported by wrangler.
+    value: ${{ steps.extract.outputs.alias-url }}
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      with:
+        cache: true
+        install: false
+    - run: pnpm install --frozen-lockfile
+      shell: bash
+      env:
+        CXXFLAGS: "-std=c++20"
+    - name: Build
+      run: pnpm build
+      shell: bash
+      env:
+        # Public Turnstile site key, inlined into the client bundle at build
+        # time. Passed in as an input: composite actions cannot read `secrets`.
+        PUBLIC_TURNSTILE_SITEKEY: ${{ inputs.public-turnstile-sitekey }}
+    - name: Upload worker version
+      id: upload
+      uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+      with:
+        apiToken: ${{ inputs.cloudflare-api-token }}
+        accountId: ${{ inputs.cloudflare-account-id }}
+        command: versions upload ${{ inputs.alias && format('--preview-alias {0}', inputs.alias) || '' }}
+    - name: Extract preview URLs
+      id: extract
+      env:
+        # wrangler-action parses the wrangler JSON output artifact and exposes
+        # the versioned preview URL as `deployment-url`.
+        PREVIEW_URL: ${{ steps.upload.outputs.deployment-url }}
+        CMD_OUTPUT: ${{ steps.upload.outputs.command-output }}
+        ALIAS: ${{ inputs.alias }}
+      shell: bash
+      run: |
+        echo "preview-url=${PREVIEW_URL}" >> "$GITHUB_OUTPUT"
+        if [ -z "$PREVIEW_URL" ]; then
+          echo "::warning::No preview URL found in wrangler output. Deployment may have failed."
+        fi
+        if [ -n "$ALIAS" ]; then
+          # `command-output` may contain ANSI escape codes; strip them first.
+          # Wrangler prints the stable alias URL on its own line, so parse that
+          # instead of hardcoding the worker name or workers.dev subdomain.
+          CLEAN=$(printf '%s' "$CMD_OUTPUT" | sed -e 's/\x1b\[[0-9;]*m//g')
+          ALIAS_URL=$(printf '%s' "$CLEAN" \
+            | sed -n 's/.*Version Preview Alias URL: \(https:\/\/[^[:space:]]*\).*/\1/p' \
+            | head -1 || true)
+          if [ -n "$ALIAS_URL" ]; then
+            echo "alias-url=$ALIAS_URL" >> "$GITHUB_OUTPUT"
+            echo "Preview alias URL: $ALIAS_URL"
+          else
+            echo "alias-url=" >> "$GITHUB_OUTPUT"
+            echo "::warning::Preview alias '$ALIAS' requested but no matching URL in wrangler output."
+          fi
+        fi
+        echo "Preview URL: ${PREVIEW_URL}"

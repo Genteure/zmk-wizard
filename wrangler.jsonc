@@ -2,17 +2,31 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "shield-wizard",
   "main": "@astrojs/cloudflare/entrypoints/server",
-  "compatibility_date": "2025-08-15",
-  "vars": {},
+  "compatibility_date": "2026-06-08",
   "compatibility_flags": [
     "nodejs_compat"
   ],
+  // Serve the worker on https://shield-wizard.genteure.workers.dev.
+  // Preview URLs for versions (e.g. `wrangler versions upload`) live on
+  // this subdomain and must be explicitly enabled (default is off).
+  "workers_dev": true,
+  "preview_urls": true,
+  "vars": {},
   "assets": {
     "binding": "ASSETS",
     "directory": "./dist"
   },
   "observability": {
     "enabled": true
+  },
+  // Secret values are never stored in this file. They are set on the Worker
+  // via `wrangler secret put` (or CI secrets), and this list ensures they are
+  // loaded for local dev and surfaced in `wrangler types`.
+  "secrets": {
+    "required": [
+      "TURNSTILE_SECRET",
+      "FEEDBACK_WEBHOOK_URL"
+    ]
   },
   "kv_namespaces": [
     {
