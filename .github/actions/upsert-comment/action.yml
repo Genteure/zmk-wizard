@@ -58,3 +58,6 @@ runs:
             });
             core.info(`Created comment ${created.id}`);
           }
+      env:
+        INPUT_MARKER: ${{ inputs.marker }}
+        INPUT_BODY: ${{ inputs.body }}
