@@ -193,9 +193,18 @@ CONFIG_ZMK_SPLIT_ROLE_CENTRAL=n
 
 // ── Part-level empty builder ─────────────────────────
 
+/** Build a mock kscan0 for parts with no keys/kscans so overlay references resolve. */
 function buildEmptyPart(): KscanSinglePartResult {
   return {
-    kscanDts: '',
+    kscanDts: `/ {
+    kscan0: kscan0 {
+        compatible = "zmk,kscan-mock";
+        columns = <0>;
+        rows = <0>;
+        events = <0>;
+    };
+};
+`,
     mtCols: 0,
     mtRows: 0,
     mtMapping: [],
@@ -881,7 +890,7 @@ function buildCharlieplexKscanUnit(
 /**
  * Build all kscans for a keyboard part.
  *
- * If the part has 0 kscans → empty result.
+ * If the part has 0 kscans → mock kscan0 node.
  * If the part has 1 kscan → single kscan0 node.
  * If the part has N kscans → individual sub-nodes (kscan1..N) + composite kscan0 wrapper
  *   with col-offset to place sub-kscans side by side (shift right).
