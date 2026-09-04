@@ -74,6 +74,39 @@ describe('useHistoryStore', () => {
     expect(history.canRedo).toBe(false);
   });
 
+  test('initial data load is not an undoable step', async () => {
+    const kb = useKeyboardStore();
+    const history = useHistoryStore();
+    const loadedKey = makeKey({ id: keyId('loaded') });
+
+    // Simulate loading a repository: reset to defaults, then replace the
+    // editor state with the loaded data.
+    kb.$reset();
+    history.clear();
+    history.batch(() => {
+      kb.$patch({
+        name: 'Test Keyboard',
+        layout: [loadedKey],
+      });
+    });
+    history.clear();
+
+    // The load itself must not be undoable, so undo cannot jump back to an
+    // empty/default model (notably, an empty keyboard name).
+    expect(history.canUndo).toBe(false);
+    expect(kb.name).toBe('Test Keyboard');
+    expect(kb.layout.map(k => k.id)).toEqual([keyId('loaded')]);
+
+    // Edits after the load still work normally.
+    kb.addKey();
+    await settle();
+    expect(history.canUndo).toBe(true);
+
+    history.undo();
+    expect(kb.name).toBe('Test Keyboard');
+    expect(kb.layout.map(k => k.id)).toEqual([keyId('loaded')]);
+  });
+
   test('groups $patch + sortLayout into a single undo step', async () => {
     const kb = useKeyboardStore();
     const original = [

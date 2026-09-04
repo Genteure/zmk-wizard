@@ -140,6 +140,11 @@ function applyLoadedRepository(payload: {
       Object.assign(state, toRaw(payload.keyboard));
     });
   });
+  // The repository load is the new baseline, not an editable undo step.
+  // Without this, undoing the initial load returns to the default store
+  // state and can leave the editor in an invalid state (e.g. an empty
+  // keyboard name).
+  history.clear();
   nav.dialog.info = false;
   workflow.enterEditor(payload.repository);
 
