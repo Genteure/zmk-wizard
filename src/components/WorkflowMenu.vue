@@ -27,7 +27,7 @@
 
   <UModal
     v-model:open="confirmOpen"
-    :title="$t('wf-confirm-title')"
+    :title="confirmTitle"
     :description="confirmDescription"
   >
     <template #body>
@@ -79,11 +79,27 @@ const modeLabel = computed(() => {
   return $t('wf-new-shield');
 });
 
+const confirmTitle = computed(() => {
+  switch (pendingAction.value) {
+    case 'new': return $t('wf-confirm-new-title');
+    case 'edit': return $t('wf-confirm-edit-title');
+    case 'logout': return $t('wf-confirm-logout-title');
+    case 'login': return $t('wf-confirm-login-title');
+    default: return $t('wf-confirm-title');
+  }
+});
+
 const confirmDescription = computed(() => {
   if (workflow.isEditing && pendingAction.value !== null) {
     return $t('wf-leave-edit-warning');
   }
-  return $t('wf-confirm-description');
+  switch (pendingAction.value) {
+    case 'new': return $t('wf-confirm-new-description');
+    case 'edit': return $t('wf-confirm-edit-description');
+    case 'logout': return $t('wf-confirm-logout-description');
+    case 'login': return $t('wf-confirm-login-description');
+    default: return $t('wf-confirm-description');
+  }
 });
 
 const confirmColor = computed(() => (pendingAction.value === 'logout' ? 'error' : 'primary'));
@@ -176,6 +192,14 @@ wf-signed-in-as = Signed in as
 wf-connect-github = Connect to GitHub
 wf-confirm-title = Switch Workflow?
 wf-confirm-description = Switch to this workflow?
+wf-confirm-new-title = Start a New Shield?
+wf-confirm-new-description = Start a new Shield and discard the current configuration?
+wf-confirm-edit-title = Edit Existing Repository?
+wf-confirm-edit-description = Open the GitHub repository picker?
+wf-confirm-logout-title = Sign Out?
+wf-confirm-logout-description = Sign out of GitHub?
+wf-confirm-login-title = Connect to GitHub?
+wf-confirm-login-description = Sign in to GitHub so you can edit existing repositories.
 wf-leave-edit-warning = Your unsaved edits in this tab will be discarded. Save to GitHub first if you want to keep them.
 wf-confirm-action = Continue
 wf-cancel = Cancel
@@ -190,6 +214,14 @@ wf-signed-in-as = 已登录为
 wf-connect-github = 连接到 GitHub
 wf-confirm-title = 切换工作流？
 wf-confirm-description = 切换到该工作流？
+wf-confirm-new-title = 开始新建 Shield？
+wf-confirm-new-description = 开始新建 Shield 并丢弃当前配置？
+wf-confirm-edit-title = 编辑已有仓库？
+wf-confirm-edit-description = 打开 GitHub 仓库选择器？
+wf-confirm-logout-title = 退出登录？
+wf-confirm-logout-description = 退出 GitHub 登录？
+wf-confirm-login-title = 连接到 GitHub？
+wf-confirm-login-description = 登录 GitHub 以编辑已有仓库。
 wf-leave-edit-warning = 当前标签页中未保存的修改将被丢弃。如需保留，请先保存到 GitHub。
 wf-confirm-action = 继续
 wf-cancel = 取消
@@ -204,6 +236,14 @@ wf-signed-in-as = サインイン中:
 wf-connect-github = GitHubに接続
 wf-confirm-title = ワークフローを切り替えますか？
 wf-confirm-description = このワークフローに切り替えますか？
+wf-confirm-new-title = 新しいシールドを開始しますか？
+wf-confirm-new-description = 新しいシールドを開始し、現在の設定を破棄しますか？
+wf-confirm-edit-title = 既存のリポジトリを編集しますか？
+wf-confirm-edit-description = GitHubのリポジトリ選択を開きますか？
+wf-confirm-logout-title = サインアウトしますか？
+wf-confirm-logout-description = GitHubからサインアウトしますか？
+wf-confirm-login-title = GitHubに接続しますか？
+wf-confirm-login-description = GitHubにサインインして既存のリポジトリを編集できるようにします。
 wf-leave-edit-warning = このタブの未保存の編集は破棄されます。保持するには先にGitHubへ保存してください。
 wf-confirm-action = 続行
 wf-cancel = キャンセル

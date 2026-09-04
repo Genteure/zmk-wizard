@@ -107,7 +107,7 @@
                 color="primary"
                 size="md"
                 class="w-full justify-center"
-                :label="$t('continue-to-editor')"
+                :label="$t(isEditing ? 'save-changes-to-editor' : 'continue-to-editor')"
                 trailing-icon="i-lucide-arrow-right"
               />
             </UForm>
@@ -297,6 +297,7 @@ parts-radio-label = {$count ->
   *[other] {$count} Parts
 }
 continue-to-editor = Continue to Editor
+save-changes-to-editor = Save Changes
 </ftl>
 
 <ftl locale="zh-CN">
@@ -313,6 +314,7 @@ parts-radio-label = {$count ->
   *[other] {$count} 个分体
 }
 continue-to-editor = 进入编辑器
+save-changes-to-editor = 保存修改
 </ftl>
 
 <ftl locale="ja">
@@ -329,4 +331,5 @@ parts-radio-label = {$count ->
   *[other] {$count} パーツ
 }
 continue-to-editor = エディターに進む
+save-changes-to-editor = 変更を保存
 </ftl>

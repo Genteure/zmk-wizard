@@ -88,6 +88,9 @@
                 {{ workflow.editingRepository?.fullName }}
               </code>
             </p>
+            <p v-if="workflow.editingRepository">
+              {{ $t('commit-branch', { branch: workflow.editingRepository.defaultBranch }) }}
+            </p>
             <p>
               {{ $t('commit-description') }}
             </p>
@@ -147,7 +150,7 @@
         variant="outline"
         :loading="isBuilding"
       >
-        {{ $t('build') }}
+        {{ $t(workflow.isEditing ? 'build-save' : 'build') }}
       </UButton>
     </UDropdownMenu>
 
@@ -638,7 +641,11 @@ function downloadZip() {
   }
   catch (e) {
     console.error('Error generating ZIP:', e);
-    // toast.add();
+    toast.add({
+      color: 'error',
+      title: $t('download-zip-failed'),
+      description: e instanceof Error ? e.message : String(e),
+    });
   }
 }
 
@@ -867,6 +874,7 @@ const stepperItems = computed<StepperItem[]>(() => [
 
 <ftl locale="en">
 build = Build
+build-save = Save Changes
 build-download = Download ZIP Archive
 build-import-link = Create Import Link
 build-save-changes = Save Changes to GitHub
@@ -896,6 +904,7 @@ error-modal-title = Validation Errors
 
 commit-modal-title = Confirm Changes to Repository
 commit-target = Repository:
+commit-branch = This will be committed directly to the default branch ({ $branch }).
 commit-description = Shield Wizard regenerates the configuration on the server. config/ is never touched; README.md, build.yaml, and the build workflow are kept when you have modified them.
 commit-message-label = Commit Message
 commit-server-generated = Server-side generation
@@ -910,6 +919,7 @@ commit-view-on-github = View Commit on GitHub
 captcha-error-title = Captcha Verification Failed
 build-error-title = Build Request Failed
 network-error-title = Network Error
+download-zip-failed = Failed to Download ZIP Archive
 
 captcha-loading = Loading Captcha...
 import-captcha-description = Creating hosted repository is captcha protected to prevent abuse.
@@ -939,6 +949,7 @@ promo-action-label = Open on GitHub
 
 <ftl locale="zh-CN">
 build = 生成
+build-save = 保存修改
 build-download = 下载 ZIP 压缩包
 build-import-link = 创建导入链接
 build-save-changes = 保存修改到 GitHub
@@ -968,6 +979,7 @@ error-modal-title = 验证错误
 
 commit-modal-title = 确认提交到仓库
 commit-target = 仓库:
+commit-branch = 这将直接提交到默认分支（{ $branch }）。
 commit-description = Shield Wizard 会在服务器上重新生成配置。config/ 永远不会被改动；如果你修改过 README.md、build.yaml 或构建工作流，它们会被保留。
 commit-message-label = 提交信息
 commit-server-generated = 服务器端生成
@@ -982,6 +994,7 @@ commit-view-on-github = 在 GitHub 上查看提交
 captcha-error-title = 验证码验证失败
 build-error-title = 构建请求失败
 network-error-title = 网络错误
+download-zip-failed = 下载 ZIP 压缩包失败
 
 captcha-loading = 验证加载中...
 import-captcha-description = 为防滥用，创建托管 git 仓库需要完成验证码。
@@ -1010,6 +1023,7 @@ promo-action-label = 在 GitHub 上打开
 
 <ftl locale="ja">
 build = 生成
+build-save = 変更を保存
 build-download = ZIP アーカイブをダウンロード
 build-import-link = インポートリンクを作成
 build-save-changes = GitHubへ変更を保存
@@ -1039,6 +1053,7 @@ error-modal-title = 検証エラー
 
 commit-modal-title = リポジトリへの変更を確認
 commit-target = リポジトリ:
+commit-branch = これはデフォルトブランチ（{ $branch }）に直接コミットされます。
 commit-description = Shield Wizardはサーバー上で設定を再生成します。config/ は変更されず、ユーザーが変更した README.md・build.yaml・ビルドワークフローは保持されます。
 commit-message-label = コミットメッセージ
 commit-server-generated = サーバー側で生成
@@ -1053,6 +1068,7 @@ commit-view-on-github = GitHubでコミットを表示
 captcha-error-title = キャプチャ認証失敗
 build-error-title = ビルドリクエスト失敗
 network-error-title = ネットワークエラー
+download-zip-failed = ZIPアーカイブのダウンロードに失敗しました
 
 captcha-loading = キャプチャ読み込み中...
 import-captcha-description = 悪用を防ぐため、ホストリポジトリの作成はキャプチャで保護されています。

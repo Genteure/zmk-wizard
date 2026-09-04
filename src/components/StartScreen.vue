@@ -170,7 +170,7 @@ start-github-not-configured-desc = Ask the administrator to configure the GitHub
 start-github-signed-in = Signed in to GitHub
 start-github-signed-out = Not signed in to GitHub
 start-session-error = GitHub session error
-start-preserved-files-note = When editing, Shield Wizard never touches config/ and keeps user-modified README.md, build.yaml, and the build workflow. Untouched generated files are refreshed.
+start-preserved-files-note = When editing, Shield Wizard never touches config/ and keeps user-modified README.md, build.yaml, and the build workflow. Untouched generated files are refreshed. Edits are committed directly to the repository's default branch.
 logout = Sign Out
 </ftl>
 
@@ -190,7 +190,7 @@ start-github-not-configured-desc = 请联系管理员按照 docs/deployment.md �
 start-github-signed-in = 已登录 GitHub
 start-github-signed-out = 尚未登录 GitHub
 start-session-error = GitHub 会话错误
-start-preserved-files-note = 编辑时 Shield Wizard 绝不会改动 config/，并保留你修改过的 README.md、build.yaml 和构建工作流；未被修改的生成文件会得到更新。
+start-preserved-files-note = 编辑时 Shield Wizard 绝不会改动 config/，并保留你修改过的 README.md、build.yaml 和构建工作流；未被修改的生成文件会得到更新。修改会直接提交到仓库的默认分支。
 logout = 退出登录
 </ftl>
 
@@ -210,6 +210,6 @@ start-github-not-configured-desc = 管理者に docs/deployment.md に従ってG
 start-github-signed-in = GitHubにサインイン済み
 start-github-signed-out = GitHubにサインインしていません
 start-session-error = GitHubセッションエラー
-start-preserved-files-note = 編集時、Shield Wizardは config/ を変更せず、ユーザーが変更した README.md・build.yaml・ビルドワークフローを保持します。未変更の生成ファイルは更新されます。
+start-preserved-files-note = 編集時、Shield Wizardは config/ を変更せず、ユーザーが変更した README.md・build.yaml・ビルドワークフローを保持します。未変更の生成ファイルは更新されます。変更はリポジトリのデフォルトブランチに直接コミットされます。
 logout = サインアウト
 </ftl>
