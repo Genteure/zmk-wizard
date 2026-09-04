@@ -741,7 +741,7 @@ export const server = {
     input: z.object({
       installationId: z.number().int().positive(),
       page: z.number().int().min(1).max(1000).default(1),
-      perPage: z.number().int().min(1).max(100).default(30),
+      perPage: z.number().int().min(1).max(100).default(100),
     }),
     async handler(input, context) {
       const token = await requireGithubToken(context);

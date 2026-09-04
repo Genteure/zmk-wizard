@@ -160,6 +160,45 @@ function encodeBase64Utf8(value: string): string {
   return btoa(binary);
 }
 
+interface GithubGraphqlResponse<T> {
+  data?: T;
+  errors?: Array<{ message: string }>;
+}
+
+/** POST a GraphQL query to the GitHub API and return the parsed response body. */
+async function githubGraphqlFetch<T>(
+  accessToken: string,
+  query: string,
+  variables: Record<string, string>,
+): Promise<GithubGraphqlResponse<T>> {
+  console.log(
+    '[GitHub GraphQL request]',
+    `query=${query.length} bytes`,
+    `variables=${Object.keys(variables).length}`,
+    `token=${accessToken.slice(0, 4)}…${accessToken.slice(-4)}`,
+  );
+
+  const response = await fetch(GITHUB_GRAPHQL_URL, {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/vnd.github+json',
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'User-Agent': GITHUB_USER_AGENT,
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  const body = await response.json() as GithubGraphqlResponse<T>;
+  if (!response.ok) {
+    const message = body.errors?.[0]?.message
+      ?? `GitHub GraphQL request failed (${response.status})`;
+    throw new GithubApiError(message, response.status, body);
+  }
+  return body;
+}
+
 // ─────────────────────────────────────────────────────────────
 // OAuth
 // ─────────────────────────────────────────────────────────────
@@ -332,53 +371,60 @@ export async function listInstallationRepositories(
   return { repos, hasMore };
 }
 
-async function repositoryHasShieldWizardData(
-  accessToken: string,
-  repo: GithubRepository,
-): Promise<boolean> {
-  try {
-    await readGithubTextFile(
-      accessToken,
-      repo.owner.login,
-      repo.name,
-      SHIELD_WIZARD_DATA_FILE,
-      repo.defaultBranch,
-    );
-    return true;
-  }
-  catch (error) {
-    if (GithubApiError.isNotFound(error)) return false;
-    throw error;
-  }
-}
-
 /**
- * Annotate one page of repositories with whether they contain the
- * canonical `.shield-wizard.json` file. Checks run with bounded
- * concurrency so a page of 30 repos does not hammer the API.
+ * Mark which repositories in a page contain the canonical
+ * `.shield-wizard.json` data file.
+ *
+ * The check is batched into a single GraphQL query with one aliased
+ * `repository` field per repo, so a page of `N` repositories costs one
+ * round trip instead of the `N` contents-API calls the previous
+ * implementation made. A missing file — or a repository that is no
+ * longer accessible — comes back as a `null` object and is treated as
+ * "no config".
  */
 export async function markRepositoriesWithShieldConfig(
   accessToken: string,
   repos: GithubRepository[],
 ): Promise<GithubRepositoryWithConfig[]> {
-  const results = new Array<GithubRepositoryWithConfig>(repos.length);
-  let cursor = 0;
+  if (repos.length === 0) return [];
 
-  async function worker(): Promise<void> {
-    while (cursor < repos.length) {
-      const index = cursor;
-      cursor += 1;
-      const repo = repos[index];
-      results[index] = {
-        ...repo,
-        hasShieldWizardConfig: await repositoryHasShieldWizardData(accessToken, repo),
-      };
-    }
+  const variableDeclarations: string[] = [];
+  const selections: string[] = [];
+  const variables: Record<string, string> = {};
+
+  repos.forEach((repo, index) => {
+    const ownerVar = `owner${index}`;
+    const nameVar = `name${index}`;
+    const exprVar = `expr${index}`;
+    variableDeclarations.push(
+      `$${ownerVar}: String!, $${nameVar}: String!, $${exprVar}: String!`,
+    );
+    selections.push(
+      `r${index}: repository(owner: $${ownerVar}, name: $${nameVar}) `
+      + `{ object(expression: $${exprVar}) { ... on Blob { oid } } }`,
+    );
+    variables[ownerVar] = repo.owner.login;
+    variables[nameVar] = repo.name;
+    variables[exprVar] = `refs/heads/${repo.defaultBranch}:${SHIELD_WIZARD_DATA_FILE}`;
+  });
+
+  const query = `query(${variableDeclarations.join(', ')}) {
+  ${selections.join('\n  ')}
+}`;
+  const body = await githubGraphqlFetch<
+    Record<string, { object?: { oid: string } | null } | null>
+  >(accessToken, query, variables);
+
+  if (!body.data) {
+    const message = body.errors?.[0]?.message ?? 'GitHub GraphQL request failed';
+    throw new GithubApiError(message, 422, body);
   }
+  const data = body.data;
 
-  const workerCount = Math.min(4, repos.length);
-  await Promise.all(Array.from({ length: workerCount }, () => worker()));
-  return results;
+  return repos.map((repo, index) => ({
+    ...repo,
+    hasShieldWizardConfig: data[`r${index}`]?.object != null,
+  }));
 }
 
 export async function getGithubRepository(

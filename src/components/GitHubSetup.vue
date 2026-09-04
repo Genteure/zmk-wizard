@@ -666,7 +666,7 @@ async function loadRepos(reset: boolean): Promise<void> {
     const { data, error } = await actions.githubListRepositories({
       installationId,
       page: reset ? 1 : reposPage.value + 1,
-      perPage: 30,
+      perPage: 100,
     });
     if (error) {
       if (error.code === 'UNAUTHORIZED') {
