@@ -174,7 +174,7 @@
           <UDivider />
 
           <div
-            v-if="repoLoading"
+            v-if="repoLoading || (workflow.githubBusy && repos.length === 0)"
             class="flex items-center justify-center gap-2 py-8 text-sm text-toned"
           >
             <UIcon
@@ -193,8 +193,11 @@
                   ? 'cursor-pointer shrink-0'
                   : 'cursor-not-allowed opacity-60 shrink-0'"
                 :aria-disabled="!repo.hasShieldWizardConfig"
+                :role="repo.hasShieldWizardConfig ? 'button' : undefined"
+                :tabindex="repo.hasShieldWizardConfig ? 0 : undefined"
                 :ui="{ body: repo.hasShieldWizardConfig ? 'px-3 py-2' : 'px-3 py-1.5' }"
                 @click="chooseRepo(repo)"
+                @keydown="onRepoKeydown($event, repo)"
               >
                 <div
                   v-if="repo.hasShieldWizardConfig"
@@ -256,6 +259,30 @@
           </template>
 
           <div
+            v-else-if="workflow.githubError && repos.length === 0"
+            class="flex flex-col items-center gap-3 py-8 text-sm"
+          >
+            <UIcon
+              name="i-lucide-alert-circle"
+              class="size-10 text-error"
+            />
+            <p class="text-center max-w-sm font-medium">
+              {{ $t('gh-repos-load-failed') }}
+            </p>
+            <p class="text-center max-w-sm text-error">
+              {{ workflow.githubError }}
+            </p>
+            <UButton
+              block
+              color="primary"
+              variant="soft"
+              :label="$t('gh-retry')"
+              icon="i-lucide-refresh-cw"
+              @click="loadRepos(true)"
+            />
+          </div>
+
+          <div
             v-else
             class="flex flex-col items-center gap-3 py-8 text-sm text-toned"
           >
@@ -288,7 +315,7 @@
         </div>
 
         <UAlert
-          v-if="workflow.githubError"
+          v-if="workflow.githubError && !(workflow.githubStep === 'repositories' && repos.length === 0)"
           class="mt-4"
           color="error"
           variant="soft"
@@ -361,7 +388,7 @@ const toast = useToast();
 const workflow = useWorkflowStore();
 const nav = useNavigationStore();
 
-const onlyShieldWizardRepos = ref(false);
+const onlyShieldWizardRepos = ref(true);
 const repos = ref<GithubRepoSummary[]>([]);
 const repoLoading = ref(false);
 const repoLoadingMore = ref(false);
@@ -565,6 +592,14 @@ function loadMoreRepos(): void {
   void loadRepos(false);
 }
 
+function onRepoKeydown(event: KeyboardEvent, repo: GithubRepoSummary): void {
+  if (!repo.hasShieldWizardConfig) return;
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    void chooseRepo(repo);
+  }
+}
+
 async function chooseRepo(repo: GithubRepoSummary): Promise<void> {
   if (!repo.hasShieldWizardConfig) return;
 
@@ -624,11 +659,11 @@ gh-install-description = Choose which repositories the app may access. GitHub wi
 gh-install-signed-in = Signed in — now grant the app access to a repository.
 gh-install-action = Install Shield Wizard App
 gh-install-url-missing = App installation link unavailable
-gh-install-url-missing-desc = PUBLIC_GITHUB_APP_SLUG is not configured. Set it to the app slug used in its public URL.
+gh-install-url-missing-desc = PUBLIC_GITHUB_APP_SLUG or GITHUB_SESSION_SECRET is not configured. Set the app slug and configure the session secret.
 gh-install-return-note = You will be redirected back here automatically after GitHub finishes the installation.
 
 gh-repos-title = Choose a Repository
-gh-repos-description = Repositories with a Shield Wizard data file are shown first. You can also pick any other repository and Shield Wizard will report if it is not editable.
+gh-repos-description = Shield Wizard repositories are listed first and can be opened. Other repositories are shown for context but are not editable.
 gh-repos-account = GitHub Account
 gh-repos-only-shield = Only Shield Wizard repositories
 gh-repos-add-access = Add Repository Access
@@ -638,6 +673,8 @@ gh-repos-not-supported = Not a Shield Wizard repository
 gh-repos-empty = No repositories found for this installation. Grant the app access to a repository, or switch accounts.
 gh-repos-empty-filtered = No repositories here contain a Shield Wizard data file. Show all repositories, or create one with Shield Wizard first.
 gh-repos-load-more = Load More
+gh-repos-load-failed = Could not load repositories
+gh-retry = Retry
 
 gh-error = Something went wrong
 gh-load-failed = Failed to open repository
@@ -658,11 +695,11 @@ gh-install-description = 选择允许应用访问的仓库。安装完成后 Git
 gh-install-signed-in = 已登录——现在请为应用授予仓库访问权限。
 gh-install-action = 安装 Shield Wizard App
 gh-install-url-missing = 无法生成应用安装链接
-gh-install-url-missing-desc = 未配置 PUBLIC_GITHUB_APP_SLUG。请将其设置为应用公开 URL 中的 slug。
+gh-install-url-missing-desc = PUBLIC_GITHUB_APP_SLUG 或 GITHUB_SESSION_SECRET 未配置。请设置应用 slug 并配置会话密钥。
 gh-install-return-note = GitHub 完成安装后会自动返回此页面。
 
 gh-repos-title = 选择仓库
-gh-repos-description = 包含 Shield Wizard 数据文件的仓库会排在前面。你也可以选择其他仓库，Shield Wizard 会提示它是否可编辑。
+gh-repos-description = 包含 Shield Wizard 数据文件的仓库会排在前面并可以打开；其他仓库仅为参照，不可编辑。
 gh-repos-account = GitHub 账号
 gh-repos-only-shield = 仅显示 Shield Wizard 仓库
 gh-repos-add-access = 添加仓库访问权限
@@ -672,6 +709,8 @@ gh-repos-not-supported = 非 Shield Wizard 仓库
 gh-repos-empty = 此安装下没有找到仓库。请为应用授予仓库访问权限，或切换账号。
 gh-repos-empty-filtered = 这里没有包含 Shield Wizard 数据文件的仓库。显示全部仓库，或先使用 Shield Wizard 生成一个。
 gh-repos-load-more = 加载更多
+gh-repos-load-failed = 无法加载仓库
+gh-retry = 重试
 
 gh-error = 出错了
 gh-load-failed = 无法打开仓库
@@ -692,11 +731,11 @@ gh-install-description = アプリがアクセスできるリポジトリを選�
 gh-install-signed-in = サインイン済みです。アプリにリポジトリアクセスを許可してください。
 gh-install-action = Shield Wizard Appをインストール
 gh-install-url-missing = アプリインストールリンクを生成できません
-gh-install-url-missing-desc = PUBLIC_GITHUB_APP_SLUG が未設定です。アプリの公開URLのスラッグを設定してください。
+gh-install-url-missing-desc = PUBLIC_GITHUB_APP_SLUG または GITHUB_SESSION_SECRET が未設定です。アプリスラッグを設定し、セッションシークレットを構成してください。
 gh-install-return-note = GitHubでのインストール完了後、自動的にこのページへ戻ります。
 
 gh-repos-title = リポジトリを選択
-gh-repos-description = Shield Wizardデータファイルを含むリポジトリが先頭に表示されます。他のリポジトリも選択でき、編集可能かどうかはShield Wizardが通知します。
+gh-repos-description = Shield Wizardデータファイルを含むリポジトリが先頭に表示され、開くことができます。他のリポジトリは参照のみで、編集できません。
 gh-repos-account = GitHubアカウント
 gh-repos-only-shield = Shield Wizardリポジトリのみ
 gh-repos-add-access = リポジトリアクセスを追加
@@ -706,6 +745,8 @@ gh-repos-not-supported = Shield Wizardリポジトリではありません
 gh-repos-empty = このインストールにはリポジトリがありません。アプリにアクセスを許可するか、アカウントを切り替えてください。
 gh-repos-empty-filtered = Shield Wizardデータファイルを含むリポジトリがありません。すべて表示するか、先にShield Wizardで生成してください。
 gh-repos-load-more = さらに読み込む
+gh-repos-load-failed = リポジトリを読み込めませんでした
+gh-retry = 再試行
 
 gh-error = エラーが発生しました
 gh-load-failed = リポジトリを開けませんでした
