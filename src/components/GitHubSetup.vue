@@ -185,11 +185,11 @@
           </div>
 
           <template v-else-if="filteredRepos.length > 0">
-            <div class="flex flex-col gap-2 max-h-[45vh] overflow-y-auto pr-1">
+            <div class="flex flex-col gap-2 h-[50vh] min-h-0 overflow-y-auto overscroll-contain pr-1">
               <UCard
                 v-for="repo in filteredRepos"
                 :key="repo.id"
-                class="cursor-pointer"
+                class="cursor-pointer shrink-0"
                 :ui="{ body: 'p-3' }"
                 @click="chooseRepo(repo)"
               >
