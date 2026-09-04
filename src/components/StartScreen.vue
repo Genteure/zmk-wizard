@@ -67,7 +67,7 @@
 
         <div class="w-full flex flex-col gap-2 items-center">
           <UAlert
-            v-if="!workflow.githubConfigured"
+            v-if="!githubEnabledAtBuild"
             color="warning"
             variant="soft"
             icon="i-lucide-triangle-alert"
@@ -113,8 +113,10 @@
             </div>
           </UCard>
 
+          <!-- Before the first githubGetSession response arrives, show
+               nothing instead of guessing "not configured". -->
           <p
-            v-else
+            v-else-if="workflow.githubConfigured !== null"
             class="text-sm text-toned"
           >
             {{ $t('start-github-signed-out') }}
@@ -131,6 +133,7 @@
 
 <script setup lang="ts">
 import { useFluent } from 'fluent-vue';
+import { GITHUB_ENABLED_AT_BUILD as githubEnabledAtBuild } from './githubConfig';
 import { locales } from './locales';
 import { useNavigationStore } from './stores.ts';
 import { useWorkflowStore } from './workflow.ts';

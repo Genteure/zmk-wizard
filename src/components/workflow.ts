@@ -88,7 +88,8 @@ export const useWorkflowStore = defineStore('workflow', () => {
   const githubStep = ref<GithubStep>('auth');
   const githubBusy = ref(false);
   const githubError = ref<string | null>(null);
-  const githubConfigured = ref(false);
+  /** null = backend status has not been fetched yet. */
+  const githubConfigured = ref<boolean | null>(null);
   const githubUser = ref<GithubUserSummary | null>(null);
   const githubInstallations = ref<GithubInstallationSummary[] | null>(null);
   const githubInstallUrl = ref<string | null>(null);
@@ -146,6 +147,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     githubInstallations.value = null;
     githubInstallUrl.value = null;
     githubError.value = null;
+    githubConfigured.value = null;
     selectedInstallationId.value = null;
   }
 

@@ -52,7 +52,7 @@
           </div>
 
           <UAlert
-            v-if="!workflow.githubConfigured"
+            v-if="!githubEnabledAtBuild"
             color="warning"
             variant="soft"
             icon="i-lucide-triangle-alert"
@@ -68,7 +68,7 @@
             icon="i-lucide-log-in"
             :label="$t('gh-connect')"
             :loading="workflow.githubBusy"
-            :disabled="!workflow.githubConfigured"
+            :disabled="!githubEnabledAtBuild"
             @click="beginAuth"
           />
         </div>
@@ -185,17 +185,21 @@
           </div>
 
           <template v-else-if="filteredRepos.length > 0">
-            <div class="flex flex-col gap-2 h-[50vh] min-h-0 overflow-y-auto overscroll-contain pr-1">
+            <div class="flex flex-col gap-3 h-[50vh] min-h-0 overflow-y-auto overscroll-contain px-1 py-1">
               <UCard
                 v-for="repo in filteredRepos"
                 :key="repo.id"
-                class="cursor-pointer shrink-0"
-                :ui="{ body: 'p-3' }"
+                :class="repo.hasShieldWizardConfig
+                  ? 'cursor-pointer shrink-0'
+                  : 'cursor-not-allowed opacity-60 shrink-0'"
+                :aria-disabled="!repo.hasShieldWizardConfig"
+                :title="repo.hasShieldWizardConfig ? repo.fullName : $t('gh-repos-not-supported')"
+                :ui="{ body: 'px-3 py-2' }"
                 @click="chooseRepo(repo)"
               >
                 <div class="flex items-center gap-3">
                   <UIcon
-                    :name="repo.hasShieldWizardConfig ? 'i-lucide-folder-git-2' : 'i-lucide-folder'"
+                    :name="repo.hasShieldWizardConfig ? 'i-lucide-folder-git-2' : 'i-lucide-circle-off'"
                     :class="repo.hasShieldWizardConfig ? 'text-secondary' : 'text-muted'"
                     class="size-6 shrink-0"
                   />
@@ -213,9 +217,16 @@
                     variant="soft"
                     :label="$t('gh-repos-shield-badge')"
                   />
+                  <UBadge
+                    v-else
+                    color="neutral"
+                    variant="soft"
+                    :label="$t('gh-repos-not-supported')"
+                  />
                   <UIcon
+                    v-if="repo.hasShieldWizardConfig"
                     name="i-lucide-chevron-right"
-                    class="size-4 text-muted"
+                    class="size-4 text-muted shrink-0"
                   />
                 </div>
               </UCard>
@@ -274,6 +285,7 @@ import { actions } from 'astro:actions';
 import { useFluent } from 'fluent-vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import type { Keyboard } from '~/types';
+import { GITHUB_ENABLED_AT_BUILD as githubEnabledAtBuild } from './githubConfig';
 import {
   type EditingRepository,
   type GithubRepoSummary,
@@ -341,11 +353,18 @@ const installationOptions = computed(() =>
   })),
 );
 
-const filteredRepos = computed(() =>
-  onlyShieldWizardRepos.value
+const filteredRepos = computed(() => {
+  const visible = onlyShieldWizardRepos.value
     ? repos.value.filter(repo => repo.hasShieldWizardConfig)
-    : repos.value,
-);
+    : [...repos.value];
+
+  return visible.sort((a, b) => {
+    if (a.hasShieldWizardConfig !== b.hasShieldWizardConfig) {
+      return a.hasShieldWizardConfig ? -1 : 1;
+    }
+    return a.fullName.localeCompare(b.fullName);
+  });
+});
 
 watch(
   () => workflow.selectedInstallationId,
@@ -412,7 +431,7 @@ function routeAfterSession(installations: unknown[]): void {
 }
 
 async function beginAuth(): Promise<void> {
-  if (!workflow.githubConfigured) return;
+  if (!githubEnabledAtBuild) return;
   workflow.githubBusy = true;
   workflow.githubError = null;
   try {
@@ -530,6 +549,8 @@ function loadMoreRepos(): void {
 }
 
 async function chooseRepo(repo: GithubRepoSummary): Promise<void> {
+  if (!repo.hasShieldWizardConfig) return;
+
   workflow.githubBusy = true;
   workflow.githubError = null;
   try {
@@ -596,6 +617,7 @@ gh-repos-only-shield = Only Shield Wizard repositories
 gh-repos-add-access = Add Repository Access
 gh-repos-loading = Loading repositories…
 gh-repos-shield-badge = Shield Wizard
+gh-repos-not-supported = Not a Shield Wizard repository
 gh-repos-empty = No repositories found for this installation. Grant the app access to a repository, or switch accounts.
 gh-repos-empty-filtered = No repositories here contain a Shield Wizard data file. Show all repositories, or create one with Shield Wizard first.
 gh-repos-load-more = Load More
@@ -629,6 +651,7 @@ gh-repos-only-shield = 仅显示 Shield Wizard 仓库
 gh-repos-add-access = 添加仓库访问权限
 gh-repos-loading = 正在加载仓库…
 gh-repos-shield-badge = Shield Wizard
+gh-repos-not-supported = 非 Shield Wizard 仓库
 gh-repos-empty = 此安装下没有找到仓库。请为应用授予仓库访问权限，或切换账号。
 gh-repos-empty-filtered = 这里没有包含 Shield Wizard 数据文件的仓库。显示全部仓库，或先使用 Shield Wizard 生成一个。
 gh-repos-load-more = 加载更多
@@ -662,6 +685,7 @@ gh-repos-only-shield = Shield Wizardリポジトリのみ
 gh-repos-add-access = リポジトリアクセスを追加
 gh-repos-loading = リポジトリを読み込み中…
 gh-repos-shield-badge = Shield Wizard
+gh-repos-not-supported = Shield Wizardリポジトリではありません
 gh-repos-empty = このインストールにはリポジトリがありません。アプリにアクセスを許可するか、アカウントを切り替えてください。
 gh-repos-empty-filtered = Shield Wizardデータファイルを含むリポジトリがありません。すべて表示するか、先にShield Wizardで生成してください。
 gh-repos-load-more = さらに読み込む
