@@ -882,7 +882,6 @@ async function loadCommitPreview() {
     const { data, error } = await actions.githubPreviewChanges({
       owner: repository.owner.login,
       repo: repository.name,
-      branch: repository.defaultBranch,
       keyboard: validatedData.value,
     });
 
@@ -918,7 +917,6 @@ async function submitCommit() {
     const { data, error } = await actions.githubCommitChanges({
       owner: repository.owner.login,
       repo: repository.name,
-      branch: repository.defaultBranch,
       commitMessage: commitMessage.value.trim(),
       keyboard: validatedData.value,
     });

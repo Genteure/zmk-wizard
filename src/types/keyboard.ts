@@ -328,7 +328,14 @@ export type Key = z.infer<typeof KeySchema>;
 
 export const KeyboardNameSchema = z.string()
   .min(1, 'Keyboard name cannot be empty')
-  .refine(name => new TextEncoder().encode(name).length <= 16, 'Keyboard name cannot be longer than 16 bytes');
+  .refine(name => new TextEncoder().encode(name).length <= 16, 'Keyboard name cannot be longer than 16 bytes')
+  .refine((name) => {
+    for (const char of name) {
+      const code = char.charCodeAt(0);
+      if (code < 0x20 || code === 0x7f || char === '"' || char === '\\') return false;
+    }
+    return true;
+  }, 'Keyboard name cannot contain control characters, quotes, or backslashes');
 export type KeyboardName = z.infer<typeof KeyboardNameSchema>;
 
 export const ShieldNameSchema = z.string()

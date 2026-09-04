@@ -301,9 +301,26 @@ async function handleOAuthCallback(params: ReturnType<typeof parseWorkflowUrl>):
   routeEditSession();
 }
 
-async function handleInstallCallback(): Promise<void> {
+async function handleInstallCallback(params: ReturnType<typeof parseWorkflowUrl>): Promise<void> {
   workflow.enterGithub('repositories');
+
+  if (params.setupAction !== 'install' || !params.state) {
+    replaceWorkflowUrl();
+    workflow.setGithubError($t('workflow-oauth-error'), 'repositories');
+    return;
+  }
+
+  const { data, error } = await actions.githubVerifyInstallState({
+    state: params.state,
+    setupAction: params.setupAction,
+  });
   replaceWorkflowUrl();
+
+  if (error || !data) {
+    workflow.setGithubError(error?.message ?? $t('workflow-oauth-error'), 'repositories');
+    return;
+  }
+
   await refreshSession();
 }
 
@@ -373,7 +390,7 @@ async function initializeWorkflow(): Promise<void> {
   }
   else if (isInstallCallback(params)) {
     workflow.initialized = true;
-    await handleInstallCallback();
+    await handleInstallCallback(params);
   }
   else if (params.action === 'new') {
     replaceWorkflowUrl();

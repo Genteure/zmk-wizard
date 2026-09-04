@@ -9,13 +9,16 @@
 // or database session to expire or replicate.
 //
 // The same secret signs the OAuth `state` parameter (HMAC-SHA-256).
-// `state` therefore doubles as CSRF protection and as a carrier for
-// the small amount of flow information needed after GitHub redirects
-// back (what the user wanted: edit a repo, or just log in).
+// The state also carries the nonce that is stored in a short-lived
+// HttpOnly cookie by the server, so the callback can only complete in
+// the same browser that started the flow. The state itself expires in a
+// few minutes.
 // ─────────────────────────────────────────────────────────────
 
 export const GITHUB_SESSION_COOKIE = 'shield_wizard_github';
 export const GITHUB_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60; // GitHub user tokens live ~8h
+export const GITHUB_OAUTH_STATE_COOKIE = 'shield_wizard_oauth_state';
+export const GITHUB_OAUTH_STATE_MAX_AGE_SECONDS = 10 * 60;
 
 interface SealedSession {
   /** Version of the cookie payload. */
@@ -32,6 +35,8 @@ export interface GithubOAuthStatePayload {
   intent: 'edit' | 'login';
   /** Random per-request value; ties the callback to this redirect. */
   nonce: string;
+  /** Epoch milliseconds after which the state is rejected. */
+  expiresAt: number;
   /** Optional `owner/name` to open directly after auth. */
   repo?: string;
   /** UI the user came from (used when `intent` is `login`). */
@@ -184,20 +189,38 @@ export async function openGithubSession(
  * secret except the signature; the body is intentionally readable so
  * the callback can restore the intended flow.
  */
+export interface CreateGithubOAuthStateOptions {
+  /** Optional externally generated nonce. The caller should store it in a short-lived HttpOnly cookie. */
+  nonce?: string;
+  /** Lifetime of the signed state in milliseconds. */
+  ttlMs?: number;
+  /** Test seam for the current time. */
+  now?: number;
+}
+
 export async function createGithubOAuthState(
   secret: string,
-  payload: Omit<GithubOAuthStatePayload, 'v' | 'nonce'>,
+  payload: Omit<GithubOAuthStatePayload, 'v' | 'nonce' | 'expiresAt'>,
+  options: CreateGithubOAuthStateOptions = {},
 ): Promise<string> {
   if (!secret) {
     throw new Error('GITHUB_SESSION_SECRET is not configured');
   }
 
-  const nonceBytes = crypto.getRandomValues(new Uint8Array(16));
-  const body = bytesToBase64Url(nonceBytes);
+  const nonce = options.nonce ?? (() => {
+    const nonceBytes = crypto.getRandomValues(new Uint8Array(16));
+    return bytesToBase64Url(nonceBytes);
+  })();
+  const now = options.now ?? Date.now();
+  const ttlMs = options.ttlMs ?? GITHUB_OAUTH_STATE_MAX_AGE_SECONDS * 1000;
   const statePayload: GithubOAuthStatePayload = {
     v: STATE_VERSION,
-    nonce: body,
-    ...payload,
+    intent: payload.intent,
+    nonce,
+    expiresAt: now + ttlMs,
+    ...(payload.repo !== undefined ? { repo: payload.repo } : {}),
+    ...(payload.returnScreen !== undefined ? { returnScreen: payload.returnScreen } : {}),
+    ...(payload.returnMode !== undefined ? { returnMode: payload.returnMode } : {}),
   };
   const encoded = bytesToBase64Url(encoder.encode(JSON.stringify(statePayload)));
   const signature = await hmacHex(secret, encoded);
@@ -214,6 +237,7 @@ export async function createGithubOAuthState(
 export async function verifyGithubOAuthState(
   secret: string | undefined,
   state: string | undefined,
+  now = Date.now(),
 ): Promise<GithubOAuthStatePayload | null> {
   if (!secret || !state) return null;
 
@@ -232,6 +256,8 @@ export async function verifyGithubOAuthState(
     if (
       payload.v !== STATE_VERSION
       || typeof payload.nonce !== 'string'
+      || typeof payload.expiresAt !== 'number'
+      || payload.expiresAt <= now
       || (payload.intent !== 'edit' && payload.intent !== 'login')
       || (payload.returnScreen !== undefined && payload.returnScreen !== 'start' && payload.returnScreen !== 'editor')
       || (payload.returnMode !== undefined && payload.returnMode !== 'new' && payload.returnMode !== 'edit' && payload.returnMode !== null)
@@ -244,6 +270,7 @@ export async function verifyGithubOAuthState(
       v: STATE_VERSION,
       intent: payload.intent,
       nonce: payload.nonce,
+      expiresAt: payload.expiresAt,
       repo: payload.repo,
       returnScreen: payload.returnScreen,
       returnMode: payload.returnMode,

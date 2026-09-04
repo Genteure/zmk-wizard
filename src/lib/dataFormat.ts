@@ -247,7 +247,14 @@ const DraftKeyboardSchema = z.object({
   name: z.string().refine(
     name => name.length === 0 || new TextEncoder().encode(name).length <= 16,
     'Keyboard name must be empty or at most 16 bytes while work is in progress',
-  ),
+  ).refine((name) => {
+    if (name.length === 0) return true;
+    for (const char of name) {
+      const code = char.charCodeAt(0);
+      if (code < 0x20 || code === 0x7f || char === '"' || char === '\\') return false;
+    }
+    return true;
+  }, 'Keyboard name cannot contain control characters, quotes, or backslashes'),
   shield: z.string().max(32, 'Shield name must be at most 32 characters while work is in progress').refine(
     shield => shield.length === 0 || /^[a-z][a-z0-9_]*$/.test(shield),
     'Shield name must be empty or start with a letter and contain only lowercase letters, numbers, and underscores',

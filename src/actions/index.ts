@@ -31,6 +31,8 @@ import {
 } from '~/lib/githubApi';
 import {
   createGithubOAuthState,
+  GITHUB_OAUTH_STATE_COOKIE,
+  GITHUB_OAUTH_STATE_MAX_AGE_SECONDS,
   GITHUB_SESSION_COOKIE,
   GITHUB_SESSION_MAX_AGE_SECONDS,
   openGithubSession,
@@ -43,6 +45,7 @@ import {
   computeUserModifiedPaths,
   createFilePolicy,
   planFileChanges,
+  snippetRootsFromFiles,
   type FilePolicy,
 } from '~/lib/filePolicy';
 import { buildCommitDiffGroups, type DiffPreviewGroup } from '~/lib/diffPreview';
@@ -91,8 +94,27 @@ function sessionCookieOptions(): Parameters<ActionAPIContext['cookies']['set']>[
   };
 }
 
+function oauthStateCookieOptions(): Parameters<ActionAPIContext['cookies']['set']>[2] {
+  return {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: import.meta.env.PROD,
+    path: '/',
+    maxAge: GITHUB_OAUTH_STATE_MAX_AGE_SECONDS,
+  };
+}
+
 function clearGithubCookie(context: ActionAPIContext): void {
   context.cookies.delete(GITHUB_SESSION_COOKIE, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: import.meta.env.PROD,
+    path: '/',
+  });
+}
+
+function clearGithubOAuthStateCookie(context: ActionAPIContext): void {
+  context.cookies.delete(GITHUB_OAUTH_STATE_COOKIE, {
     httpOnly: true,
     sameSite: 'lax',
     secure: import.meta.env.PROD,
@@ -197,12 +219,16 @@ function githubErrorLooksLikeRateLimit(error: GithubApiError): boolean {
   return text.includes('rate limit') || text.includes('rate_limit');
 }
 
-async function makeInstallUrl(repo?: string): Promise<string | null> {
+async function makeInstallUrl(repo?: string, context?: ActionAPIContext): Promise<string | null> {
   if (!PUBLIC_GITHUB_APP_SLUG || !GITHUB_SESSION_SECRET) return null;
+  const nonce = crypto.randomUUID();
   const state = await createGithubOAuthState(requireGithubSessionSecret(), {
     intent: 'edit',
     repo,
-  });
+  }, { nonce });
+  if (context) {
+    context.cookies.set(GITHUB_OAUTH_STATE_COOKIE, nonce, oauthStateCookieOptions());
+  }
   const url = new URL(`https://github.com/apps/${encodeURIComponent(PUBLIC_GITHUB_APP_SLUG)}/installations/new`);
   url.searchParams.set('state', state);
   return url.toString();
@@ -227,7 +253,7 @@ async function readGithubSession(
       configured: true,
       user: null,
       installations: null,
-      installUrl: await makeInstallUrl(repo),
+      installUrl: await makeInstallUrl(repo, context),
       githubError: null,
     };
   }
@@ -239,7 +265,7 @@ async function readGithubSession(
       configured: true,
       user,
       installations,
-      installUrl: await makeInstallUrl(repo),
+      installUrl: await makeInstallUrl(repo, context),
       githubError: null,
     };
   }
@@ -252,7 +278,7 @@ async function readGithubSession(
         configured: true,
         user: null,
         installations: null,
-        installUrl: await makeInstallUrl(repo),
+        installUrl: await makeInstallUrl(repo, context),
         githubError: null,
       };
     }
@@ -263,7 +289,7 @@ async function readGithubSession(
         configured: true,
         user: null,
         installations: null,
-        installUrl: await makeInstallUrl(repo),
+        installUrl: await makeInstallUrl(repo, context),
         githubError: error.message,
       };
     }
@@ -277,7 +303,7 @@ async function readGithubSession(
       configured: true,
       user: null,
       installations: null,
-      installUrl: await makeInstallUrl(repo),
+      installUrl: await makeInstallUrl(repo, context),
       githubError: null,
     };
   }
@@ -395,7 +421,15 @@ async function buildRepositoryCommitPlan(
   nextKeyboard: Keyboard,
 ): Promise<RepositoryCommitPlan> {
   const files = createZMKConfig(nextKeyboard);
-  const policy = createFilePolicy(existingKeyboard.shield);
+  // Cover both the previous and next generation's snippet roots: old roots
+  // are known from the repository's current `.shield-wizard.json`, new roots
+  // come from the next generation. Future snippet formats are automatically
+  // covered because both sets are derived from the same generator.
+  const snippetRoots = Array.from(new Set([
+    ...snippetRootsFromFiles(createZMKConfig(existingKeyboard)),
+    ...snippetRootsFromFiles(files),
+  ]));
+  const policy = createFilePolicy(existingKeyboard.shield, snippetRoots);
   const userModifiedPaths = await computeUserModifiedPathsFromRepository(
     token,
     owner,
@@ -596,12 +630,14 @@ export const server = {
     async handler(input, context) {
       if (!isGithubConfigured()) githubNotConfiguredError();
 
+      const nonce = crypto.randomUUID();
       const state = await createGithubOAuthState(requireGithubSessionSecret(), {
         intent: input.intent,
         repo: input.repo,
         returnScreen: input.returnScreen,
         returnMode: input.returnMode,
-      });
+      }, { nonce });
+      context.cookies.set(GITHUB_OAUTH_STATE_COOKIE, nonce, oauthStateCookieOptions());
 
       const url = new URL('https://github.com/login/oauth/authorize');
       url.searchParams.set('client_id', PUBLIC_GITHUB_CLIENT_ID);
@@ -621,12 +657,15 @@ export const server = {
       if (!isGithubConfigured()) githubNotConfiguredError();
 
       const oauthState = await verifyGithubOAuthState(requireGithubSessionSecret(), input.state);
-      if (!oauthState) {
+      const oauthStateNonce = context.cookies.get(GITHUB_OAUTH_STATE_COOKIE)?.value;
+      if (!oauthState || !oauthStateNonce || oauthState.nonce !== oauthStateNonce) {
+        clearGithubOAuthStateCookie(context);
         throw new ActionError({
           code: 'BAD_REQUEST',
           message: 'Invalid or expired OAuth state. Please start the flow again.',
         });
       }
+      clearGithubOAuthStateCookie(context);
 
       let accessToken: string;
       try {
@@ -655,7 +694,7 @@ export const server = {
           repo: oauthState.repo ?? null,
           user,
           installations,
-          installUrl: await makeInstallUrl(oauthState.repo),
+          installUrl: await makeInstallUrl(oauthState.repo, context),
           githubError: null,
         };
       }
@@ -663,6 +702,29 @@ export const server = {
         if (GithubApiError.isUnauthorized(error)) clearGithubCookie(context);
         throw githubActionError(error, 'BAD_REQUEST');
       }
+    },
+  }),
+
+  githubVerifyInstallState: defineAction({
+    input: z.object({
+      state: z.string().min(1).max(5000),
+      setupAction: z.literal('install'),
+    }),
+    async handler(input, context) {
+      if (!isGithubConfigured()) githubNotConfiguredError();
+
+      const oauthState = await verifyGithubOAuthState(requireGithubSessionSecret(), input.state);
+      const oauthStateNonce = context.cookies.get(GITHUB_OAUTH_STATE_COOKIE)?.value;
+      if (!oauthState || oauthState.intent !== 'edit' || !oauthStateNonce || oauthState.nonce !== oauthStateNonce) {
+        clearGithubOAuthStateCookie(context);
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: 'Invalid or expired installation state. Please start the flow again.',
+        });
+      }
+      clearGithubOAuthStateCookie(context);
+
+      return { verified: true, intent: oauthState.intent, repo: oauthState.repo ?? null };
     },
   }),
 
@@ -754,42 +816,21 @@ export const server = {
     input: z.object({
       owner: z.string().min(1).max(100).regex(/^[A-Za-z0-9_.-]+$/),
       repo: z.string().min(1).max(100).regex(/^[A-Za-z0-9_.-]+$/),
-      branch: z.string().min(1).max(250).regex(/^(?![-.])[A-Za-z0-9_./-]+(?<!\.)$/),
       keyboard: ValidatedKeyboardSchema,
     }),
     async handler(input, context) {
       const token = await requireGithubToken(context);
 
       try {
-        const newFiles = createZMKConfig(input.keyboard);
-        const existingPaths = await listRepositoryTreePathsForBranch(
+        const repository = await getGithubRepository(token, input.owner, input.repo);
+        const branch = repository.defaultBranch;
+        const dataFile = await readGithubTextFile(
           token,
           input.owner,
           input.repo,
-          input.branch,
-        );
-
-        // Fetch every file that might be compared in one batched GraphQL
-        // request instead of a separate REST call per file.
-        const policy = createFilePolicy(input.keyboard.shield);
-        const { additions, deletions } = planFileChanges(newFiles, existingPaths, policy);
-        const fetchPaths = Array.from(new Set([
           SHIELD_WIZARD_DATA_FILE,
-          ...additions.map(entry => entry.path),
-          ...deletions.map(entry => entry.path),
-        ]));
-        const fetchedFiles = await fetchGithubTextFilesBatch(
-          token,
-          input.owner,
-          input.repo,
-          input.branch,
-          fetchPaths,
+          branch,
         );
-
-        const dataFile = fetchedFiles.get(SHIELD_WIZARD_DATA_FILE);
-        if (!dataFile) {
-          throw new GithubApiError(`Repository data file is missing: ${SHIELD_WIZARD_DATA_FILE}`, 404);
-        }
         const existing = parseRepositoryKeyboard(dataFile.content);
         if (existing.keyboard.shield !== input.keyboard.shield) {
           throw new ActionError({
@@ -801,7 +842,35 @@ export const server = {
           return { changes: [] };
         }
 
-        console.log('Previewing Shield Wizard changes for:', `${input.owner}/${input.repo}@${input.branch}`);
+        const newFiles = createZMKConfig(input.keyboard);
+        const existingPaths = await listRepositoryTreePathsForBranch(
+          token,
+          input.owner,
+          input.repo,
+          branch,
+        );
+
+        // Cover both the previous and next generation's snippet roots from
+        // the repository's current data and the freshly generated files.
+        const snippetRoots = Array.from(new Set([
+          ...snippetRootsFromFiles(createZMKConfig(existing.keyboard)),
+          ...snippetRootsFromFiles(newFiles),
+        ]));
+        const policy = createFilePolicy(input.keyboard.shield, snippetRoots);
+        const { additions, deletions } = planFileChanges(newFiles, existingPaths, policy);
+        const fetchPaths = Array.from(new Set([
+          ...additions.map(entry => entry.path),
+          ...deletions.map(entry => entry.path),
+        ]));
+        const fetchedFiles = await fetchGithubTextFilesBatch(
+          token,
+          input.owner,
+          input.repo,
+          branch,
+          fetchPaths,
+        );
+
+        console.log('Previewing Shield Wizard changes for:', `${input.owner}/${input.repo}@${branch}`);
         const baseline = createZMKConfig(existing.keyboard);
         const userModifiedPaths = await computeUserModifiedPaths(
           baseline,
@@ -843,7 +912,6 @@ export const server = {
     input: z.object({
       owner: z.string().min(1).max(100).regex(/^[A-Za-z0-9_.-]+$/),
       repo: z.string().min(1).max(100).regex(/^[A-Za-z0-9_.-]+$/),
-      branch: z.string().min(1).max(250).regex(/^(?![-.])[A-Za-z0-9_./-]+(?<!\.)$/),
       commitMessage: z.string().trim().min(1).max(100),
       keyboard: ValidatedKeyboardSchema,
     }),
@@ -851,6 +919,9 @@ export const server = {
       const token = await requireGithubToken(context);
 
       try {
+        const repository = await getGithubRepository(token, input.owner, input.repo);
+        const branch = repository.defaultBranch;
+
         // The shield name is part of every generated file name. Renaming it
         // in place would strand user-owned `config/` files and change the
         // generated `boards/shields/` tree, so refuse it and point the user
@@ -859,7 +930,7 @@ export const server = {
           token,
           input.owner,
           input.repo,
-          input.branch,
+          branch,
           input.keyboard,
         );
         if (JSON.stringify(existing.keyboard) === JSON.stringify(input.keyboard)) {
@@ -869,19 +940,19 @@ export const server = {
           });
         }
 
-        console.log('Committing Shield Wizard changes to:', `${input.owner}/${input.repo}@${input.branch}`);
+        console.log('Committing Shield Wizard changes to:', `${input.owner}/${input.repo}@${branch}`);
         const { files, policy, userModifiedPaths } = await buildRepositoryCommitPlan(
           token,
           input.owner,
           input.repo,
-          input.branch,
+          branch,
           existing.keyboard,
           input.keyboard,
         );
         const result = await commitRepositoryChanges(token, {
           owner: input.owner,
           repo: input.repo,
-          branch: input.branch,
+          branch,
           files,
           commitMessage: input.commitMessage,
           policy,

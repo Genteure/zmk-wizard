@@ -4,6 +4,7 @@ import {
   createFilePolicy,
   planFileChanges,
   shouldTouchPath,
+  snippetRootsFromFiles,
 } from './filePolicy';
 
 describe('file policy rules', () => {
@@ -14,11 +15,24 @@ describe('file policy rules', () => {
     expect(shouldTouchPath('user.txt', policy)).toBe(false);
   });
 
-  it('full-sync directories allow arbitrary writes and deletions', () => {
-    const policy = createFilePolicy('my_board');
+  it('full-sync directories allow arbitrary writes and deletions only for the current shield and snippet roots', () => {
+    const policy = createFilePolicy('my_board', ['snippets/my_board']);
     expect(shouldTouchPath('boards/shields/my_board/whatever.overlay', policy)).toBe(true);
-    expect(shouldTouchPath('boards/shields', policy)).toBe(true);
+    expect(shouldTouchPath('boards/shields/my_board', policy)).toBe(true);
     expect(shouldTouchPath('snippets/my_board/snippet.yml', policy)).toBe(true);
+    expect(shouldTouchPath('boards/shields/other_board/whatever.overlay', policy)).toBe(false);
+    expect(shouldTouchPath('snippets/other_board/snippet.yml', policy)).toBe(false);
+  });
+
+  it('collects generated snippet roots from a file set', () => {
+    const files = {
+      'snippets/my-board-as-peripheral/snippet.yml': '',
+      'snippets/my-board-as-peripheral/my-board-as-peripheral.conf': '',
+      'snippets/my-board-as-peripheral/my-board-as-peripheral.overlay': '',
+    };
+    expect(snippetRootsFromFiles(files)).toEqual([
+      'snippets/my-board-as-peripheral',
+    ]);
   });
 
   it('distinguishes always-updated, conditional, and never-touched paths', () => {
@@ -165,6 +179,7 @@ describe('compute user-modified paths', () => {
     expect(policy.alwaysUpdatePaths.has('config/my_board.json')).toBe(true);
     expect(policy.conditionalUpdatePaths.has('config/my_board.keymap')).toBe(true);
     expect(policy.neverTouchPaths.has('README.md')).toBe(true);
-    expect(policy.fullSyncDirectories).toContain('boards/shields/');
+    expect(policy.fullSyncDirectories).toContain('boards/shields/my_board/');
+    expect(policy.fullSyncDirectories).not.toContain('snippets/');
   });
 });

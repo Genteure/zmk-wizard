@@ -29,35 +29,58 @@ export interface FilePolicy {
 /**
  * The Shield Wizard repository policy for a given shield name.
  *
- * `boards/shields/<shield>/` (and the generated `snippets/` tree) are
- * treated as fully Shield Wizard-owned directories. Files under `config/`
- * are mostly user-owned; only the generated shield-specific JSON is always
- * refreshed, while the keymap and west manifest are refreshed only when the
- * user has not edited them. `.shield-wizard.json` is always refreshed so
- * the in-repository editor state stays in sync with the generated files.
+ * `boards/shields/<shield>/` is treated as fully Shield Wizard-owned.
+ * Generated snippet roots under `snippets/` are also fully synced, but only
+ * when explicitly passed by the caller; unrelated snippets are never touched.
+ * Files under `config/` are mostly user-owned; only the generated
+ * shield-specific JSON is always refreshed, while the keymap and west
+ * manifest are refreshed only when the user has not edited them.
+ * `.shield-wizard.json` is always refreshed so the in-repository editor
+ * state stays in sync with the generated files.
  */
-export function createFilePolicy(shield: string): FilePolicy {
+export function createFilePolicy(
+  shield: string,
+  snippetRoots: readonly string[] = [],
+): FilePolicy {
   return {
     fullSyncDirectories: [
-      'boards/shields/',
-      'snippets/',
+      `boards/shields/${shield}/`,
+      ...snippetRoots.map(root => root.endsWith('/') ? root : `${root}/`),
     ],
     alwaysUpdatePaths: new Set([
       `config/${shield}.json`,
       '.github/workflows/build.yml',
       '.github/shield-wizard-layout.svg',
+      'zephyr/module.yml',
       SHIELD_WIZARD_DATA_FILE,
     ]),
     conditionalUpdatePaths: new Set([
       `config/${shield}.keymap`,
       'config/west.yml',
-      'zephyr/module.yml',
       'build.yaml',
     ]),
     neverTouchPaths: new Set([
       'README.md',
     ]),
   };
+}
+
+/**
+ * Collect the `snippets/<name>` roots that appear in a freshly generated
+ * file set. These are the current generation's snippet roots and are safe to
+ * fully sync.
+ */
+export function snippetRootsFromFiles(files: Record<string, string>): string[] {
+  const roots = new Set<string>();
+  for (const filePath of Object.keys(files)) {
+    if (!filePath.startsWith('snippets/')) continue;
+    const rest = filePath.slice('snippets/'.length);
+    const slash = rest.indexOf('/');
+    if (slash > 0) {
+      roots.add(`snippets/${rest.slice(0, slash)}`);
+    }
+  }
+  return Array.from(roots);
 }
 
 /**

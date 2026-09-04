@@ -66,6 +66,13 @@ describe('github oauth state', () => {
     });
   });
 
+  it('rejects expired states', async () => {
+    const now = 1_000_000;
+    const state = await createGithubOAuthState(SECRET, { intent: 'edit' }, { now, ttlMs: 1000 });
+    await expect(verifyGithubOAuthState(SECRET, state, now + 1001)).resolves.toBeNull();
+    await expect(verifyGithubOAuthState(SECRET, state, now + 999)).resolves.toMatchObject({ intent: 'edit' });
+  });
+
   it('rejects bad signatures and malformed payloads', async () => {
     const state = await createGithubOAuthState(SECRET, { intent: 'edit' });
     await expect(verifyGithubOAuthState('other-secret', state)).resolves.toBeNull();

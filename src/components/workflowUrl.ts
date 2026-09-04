@@ -72,7 +72,7 @@ export function isOAuthErrorCallback(params: WorkflowUrlParams): boolean {
 }
 
 export function isInstallCallback(params: WorkflowUrlParams): boolean {
-  return Boolean(params.setupAction && params.state);
+  return params.setupAction === 'install' && Boolean(params.state);
 }
 
 /**

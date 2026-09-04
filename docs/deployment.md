@@ -179,10 +179,12 @@ is intentionally shared: it is the login, not the UI state.
 
 #### Authentication
 
-1. Client calls the `githubBeginAuth` action. The server signs a random
-   `state` with HMAC-SHA-256 and returns the GitHub authorize URL.
+1. Client calls the `githubBeginAuth` action. The server signs a short-lived
+   `state` with HMAC-SHA-256, stores its nonce in an HttpOnly cookie, and
+   returns the GitHub authorize URL.
 2. GitHub redirects back to `/` with `code` and `state`.
-3. `githubCompleteAuth` verifies the state, POSTs the code to
+3. `githubCompleteAuth` verifies the state signature/expiry and that the
+   state nonce matches the HttpOnly cookie, then POSTs the code to
    `https://github.com/login/oauth/access_token` (GitHub App acting as an
    OAuth app — user-to-server token), and encrypts the token into the
    `shield_wizard_github` cookie:
@@ -192,8 +194,9 @@ is intentionally shared: it is the login, not the UI state.
    - max age 8 hours, matching the default GitHub user-token lifetime
 4. If the user has no app installations, the UI sends them to
    `https://github.com/apps/<slug>/installations/new?state=...`. GitHub
-   redirects back with `setup_action=install` and the UI refreshes the
-   session and shows repository selection.
+   redirects back with `setup_action=install`; the UI verifies the same
+   signed state/cookie nonce before refreshing the session and showing
+   repository selection.
 
 #### Save
 
