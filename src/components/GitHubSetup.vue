@@ -91,12 +91,7 @@
             variant="soft"
             icon="i-lucide-triangle-alert"
             :title="$t('gh-install-url-missing')"
-            :description="$t('gh-install-url-missing-desc')"
           />
-
-          <div class="text-xs text-toned text-center">
-            {{ $t('gh-install-return-note') }}
-          </div>
         </div>
 
         <!-- Repository selection -->
@@ -104,14 +99,9 @@
           v-else
           class="flex flex-col gap-4"
         >
-          <div>
-            <h1 class="text-lg font-bold text-highlighted">
-              {{ $t('gh-repos-title') }}
-            </h1>
-            <p class="text-sm text-toned">
-              {{ $t('gh-repos-description') }}
-            </p>
-          </div>
+          <h1 class="text-lg font-bold text-highlighted text-center">
+            {{ $t('gh-repos-title') }}
+          </h1>
 
           <!-- Signed out: keep sign-in on the same repository picker page -->
           <div
@@ -140,7 +130,6 @@
               variant="soft"
               icon="i-lucide-triangle-alert"
               :title="$t('gh-not-configured')"
-              :description="$t('gh-not-configured-desc')"
             />
 
             <UButton
@@ -208,7 +197,7 @@
               </UButton>
             </div>
 
-            <UDivider />
+            <USeparator />
 
             <div
               v-if="repoLoading || (workflow.githubBusy && repos.length === 0)"
@@ -758,23 +747,19 @@ gh-back = Back
 gh-exchanging = Finishing GitHub sign-in…
 
 gh-auth-title = Sign in with GitHub
-gh-auth-description = Shield Wizard uses a GitHub App to read and update only the repositories you grant it access to. Your token stays encrypted in a server-side session cookie.
+gh-auth-description = Shield Wizard uses a GitHub App to read and update only the repositories you grant it access to.
 gh-not-configured = GitHub integration is not configured on this server
-gh-not-configured-desc = Ask the administrator to complete the setup in docs/deployment.md.
 gh-connect = Connect to GitHub
 
 gh-install-title = Install the Shield Wizard App
-gh-install-description = Choose which repositories the app may access. GitHub will bring you right back to this step when the installation is done.
-gh-install-signed-in = Signed in — now grant the app access to a repository.
+gh-install-description = Choose which repositories the app may access.
+gh-install-signed-in = Signed in, now grant the app access to a repository.
 gh-install-choose-repos-title = Choose only the repositories you want Shield Wizard to access
-gh-install-choose-repos-hint = Please use "Only select repositories" under "Repository access" instead of "All repositories" in GitHub application settings.
+gh-install-choose-repos-hint = Please use "Only select repositories" instead of "All repositories".
 gh-install-action = Continue to Install
 gh-install-url-missing = App installation link unavailable
-gh-install-url-missing-desc = PUBLIC_GITHUB_APP_SLUG or GITHUB_SESSION_SECRET is not configured. Set the app slug and configure the session secret.
-gh-install-return-note = You will be redirected back here automatically after GitHub finishes the installation.
 
 gh-repos-title = Choose a Repository
-gh-repos-description = Shield Wizard-compatible repositories can be opened. Unsupported repositories are listed separately for context only.
 gh-repos-signed-in = Signed in to GitHub
 gh-repos-signed-out = Not signed in to GitHub
 gh-logout = Sign Out
@@ -783,12 +768,12 @@ gh-logout-failed = Failed to sign out
 gh-repos-account = GitHub Account
 gh-repos-edit-access = Edit Repository Access
 gh-repos-loading = Loading repositories…
-gh-repos-no-supported = No Shield Wizard-compatible repositories found. Create one with Shield Wizard first.
+gh-repos-no-supported = No Shield Wizard compatible repositories found. Create one with Shield Wizard first.
 gh-repos-unsupported-count = {$count ->
   [1] 1 unsupported repository
   *[other] {$count} unsupported repositories
 }
-gh-repos-many-title = Tip: narrow your repository access
+gh-repos-many-title = Narrow your repository access
 gh-repos-many-hint = Please use "Only select repositories" under "Repository access" instead of "All repositories" in GitHub application settings.
 gh-repos-empty = No repositories found for this installation. Grant the app access to a repository, or switch accounts.
 gh-repos-load-more = Load More
@@ -804,23 +789,19 @@ gh-back = 返回
 gh-exchanging = 正在完成 GitHub 登录…
 
 gh-auth-title = 使用 GitHub 登录
-gh-auth-description = Shield Wizard 通过 GitHub App 只读写你授权的仓库。访问令牌会加密保存在服务器会话 cookie 中。
+gh-auth-description = Shield Wizard 通过 GitHub App 读写你授权的仓库。
 gh-not-configured = 此服务器尚未配置 GitHub 集成
-gh-not-configured-desc = 请联系管理员按照 docs/deployment.md 完成配置。
 gh-connect = 连接到 GitHub
 
 gh-install-title = 安装 Shield Wizard App
-gh-install-description = 选择允许应用访问的仓库。安装完成后 GitHub 会自动带你回到这一步。
-gh-install-signed-in = 已登录——现在请为应用授予仓库访问权限。
+gh-install-description = 选择允许应用访问的仓库。
+gh-install-signed-in = 已登录，现在请为应用授予仓库访问权限。
 gh-install-choose-repos-title = 只选择希望 Shield Wizard 访问的仓库
-gh-install-choose-repos-hint = 请在 GitHub 应用设置的“Repository access”中选择“Only select repositories”，而不是“All repositories”。
+gh-install-choose-repos-hint = 请选择“Only select repositories”，而不是“All repositories”。
 gh-install-action = 继续安装
 gh-install-url-missing = 无法生成应用安装链接
-gh-install-url-missing-desc = PUBLIC_GITHUB_APP_SLUG 或 GITHUB_SESSION_SECRET 未配置。请设置应用 slug 并配置会话密钥。
-gh-install-return-note = GitHub 完成安装后会自动返回此页面。
 
 gh-repos-title = 选择仓库
-gh-repos-description = 可打开与 Shield Wizard 兼容的仓库。不支持的仓库会单独列出，仅供了解。
 gh-repos-signed-in = 已登录 GitHub
 gh-repos-signed-out = 尚未登录 GitHub
 gh-logout = 退出登录
@@ -834,7 +815,7 @@ gh-repos-unsupported-count = {$count ->
   [1] 1 个不支持的仓库
   *[other] {$count} 个不支持的仓库
 }
-gh-repos-many-title = 小提示：限制仓库访问范围
+gh-repos-many-title = 限制仓库访问范围
 gh-repos-many-hint = 请在 GitHub 应用设置的“Repository access”中选择“Only select repositories”，而不是“All repositories”。
 gh-repos-empty = 此安装下没有找到仓库。请为应用授予仓库访问权限，或切换账号。
 gh-repos-load-more = 加载更多
@@ -850,23 +831,19 @@ gh-back = 戻る
 gh-exchanging = GitHubサインインを完了しています…
 
 gh-auth-title = GitHubでサインイン
-gh-auth-description = Shield WizardはGitHub Appを使い、あなたが許可したリポジトリのみを読み書きします。トークンはサーバー側セッションCookieに暗号化して保存されます。
+gh-auth-description = Shield WizardはGitHub Appを使い、許可したリポジトリのみを読み書きします。
 gh-not-configured = このサーバーではGitHub連携が未設定です
-gh-not-configured-desc = 管理者に docs/deployment.md の手順で設定してもらってください。
 gh-connect = GitHubに接続
 
 gh-install-title = Shield Wizard Appをインストール
-gh-install-description = アプリがアクセスできるリポジトリを選択してください。インストール完了後、GitHubがこの画面に戻します。
+gh-install-description = アプリがアクセスできるリポジトリを選択してください。
 gh-install-signed-in = サインイン済みです。アプリにリポジトリアクセスを許可してください。
 gh-install-choose-repos-title = Shield Wizardがアクセスするリポジトリを選択してください
-gh-install-choose-repos-hint = GitHubアプリの設定で「Repository access」の「All repositories」ではなく「Only select repositories」を選択してください。
+gh-install-choose-repos-hint = 「All repositories」ではなく「Only select repositories」を選択してください。
 gh-install-action = 続けてインストール
 gh-install-url-missing = アプリインストールリンクを生成できません
-gh-install-url-missing-desc = PUBLIC_GITHUB_APP_SLUG または GITHUB_SESSION_SECRET が未設定です。アプリスラッグを設定し、セッションシークレットを構成してください。
-gh-install-return-note = GitHubでのインストール完了後、自動的にこのページへ戻ります。
 
 gh-repos-title = リポジトリを選択
-gh-repos-description = Shield Wizardと互換性のあるリポジトリは開ける。サポートされていないリポジトリは参考として別途表示されます。
 gh-repos-signed-in = GitHubにサインイン済み
 gh-repos-signed-out = GitHubにサインインしていません
 gh-logout = サインアウト
@@ -880,7 +857,7 @@ gh-repos-unsupported-count = {$count ->
   [1] サポートされていないリポジトリ 1 件
   *[other] サポートされていないリポジトリ {$count} 件
 }
-gh-repos-many-title = ヒント：リポジトリアクセスを絞り込みましょう
+gh-repos-many-title = リポジトリアクセスを絞り込みましょう
 gh-repos-many-hint = GitHubアプリの設定で「Repository access」の「All repositories」ではなく「Only select repositories」を選択してください。
 gh-repos-empty = このインストールにはリポジトリがありません。アプリにアクセスを許可するか、アカウントを切り替えてください。
 gh-repos-load-more = さらに読み込む
