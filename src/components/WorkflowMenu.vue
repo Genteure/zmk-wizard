@@ -139,7 +139,6 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
 
   if (workflow.githubUser) {
     items.push([
-      { type: 'separator' },
       {
         label: `${$t('wf-signed-in-as')} ${workflow.githubUser.login}`,
         avatar: { src: workflow.githubUser.avatarUrl, alt: workflow.githubUser.login },

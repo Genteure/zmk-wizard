@@ -193,7 +193,6 @@
                   ? 'cursor-pointer shrink-0'
                   : 'cursor-not-allowed opacity-60 shrink-0'"
                 :aria-disabled="!repo.hasShieldWizardConfig"
-                :title="repo.hasShieldWizardConfig ? repo.fullName : $t('gh-repos-not-supported')"
                 :ui="{ body: 'px-3 py-2' }"
                 @click="chooseRepo(repo)"
               >
