@@ -18,7 +18,8 @@
   - `src/components/utils/KeyboardNameDialog.vue` — initial modal for keyboard name, shield name, split config.
   - `src/_entrypoint.ts` — Vue app bootstrap: registers Nuxt UI plugin, Pinia, Fluent i18n.
   - `src/pages/index.astro` — Astro entry page; mounts `<Main client:only='vue'>`.
-  - `src/export/` — ZMK config repository generator: `createZMKConfig(keyboard)` produces the full file set (build.yaml, west.yml, Kconfig, keymap, shield overlays, layout SVG) from the keyboard model.
+  - `src/lib/dataFormat.ts` — stable `.shield-wizard.json` data format: versioned envelope, validation, save/load, and migration scaffolding (policy in `docs/data-format.md`).
+  - `src/export/` — ZMK config repository generator: `createZMKConfig(keyboard)` produces the full file set (build.yaml, west.yml, Kconfig, keymap, shield overlays, layout SVG, `.shield-wizard.json`) from the keyboard model.
   - `src/actions/index.ts` — Astro Actions server endpoints: `buildRepository` validates the keyboard config (Turnstile captcha), builds the git repository, and stores it in the KV binding; `sendFeedback` forwards feedback to a webhook.
   - `src/pages/repo/[repoId].git/[...filePath].ts` — serves a stored repository as a git endpoint: unpacks the tar.gz from KV per request and returns individual files so `github.com/new/import` can clone it.
   - `src/metadata/` — hardware catalogs: controllers (`controllers.ts`), SoC buses, external ZMK modules (`modules.ts`), pins (`pins.ts`), and device templates for I2C/SPI peripherals (`templates/`, `device/`).

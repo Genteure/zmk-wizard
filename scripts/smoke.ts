@@ -22,6 +22,7 @@ const jiti = createJiti(import.meta.url, {
 const { createZMKConfig } = await jiti.import('~/export') as typeof import('~/export');
 const { KeyboardSchema } = await jiti.import('~/types/keyboard') as typeof import('~/types/keyboard');
 const { ValidatedKeyboardSchema } = await jiti.import('~/lib/validators') as typeof import('~/lib/validators');
+const { parseShieldWizardData, isShieldWizardDataEnvelope } = await jiti.import('~/lib/dataFormat') as typeof import('~/lib/dataFormat');
 const { createGitRepository } = await jiti.import('~/lib/gitrepo') as typeof import('~/lib/gitrepo');
 
 type BuildFiles = Record<string, string | Uint8Array>;
@@ -300,8 +301,22 @@ async function readKeyboardFixture(fixturePath: string): Promise<Keyboard> {
     process.exit(1);
   }
 
+  // Stable-format fixtures (`{ formatVersion, data }`) go through the same
+  // loader the editor uses; legacy fixtures are raw Keyboard JSON.
+  let keyboardData: unknown = parsed;
+  if (isShieldWizardDataEnvelope(parsed)) {
+    try {
+      keyboardData = parseShieldWizardData(parsed, { allowPartial: false }).keyboard;
+    }
+    catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`Invalid stable-format fixture ${fixturePath}:\n${message}`);
+      process.exit(1);
+    }
+  }
+
   // First pass: base schema validation (missing fields, type errors)
-  const schema = KeyboardSchema.safeParse(parsed);
+  const schema = KeyboardSchema.safeParse(keyboardData);
   if (!schema.success) {
     const issues = schema.error.errors
       .map(
@@ -315,7 +330,7 @@ async function readKeyboardFixture(fixturePath: string): Promise<Keyboard> {
 
   // Second pass: enhanced validation with superRefine rules (name collisions,
   // module conflicts, pin constraints, controller-specific limits)
-  const validated = ValidatedKeyboardSchema.safeParse(parsed);
+  const validated = ValidatedKeyboardSchema.safeParse(keyboardData);
   if (!validated.success) {
     const issues = validated.error.issues
       .map(

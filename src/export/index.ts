@@ -8,6 +8,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import type { Keyboard } from '~/types';
+import { SHIELD_WIZARD_DATA_FILE, serializeShieldWizardData } from '~/lib/dataFormat';
 import {
   build_yaml,
   config_conf,
@@ -49,6 +50,12 @@ export function createZMKConfig(keyboard: Keyboard): BuildFiles {
 
   // SVG layout visualization
   files['.github/shield-wizard-layout.svg'] = generateLayoutSvg(keyboard);
+
+  // Canonical Shield Wizard internal data (versioned, see src/lib/dataFormat.ts).
+  // This is the in-repository copy: it is committed with the other generated
+  // files so `gh`/GitHub-API-based editing (issue #20) can read back and
+  // restore the exact generator state.
+  files[SHIELD_WIZARD_DATA_FILE] = serializeShieldWizardData(keyboard);
 
   return Object.fromEntries(
     (Object.entries(files) as [string, string][]).map(

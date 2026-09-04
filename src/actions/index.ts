@@ -4,6 +4,7 @@ import { createTarGzipStream } from 'nanotar';
 import { ulid } from 'ulidx';
 import { createGitRepository } from '~/lib/gitrepo';
 import { getRepoKV } from '~/lib/kv';
+import { SHIELD_WIZARD_DATA_FILE } from '~/lib/dataFormat';
 import { createZMKConfig } from '~/export';
 import { ValidatedKeyboardSchema } from '~/lib/validators';
 import { FEEDBACK_WEBHOOK_URL, TURNSTILE_SECRET } from 'astro:env/server';
@@ -51,7 +52,13 @@ export const server = {
       const keyboardConfig = createZMKConfig(input.keyboard);
       const gitRepo = await createGitRepository(keyboardConfig);
 
-      gitRepo['.shield-wizard.json'] = new TextEncoder().encode(JSON.stringify(input.keyboard) + '\n');
+      // Two separate copies, two different purposes:
+      // - `createZMKConfig` put `.shield-wizard.json` inside the git pack,
+      //   so it travels with the repository and can be read back for editing
+      //   (issue #20).
+      // - This loose tar entry is NOT part of the git pack. It exists for
+      //   online developer audit/tests at `/repo/<id>.git/.shield-wizard.json`.
+      gitRepo[SHIELD_WIZARD_DATA_FILE] = new TextEncoder().encode(keyboardConfig[SHIELD_WIZARD_DATA_FILE]);
 
       const tarStream = createTarGzipStream(
         Object

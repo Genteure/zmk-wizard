@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { parseTarGzip } from 'nanotar';
 import { decodeTime, isValid } from 'ulidx';
+import { SHIELD_WIZARD_DATA_FILE } from '~/lib/dataFormat';
 import { ExpirationTtlSeconds, getRepoKV } from '~/lib/kv';
 
 export const prerender = false;
@@ -51,7 +52,7 @@ export const GET: APIRoute = async (context) => {
     'HEAD',
     'refs/heads/main',
     'objects/info/packs',
-    '.shield-wizard.json',
+    SHIELD_WIZARD_DATA_FILE,
   ];
   if (!knownFiles.includes(filePath)) {
     const pathFragments = filePath.split('/');

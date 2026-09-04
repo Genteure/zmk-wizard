@@ -117,7 +117,8 @@ import type { DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui';
 import { useFluent } from 'fluent-vue';
 import { version } from 'virtual:version';
 import { computed, onMounted, ref } from 'vue';
-import { KeyboardSchema } from '~/types';
+import { isShieldWizardDataEnvelope, parseShieldWizardData, serializeShieldWizardData } from '~/lib/dataFormat';
+import { KeyboardSchema, type Keyboard } from '~/types';
 
 import Editors from './editor/editors.vue';
 import Graphics from './graphic/graphics.vue';
@@ -198,8 +199,18 @@ const debugData = ref('');
 const debugError = ref('');
 
 function openDebugDialog() {
-  debugData.value = JSON.stringify(keyboard.$state, null, 2).replace(/(\d,)\n +/g, '$1 ');
-  debugError.value = '';
+  // Show the canonical stable envelope (partial work is allowed so the
+  // dialog also works before the keyboard is complete). If the current
+  // state is so malformed that even the draft schema rejects it, fall
+  // back to raw JSON so the debug dialog still opens for inspection.
+  try {
+    debugData.value = serializeShieldWizardData(keyboard.$state, { allowPartial: true });
+    debugError.value = '';
+  }
+  catch (e) {
+    debugData.value = JSON.stringify(keyboard.$state, null, 2);
+    debugError.value = `Could not serialize stable data (${(e as Error).message}); showing raw state instead.`;
+  }
   debugOpen.value = true;
 }
 const feedbackOpen = ref(false);
@@ -208,12 +219,35 @@ function openFeedbackDialog() {
 }
 function applyDebugData() {
   try {
-    const result = KeyboardSchema.parse(JSON.parse(debugData.value));
+    const input = JSON.parse(debugData.value);
+
+    let keyboardState: Keyboard;
+    let issues: string[] = [];
+
+    if (isShieldWizardDataEnvelope(input)) {
+      // Stable format (generated repository file or the online audit
+      // endpoint copy).
+      const loaded = parseShieldWizardData(input, { allowPartial: true });
+      keyboardState = loaded.keyboard;
+      issues = loaded.issues.map(issue => `${issue.path}: ${issue.message}`);
+    }
+    else {
+      // Legacy raw Keyboard JSON (old repositories / old debug copies).
+      keyboardState = KeyboardSchema.parse(input);
+    }
+
     keyboard.$patch(() => {
-      Object.assign(keyboard.$state, result);
+      Object.assign(keyboard.$state, keyboardState);
       // Pin map is sparse — no seeding needed.
       // Available pins are derived from controller + device metadata.
     });
+
+    if (issues.length > 0) {
+      // Data was applied; keep the dialog open so the warnings are visible.
+      debugError.value = `Loaded with warnings:\n${issues.join('\n')}`;
+      return;
+    }
+
     debugError.value = '';
     debugOpen.value = false;
   }
