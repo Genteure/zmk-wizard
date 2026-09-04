@@ -77,23 +77,12 @@
     <UModal
       v-model:open="commitModalOpen"
       :title="$t('commit-modal-title')"
+      :description="workflow.editingRepository?.fullName + '@' + workflow.editingRepository?.defaultBranch"
       :close="!isCommitting"
       :ui="{ content: 'max-w-5xl' }"
     >
       <template #body>
         <div class="flex flex-col gap-4">
-          <div class="text-sm text-toned flex flex-col gap-1">
-            <p>
-              {{ $t('commit-target') }}
-              <code class="font-mono">
-                {{ workflow.editingRepository?.fullName }}
-              </code>
-            </p>
-            <p v-if="workflow.editingRepository">
-              {{ $t('commit-branch', { branch: workflow.editingRepository.defaultBranch }) }}
-            </p>
-          </div>
-
           <UFormField
             :label="$t('commit-message-label')"
             name="commitMessage"
@@ -125,105 +114,114 @@
               </span>
             </div>
 
-            <div
-              v-if="commitPreviewLoading"
-              class="flex items-center gap-2 py-6 text-sm text-toned"
-            >
-              <UIcon
-                name="i-svg-spinners-90-ring"
-                class="size-4"
-              />
-              {{ $t('commit-diff-loading') }}
-            </div>
-
-            <UAlert
-              v-else-if="commitPreviewError"
-              color="error"
-              variant="soft"
-              icon="i-lucide-alert-circle"
-              :title="$t('commit-diff-failed')"
-              :description="commitPreviewError"
-            />
-
-            <div
-              v-else-if="commitFileChanges.length === 0"
-              class="rounded-lg border border-dashed border-default bg-muted/40 px-4 py-6 text-sm text-toned"
-            >
-              {{ $t('commit-no-changes') }}
-            </div>
-
-            <div
-              v-else
-              class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-default bg-muted/30 sm:flex-row"
-            >
-              <div class="max-h-64 shrink-0 overflow-y-auto border-b border-default bg-muted/20 sm:w-60 sm:border-b-0 sm:border-r">
-                <button
-                  v-for="change in commitFileChanges"
-                  :key="change.path"
-                  type="button"
-                  class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors"
-                  :class="selectedChangePath === change.path ? 'bg-accented text-highlighted' : 'text-toned hover:bg-muted/60'"
-                  @click="selectedChangePath = change.path"
-                >
-                  <span
-                    class="w-4 shrink-0 text-center font-mono text-sm font-bold"
-                    :class="statusClass(change.status)"
-                  >
-                    {{ statusSymbol(change.status) }}
-                  </span>
-                  <span class="min-w-0 truncate font-mono text-sm">
-                    {{ change.path }}
-                  </span>
-                </button>
+            <div class="h-96">
+              <div
+                v-if="commitPreviewLoading"
+                class="flex h-full items-center justify-center gap-2 text-sm text-toned"
+              >
+                <UIcon
+                  name="i-svg-spinners-90-ring"
+                  class="size-4"
+                />
+                {{ $t('commit-diff-loading') }}
               </div>
 
-              <div class="flex min-w-0 flex-1 flex-col">
-                <div class="flex items-center justify-between gap-2 border-b border-default px-3 py-1.5">
-                  <span class="min-w-0 truncate font-mono text-sm text-toned">
-                    {{ selectedChangePath }}
-                  </span>
-                  <span
-                    v-if="commitSelectedChange"
-                    class="shrink-0 text-sm font-semibold"
-                    :class="statusClass(commitSelectedChange.status)"
+              <div
+                v-else-if="commitPreviewError"
+                class="h-full overflow-y-auto"
+              >
+                <UAlert
+                  color="error"
+                  variant="soft"
+                  icon="i-lucide-alert-circle"
+                  :title="$t('commit-diff-failed')"
+                  :description="commitPreviewError"
+                />
+              </div>
+
+              <div
+                v-else-if="commitFileChanges.length === 0"
+                class="flex h-full items-center justify-center rounded-lg border border-dashed border-default bg-muted/40 px-4 py-6 text-sm text-toned"
+              >
+                {{ $t('commit-no-changes') }}
+              </div>
+
+              <div
+                v-else
+                class="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-default bg-muted/30 sm:flex-row"
+              >
+                <div
+                  class="max-h-64 shrink-0 overflow-y-auto border-b border-default bg-muted/20 sm:h-full sm:max-h-none sm:w-60 sm:border-b-0 sm:border-r"
+                >
+                  <button
+                    v-for="change in commitFileChanges"
+                    :key="change.path"
+                    :class="selectedChangePath === change.path ? 'bg-accented text-highlighted' : 'text-toned hover:bg-muted/60'"
+                    :title="change.path"
+                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors"
+                    type="button"
+                    @click="selectedChangePath = change.path"
                   >
-                    {{ statusLabel(commitSelectedChange.status) }}
-                  </span>
+                    <span
+                      class="w-4 shrink-0 text-center font-mono text-sm font-bold"
+                      :class="statusClass(change.status)"
+                    >
+                      {{ statusSymbol(change.status) }}
+                    </span>
+                    <span class="min-w-0 truncate font-mono text-sm">
+                      {{ change.path }}
+                    </span>
+                  </button>
                 </div>
 
-                <div
-                  :key="selectedChangePath ?? ''"
-                  class="min-h-[18rem] max-h-[50vh] flex-1 overflow-auto"
-                >
-                  <div class="min-w-max font-mono text-xs leading-relaxed">
-                    <template
-                      v-for="(group, i) in commitDiffGroups"
-                      :key="i"
+                <div class="flex min-w-0 min-h-0 flex-1 flex-col">
+                  <div class="flex items-center justify-between gap-2 border-b border-default px-3 py-1.5">
+                    <span class="min-w-0 truncate font-mono text-sm text-toned">
+                      {{ selectedChangePath }}
+                    </span>
+                    <span
+                      v-if="commitSelectedChange"
+                      class="shrink-0 text-sm font-semibold"
+                      :class="statusClass(commitSelectedChange.status)"
                     >
-                      <div
-                        v-if="group.kind === 'change'"
-                        class="flex"
+                      {{ statusLabel(commitSelectedChange.status) }}
+                    </span>
+                  </div>
+
+                  <div
+                    :key="selectedChangePath ?? ''"
+                    class="min-h-0 flex-1 overflow-auto"
+                  >
+                    <div class="min-w-max font-mono text-xs leading-relaxed">
+                      <template
+                        v-for="(group, i) in commitDiffGroups"
+                        :key="i"
                       >
-                        <span
-                          class="w-6 shrink-0 select-none pr-2 text-right"
-                          :class="diffLineMarkerClass(group.type)"
+                        <div
+                          v-if="group.kind === 'change'"
+                          class="flex"
                         >
-                          {{ diffLineMarker(group.type) }}
-                        </span>
-                        <span
-                          class="whitespace-pre"
-                          :class="diffLineTextClass(group.type)"
+                          <span
+                            class="w-6 shrink-0 select-none pr-2 text-right"
+                            :class="diffLineMarkerClass(group.type)"
+                          >
+                            {{ diffLineMarker(group.type) }}
+                          </span>
+                          <span
+                            class="whitespace-pre"
+                            :class="diffLineTextClass(group.type)"
+                          >
+                            {{ group.value || '\u00A0' }}
+                          </span>
+                        </div>
+                        <div
+                          v-else
+                          class="select-none px-3 py-0.5 text-center text-muted"
                         >
-                          {{ group.value || '\u00A0' }}
-                        </span>
-                      </div>
-                      <div
-                        v-else
-                        class="select-none px-3 py-0.5 text-center text-muted"
-                      >
-                        ⋯ {{ $t('commit-diff-collapsed-lines', { count: group.count }) }} ⋯
-                      </div>
-                    </template>
+                          ⋯ {{ $t('commit-diff-collapsed-lines', { count: group.count }) }} ⋯
+                        </div>
+                      </template>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -801,6 +799,12 @@ function onDropdownOpenChange(open: boolean) {
 
   validatedData.value = result.data as unknown as Keyboard;
 
+  // When editing an existing repository, skip the pre-build keymap layout
+  // confirmation and let the user go straight to the save menu.
+  if (workflow.isEditing) {
+    return;
+  }
+
   if (acceptedLayoutHash !== null && computePhysicalLayoutHash(keyboard.layout) === acceptedLayoutHash) {
     return;
   }
@@ -1143,17 +1147,18 @@ step5-desc = After confirming the default build works, you can start customizing
 error-modal-title = Validation Errors
 
 commit-modal-title = Confirm Changes to Repository
-commit-target = Repository:
-commit-branch = This will be committed directly to the default branch ({ $branch }).
 commit-message-label = Commit Message
 commit-cancel = Cancel
-commit-confirm = Save Changes
+commit-confirm = Commit Changes
 commit-diff-title = Changes
 commit-diff-loading = Loading changes…
 commit-diff-failed = Could not load changes
 commit-no-changes = No changes to save. Edit the keyboard configuration first.
 commit-diff-summary = { $added } added, { $modified } modified, { $deleted } deleted
-commit-diff-collapsed-lines = { $count } unchanged lines
+commit-diff-collapsed-lines = { $count ->
+  [1] { $count } unchanged line
+  *[other] { $count } unchanged lines
+}
 commit-file-added = Added
 commit-file-modified = Modified
 commit-file-deleted = Deleted
@@ -1224,11 +1229,9 @@ step5-desc = 测试完生成的默认配置一切正常后，你可以开始定�
 error-modal-title = 验证错误
 
 commit-modal-title = 确认提交到仓库
-commit-target = 仓库:
-commit-branch = 这将直接提交到默认分支（{ $branch }）。
 commit-message-label = 提交信息
 commit-cancel = 取消
-commit-confirm = 保存修改
+commit-confirm = 提交修改
 commit-diff-title = 变更
 commit-diff-loading = 正在加载变更…
 commit-diff-failed = 无法加载变更
@@ -1304,8 +1307,6 @@ step5-desc = デフォルトビルドが動作することを確認したら、�
 error-modal-title = 検証エラー
 
 commit-modal-title = リポジトリへの変更を確認
-commit-target = リポジトリ:
-commit-branch = これはデフォルトブランチ（{ $branch }）に直接コミットされます。
 commit-message-label = コミットメッセージ
 commit-cancel = キャンセル
 commit-confirm = 変更を保存
