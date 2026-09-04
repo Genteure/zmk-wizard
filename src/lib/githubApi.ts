@@ -444,6 +444,104 @@ export async function readGithubTextFile(
   };
 }
 
+/** Return every blob path reachable from a branch's current commit. */
+export async function listRepositoryTreePathsForBranch(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  branch: string,
+): Promise<string[]> {
+  const headOid = await getBranchHeadOid(accessToken, owner, repo, branch);
+  const treeSha = await getCommitTreeSha(accessToken, owner, repo, headOid);
+  return listRepositoryTreePaths(accessToken, owner, repo, treeSha);
+}
+
+/**
+ * Read many text files from a branch in a small number of GraphQL
+ * requests. The REST contents API only supports one file per request,
+ * so the preview flow uses this batched reader instead.
+ *
+ * Missing files return `null` in the result map. Files that are too
+ * large for GraphQL (`text` is truncated) throw a 422 error.
+ */
+export async function fetchGithubTextFilesBatch(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  branch: string,
+  paths: string[],
+): Promise<Map<string, GithubTextFile | null>> {
+  const uniquePaths = Array.from(new Set(paths));
+  const results = new Map<string, GithubTextFile | null>();
+  const BATCH_SIZE = 50;
+
+  for (let offset = 0; offset < uniquePaths.length; offset += BATCH_SIZE) {
+    const batch = uniquePaths.slice(offset, offset + BATCH_SIZE);
+    const aliases = batch.map((_, index) => `f${index}`);
+    const variableDeclarations = aliases
+      .map(alias => `$${alias}: String!`)
+      .join(', ');
+    const selections = aliases
+      .map(alias => `${alias}: object(expression: $${alias}) { ... on Blob { oid text isTruncated } }`)
+      .join('\n    ');
+
+    const query = `
+      query PreviewFileContents($owner: String!, $name: String!, ${variableDeclarations}) {
+        repository(owner: $owner, name: $name) {
+          ${selections}
+        }
+      }
+    `;
+    const variables: Record<string, string> = { owner, name: repo };
+    batch.forEach((path, index) => {
+      variables[`f${index}`] = `refs/heads/${branch}:${path}`;
+    });
+
+    const response = await fetch(GITHUB_GRAPHQL_URL, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/vnd.github+json',
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'User-Agent': GITHUB_USER_AGENT,
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+      body: JSON.stringify({ query, variables }),
+    });
+    const body = await response.json() as {
+      data?: {
+        repository?: Record<string, {
+          oid: string;
+          text: string | null;
+          isTruncated: boolean;
+        } | null>;
+      };
+      errors?: Array<{ message: string }>;
+    };
+    const repository = body.data?.repository;
+    if (!response.ok || !repository) {
+      const message = body.errors?.[0]?.message
+        ?? `GitHub GraphQL request failed (${response.status})`;
+      throw new GithubApiError(message, response.ok ? 422 : response.status, body);
+    }
+
+    aliases.forEach((alias, index) => {
+      const path = batch[index];
+      const blob = repository[alias];
+      if (blob === null || blob === undefined) {
+        results.set(path, null);
+        return;
+      }
+      if (blob.isTruncated || blob.text === null) {
+        throw new GithubApiError(`File ${path} is too large to preview`, 422);
+      }
+      results.set(path, { content: blob.text, sha: blob.oid });
+    });
+  }
+
+  return results;
+}
+
 // ─────────────────────────────────────────────────────────────
 // Commit API
 // ─────────────────────────────────────────────────────────────

@@ -42,11 +42,11 @@
       v-model:open="previewModalOpen"
       :title="$t('preview-modal-title')"
       :close="true"
-      :ui="{ content: 'max-w-4xl' }"
+      :ui="{ content: 'max-w-5xl' }"
     >
       <template #body>
-        <div class="flex gap-4 h-[65vh]">
-          <div class="w-60 shrink-0 overflow-y-auto">
+        <div class="flex h-[65vh] overflow-hidden rounded-lg border border-default bg-muted/30">
+          <div class="w-60 shrink-0 overflow-y-auto border-r border-default bg-muted/20">
             <UTree
               size="sm"
               :items="previewTreeItems"
@@ -55,16 +55,16 @@
           </div>
           <div class="flex-1 min-w-0 min-h-0 flex flex-col">
             <div
-              class="text-xs text-toned font-mono px-1 pb-1.5 truncate shrink-0"
+              class="text-sm text-toned font-mono truncate shrink-0 border-b border-default px-3 py-1.5"
               :class="selectedFilePath ? 'visible' : 'invisible'"
             >
               {{ selectedFilePath ?? $t('preview-select-file') }}
             </div>
             <UTextarea
               readonly
-              class="w-full h-full font-mono"
+              class="w-full h-full font-mono text-xs"
               size="sm"
-              :ui="{ base: 'h-full resize-none' }"
+              :ui="{ base: 'h-full resize-none font-mono text-xs' }"
               :value="selectedFileContent"
               :placeholder="$t('preview-select-file')"
             />
@@ -78,6 +78,7 @@
       v-model:open="commitModalOpen"
       :title="$t('commit-modal-title')"
       :close="!isCommitting"
+      :ui="{ content: 'max-w-5xl' }"
     >
       <template #body>
         <div class="flex flex-col gap-4">
@@ -105,13 +106,129 @@
             />
           </UFormField>
 
-          <UAlert
-            color="info"
-            variant="soft"
-            icon="i-lucide-shield-check"
-            :title="$t('commit-server-generated')"
-            :description="$t('commit-server-generated-desc')"
-          />
+          <div class="flex flex-col gap-2 min-h-0">
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-sm font-semibold">
+                {{ $t('commit-diff-title') }}
+              </h3>
+              <span
+                v-if="commitFileChanges.length > 0"
+                class="text-sm text-toned"
+              >
+                {{
+                  $t('commit-diff-summary', {
+                    added: commitDiffSummary.added,
+                    modified: commitDiffSummary.modified,
+                    deleted: commitDiffSummary.deleted,
+                  })
+                }}
+              </span>
+            </div>
+
+            <div
+              v-if="commitPreviewLoading"
+              class="flex items-center gap-2 py-6 text-sm text-toned"
+            >
+              <UIcon
+                name="i-svg-spinners-90-ring"
+                class="size-4"
+              />
+              {{ $t('commit-diff-loading') }}
+            </div>
+
+            <UAlert
+              v-else-if="commitPreviewError"
+              color="error"
+              variant="soft"
+              icon="i-lucide-alert-circle"
+              :title="$t('commit-diff-failed')"
+              :description="commitPreviewError"
+            />
+
+            <div
+              v-else-if="commitFileChanges.length === 0"
+              class="rounded-lg border border-dashed border-default bg-muted/40 px-4 py-6 text-sm text-toned"
+            >
+              {{ $t('commit-no-changes') }}
+            </div>
+
+            <div
+              v-else
+              class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-default bg-muted/30 sm:flex-row"
+            >
+              <div class="max-h-64 shrink-0 overflow-y-auto border-b border-default bg-muted/20 sm:w-60 sm:border-b-0 sm:border-r">
+                <button
+                  v-for="change in commitFileChanges"
+                  :key="change.path"
+                  type="button"
+                  class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors"
+                  :class="selectedChangePath === change.path ? 'bg-accented text-highlighted' : 'text-toned hover:bg-muted/60'"
+                  @click="selectedChangePath = change.path"
+                >
+                  <span
+                    class="w-4 shrink-0 text-center font-mono text-sm font-bold"
+                    :class="statusClass(change.status)"
+                  >
+                    {{ statusSymbol(change.status) }}
+                  </span>
+                  <span class="min-w-0 truncate font-mono text-sm">
+                    {{ change.path }}
+                  </span>
+                </button>
+              </div>
+
+              <div class="flex min-w-0 flex-1 flex-col">
+                <div class="flex items-center justify-between gap-2 border-b border-default px-3 py-1.5">
+                  <span class="min-w-0 truncate font-mono text-sm text-toned">
+                    {{ selectedChangePath }}
+                  </span>
+                  <span
+                    v-if="commitSelectedChange"
+                    class="shrink-0 text-sm font-semibold"
+                    :class="statusClass(commitSelectedChange.status)"
+                  >
+                    {{ statusLabel(commitSelectedChange.status) }}
+                  </span>
+                </div>
+
+                <div
+                  :key="selectedChangePath ?? ''"
+                  class="min-h-[18rem] max-h-[50vh] flex-1 overflow-auto"
+                >
+                  <div class="min-w-max font-mono text-xs leading-relaxed">
+                    <template
+                      v-for="(group, i) in commitDiffGroups"
+                      :key="i"
+                    >
+                      <div
+                        v-if="group.kind === 'change'"
+                        class="flex"
+                      >
+                        <span
+                          class="w-6 shrink-0 select-none pr-2 text-right"
+                          :class="diffLineMarkerClass(group.type)"
+                        >
+                          {{ diffLineMarker(group.type) }}
+                        </span>
+                        <span
+                          class="whitespace-pre"
+                          :class="diffLineTextClass(group.type)"
+                        >
+                          {{ group.value || '\u00A0' }}
+                        </span>
+                      </div>
+                      <div
+                        v-else
+                        class="select-none px-3 py-0.5 text-center text-muted"
+                      >
+                        ⋯ {{ $t('commit-diff-collapsed-lines', { count: group.count }) }} ⋯
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div class="flex justify-end gap-2">
             <UButton
@@ -126,7 +243,7 @@
               :label="$t('commit-confirm')"
               icon="i-lucide-git-commit-horizontal"
               :loading="isCommitting"
-              :disabled="!validatedData || !commitMessage.trim()"
+              :disabled="!validatedData || !commitMessage.trim() || commitPreviewLoading || (!commitPreviewError && commitFileChanges.length === 0)"
               @click="submitCommit"
             />
           </div>
@@ -359,11 +476,13 @@ import type { DropdownMenuItem, StepperItem, TreeItem } from '@nuxt/ui';
 import { actions } from 'astro:actions';
 import { PUBLIC_TURNSTILE_SITEKEY } from 'astro:env/client';
 import { useFluent } from 'fluent-vue';
+import { diffLines } from 'diff';
 import JSZip from 'jszip';
 import { decodeTime } from 'ulidx';
 import { computed, nextTick, ref, watch } from 'vue';
 import VueTurnstile from 'vue-turnstile';
 import { createZMKConfig } from '~/export';
+import type { RepositoryFileChange } from '~/lib/repoChanges';
 import { ValidatedKeyboardSchema } from '~/lib/validators';
 import type { Key, Keyboard } from '~/types';
 import { useKeyboardStore, useNavigationStore } from '../stores';
@@ -561,12 +680,121 @@ const captchaToken = ref('');
 const commitModalOpen = ref(false);
 const isCommitting = ref(false);
 const commitMessage = ref('Update keyboard configuration via Shield Wizard');
+const commitFileChanges = ref<RepositoryFileChange[]>([]);
+const commitPreviewLoading = ref(false);
+const commitPreviewError = ref<string | null>(null);
+const selectedChangePath = ref<string | null>(null);
 const importLinkInput = ref<{ $el?: Element } | null>(null);
 const importResultUrl = computed(() => {
   if (!navigation.build.repoId) return '';
   const baseUrl = window.location.origin;
   return `${baseUrl}/repo/${navigation.build.repoId}.git`;
 });
+
+type CommitChangeStatus = RepositoryFileChange['status'];
+
+interface CommitDiffLine {
+  type: 'add' | 'remove' | 'context';
+  value: string;
+}
+
+type CommitDiffGroup
+  = | { kind: 'change'; type: CommitDiffLine['type']; value: string }
+    | { kind: 'fold'; count: number };
+
+const commitDiffSummary = computed(() => {
+  const summary = { added: 0, modified: 0, deleted: 0 };
+  for (const change of commitFileChanges.value) {
+    summary[change.status] += 1;
+  }
+  return summary;
+});
+
+const commitSelectedChange = computed(() =>
+  commitFileChanges.value.find(change => change.path === selectedChangePath.value) ?? null,
+);
+
+const commitDiffGroups = computed<CommitDiffGroup[]>(() => {
+  const change = commitSelectedChange.value;
+  if (!change) return [];
+
+  const groups: CommitDiffGroup[] = [];
+  let contextCount = 0;
+
+  const flushContext = () => {
+    if (contextCount === 0) return;
+    groups.push({ kind: 'fold', count: contextCount });
+    contextCount = 0;
+  };
+
+  for (const part of diffLines(change.oldContent, change.newContent)) {
+    const type: CommitDiffLine['type'] = part.added ? 'add' : part.removed ? 'remove' : 'context';
+    const values = part.value.split('\n');
+    if (part.value.endsWith('\n')) values.pop();
+
+    for (const rawValue of values) {
+      const value = rawValue.replace(/\r$/, '');
+      if (type === 'context') {
+        contextCount += 1;
+        continue;
+      }
+      flushContext();
+      groups.push({ kind: 'change', type, value });
+    }
+  }
+  flushContext();
+
+  return groups;
+});
+
+function statusSymbol(status: CommitChangeStatus): string {
+  switch (status) {
+    case 'added': return '+';
+    case 'deleted': return '−';
+    case 'modified': return '~';
+  }
+}
+
+function statusLabel(status: CommitChangeStatus | undefined): string {
+  switch (status) {
+    case 'added': return $t('commit-file-added');
+    case 'deleted': return $t('commit-file-deleted');
+    case 'modified': return $t('commit-file-modified');
+    default: return '';
+  }
+}
+
+function statusClass(status: CommitChangeStatus): string {
+  switch (status) {
+    case 'added': return 'text-success';
+    case 'deleted': return 'text-error';
+    case 'modified': return 'text-warning';
+  }
+}
+
+function diffLineMarker(type: CommitDiffLine['type']): string {
+  switch (type) {
+    case 'add': return '+';
+    case 'remove': return '−';
+    case 'context': return ' ';
+  }
+}
+
+function diffLineMarkerClass(type: CommitDiffLine['type']): string {
+  switch (type) {
+    case 'add': return 'text-success';
+    case 'remove': return 'text-error';
+    case 'context': return 'text-muted';
+  }
+}
+
+function diffLineTextClass(type: CommitDiffLine['type']): string {
+  switch (type) {
+    case 'add': return 'bg-success/10 text-success';
+    case 'remove': return 'bg-error/10 text-error';
+    case 'context': return 'text-default';
+  }
+}
 
 function onDropdownOpenChange(open: boolean) {
   if (!open) return;
@@ -663,6 +891,47 @@ function openCommit() {
   if (!workflow.isEditing || !workflow.editingRepository) return;
   dropdownOpen.value = false;
   commitModalOpen.value = true;
+  void loadCommitPreview();
+}
+
+async function loadCommitPreview() {
+  const repository = workflow.editingRepository;
+  if (!validatedData.value || !repository) return;
+
+  commitPreviewLoading.value = true;
+  commitPreviewError.value = null;
+  commitFileChanges.value = [];
+  selectedChangePath.value = null;
+
+  try {
+    const { data, error } = await actions.githubPreviewChanges({
+      owner: repository.owner.login,
+      repo: repository.name,
+      branch: repository.defaultBranch,
+      keyboard: validatedData.value,
+    });
+
+    if (error) {
+      if (error.code === 'UNAUTHORIZED') {
+        workflow.expireSession();
+        commitModalOpen.value = false;
+        return;
+      }
+      commitPreviewError.value = error.message;
+      return;
+    }
+
+    commitFileChanges.value = data?.changes ?? [];
+    if (commitFileChanges.value.length > 0) {
+      selectedChangePath.value = commitFileChanges.value[0].path;
+    }
+  }
+  catch (error) {
+    commitPreviewError.value = error instanceof Error ? error.message : String(error);
+  }
+  finally {
+    commitPreviewLoading.value = false;
+  }
 }
 
 async function submitCommit() {
@@ -908,10 +1177,17 @@ commit-modal-title = Confirm Changes to Repository
 commit-target = Repository:
 commit-branch = This will be committed directly to the default branch ({ $branch }).
 commit-message-label = Commit Message
-commit-server-generated = Server-side generation
-commit-server-generated-desc = The browser only sends the validated keyboard state. File contents, the git commit, and stale-file deletion are all produced on the server.
 commit-cancel = Cancel
 commit-confirm = Save Changes
+commit-diff-title = Changes
+commit-diff-loading = Loading changes…
+commit-diff-failed = Could not load changes
+commit-no-changes = No changes to save. Edit the keyboard configuration first.
+commit-diff-summary = { $added } added, { $modified } modified, { $deleted } deleted
+commit-diff-collapsed-lines = { $count } unchanged lines
+commit-file-added = Added
+commit-file-modified = Modified
+commit-file-deleted = Deleted
 commit-failed = Failed to Save Changes
 commit-succeeded = Changes Saved
 commit-succeeded-desc = Saved to { $fullName }
@@ -982,10 +1258,17 @@ commit-modal-title = 确认提交到仓库
 commit-target = 仓库:
 commit-branch = 这将直接提交到默认分支（{ $branch }）。
 commit-message-label = 提交信息
-commit-server-generated = 服务器端生成
-commit-server-generated-desc = 浏览器只发送通过验证的键盘状态。文件内容、git 提交和过期文件删除全部在服务器端完成。
 commit-cancel = 取消
 commit-confirm = 保存修改
+commit-diff-title = 变更
+commit-diff-loading = 正在加载变更…
+commit-diff-failed = 无法加载变更
+commit-no-changes = 没有可保存的变更。请先编辑键盘配置。
+commit-diff-summary = 新增 { $added } 个，修改 { $modified } 个，删除 { $deleted } 个
+commit-diff-collapsed-lines = { $count } 行未变更
+commit-file-added = 新增
+commit-file-modified = 修改
+commit-file-deleted = 删除
 commit-failed = 保存修改失败
 commit-succeeded = 修改已保存
 commit-succeeded-desc = 已保存到 { $fullName }
@@ -1055,10 +1338,17 @@ commit-modal-title = リポジトリへの変更を確認
 commit-target = リポジトリ:
 commit-branch = これはデフォルトブランチ（{ $branch }）に直接コミットされます。
 commit-message-label = コミットメッセージ
-commit-server-generated = サーバー側で生成
-commit-server-generated-desc = ブラウザが送信するのは検証済みのキーボード状態だけです。ファイル内容、gitコミット、不要ファイルの削除はすべてサーバーで生成されます。
 commit-cancel = キャンセル
 commit-confirm = 変更を保存
+commit-diff-title = 変更内容
+commit-diff-loading = 変更内容を読み込み中…
+commit-diff-failed = 変更内容を読み込めませんでした
+commit-no-changes = 保存する変更はありません。先にキーボード設定を編集してください。
+commit-diff-summary = 追加 { $added }、変更 { $modified }、削除 { $deleted }
+commit-diff-collapsed-lines = 変更なし { $count } 行
+commit-file-added = 追加
+commit-file-modified = 変更
+commit-file-deleted = 削除
 commit-failed = 変更を保存できませんでした
 commit-succeeded = 変更を保存しました
 commit-succeeded-desc = { $fullName } に保存しました

@@ -64,6 +64,7 @@
     "@standard-schema/spec": "1.1.0",
     "@vueuse/core": "14.4.0",
     "delaunator": "5.1.0",
+    "diff": "^9.0.0",
     "fluent-vue": "3.8.2",
     "jszip": "3.10.1",
     "lz-string": "1.5.0",

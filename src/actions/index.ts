@@ -17,11 +17,13 @@ import { createZMKConfig } from '~/export';
 import {
   commitRepositoryChanges,
   exchangeGithubCode,
+  fetchGithubTextFilesBatch,
   getGithubRepository,
   getGithubUser,
   GithubApiError,
   listGithubInstallations,
   listInstallationRepositories,
+  listRepositoryTreePathsForBranch,
   markRepositoriesWithShieldConfig,
   readGithubTextFile,
   type GithubInstallation,
@@ -37,6 +39,8 @@ import {
 } from '~/lib/githubSession';
 import { compareGithubRepos } from '~/lib/githubRepoOrder';
 import { createGitRepository } from '~/lib/gitrepo';
+import { githubFileAdditions, githubFileDeletions } from '~/lib/githubPolicy';
+import { computeRepositoryFileChanges } from '~/lib/repoChanges';
 import { getRepoKV } from '~/lib/kv';
 import { parseShieldWizardData, SHIELD_WIZARD_DATA_FILE } from '~/lib/dataFormat';
 import { KeyboardSchema, type Keyboard } from '~/types/keyboard';
@@ -358,6 +362,55 @@ async function computeUserModifiedPreservedPaths(
   }
 
   return preserved;
+}
+
+async function requireExistingRepositoryKeyboard(
+  token: string,
+  owner: string,
+  repo: string,
+  branch: string,
+  nextKeyboard: Keyboard,
+) {
+  const existingFile = await readGithubTextFile(
+    token,
+    owner,
+    repo,
+    SHIELD_WIZARD_DATA_FILE,
+    branch,
+  );
+  const existing = parseRepositoryKeyboard(existingFile.content);
+  if (existing.keyboard.shield !== nextKeyboard.shield) {
+    throw new ActionError({
+      code: 'BAD_REQUEST',
+      message: 'The shield name cannot be changed when editing an existing repository. Start a new shield instead.',
+    });
+  }
+  return { existing };
+}
+
+interface RepositoryCommitPlan {
+  files: ReturnType<typeof createZMKConfig>;
+  preservedPaths: Set<string>;
+}
+
+async function buildRepositoryCommitPlan(
+  token: string,
+  owner: string,
+  repo: string,
+  branch: string,
+  existingKeyboard: Keyboard,
+  nextKeyboard: Keyboard,
+): Promise<RepositoryCommitPlan> {
+  return {
+    files: createZMKConfig(nextKeyboard),
+    preservedPaths: await computeUserModifiedPreservedPaths(
+      token,
+      owner,
+      repo,
+      branch,
+      existingKeyboard,
+    ),
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -702,6 +755,96 @@ export const server = {
     },
   }),
 
+  githubPreviewChanges: defineAction({
+    input: z.object({
+      owner: z.string().min(1).max(100).regex(/^[A-Za-z0-9_.-]+$/),
+      repo: z.string().min(1).max(100).regex(/^[A-Za-z0-9_.-]+$/),
+      branch: z.string().min(1).max(250).regex(/^(?![-.])[A-Za-z0-9_./-]+(?<!\.)$/),
+      keyboard: ValidatedKeyboardSchema,
+    }),
+    async handler(input, context) {
+      const token = await requireGithubToken(context);
+
+      try {
+        const newFiles = createZMKConfig(input.keyboard);
+        const existingPaths = await listRepositoryTreePathsForBranch(
+          token,
+          input.owner,
+          input.repo,
+          input.branch,
+        );
+
+        // Fetch every file that might be compared in one batched GraphQL
+        // request instead of a separate REST call per file.
+        const newFilePathSet = new Set(Object.keys(newFiles));
+        const additionCandidates = githubFileAdditions(newFiles, new Set())
+          .map(entry => entry.path);
+        const deletionCandidates = githubFileDeletions(
+          existingPaths,
+          newFilePathSet,
+          new Set(),
+        ).map(entry => entry.path);
+        const fetchPaths = Array.from(new Set([
+          SHIELD_WIZARD_DATA_FILE,
+          ...CONDITIONALLY_PRESERVED_PATHS,
+          ...additionCandidates,
+          ...deletionCandidates,
+        ]));
+        const fetchedFiles = await fetchGithubTextFilesBatch(
+          token,
+          input.owner,
+          input.repo,
+          input.branch,
+          fetchPaths,
+        );
+
+        const dataFile = fetchedFiles.get(SHIELD_WIZARD_DATA_FILE);
+        if (!dataFile) {
+          throw new GithubApiError(`Repository data file is missing: ${SHIELD_WIZARD_DATA_FILE}`, 404);
+        }
+        const existing = parseRepositoryKeyboard(dataFile.content);
+        if (existing.keyboard.shield !== input.keyboard.shield) {
+          throw new ActionError({
+            code: 'BAD_REQUEST',
+            message: 'The shield name cannot be changed when editing an existing repository. Start a new shield instead.',
+          });
+        }
+        if (JSON.stringify(existing.keyboard) === JSON.stringify(input.keyboard)) {
+          return { changes: [] };
+        }
+
+        console.log('Previewing Shield Wizard changes for:', `${input.owner}/${input.repo}@${input.branch}`);
+        const baseline = createZMKConfig(existing.keyboard);
+        const preservedPaths = new Set<string>();
+        for (const filePath of CONDITIONALLY_PRESERVED_PATHS) {
+          const baselineContent = baseline[filePath];
+          if (baselineContent === undefined) continue;
+          const current = fetchedFiles.get(filePath);
+          if (current && current.content !== baselineContent) {
+            preservedPaths.add(filePath);
+          }
+        }
+
+        const changes = await computeRepositoryFileChanges({
+          existingPaths,
+          newFiles,
+          preservedPaths,
+          readFile: async (filePath) => {
+            const file = fetchedFiles.get(filePath);
+            return file ? file.content : null;
+          },
+        });
+
+        return { changes };
+      }
+      catch (error) {
+        if (error instanceof ActionError) throw error;
+        if (GithubApiError.isUnauthorized(error)) clearGithubCookie(context);
+        throw githubActionError(error, 'BAD_REQUEST');
+      }
+    },
+  }),
+
   githubCommitChanges: defineAction({
     input: z.object({
       owner: z.string().min(1).max(100).regex(/^[A-Za-z0-9_.-]+$/),
@@ -717,20 +860,13 @@ export const server = {
         // The shield name is part of every generated file name. Renaming it
         // in place would strand the preserved `config/` files and delete the
         // board/shield tree, so refuse it and point the user at New Shield.
-        const existingFile = await readGithubTextFile(
+        const { existing } = await requireExistingRepositoryKeyboard(
           token,
           input.owner,
           input.repo,
-          SHIELD_WIZARD_DATA_FILE,
           input.branch,
+          input.keyboard,
         );
-        const existing = parseRepositoryKeyboard(existingFile.content);
-        if (existing.keyboard.shield !== input.keyboard.shield) {
-          throw new ActionError({
-            code: 'BAD_REQUEST',
-            message: 'The shield name cannot be changed when editing an existing repository. Start a new shield instead.',
-          });
-        }
         if (JSON.stringify(existing.keyboard) === JSON.stringify(input.keyboard)) {
           throw new ActionError({
             code: 'BAD_REQUEST',
@@ -739,13 +875,13 @@ export const server = {
         }
 
         console.log('Committing Shield Wizard changes to:', `${input.owner}/${input.repo}@${input.branch}`);
-        const files = createZMKConfig(input.keyboard);
-        const preservedPaths = await computeUserModifiedPreservedPaths(
+        const { files, preservedPaths } = await buildRepositoryCommitPlan(
           token,
           input.owner,
           input.repo,
           input.branch,
           existing.keyboard,
+          input.keyboard,
         );
         const result = await commitRepositoryChanges(token, {
           owner: input.owner,
