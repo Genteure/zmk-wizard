@@ -158,7 +158,7 @@
                     :key="change.path"
                     :class="selectedChangePath === change.path ? 'bg-accented text-highlighted' : 'text-toned hover:bg-muted/60'"
                     :title="change.path"
-                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors"
+                    class="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors"
                     type="button"
                     @click="selectedChangePath = change.path"
                   >
@@ -168,7 +168,7 @@
                     >
                       {{ statusSymbol(change.status) }}
                     </span>
-                    <span class="min-w-0 truncate font-mono text-sm">
+                    <span class="min-w-0 truncate font-mono text-xs">
                       {{ change.path }}
                     </span>
                   </button>

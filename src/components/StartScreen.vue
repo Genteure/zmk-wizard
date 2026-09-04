@@ -20,9 +20,12 @@
         </div>
 
         <div class="grid sm:grid-cols-2 gap-4 sm:gap-6 w-full">
-          <UCard
-            class="group h-full transition-colors hover:border-primary/40"
-            :ui="{ body: 'flex flex-col gap-4 p-5 sm:p-6' }"
+          <UButton
+            color="neutral"
+            variant="outline"
+            block
+            class="h-full w-full text-left flex flex-col gap-3 p-4 sm:p-5 items-center justify-start"
+            @click="$emit('new')"
           >
             <div class="flex items-center gap-2.5">
               <div class="size-8 shrink-0 flex items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -37,25 +40,16 @@
             </div>
 
             <p class="text-sm leading-relaxed text-toned">
-              {{ $t('start-new-description') }}
+              {{ $t('start-new-desc') }}
             </p>
+          </UButton>
 
-            <div class="mt-auto pt-1">
-              <UButton
-                block
-                size="md"
-                color="primary"
-                variant="soft"
-                :label="$t('start-new-action')"
-                icon="i-lucide-pen-line"
-                @click="$emit('new')"
-              />
-            </div>
-          </UCard>
-
-          <UCard
-            class="group h-full transition-colors hover:border-secondary/40"
-            :ui="{ body: 'flex flex-col gap-4 p-5 sm:p-6' }"
+          <UButton
+            color="neutral"
+            variant="outline"
+            block
+            class="h-full w-full text-left flex flex-col gap-3 p-4 sm:p-5 items-center justify-start"
+            @click="$emit('edit')"
           >
             <div class="flex items-center gap-2.5">
               <div class="size-8 shrink-0 flex items-center justify-center rounded-lg bg-secondary/10 text-secondary">
@@ -70,26 +64,14 @@
             </div>
 
             <p class="text-sm leading-relaxed text-toned">
-              {{ $t('start-edit-description') }}
+              {{ $t('start-edit-desc') }}
             </p>
-
-            <div class="mt-auto pt-1">
-              <UButton
-                block
-                size="md"
-                color="secondary"
-                variant="soft"
-                :label="$t('start-edit-action')"
-                icon="i-lucide-github"
-                @click="$emit('edit')"
-              />
-            </div>
-          </UCard>
+          </UButton>
         </div>
 
         <ULink
           href="https://github.com/genteure/zmk-wizard"
-          class="underline text-sm text-muted"
+          class="underline text-xs text-dimmed"
           target="_blank"
         >
           https://github.com/genteure/zmk-wizard
@@ -115,37 +97,31 @@ const nav = useNavigationStore();
 </script>
 
 <ftl locale="en">
-start-subtitle = Design a ZMK keyboard shield graphically, without writing configuration files.
+start-subtitle = Create ZMK shields for custom keyboards interactively, without writing code.
 
 start-new-title = Create a New Shield
-start-new-description = Start from a blank configuration, design the layout, then export it as a git repository or ZIP archive.
-start-new-action = Start a New Shield
+start-new-desc = Design a new ZMK keyboard, then get a git import link or download a ZIP archive.
 
-start-edit-title = Edit an Existing Repository
-start-edit-description = Sign in, choose a Shield Wizard repository, update the hardware configuration, and save the files back.
-start-edit-action = Edit on GitHub
+start-edit-title = Edit a Repository
+start-edit-desc = Sign in with GitHub account, choose an existing Shield Wizard repository, update the keyboard, and save the files back.
 </ftl>
 
 <ftl locale="zh-CN">
-start-subtitle = 用图形界面设计 ZMK 键盘 shield，无需手写配置文件。
+start-subtitle = 以交互方式为自定义键盘创建 ZMK shield，无需编写代码。
 
 start-new-title = 新建 Shield
-start-new-description = 从空白配置开始设计布局，然后导出为 git 仓库或 ZIP 压缩包。
-start-new-action = 开始新建 Shield
+start-new-desc = 设计一个新的 ZMK 键盘，然后获取 git 导入链接或下载 ZIP 压缩包。
 
-start-edit-title = 编辑已有仓库
-start-edit-description = 登录并选择一个 Shield Wizard 仓库，更新硬件配置后保存回去。
-start-edit-action = 在 GitHub 上编辑
+start-edit-title = 编辑仓库
+start-edit-desc = 使用 GitHub 账户登录，选择一个已有的 Shield Wizard 仓库，更新键盘后将文件保存回去。
 </ftl>
 
 <ftl locale="ja">
-start-subtitle = ZMKキーボードシールドを、設定ファイルを書かずにグラフィカルに設計できます。
+start-subtitle = カスタムキーボード用の ZMK シールドを、コードを書かずに対話的に作成できます。
 
 start-new-title = 新しいシールドを作成
-start-new-description = 空の設定からレイアウトを設計し、gitリポジトリまたはZIPアーカイブとして出力します。
-start-new-action = 新しいシールドを開始
+start-new-desc = 新しい ZMK キーボードを設計し、git インポートリンクを取得するか、ZIP アーカイブをダウンロードします。
 
-start-edit-title = 既存のリポジトリを編集
-start-edit-description = サインインしてShield Wizardリポジトリを選び、ハードウェア設定を更新して保存し直します。
-start-edit-action = GitHubで編集
+start-edit-title = リポジトリを編集
+start-edit-desc = GitHub アカウントでサインインし、既存の Shield Wizard リポジトリを選択して、キーボードを更新し、ファイルを保存し直します。
 </ftl>

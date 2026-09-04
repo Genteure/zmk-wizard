@@ -35,12 +35,12 @@
         <UButton
           color="neutral"
           variant="ghost"
-          :label="$t('wf-cancel')"
+          :label="$t('cancel')"
           @click="confirmOpen = false"
         />
         <UButton
           :color="confirmColor"
-          :label="$t('wf-confirm-action')"
+          :label="$t('confirm-action')"
           @click="confirmPendingAction"
         />
       </div>
@@ -76,29 +76,29 @@ const modeLabel = computed(() => {
   if (workflow.githubUser) {
     return workflow.githubUser.login;
   }
-  return $t('wf-new-shield');
+  return $t('new-shield');
 });
 
 const confirmTitle = computed(() => {
   switch (pendingAction.value) {
-    case 'new': return $t('wf-confirm-new-title');
-    case 'edit': return $t('wf-confirm-edit-title');
-    case 'logout': return $t('wf-confirm-logout-title');
-    case 'login': return $t('wf-confirm-login-title');
-    default: return $t('wf-confirm-title');
+    case 'new': return $t('confirm-new-title');
+    case 'edit': return $t('confirm-edit-title');
+    case 'logout': return $t('confirm-logout-title');
+    case 'login': return $t('confirm-login-title');
+    default: return $t('confirm-title');
   }
 });
 
 const confirmDescription = computed(() => {
   if (workflow.isEditing && pendingAction.value !== null) {
-    return $t('wf-leave-edit-warning');
+    return $t('leave-edit-warning');
   }
   switch (pendingAction.value) {
-    case 'new': return $t('wf-confirm-new-description');
-    case 'edit': return $t('wf-confirm-edit-description');
-    case 'logout': return $t('wf-confirm-logout-description');
-    case 'login': return $t('wf-confirm-login-description');
-    default: return $t('wf-confirm-description');
+    case 'new': return $t('confirm-new-description');
+    case 'edit': return $t('confirm-edit-description');
+    case 'logout': return $t('confirm-logout-description');
+    case 'login': return $t('confirm-login-description');
+    default: return $t('confirm-description');
   }
 });
 
@@ -125,13 +125,13 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
   if (workflow.isEditing) {
     items.push([
       {
-        label: $t('wf-view-repo'),
+        label: $t('view-repo'),
         icon: 'i-lucide-external-link',
         to: workflow.editingRepository?.htmlUrl ?? 'https://github.com',
         target: '_blank',
       },
       {
-        label: $t('wf-edit-other'),
+        label: $t('edit-other'),
         icon: 'i-lucide-folder-search',
         onSelect() { requestAction('edit'); },
       },
@@ -140,13 +140,13 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
 
   items.push([
     {
-      label: $t('wf-new-shield'),
+      label: $t('new-shield'),
       icon: 'i-lucide-pen-line',
       color: workflow.isNew ? 'primary' : 'neutral',
       onSelect() { requestAction('new'); },
     },
     {
-      label: $t('wf-edit-repo'),
+      label: $t('edit-repo'),
       icon: 'i-lucide-github',
       color: workflow.isEditing ? 'primary' : 'neutral',
       onSelect() { requestAction('edit'); },
@@ -156,7 +156,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
   if (workflow.githubUser) {
     items.push([
       {
-        label: `${$t('wf-signed-in-as')} ${workflow.githubUser.login}`,
+        label: workflow.githubUser.login,
         avatar: { src: workflow.githubUser.avatarUrl, alt: workflow.githubUser.login },
         onSelect(e) { e.preventDefault(); },
       },
@@ -172,7 +172,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
     items.push([
       { type: 'separator' },
       {
-        label: $t('wf-connect-github'),
+        label: $t('connect-github'),
         icon: 'i-lucide-log-in',
         onSelect() { requestAction('login'); },
       },
@@ -184,67 +184,67 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
 </script>
 
 <ftl locale="en">
-wf-new-shield = New Shield
-wf-edit-repo = Edit Existing Repository
-wf-edit-other = Edit a Different Repository
-wf-view-repo = View Repository on GitHub
-wf-signed-in-as = Signed in as
-wf-connect-github = Connect to GitHub
-wf-confirm-title = Switch Workflow?
-wf-confirm-description = Switch to this workflow?
-wf-confirm-new-title = Start a New Shield?
-wf-confirm-new-description = Start a new Shield and discard the current configuration?
-wf-confirm-edit-title = Edit Existing Repository?
-wf-confirm-edit-description = Open the GitHub repository picker?
-wf-confirm-logout-title = Sign Out?
-wf-confirm-logout-description = Sign out of GitHub?
-wf-confirm-login-title = Connect to GitHub?
-wf-confirm-login-description = Sign in to GitHub so you can edit existing repositories.
-wf-leave-edit-warning = Your unsaved edits in this tab will be discarded. Save to GitHub first if you want to keep them.
-wf-confirm-action = Continue
-wf-cancel = Cancel
+new-shield = New Shield
+edit-repo = Edit Existing Repository
+edit-other = Edit a Different Repository
+view-repo = View Repository on GitHub
+signed-in-as = Signed in as
+connect-github = Connect to GitHub
+confirm-title = Switch Workflow?
+confirm-description = Switch to this workflow?
+confirm-new-title = Start a New Shield?
+confirm-new-description = Start a new Shield and discard the current configuration?
+confirm-edit-title = Edit Existing Repository?
+confirm-edit-description = Open the GitHub repository picker?
+logout = Sign Out
+confirm-logout-title = Sign Out?
+confirm-logout-description = Sign out of GitHub?
+confirm-login-title = Connect to GitHub?
+confirm-login-description = Sign in to GitHub so you can edit existing repositories.
+leave-edit-warning = Your unsaved edits in this tab will be discarded. Save to GitHub first if you want to keep them.
+confirm-action = Continue
 </ftl>
 
 <ftl locale="zh-CN">
-wf-new-shield = 新建 Shield
-wf-edit-repo = 编辑已有仓库
-wf-edit-other = 编辑其他仓库
-wf-view-repo = 在 GitHub 上查看仓库
-wf-signed-in-as = 已登录为
-wf-connect-github = 连接到 GitHub
-wf-confirm-title = 切换工作流？
-wf-confirm-description = 切换到该工作流？
-wf-confirm-new-title = 开始新建 Shield？
-wf-confirm-new-description = 开始新建 Shield 并丢弃当前配置？
-wf-confirm-edit-title = 编辑已有仓库？
-wf-confirm-edit-description = 打开 GitHub 仓库选择器？
-wf-confirm-logout-title = 退出登录？
-wf-confirm-logout-description = 退出 GitHub 登录？
-wf-confirm-login-title = 连接到 GitHub？
-wf-confirm-login-description = 登录 GitHub 以编辑已有仓库。
-wf-leave-edit-warning = 当前标签页中未保存的修改将被丢弃。如需保留，请先保存到 GitHub。
-wf-confirm-action = 继续
-wf-cancel = 取消
+new-shield = 新建 Shield
+edit-repo = 编辑已有仓库
+edit-other = 编辑其他仓库
+view-repo = 在 GitHub 上查看仓库
+signed-in-as = 已登录为
+connect-github = 连接到 GitHub
+confirm-title = 切换工作流？
+confirm-description = 切换到该工作流？
+confirm-new-title = 开始新建 Shield？
+confirm-new-description = 开始新建 Shield 并丢弃当前配置？
+confirm-edit-title = 编辑已有仓库？
+confirm-edit-description = 打开 GitHub 仓库选择器？
+logout = 退出登录
+confirm-logout-title = 退出登录？
+confirm-logout-description = 退出 GitHub 登录？
+confirm-login-title = 连接到 GitHub？
+confirm-login-description = 登录 GitHub 以编辑已有仓库。
+leave-edit-warning = 当前标签页中未保存的修改将被丢弃。如需保留，请先保存到 GitHub。
+confirm-action = 继续
 </ftl>
 
 <ftl locale="ja">
-wf-new-shield = 新しいシールド
-wf-edit-repo = 既存のリポジトリを編集
-wf-edit-other = 別のリポジトリを編集
-wf-view-repo = GitHubでリポジトリを表示
-wf-signed-in-as = サインイン中:
-wf-connect-github = GitHubに接続
-wf-confirm-title = ワークフローを切り替えますか？
-wf-confirm-description = このワークフローに切り替えますか？
-wf-confirm-new-title = 新しいシールドを開始しますか？
-wf-confirm-new-description = 新しいシールドを開始し、現在の設定を破棄しますか？
-wf-confirm-edit-title = 既存のリポジトリを編集しますか？
-wf-confirm-edit-description = GitHubのリポジトリ選択を開きますか？
-wf-confirm-logout-title = サインアウトしますか？
-wf-confirm-logout-description = GitHubからサインアウトしますか？
-wf-confirm-login-title = GitHubに接続しますか？
-wf-confirm-login-description = GitHubにサインインして既存のリポジトリを編集できるようにします。
-wf-leave-edit-warning = このタブの未保存の編集は破棄されます。保持するには先にGitHubへ保存してください。
-wf-confirm-action = 続行
-wf-cancel = キャンセル
+new-shield = 新しいシールド
+edit-repo = 既存のリポジトリを編集
+edit-other = 別のリポジトリを編集
+view-repo = GitHubでリポジトリを表示
+signed-in-as = サインイン中:
+connect-github = GitHubに接続
+confirm-title = ワークフローを切り替えますか？
+confirm-description = このワークフローに切り替えますか？
+confirm-new-title = 新しいシールドを開始しますか？
+confirm-new-description = 新しいシールドを開始し、現在の設定を破棄しますか？
+confirm-edit-title = 既存のリポジトリを編集しますか？
+confirm-edit-description = GitHubのリポジトリ選択を開きますか？
+logout = サインアウト
+confirm-logout-title = サインアウトしますか？
+confirm-logout-description = GitHubからサインアウトしますか？
+confirm-login-title = GitHubに接続しますか？
+confirm-login-description = GitHubにサインインして既存のリポジトリを編集できるようにします。
+leave-edit-warning = このタブの未保存の編集は破棄されます。保持するには先にGitHubへ保存してください。
+confirm-action = 続行
 </ftl>

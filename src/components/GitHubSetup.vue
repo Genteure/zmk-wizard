@@ -119,9 +119,6 @@
               <p class="text-xs text-toned">
                 {{ $t('gh-repos-signed-out') }}
               </p>
-              <p class="text-sm text-toned max-w-md">
-                {{ $t('gh-auth-description') }}
-              </p>
             </div>
 
             <UAlert
@@ -759,7 +756,6 @@ gh-back = Back
 gh-exchanging = Finishing GitHub sign-in…
 
 gh-auth-title = Sign in with GitHub
-gh-auth-description = Shield Wizard uses a GitHub App to read and update only the repositories you grant it access to.
 gh-not-configured = GitHub integration is not configured on this server
 gh-connect = Connect to GitHub
 
@@ -801,9 +797,8 @@ gh-back = 返回
 gh-exchanging = 正在完成 GitHub 登录…
 
 gh-auth-title = 使用 GitHub 登录
-gh-auth-description = Shield Wizard 通过 GitHub App 读写你授权的仓库。
 gh-not-configured = 此服务器尚未配置 GitHub 集成
-gh-connect = 连接到 GitHub
+gh-connect = 使用 GitHub 登录
 
 gh-install-title = 安装 Shield Wizard App
 gh-install-description = 选择允许应用访问的仓库。
@@ -843,7 +838,6 @@ gh-back = 戻る
 gh-exchanging = GitHubサインインを完了しています…
 
 gh-auth-title = GitHubでサインイン
-gh-auth-description = Shield WizardはGitHub Appを使い、許可したリポジトリのみを読み書きします。
 gh-not-configured = このサーバーではGitHub連携が未設定です
 gh-connect = GitHubに接続
 
