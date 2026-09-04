@@ -73,6 +73,67 @@
       </template>
     </UModal>
 
+    <!-- Commit changes modal (edit-existing-repository flow) -->
+    <UModal
+      v-model:open="commitModalOpen"
+      :title="$t('commit-modal-title')"
+      :close="!isCommitting"
+    >
+      <template #body>
+        <div class="flex flex-col gap-4">
+          <div class="text-sm text-toned flex flex-col gap-1">
+            <p>
+              {{ $t('commit-target') }}
+              <code class="font-mono">
+                {{ workflow.editingRepository?.fullName }}
+              </code>
+            </p>
+            <p>
+              {{ $t('commit-description') }}
+            </p>
+          </div>
+
+          <UFormField
+            :label="$t('commit-message-label')"
+            name="commitMessage"
+          >
+            <UInput
+              v-model="commitMessage"
+              class="w-full"
+              :maxlength="100"
+              :disabled="isCommitting"
+            />
+          </UFormField>
+
+          <UAlert
+            color="info"
+            variant="soft"
+            icon="i-lucide-shield-check"
+            :title="$t('commit-server-generated')"
+            :description="$t('commit-server-generated-desc')"
+          />
+
+          <div class="flex justify-end gap-2">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              :label="$t('commit-cancel')"
+              :disabled="isCommitting"
+              @click="commitModalOpen = false"
+            />
+            <UButton
+              color="primary"
+              :label="$t('commit-confirm')"
+              icon="i-lucide-git-commit-horizontal"
+              :loading="isCommitting"
+              :disabled="!validatedData || !commitMessage.trim()"
+              @click="submitCommit"
+            />
+          </div>
+        </div>
+      </template>
+    </UModal>
+
     <UDropdownMenu
       v-model:open="dropdownOpen"
       size="lg"
@@ -301,12 +362,14 @@ import { createZMKConfig } from '~/export';
 import { ValidatedKeyboardSchema } from '~/lib/validators';
 import type { Key, Keyboard } from '~/types';
 import { useKeyboardStore, useNavigationStore } from '../stores';
+import { useWorkflowStore } from '../workflow';
 import LayoutConfirmModal from './LayoutConfirmModal.vue';
 
 const { $t } = useFluent();
 const toast = useToast();
 const keyboard = useKeyboardStore();
 const navigation = useNavigationStore();
+const workflow = useWorkflowStore();
 
 const recommendedRepoName = computed(() => `zmk-config-${keyboard.shield}`);
 const previewModalOpen = ref(false);
@@ -490,6 +553,9 @@ function computePhysicalLayoutHash(keys: Key[]): string {
 const slideoverOpen = ref(false);
 const isBuilding = ref(false);
 const captchaToken = ref('');
+const commitModalOpen = ref(false);
+const isCommitting = ref(false);
+const commitMessage = ref('Update keyboard configuration via Shield Wizard');
 const importLinkInput = ref<{ $el?: Element } | null>(null);
 const importResultUrl = computed(() => {
   if (!navigation.build.repoId) return '';
@@ -577,10 +643,75 @@ function downloadZip() {
 }
 
 function openImportSlideover() {
+  if (workflow.isEditing) return;
   dropdownOpen.value = false;
   slideoverOpen.value = true;
 
   captchaToken.value = '';
+}
+
+function openCommit() {
+  if (!workflow.isEditing || !workflow.editingRepository) return;
+  dropdownOpen.value = false;
+  commitModalOpen.value = true;
+}
+
+async function submitCommit() {
+  const repository = workflow.editingRepository;
+  if (!validatedData.value || !repository || !commitMessage.value.trim()) return;
+
+  isCommitting.value = true;
+  try {
+    const { data, error } = await actions.githubCommitChanges({
+      owner: repository.owner.login,
+      repo: repository.name,
+      branch: repository.defaultBranch,
+      commitMessage: commitMessage.value.trim(),
+      keyboard: validatedData.value,
+    });
+
+    if (error) {
+      if (error.code === 'UNAUTHORIZED') {
+        workflow.expireSession();
+        commitModalOpen.value = false;
+        return;
+      }
+      toast.add({
+        color: 'error',
+        title: $t('commit-failed'),
+        description: error.message,
+        icon: 'i-lucide-alert-circle',
+      });
+      return;
+    }
+
+    commitModalOpen.value = false;
+    toast.add({
+      color: 'success',
+      title: $t('commit-succeeded'),
+      description: $t('commit-succeeded-desc', { fullName: repository.fullName }),
+      icon: 'i-lucide-check',
+      actions: [
+        {
+          label: $t('commit-view-on-github'),
+          href: data.commitHtmlUrl,
+          target: '_blank',
+        },
+      ],
+      duration: 0,
+    });
+  }
+  catch (error) {
+    toast.add({
+      color: 'error',
+      title: $t('commit-failed'),
+      description: error instanceof Error ? error.message : String(error),
+      icon: 'i-lucide-alert-circle',
+    });
+  }
+  finally {
+    isCommitting.value = false;
+  }
 }
 
 function resetImportFlow() {
@@ -676,32 +807,39 @@ watch(slideoverOpen, async (isOpen) => {
   focusLinkInputAndMoveCursorToEnd();
 });
 
-const menuItems = computed<DropdownMenuItem[][]>(() => [
-  [
-    {
-      label: $t('build-import-link'),
-      icon: 'i-lucide-link',
-      color: 'primary',
-      class: 'font-semibold',
-      onSelect() { openImportSlideover(); },
-    },
-    {
-      type: 'separator',
-    },
-    {
-      label: $t('build-preview'),
-      icon: 'i-lucide-eye',
-      class: 'text-toned',
-      onSelect() { openPreview(); },
-    },
-    {
-      label: $t('build-download'),
-      icon: 'i-lucide-download',
-      class: 'text-toned',
-      onSelect() { downloadZip(); },
-    },
-  ],
-]);
+const menuItems = computed<DropdownMenuItem[][]>(() => {
+  const primary: DropdownMenuItem = workflow.isEditing
+    ? {
+        label: $t('build-save-changes'),
+        icon: 'i-lucide-git-commit-horizontal',
+        color: 'primary',
+        class: 'font-semibold',
+        onSelect() { openCommit(); },
+      }
+    : {
+        label: $t('build-import-link'),
+        icon: 'i-lucide-link',
+        color: 'primary',
+        class: 'font-semibold',
+        onSelect() { openImportSlideover(); },
+      };
+
+  const separator: DropdownMenuItem = { type: 'separator' };
+  const preview: DropdownMenuItem = {
+    label: $t('build-preview'),
+    icon: 'i-lucide-eye',
+    class: 'text-toned',
+    onSelect() { openPreview(); },
+  };
+  const download: DropdownMenuItem = {
+    label: $t('build-download'),
+    icon: 'i-lucide-download',
+    class: 'text-toned',
+    onSelect() { downloadZip(); },
+  };
+
+  return [[primary, separator, preview, download]];
+});
 
 const stepperItems = computed<StepperItem[]>(() => [
   {
@@ -731,6 +869,7 @@ const stepperItems = computed<StepperItem[]>(() => [
 build = Build
 build-download = Download ZIP Archive
 build-import-link = Create Import Link
+build-save-changes = Save Changes to GitHub
 build-preview = Preview Generated Files
 preview-modal-title = Files Preview
 preview-select-file = Select a file to preview
@@ -754,6 +893,19 @@ step5-title = Customize Your Keyboard
 step5-desc = After confirming the default build works, you can start customizing keymap and build parameters. Enjoy your keyboard!
 
 error-modal-title = Validation Errors
+
+commit-modal-title = Confirm Changes to Repository
+commit-target = Repository:
+commit-description = Shield Wizard regenerates the configuration on the server. config/ is never touched; README.md, build.yaml, and the build workflow are kept when you have modified them.
+commit-message-label = Commit Message
+commit-server-generated = Server-side generation
+commit-server-generated-desc = The browser only sends the validated keyboard state. File contents, the git commit, and stale-file deletion are all produced on the server.
+commit-cancel = Cancel
+commit-confirm = Save Changes
+commit-failed = Failed to Save Changes
+commit-succeeded = Changes Saved
+commit-succeeded-desc = Saved to { $fullName }
+commit-view-on-github = View Commit on GitHub
 
 captcha-error-title = Captcha Verification Failed
 build-error-title = Build Request Failed
@@ -789,6 +941,7 @@ promo-action-label = Open on GitHub
 build = 生成
 build-download = 下载 ZIP 压缩包
 build-import-link = 创建导入链接
+build-save-changes = 保存修改到 GitHub
 build-preview = 预览生成的文件
 preview-modal-title = 文件预览
 preview-select-file = 选择文件进行预览
@@ -812,6 +965,19 @@ step5-title = 定制你的键盘
 step5-desc = 测试完生成的默认配置一切正常后，你可以开始定制键位和构建参数。享受你的键盘吧！
 
 error-modal-title = 验证错误
+
+commit-modal-title = 确认提交到仓库
+commit-target = 仓库:
+commit-description = Shield Wizard 会在服务器上重新生成配置。config/ 永远不会被改动；如果你修改过 README.md、build.yaml 或构建工作流，它们会被保留。
+commit-message-label = 提交信息
+commit-server-generated = 服务器端生成
+commit-server-generated-desc = 浏览器只发送通过验证的键盘状态。文件内容、git 提交和过期文件删除全部在服务器端完成。
+commit-cancel = 取消
+commit-confirm = 保存修改
+commit-failed = 保存修改失败
+commit-succeeded = 修改已保存
+commit-succeeded-desc = 已保存到 { $fullName }
+commit-view-on-github = 在 GitHub 上查看提交
 
 captcha-error-title = 验证码验证失败
 build-error-title = 构建请求失败
@@ -846,6 +1012,7 @@ promo-action-label = 在 GitHub 上打开
 build = 生成
 build-download = ZIP アーカイブをダウンロード
 build-import-link = インポートリンクを作成
+build-save-changes = GitHubへ変更を保存
 build-preview = 生成ファイルをプレビュー
 preview-modal-title = ファイルプレビュー
 preview-select-file = プレビューするファイルを選択
@@ -869,6 +1036,19 @@ step5-title = キーボードをカスタマイズ
 step5-desc = デフォルトビルドが動作することを確認したら、キーマップとビルドパラメータのカスタマイズを始められます。キーボードをお楽しみください！
 
 error-modal-title = 検証エラー
+
+commit-modal-title = リポジトリへの変更を確認
+commit-target = リポジトリ:
+commit-description = Shield Wizardはサーバー上で設定を再生成します。config/ は変更されず、ユーザーが変更した README.md・build.yaml・ビルドワークフローは保持されます。
+commit-message-label = コミットメッセージ
+commit-server-generated = サーバー側で生成
+commit-server-generated-desc = ブラウザが送信するのは検証済みのキーボード状態だけです。ファイル内容、gitコミット、不要ファイルの削除はすべてサーバーで生成されます。
+commit-cancel = キャンセル
+commit-confirm = 変更を保存
+commit-failed = 変更を保存できませんでした
+commit-succeeded = 変更を保存しました
+commit-succeeded-desc = { $fullName } に保存しました
+commit-view-on-github = GitHubでコミットを表示
 
 captcha-error-title = キャプチャ認証失敗
 build-error-title = ビルドリクエスト失敗

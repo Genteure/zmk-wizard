@@ -47,6 +47,12 @@
           :aria-label="$t('redo')"
           @click="history.redo()"
         />
+        <WorkflowMenu
+          @new="$emit('new')"
+          @edit="$emit('edit')"
+          @logout="$emit('logout')"
+          @login="$emit('login')"
+        />
         <BuildActions />
       </div>
     </template>
@@ -125,9 +131,17 @@ import Graphics from './graphic/graphics.vue';
 import { useHistoryStore } from './history.ts';
 import { locales } from './locales';
 import { useKeyboardStore, useNavigationStore } from './stores.ts';
+import WorkflowMenu from './WorkflowMenu.vue';
 import BuildActions from './utils/BuildActions.vue';
 import FeedbackDialog from './utils/FeedbackDialog.vue';
 import LocaleSelect from './utils/LocaleSelect.vue';
+
+defineEmits<{
+  new: [];
+  edit: [];
+  logout: [];
+  login: [];
+}>();
 
 const toast = useToast();
 

@@ -40,6 +40,25 @@ All controllers Shield Wizard currently supports have UF2 bootloaders. To flash 
 
 You should now test the keyboard over USB and BLE (if applicable). For [split keyboards](https://zmk.dev/docs/features/split-keyboards), only the first part (usually the left side) will have USB connectivity, all other parts only talk to the first part over an internal BLE connection.
 
+## Editing the Hardware Configuration Again
+
+After you have imported the repository into your GitHub account, you can open
+the Shield Wizard start page, choose **Edit Existing Repository**, and sign in
+with GitHub. Install the Shield Wizard GitHub App on the imported repository
+and pick it from the list. Shield Wizard reads its data file, restores the
+full editor state, and **Save Changes to GitHub** regenerates the wizard-owned
+files and commits them for you.
+
+Shield Wizard never touches `config/` — your keymap, ZMK options, and west
+manifest always stay as you left them. If you have customized `README.md`,
+`build.yaml`, or the build workflow, those files are kept as well; when they
+still match the original generated content, Shield Wizard refreshes them.
+Everything else that Shield Wizard originally generated (board and shield
+files, the layout SVG, and its internal data file) is replaced with freshly
+generated content and stale generated files are removed. The shield name
+cannot be changed while editing; start a new shield if you want a different
+name.
+
 ## Compile options
 
 After you have verified the basic firmware is working, you can start customizing it further.

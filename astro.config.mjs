@@ -1,5 +1,6 @@
 // @ts-check
-import { defineConfig, envField } from 'astro/config';
+import { defineConfig, envField, sessionDrivers } from 'astro/config';
+import path from 'node:path';
 
 import starlight from '@astrojs/starlight';
 import versionPlugin from './scripts/vite-plugin-version.js';
@@ -13,8 +14,7 @@ import {
 
 import cloudflare from '@astrojs/cloudflare';
 
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath } from 'node:url';
 
 // https://astro.build/config
 export default defineConfig({
@@ -31,7 +31,24 @@ export default defineConfig({
       // enforce captcha.
       PUBLIC_TURNSTILE_SITEKEY: envField.string({ context: 'client', access: 'public', optional: true, default: '1x00000000000000000000AA' }),
       FEEDBACK_WEBHOOK_URL: envField.string({ context: 'server', access: 'secret', optional: true }),
+      // GitHub App credentials for the edit-existing-repository flow.
+      // `PUBLIC_GITHUB_CLIENT_ID` is the App's Client ID (NOT the App ID).
+      PUBLIC_GITHUB_CLIENT_ID: envField.string({ context: 'client', access: 'public', optional: true, default: '' }),
+      // URL slug of the GitHub App (used for the installation deep link).
+      PUBLIC_GITHUB_APP_SLUG: envField.string({ context: 'client', access: 'public', optional: true, default: '' }),
+      GITHUB_CLIENT_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
+      // Random secret used to encrypt the GitHub access token inside the
+      // stateless HttpOnly session cookie and to sign OAuth state values.
+      GITHUB_SESSION_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
     },
+  },
+
+  // Shield Wizard is stateless on purpose: GitHub auth lives in an
+  // encrypted HttpOnly cookie, not in Astro's session storage. Force an
+  // in-memory driver so the Cloudflare adapter does not require a SESSION
+  // KV namespace.
+  session: {
+    driver: sessionDrivers.lruCache(),
   },
 
   integrations: [

@@ -57,17 +57,19 @@
               <UFormField
                 class="w-full"
                 :label="$t('shield-name')"
-                :help="$t('shield-name-help')"
+                :help="isEditing ? $t('shield-name-fixed') : $t('shield-name-help')"
                 name="shield"
               >
                 <UInput
                   v-model="formState.shield"
                   class="w-full"
                   pattern="[a-z][a-z0-9_]*"
+                  :disabled="isEditing"
                 />
               </UFormField>
 
               <i18n
+                v-if="!isEditing"
                 path="random-name"
                 tag="div"
                 class="text-sm text-toned"
@@ -141,6 +143,7 @@ import { useFluent } from 'fluent-vue';
 import { computed, reactive, ref, useTemplateRef, watch } from 'vue';
 
 import { useKeyboardStore, useNavigationStore } from '~/components/stores.ts';
+import { useWorkflowStore } from '~/components/workflow.ts';
 import { randomShieldName, ReservedNames } from '~/lib/shieldNames';
 import { KeyboardNameSchema, KeyboardPartSchema, ShieldNameSchema, type KeyboardPart } from '~/types';
 import { locales } from '../locales';
@@ -159,6 +162,9 @@ const form = useTemplateRef('form');
 
 const keyboard = useKeyboardStore();
 const nav = useNavigationStore();
+const workflow = useWorkflowStore();
+
+const isEditing = computed(() => workflow.isEditing);
 
 const formSchema = z.object({
   name: KeyboardNameSchema,
@@ -205,10 +211,15 @@ function nameToShield(name: string): string {
 }
 
 // On display name changes, if the old shield name is empty or matches the
-// old display name converted to shield format, update the shield name
+// old display name converted to shield format, update the shield name.
+// Shield names are fixed while editing an existing repository.
 watch(
   () => formState.name,
   (newName, oldName) => {
+    if (isEditing.value) {
+      form?.value?.validate?.({ silent: true });
+      return;
+    }
     const oldShieldFromName = nameToShield(oldName);
     if (!formState.shield || formState.shield === oldShieldFromName) {
       formState.shield = nameToShield(newName);
@@ -233,7 +244,9 @@ const defaultUnibodyPartName = 'unibody';
 
 async function onSubmit(event: FormSubmitEvent<FormSchema>) {
   keyboard.name = event.data.name;
-  keyboard.shield = event.data.shield;
+  if (!isEditing.value) {
+    keyboard.shield = event.data.shield;
+  }
 
   // Update keyboard parts based on selected number of parts
   const targetPartsCount = event.data.parts;
@@ -276,6 +289,7 @@ display-name = Display Name
 display-name-help = Shows up on your computer and phone. Max 16 bytes.
 shield-name = Shield Name
 shield-name-help = For firmware and file names. Use lowercase letters, numbers, and underscores.
+shield-name-fixed = Shield name is fixed when editing an existing repository. Start a new shield to use a different name.
 random-name = Can't think of a name? How about {$name}?
 split-part = Split Keyboard Parts
 parts-radio-label = {$count ->
@@ -291,6 +305,7 @@ display-name = 显示名字
 display-name-help = 显示在电脑和手机上的名字。最长 16 字节。
 shield-name = Shield 名
 shield-name-help = 用于固件和文件名。使用小写字母、数字和下划线。
+shield-name-fixed = 编辑已有仓库时不能修改 Shield 名。如需换名，请新建一个 Shield。
 random-name = 想不出名字？{$name}如何？
 split-part = 分体键盘构成
 parts-radio-label = {$count ->
@@ -306,6 +321,7 @@ display-name = 表示名
 display-name-help = パソコンやスマートフォンに表示される名前です。最大16バイト。
 shield-name = シールド名
 shield-name-help = ファームウェアやファイル名に使われる名前です。小文字のアルファベット、数字、アンダースコアを使用してください。
+shield-name-fixed = 既存リポジトリの編集ではシールド名を変更できません。別の名前を使うには新しいシールドを開始してください。
 random-name = 名前が思いつかない？{$name}はどう？
 split-part = 分割キーボードの構成
 parts-radio-label = {$count ->
