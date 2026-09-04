@@ -52,7 +52,7 @@
           </div>
 
           <UAlert
-            v-if="!githubEnabledAtBuild"
+            v-if="githubDisabled"
             color="warning"
             variant="soft"
             icon="i-lucide-triangle-alert"
@@ -68,7 +68,7 @@
             icon="i-lucide-log-in"
             :label="$t('gh-connect')"
             :loading="workflow.githubBusy"
-            :disabled="!githubEnabledAtBuild"
+            :disabled="githubDisabled"
             @click="beginAuth"
           />
         </div>
@@ -388,6 +388,8 @@ const toast = useToast();
 const workflow = useWorkflowStore();
 const nav = useNavigationStore();
 
+const githubDisabled = computed(() => !githubEnabledAtBuild || workflow.githubConfigured === false);
+
 const onlyShieldWizardRepos = ref(true);
 const repos = ref<GithubRepoSummary[]>([]);
 const repoLoading = ref(false);
@@ -450,8 +452,14 @@ async function refreshSession(): Promise<void> {
       return;
     }
     if (data) {
+      const previousUser = workflow.githubUser;
+      const previousInstallations = workflow.githubInstallations;
       workflow.setSession(data);
-      routeAfterSession(data.installations ?? []);
+      if (data.githubError && previousUser && !data.user) {
+        workflow.githubUser = previousUser;
+        workflow.githubInstallations = previousInstallations;
+      }
+      routeAfterSession(workflow.githubInstallations ?? []);
     }
   }
   catch (error) {

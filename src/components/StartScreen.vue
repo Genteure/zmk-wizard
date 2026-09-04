@@ -67,7 +67,7 @@
 
         <div class="w-full flex flex-col gap-2 items-center">
           <UAlert
-            v-if="!githubEnabledAtBuild"
+            v-if="githubDisabled"
             color="warning"
             variant="soft"
             icon="i-lucide-triangle-alert"
@@ -132,6 +132,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useFluent } from 'fluent-vue';
 import { GITHUB_ENABLED_AT_BUILD as githubEnabledAtBuild } from './githubConfig';
 import { locales } from './locales';
@@ -149,6 +150,8 @@ defineEmits<{
 const { $t } = useFluent();
 const nav = useNavigationStore();
 const workflow = useWorkflowStore();
+
+const githubDisabled = computed(() => !githubEnabledAtBuild || workflow.githubConfigured === false);
 </script>
 
 <ftl locale="en">

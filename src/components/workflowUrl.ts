@@ -21,6 +21,8 @@ export interface WorkflowUrlParams {
   action: 'new' | 'edit' | null;
   code: string | null;
   state: string | null;
+  error: string | null;
+  errorDescription: string | null;
   setupAction: string | null;
   installationId: string | null;
   repo: string | null;
@@ -32,6 +34,8 @@ const WORKFLOW_SEARCH_KEYS = [
   'action',
   'code',
   'state',
+  'error',
+  'error_description',
   'setup_action',
   'installation_id',
   'repo',
@@ -49,6 +53,8 @@ export function parseWorkflowUrl(url: URL): WorkflowUrlParams {
     action: action === 'new' || action === 'edit' ? action : null,
     code: search.get('code'),
     state: search.get('state'),
+    error: search.get('error'),
+    errorDescription: search.get('error_description'),
     setupAction: search.get('setup_action'),
     installationId: search.get('installation_id'),
     repo: search.get('repo'),
@@ -59,6 +65,10 @@ export function parseWorkflowUrl(url: URL): WorkflowUrlParams {
 
 export function isOAuthCallback(params: WorkflowUrlParams): boolean {
   return Boolean(params.code && params.state);
+}
+
+export function isOAuthErrorCallback(params: WorkflowUrlParams): boolean {
+  return Boolean(params.state && params.error);
 }
 
 export function isInstallCallback(params: WorkflowUrlParams): boolean {

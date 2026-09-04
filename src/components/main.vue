@@ -16,6 +16,7 @@
 
       <StartScreen
         v-else-if="workflow.screen === 'start'"
+        :logging-out="loggingOut"
         @new="startNewFlow"
         @edit="startEditFlow"
         @logout="logout"
@@ -23,7 +24,7 @@
 
       <GitHubSetup
         v-else-if="workflow.screen === 'github'"
-        @cancel="workflow.showStart()"
+        @cancel="workflow.cancelGithub()"
         @loaded="applyLoadedRepository"
       />
 
@@ -62,7 +63,7 @@ import {
   type EditingRepository,
   useWorkflowStore,
 } from './workflow';
-import { applyWorkflowTab, isInstallCallback, isOAuthCallback, parseWorkflowUrl, stripWorkflowSearch } from './workflowUrl';
+import { applyWorkflowTab, isInstallCallback, isOAuthCallback, isOAuthErrorCallback, parseWorkflowUrl, stripWorkflowSearch } from './workflowUrl';
 
 const { $t } = useFluent();
 const toast = useToast();
@@ -73,6 +74,7 @@ const history = useHistoryStore();
 const workflow = useWorkflowStore();
 
 const importChoiceOpen = ref(false);
+const loggingOut = ref(false);
 // shallowRef: candidates are only replaced wholesale; deep reactivity would
 // wrap the Key arrays in proxies that structuredClone rejects.
 const pendingImportChoice = shallowRef<ImportedLayout | null>(null);
@@ -117,6 +119,8 @@ function startNewFlow(): void {
 }
 
 function startEditFlow(): void {
+  workflow.githubReturnScreen = workflow.screen;
+  workflow.githubReturnMode = workflow.mode;
   workflow.enterGithub();
   if (workflow.githubUser) {
     workflow.githubStep = (workflow.githubInstallations?.length ?? 0) > 0
@@ -186,10 +190,14 @@ async function startLoginFlow(): Promise<void> {
 }
 
 async function logout(): Promise<void> {
+  loggingOut.value = true;
   try {
     const { error } = await actions.githubLogout();
     if (!error) {
       workflow.clearSession();
+      // Keep the runtime "configured" flag so StartScreen can still show
+      // the signed-out state instead of a blank status line.
+      workflow.githubConfigured = true;
       workflow.showStart();
       toast.add({
         color: 'neutral',
@@ -203,6 +211,9 @@ async function logout(): Promise<void> {
       title: $t('workflow-logout-failed'),
       description: error instanceof Error ? error.message : String(error),
     });
+  }
+  finally {
+    loggingOut.value = false;
   }
 }
 
@@ -221,7 +232,16 @@ async function refreshSession(): Promise<boolean> {
     }
     if (!data) return false;
 
+    const previousUser = workflow.githubUser;
+    const previousInstallations = workflow.githubInstallations;
     workflow.setSession(data);
+    // A rate-limit response can arrive without a user object even though
+    // the token is still valid. Keep the last known identity so the UI does
+    // not force the user to sign in again for a transient API error.
+    if (data.githubError && previousUser && !data.user) {
+      workflow.githubUser = previousUser;
+      workflow.githubInstallations = previousInstallations;
+    }
     if (workflow.screen === 'github') {
       routeEditSession();
     }
@@ -362,6 +382,12 @@ async function initializeWorkflow(): Promise<void> {
     workflow.initialized = true;
     await handleOAuthCallback(params);
   }
+  else if (isOAuthErrorCallback(params)) {
+    workflow.initialized = true;
+    replaceWorkflowUrl();
+    workflow.showStart();
+    workflow.githubError = params.errorDescription ?? params.error ?? $t('workflow-oauth-error');
+  }
   else if (isInstallCallback(params)) {
     workflow.initialized = true;
     await handleInstallCallback();
@@ -433,6 +459,7 @@ workflow-legacy-data-desc = This repository predates the stable data format. Sav
 workflow-logged-out = Signed out of GitHub
 workflow-logout-failed = Failed to sign out
 workflow-login-failed = Failed to start GitHub sign-in
+workflow-oauth-error = GitHub sign-in could not be completed.
 </ftl>
 
 <ftl locale="zh-CN">
@@ -442,6 +469,7 @@ workflow-legacy-data-desc = 此仓库生成于稳定数据格式之前。保存�
 workflow-logged-out = 已退出 GitHub 登录
 workflow-logout-failed = 退出登录失败
 workflow-login-failed = 无法开始 GitHub 登录
+workflow-oauth-error = GitHub 登录未能完成。
 </ftl>
 
 <ftl locale="ja">
@@ -451,4 +479,5 @@ workflow-legacy-data-desc = このリポジトリは安定データ形式より�
 workflow-logged-out = GitHubからサインアウトしました
 workflow-logout-failed = サインアウトに失敗しました
 workflow-login-failed = GitHubサインインを開始できませんでした
+workflow-oauth-error = GitHubサインインを完了できませんでした。
 </ftl>

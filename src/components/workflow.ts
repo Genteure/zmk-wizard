@@ -99,6 +99,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
   const editingRepository = ref<EditingRepository | null>(null);
   /** `owner/name` requested through a URL and waiting for auth/install. */
   const pendingRepo = ref<string | null>(null);
+  /** Where the GitHub flow was opened from, so Back can return there. */
+  const githubReturnScreen = ref<WorkflowScreen | null>(null);
+  /** Workflow to restore when cancelling GitHub flow back to the editor. */
+  const githubReturnMode = ref<WorkflowMode | null>(null);
 
   const isNew = computed(() => screen.value === 'editor' && mode.value === 'new');
   const isEditing = computed(() => screen.value === 'editor' && mode.value === 'edit');
@@ -110,6 +114,8 @@ export const useWorkflowStore = defineStore('workflow', () => {
     githubError.value = null;
     pendingRepo.value = null;
     editingRepository.value = null;
+    githubReturnScreen.value = null;
+    githubReturnMode.value = null;
   }
 
   function enterNewEditor() {
@@ -134,6 +140,25 @@ export const useWorkflowStore = defineStore('workflow', () => {
     editingRepository.value = repository;
     githubError.value = null;
     githubBusy.value = false;
+  }
+
+  function cancelGithub() {
+    const returnScreen = githubReturnScreen.value;
+    const returnMode = githubReturnMode.value;
+    githubReturnScreen.value = null;
+    githubReturnMode.value = null;
+
+    if (returnScreen === 'editor') {
+      screen.value = 'editor';
+      mode.value = returnMode;
+      githubStep.value = 'auth';
+      githubError.value = null;
+      githubBusy.value = false;
+      pendingRepo.value = null;
+      return;
+    }
+
+    showStart();
   }
 
   function setSession(session: GithubSessionSnapshot) {
@@ -181,12 +206,15 @@ export const useWorkflowStore = defineStore('workflow', () => {
     selectedInstallationId,
     editingRepository,
     pendingRepo,
+    githubReturnScreen,
+    githubReturnMode,
     isNew,
     isEditing,
     showStart,
     enterNewEditor,
     enterGithub,
     enterEditor,
+    cancelGithub,
     setSession,
     clearSession,
     setGithubError,
