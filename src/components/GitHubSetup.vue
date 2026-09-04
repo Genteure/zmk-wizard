@@ -1,19 +1,24 @@
 <template>
   <div class="min-h-screen flex flex-col">
-    <header class="flex items-center justify-between gap-2 p-4">
+    <header class="flex items-center justify-between gap-1.5 p-3 sm:gap-2 sm:p-4">
       <UButton
         icon="i-lucide-arrow-left"
         color="neutral"
         variant="ghost"
-        :label="$t('gh-back')"
+        :aria-label="$t('gh-back')"
         @click="$emit('cancel')"
-      />
-      <div class="flex items-center gap-2">
+      >
+        <span class="hidden sm:inline">
+          {{ $t('gh-back') }}
+        </span>
+      </UButton>
+      <div class="flex items-center gap-1.5 sm:gap-2">
         <LocaleSelect
           v-model="nav.locale"
           :locales="locales"
+          size="sm"
         />
-        <UColorModeSelect />
+        <UColorModeSelect size="sm" />
       </div>
     </header>
 

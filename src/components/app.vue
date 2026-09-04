@@ -1,5 +1,8 @@
 <template>
-  <UHeader title="Shield Wizard">
+  <UHeader
+    v-model:open="mobileMenuOpen"
+    title="Shield Wizard"
+  >
     <template #left>
       <KeyboardNameDialog />
     </template>
@@ -32,6 +35,7 @@
           color="neutral"
           variant="ghost"
           size="sm"
+          class="hidden sm:inline-flex"
           :disabled="!history.canUndo"
           :title="$t('undo')"
           :aria-label="$t('undo')"
@@ -42,17 +46,20 @@
           color="neutral"
           variant="ghost"
           size="sm"
+          class="hidden sm:inline-flex"
           :disabled="!history.canRedo"
           :title="$t('redo')"
           :aria-label="$t('redo')"
           @click="history.redo()"
         />
-        <WorkflowMenu
-          @new="$emit('new')"
-          @edit="$emit('edit')"
-          @logout="$emit('logout')"
-          @login="$emit('login')"
-        />
+        <div class="hidden sm:flex">
+          <WorkflowMenu
+            @new="$emit('new')"
+            @edit="$emit('edit')"
+            @logout="$emit('logout')"
+            @login="$emit('login')"
+          />
+        </div>
         <BuildActions />
       </div>
     </template>
@@ -60,6 +67,36 @@
       <div class="flex flex-col gap-4">
         <div class="text-lg font-bold text-center">
           Shield Wizard for ZMK v0.3
+        </div>
+        <div class="sm:hidden flex items-center justify-center gap-1">
+          <UButton
+            icon="i-lucide-undo-2"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            :disabled="!history.canUndo"
+            :title="$t('undo')"
+            :aria-label="$t('undo')"
+            @click="history.undo()"
+          />
+          <UButton
+            icon="i-lucide-redo-2"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            :disabled="!history.canRedo"
+            :title="$t('redo')"
+            :aria-label="$t('redo')"
+            @click="history.redo()"
+          />
+        </div>
+        <div class="sm:hidden flex justify-center">
+          <WorkflowMenu
+            @new="handleMobileWorkflow('new')"
+            @edit="handleMobileWorkflow('edit')"
+            @logout="handleMobileWorkflow('logout')"
+            @login="handleMobileWorkflow('login')"
+          />
         </div>
         <div class="flex items-center justify-center gap-4">
           <UColorModeSelect />
@@ -136,14 +173,24 @@ import BuildActions from './utils/BuildActions.vue';
 import FeedbackDialog from './utils/FeedbackDialog.vue';
 import LocaleSelect from './utils/LocaleSelect.vue';
 
-defineEmits<{
+const emit = defineEmits<{
   new: [];
   edit: [];
   logout: [];
   login: [];
 }>();
 
+const mobileMenuOpen = ref(false);
+
 const toast = useToast();
+
+function handleMobileWorkflow(action: 'new' | 'edit' | 'logout' | 'login') {
+  mobileMenuOpen.value = false;
+  if (action === 'new') emit('new');
+  if (action === 'edit') emit('edit');
+  if (action === 'logout') emit('logout');
+  if (action === 'login') emit('login');
+}
 
 const { $t } = useFluent();
 

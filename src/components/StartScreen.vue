@@ -1,11 +1,12 @@
 <template>
   <div class="min-h-screen flex flex-col">
-    <div class="flex items-center justify-end gap-2 p-4">
+    <div class="flex items-center justify-end gap-1.5 p-3 sm:gap-2 sm:p-4">
       <LocaleSelect
         v-model="nav.locale"
         :locales="locales"
+        size="sm"
       />
-      <UColorModeSelect />
+      <UColorModeSelect size="sm" />
     </div>
 
     <main class="flex-1 flex items-center justify-center p-4 pb-16">

@@ -149,8 +149,13 @@
         size="xl"
         variant="outline"
         :loading="isBuilding"
+        :aria-label="$t(workflow.isEditing ? 'build-save' : 'build')"
+        :icon="workflow.isEditing ? 'i-lucide-save' : 'i-lucide-hammer'"
+        :ui="{ leadingIcon: isBuilding ? 'size-6' : 'size-6 sm:hidden' }"
       >
-        {{ $t(workflow.isEditing ? 'build-save' : 'build') }}
+        <span class="hidden sm:inline">
+          {{ $t(workflow.isEditing ? 'build-save' : 'build') }}
+        </span>
       </UButton>
     </UDropdownMenu>
 
