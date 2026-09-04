@@ -91,9 +91,6 @@
             <p v-if="workflow.editingRepository">
               {{ $t('commit-branch', { branch: workflow.editingRepository.defaultBranch }) }}
             </p>
-            <p>
-              {{ $t('commit-description') }}
-            </p>
           </div>
 
           <UFormField
@@ -910,7 +907,6 @@ error-modal-title = Validation Errors
 commit-modal-title = Confirm Changes to Repository
 commit-target = Repository:
 commit-branch = This will be committed directly to the default branch ({ $branch }).
-commit-description = Shield Wizard regenerates the configuration on the server. config/ is never touched; README.md, build.yaml, and the build workflow are kept when you have modified them.
 commit-message-label = Commit Message
 commit-server-generated = Server-side generation
 commit-server-generated-desc = The browser only sends the validated keyboard state. File contents, the git commit, and stale-file deletion are all produced on the server.
@@ -985,7 +981,6 @@ error-modal-title = 验证错误
 commit-modal-title = 确认提交到仓库
 commit-target = 仓库:
 commit-branch = 这将直接提交到默认分支（{ $branch }）。
-commit-description = Shield Wizard 会在服务器上重新生成配置。config/ 永远不会被改动；如果你修改过 README.md、build.yaml 或构建工作流，它们会被保留。
 commit-message-label = 提交信息
 commit-server-generated = 服务器端生成
 commit-server-generated-desc = 浏览器只发送通过验证的键盘状态。文件内容、git 提交和过期文件删除全部在服务器端完成。
@@ -1059,7 +1054,6 @@ error-modal-title = 検証エラー
 commit-modal-title = リポジトリへの変更を確認
 commit-target = リポジトリ:
 commit-branch = これはデフォルトブランチ（{ $branch }）に直接コミットされます。
-commit-description = Shield Wizardはサーバー上で設定を再生成します。config/ は変更されず、ユーザーが変更した README.md・build.yaml・ビルドワークフローは保持されます。
 commit-message-label = コミットメッセージ
 commit-server-generated = サーバー側で生成
 commit-server-generated-desc = ブラウザが送信するのは検証済みのキーボード状態だけです。ファイル内容、gitコミット、不要ファイルの削除はすべてサーバーで生成されます。

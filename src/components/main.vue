@@ -16,10 +16,8 @@
 
       <StartScreen
         v-else-if="workflow.screen === 'start'"
-        :logging-out="loggingOut"
         @new="startNewFlow"
         @edit="startEditFlow"
-        @logout="logout"
       />
 
       <GitHubSetup
@@ -121,11 +119,9 @@ function startNewFlow(): void {
 function startEditFlow(): void {
   workflow.githubReturnScreen = workflow.screen;
   workflow.githubReturnMode = workflow.mode;
-  workflow.enterGithub();
-  if (workflow.githubUser) {
-    workflow.githubStep = (workflow.githubInstallations?.length ?? 0) > 0
-      ? 'repositories'
-      : 'install';
+  workflow.enterGithub('repositories');
+  if (workflow.githubUser && (workflow.githubInstallations?.length ?? 0) === 0) {
+    workflow.githubStep = 'install';
   }
 }
 
@@ -198,8 +194,8 @@ async function logout(): Promise<void> {
     const { error } = await actions.githubLogout();
     if (!error) {
       workflow.clearSession();
-      // Keep the runtime "configured" flag so StartScreen can still show
-      // the signed-out state instead of a blank status line.
+      // Keep the runtime "configured" flag so the GitHub setup page can
+      // distinguish “configured but signed out” from “not configured”.
       workflow.githubConfigured = true;
       workflow.showStart();
       toast.add({
@@ -258,7 +254,7 @@ async function refreshSession(): Promise<boolean> {
 
 function routeEditSession(): void {
   if (!workflow.githubUser) {
-    workflow.githubStep = 'auth';
+    workflow.githubStep = 'repositories';
     return;
   }
   workflow.githubStep = (workflow.githubInstallations?.length ?? 0) > 0
@@ -297,7 +293,7 @@ async function handleOAuthCallback(params: ReturnType<typeof parseWorkflowUrl>):
   replaceWorkflowUrl();
 
   if (error || !data) {
-    workflow.setGithubError(error?.message ?? 'OAuth callback failed', 'auth');
+    workflow.setGithubError(error?.message ?? 'OAuth callback failed', 'repositories');
     return;
   }
 

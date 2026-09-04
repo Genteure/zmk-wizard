@@ -16,9 +16,8 @@
         <LocaleSelect
           v-model="nav.locale"
           :locales="locales"
-          size="sm"
         />
-        <UColorModeSelect size="sm" />
+        <UColorModeSelect />
       </div>
     </header>
 
@@ -36,46 +35,6 @@
           <p class="text-sm text-toned">
             {{ $t('gh-exchanging') }}
           </p>
-        </div>
-
-        <!-- Sign in -->
-        <div
-          v-else-if="workflow.githubStep === 'auth'"
-          class="flex flex-col gap-4"
-        >
-          <div class="flex flex-col items-center gap-2 text-center">
-            <UIcon
-              name="i-lucide-github"
-              class="size-10 text-secondary"
-            />
-            <h1 class="text-xl font-bold text-highlighted">
-              {{ $t('gh-auth-title') }}
-            </h1>
-            <p class="text-sm text-toned max-w-md">
-              {{ $t('gh-auth-description') }}
-            </p>
-          </div>
-
-          <UAlert
-            v-if="githubDisabled"
-            color="warning"
-            variant="soft"
-            icon="i-lucide-triangle-alert"
-            :title="$t('gh-not-configured')"
-            :description="$t('gh-not-configured-desc')"
-          />
-
-          <UButton
-            block
-            size="lg"
-            color="secondary"
-            variant="soft"
-            icon="i-lucide-log-in"
-            :label="$t('gh-connect')"
-            :loading="workflow.githubBusy"
-            :disabled="githubDisabled"
-            @click="beginAuth"
-          />
         </div>
 
         <!-- Install the GitHub App -->
@@ -133,7 +92,7 @@
 
         <!-- Repository selection -->
         <div
-          v-else-if="workflow.githubStep === 'repositories'"
+          v-else
           class="flex flex-col gap-4"
         >
           <div>
@@ -145,182 +104,249 @@
             </p>
           </div>
 
+          <!-- Signed out: keep sign-in on the same repository picker page -->
           <div
-            v-if="(workflow.githubInstallations?.length ?? 0) > 1"
-            class="flex flex-col gap-1"
+            v-if="!workflow.githubUser"
+            class="flex flex-col gap-4 rounded-xl border border-default bg-muted/40 p-5 sm:p-6"
           >
-            <span class="text-xs font-medium text-toned">
-              {{ $t('gh-repos-account') }}
-            </span>
-            <USelect
-              :model-value="workflow.selectedInstallationId ?? undefined"
-              :items="installationOptions"
-              value-key="value"
-              @update:model-value="value => workflow.selectedInstallationId = typeof value === 'number' ? value : null"
-            />
-          </div>
-
-          <div class="flex items-center justify-between gap-2">
-            <UCheckbox
-              v-model="onlyShieldWizardRepos"
-              :label="$t('gh-repos-only-shield')"
-            />
-            <UButton
-              v-if="workflow.githubInstallUrl"
-              size="sm"
-              color="neutral"
-              variant="ghost"
-              icon="i-lucide-plus"
-              :label="$t('gh-repos-add-access')"
-              @click="beginInstall"
-            />
-          </div>
-
-          <UDivider />
-
-          <div
-            v-if="repoLoading || (workflow.githubBusy && repos.length === 0)"
-            class="flex items-center justify-center gap-2 py-8 text-sm text-toned"
-          >
-            <UIcon
-              name="i-svg-spinners-90-ring"
-              class="size-5"
-            />
-            {{ $t('gh-repos-loading') }}
-          </div>
-
-          <template v-else-if="filteredRepos.length > 0">
-            <div class="flex flex-col gap-3 h-[50vh] min-h-0 overflow-y-auto overscroll-contain px-1 py-1">
-              <UCard
-                v-for="repo in filteredRepos"
-                :key="repo.id"
-                :class="repo.hasShieldWizardConfig
-                  ? 'cursor-pointer shrink-0'
-                  : 'cursor-not-allowed opacity-60 shrink-0'"
-                :aria-disabled="!repo.hasShieldWizardConfig"
-                :role="repo.hasShieldWizardConfig ? 'button' : undefined"
-                :tabindex="repo.hasShieldWizardConfig ? 0 : undefined"
-                :ui="{ body: repo.hasShieldWizardConfig ? 'px-3 py-2' : 'px-3 py-1.5' }"
-                @click="chooseRepo(repo)"
-                @keydown="onRepoKeydown($event, repo)"
-              >
-                <div
-                  v-if="repo.hasShieldWizardConfig"
-                  class="flex items-center gap-3"
-                >
-                  <UIcon
-                    name="i-lucide-folder-git-2"
-                    class="size-6 shrink-0 text-secondary"
-                  />
-                  <div class="flex-1 min-w-0">
-                    <div class="font-medium truncate">
-                      {{ repo.fullName }}
-                    </div>
-                    <div class="text-xs text-toned truncate">
-                      {{ repo.description || repo.defaultBranch }}
-                    </div>
-                  </div>
-                  <UBadge
-                    color="success"
-                    variant="soft"
-                    :label="$t('gh-repos-shield-badge')"
-                  />
-                  <UIcon
-                    name="i-lucide-chevron-right"
-                    class="size-4 shrink-0 text-muted"
-                  />
-                </div>
-
-                <div
-                  v-else
-                  class="flex items-center gap-2"
-                >
-                  <UIcon
-                    name="i-lucide-circle-off"
-                    class="size-4 shrink-0 text-muted"
-                  />
-                  <span class="flex-1 min-w-0 truncate text-sm text-toned">
-                    {{ repo.fullName }}
-                  </span>
-                  <UBadge
-                    color="neutral"
-                    variant="soft"
-                    :label="$t('gh-repos-not-supported')"
-                    class="shrink-0"
-                  />
-                </div>
-              </UCard>
+            <div class="flex flex-col items-center gap-2 text-center">
+              <UIcon
+                name="i-lucide-github"
+                class="size-10 text-secondary"
+              />
+              <h2 class="text-lg font-semibold text-highlighted">
+                {{ $t('gh-auth-title') }}
+              </h2>
+              <p class="text-xs text-toned">
+                {{ $t('gh-repos-signed-out') }}
+              </p>
+              <p class="text-sm text-toned max-w-md">
+                {{ $t('gh-auth-description') }}
+              </p>
             </div>
 
-            <UButton
-              v-if="reposHasMore"
-              block
-              color="neutral"
-              variant="outline"
-              :label="$t('gh-repos-load-more')"
-              :loading="repoLoadingMore"
-              @click="loadMoreRepos"
-            />
-          </template>
-
-          <div
-            v-else-if="workflow.githubError && repos.length === 0"
-            class="flex flex-col items-center gap-3 py-8 text-sm"
-          >
-            <UIcon
-              name="i-lucide-alert-circle"
-              class="size-10 text-error"
-            />
-            <p class="text-center max-w-sm font-medium">
-              {{ $t('gh-repos-load-failed') }}
-            </p>
-            <p class="text-center max-w-sm text-error">
-              {{ workflow.githubError }}
-            </p>
-            <UButton
-              block
-              color="primary"
+            <UAlert
+              v-if="githubDisabled"
+              color="warning"
               variant="soft"
-              :label="$t('gh-retry')"
-              icon="i-lucide-refresh-cw"
-              @click="loadRepos(true)"
+              icon="i-lucide-triangle-alert"
+              :title="$t('gh-not-configured')"
+              :description="$t('gh-not-configured-desc')"
             />
-          </div>
 
-          <div
-            v-else
-            class="flex flex-col items-center gap-3 py-8 text-sm text-toned"
-          >
-            <UIcon
-              name="i-lucide-folder-search"
-              class="size-10 text-muted"
-            />
-            <p class="text-center max-w-sm">
-              {{ onlyShieldWizardRepos ? $t('gh-repos-empty-filtered') : $t('gh-repos-empty') }}
-            </p>
             <UButton
-              v-if="reposHasMore"
               block
-              color="neutral"
-              variant="outline"
-              :label="$t('gh-repos-load-more')"
-              :loading="repoLoadingMore"
-              @click="loadMoreRepos"
-            />
-            <UButton
-              v-if="workflow.githubInstallUrl"
-              size="sm"
+              size="lg"
               color="secondary"
               variant="soft"
-              icon="i-lucide-plus"
-              :label="$t('gh-repos-add-access')"
-              @click="beginInstall"
+              icon="i-lucide-log-in"
+              :label="$t('gh-connect')"
+              :loading="workflow.githubBusy"
+              :disabled="githubDisabled"
+              @click="beginAuth"
             />
           </div>
+
+          <template v-else>
+            <div class="flex items-center justify-between gap-3 rounded-xl border border-default bg-muted/40 px-4 py-3">
+              <div class="flex items-center gap-3 min-w-0">
+                <UAvatar
+                  :src="workflow.githubUser.avatarUrl"
+                  :alt="workflow.githubUser.login"
+                  size="md"
+                />
+                <div class="min-w-0">
+                  <div class="font-medium truncate">
+                    {{ workflow.githubUser.login }}
+                  </div>
+                  <div class="text-xs text-toned">
+                    {{ $t('gh-repos-signed-in') }}
+                  </div>
+                </div>
+              </div>
+              <UButton
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                :label="$t('gh-logout')"
+                :loading="loggingOut"
+                @click="logout"
+              />
+            </div>
+
+            <div
+              v-if="(workflow.githubInstallations?.length ?? 0) > 1"
+              class="flex flex-col gap-1"
+            >
+              <span class="text-xs font-medium text-toned">
+                {{ $t('gh-repos-account') }}
+              </span>
+              <USelect
+                :model-value="workflow.selectedInstallationId ?? undefined"
+                :items="installationOptions"
+                value-key="value"
+                @update:model-value="value => workflow.selectedInstallationId = typeof value === 'number' ? value : null"
+              />
+            </div>
+
+            <div class="flex items-center justify-between gap-2">
+              <UCheckbox
+                v-model="onlyShieldWizardRepos"
+                :label="$t('gh-repos-only-shield')"
+              />
+              <UButton
+                v-if="workflow.githubInstallUrl"
+                variant="ghost"
+                :href="workflow.githubInstallUrl"
+              >
+                {{ $t('gh-repos-edit-access') }}
+              </UButton>
+            </div>
+
+            <UDivider />
+
+            <div
+              v-if="repoLoading || (workflow.githubBusy && repos.length === 0)"
+              class="flex items-center justify-center gap-2 py-8 text-sm text-toned"
+            >
+              <UIcon
+                name="i-svg-spinners-90-ring"
+                class="size-5"
+              />
+              {{ $t('gh-repos-loading') }}
+            </div>
+
+            <template v-else-if="filteredRepos.length > 0">
+              <div class="flex flex-col gap-3 h-[50vh] min-h-0 overflow-y-auto overscroll-contain px-1 py-1">
+                <UCard
+                  v-for="repo in filteredRepos"
+                  :key="repo.id"
+                  :class="repo.hasShieldWizardConfig
+                    ? 'cursor-pointer shrink-0'
+                    : 'cursor-not-allowed opacity-60 shrink-0'"
+                  :aria-disabled="!repo.hasShieldWizardConfig"
+                  :role="repo.hasShieldWizardConfig ? 'button' : undefined"
+                  :tabindex="repo.hasShieldWizardConfig ? 0 : undefined"
+                  :ui="{ body: repo.hasShieldWizardConfig ? 'px-3 py-2' : 'px-3 py-1.5' }"
+                  @click="chooseRepo(repo)"
+                  @keydown="onRepoKeydown($event, repo)"
+                >
+                  <div
+                    v-if="repo.hasShieldWizardConfig"
+                    class="flex items-center gap-3"
+                  >
+                    <UIcon
+                      name="i-lucide-folder-git-2"
+                      class="size-6 shrink-0 text-secondary"
+                    />
+                    <div class="flex-1 min-w-0">
+                      <div class="font-medium truncate">
+                        {{ repo.fullName }}
+                      </div>
+                      <div class="text-xs text-toned truncate">
+                        {{ repo.description || repo.defaultBranch }}
+                      </div>
+                    </div>
+                    <UBadge
+                      color="success"
+                      variant="soft"
+                      :label="$t('gh-repos-shield-badge')"
+                    />
+                    <UIcon
+                      name="i-lucide-chevron-right"
+                      class="size-4 shrink-0 text-muted"
+                    />
+                  </div>
+
+                  <div
+                    v-else
+                    class="flex items-center gap-2"
+                  >
+                    <UIcon
+                      name="i-lucide-circle-off"
+                      class="size-4 shrink-0 text-muted"
+                    />
+                    <span class="flex-1 min-w-0 truncate text-sm text-toned">
+                      {{ repo.fullName }}
+                    </span>
+                    <UBadge
+                      color="neutral"
+                      variant="soft"
+                      :label="$t('gh-repos-not-supported')"
+                      class="shrink-0"
+                    />
+                  </div>
+                </UCard>
+              </div>
+
+              <UButton
+                v-if="reposHasMore"
+                block
+                color="neutral"
+                variant="outline"
+                :label="$t('gh-repos-load-more')"
+                :loading="repoLoadingMore"
+                @click="loadMoreRepos"
+              />
+            </template>
+
+            <div
+              v-else-if="workflow.githubError && repos.length === 0"
+              class="flex flex-col items-center gap-3 py-8 text-sm"
+            >
+              <UIcon
+                name="i-lucide-alert-circle"
+                class="size-10 text-error"
+              />
+              <p class="text-center max-w-sm font-medium">
+                {{ $t('gh-repos-load-failed') }}
+              </p>
+              <p class="text-center max-w-sm text-error">
+                {{ workflow.githubError }}
+              </p>
+              <UButton
+                block
+                color="primary"
+                variant="soft"
+                :label="$t('gh-retry')"
+                icon="i-lucide-refresh-cw"
+                @click="loadRepos(true)"
+              />
+            </div>
+
+            <div
+              v-else
+              class="flex flex-col items-center gap-3 py-8 text-sm text-toned"
+            >
+              <UIcon
+                name="i-lucide-folder-search"
+                class="size-10 text-muted"
+              />
+              <p class="text-center max-w-sm">
+                {{ onlyShieldWizardRepos ? $t('gh-repos-empty-filtered') : $t('gh-repos-empty') }}
+              </p>
+              <UButton
+                v-if="reposHasMore"
+                block
+                color="neutral"
+                variant="outline"
+                :label="$t('gh-repos-load-more')"
+                :loading="repoLoadingMore"
+                @click="loadMoreRepos"
+              />
+              <ULink
+                v-if="workflow.githubInstallUrl"
+                :href="workflow.githubInstallUrl"
+                class="text-sm text-primary underline underline-offset-4 hover:text-primary/80"
+              >
+                {{ $t('gh-repos-edit-access') }}
+              </ULink>
+            </div>
+          </template>
         </div>
 
         <UAlert
-          v-if="workflow.githubError && !(workflow.githubStep === 'repositories' && repos.length === 0)"
+          v-if="workflow.githubError && !(workflow.githubStep === 'repositories' && workflow.githubUser && repos.length === 0)"
           class="mt-4"
           color="error"
           variant="soft"
@@ -394,6 +420,7 @@ const workflow = useWorkflowStore();
 const nav = useNavigationStore();
 
 const githubDisabled = computed(() => !githubEnabledAtBuild || workflow.githubConfigured === false);
+const loggingOut = ref(false);
 
 const onlyShieldWizardRepos = ref(true);
 const repos = ref<GithubRepoSummary[]>([]);
@@ -453,7 +480,7 @@ async function refreshSession(): Promise<void> {
   try {
     const { data, error } = await actions.githubGetSession();
     if (error) {
-      workflow.setGithubError(error.message, 'auth');
+      workflow.setGithubError(error.message);
       return;
     }
     if (data) {
@@ -468,7 +495,7 @@ async function refreshSession(): Promise<void> {
     }
   }
   catch (error) {
-    workflow.setGithubError(error instanceof Error ? error.message : String(error), 'auth');
+    workflow.setGithubError(error instanceof Error ? error.message : String(error));
   }
   finally {
     workflow.githubBusy = false;
@@ -477,7 +504,7 @@ async function refreshSession(): Promise<void> {
 
 function routeAfterSession(installations: unknown[]): void {
   if (!workflow.githubUser) {
-    workflow.githubStep = 'auth';
+    workflow.githubStep = 'repositories';
     return;
   }
   workflow.githubStep = installations.length > 0 ? 'repositories' : 'install';
@@ -497,7 +524,7 @@ async function beginAuth(): Promise<void> {
       repo: workflow.pendingRepo ?? undefined,
     });
     if (error) {
-      workflow.setGithubError(error.message, 'auth');
+      workflow.setGithubError(error.message);
       return;
     }
     if (data) {
@@ -505,7 +532,7 @@ async function beginAuth(): Promise<void> {
     }
   }
   catch (error) {
-    workflow.setGithubError(error instanceof Error ? error.message : String(error), 'auth');
+    workflow.setGithubError(error instanceof Error ? error.message : String(error));
   }
   finally {
     workflow.githubBusy = false;
@@ -516,6 +543,41 @@ function beginInstall(): void {
   if (!workflow.githubInstallUrl) return;
   workflow.githubError = null;
   window.location.assign(workflow.githubInstallUrl);
+}
+
+async function logout(): Promise<void> {
+  if (loggingOut.value) return;
+  loggingOut.value = true;
+  try {
+    const { error } = await actions.githubLogout();
+    if (error) {
+      toast.add({
+        color: 'error',
+        title: $t('gh-logout-failed'),
+        description: error.message,
+      });
+      return;
+    }
+    workflow.clearSession();
+    workflow.githubConfigured = true;
+    workflow.githubStep = 'repositories';
+    workflow.githubError = null;
+    workflow.pendingRepo = null;
+    toast.add({
+      color: 'neutral',
+      title: $t('gh-signed-out'),
+    });
+  }
+  catch (error) {
+    toast.add({
+      color: 'error',
+      title: $t('gh-logout-failed'),
+      description: error instanceof Error ? error.message : String(error),
+    });
+  }
+  finally {
+    loggingOut.value = false;
+  }
 }
 
 async function tryOpenPendingRepo(): Promise<boolean> {
@@ -678,9 +740,14 @@ gh-install-return-note = You will be redirected back here automatically after Gi
 
 gh-repos-title = Choose a Repository
 gh-repos-description = Shield Wizard repositories are listed first and can be opened. Other repositories are shown for context but are not editable.
+gh-repos-signed-in = Signed in to GitHub
+gh-repos-signed-out = Not signed in to GitHub
+gh-logout = Sign Out
+gh-signed-out = Signed out of GitHub
+gh-logout-failed = Failed to sign out
 gh-repos-account = GitHub Account
 gh-repos-only-shield = Only Shield Wizard repositories
-gh-repos-add-access = Add Repository Access
+gh-repos-edit-access = Edit Repository Access
 gh-repos-loading = Loading repositories…
 gh-repos-shield-badge = Shield Wizard
 gh-repos-not-supported = Not a Shield Wizard repository
@@ -714,9 +781,14 @@ gh-install-return-note = GitHub 完成安装后会自动返回此页面。
 
 gh-repos-title = 选择仓库
 gh-repos-description = 包含 Shield Wizard 数据文件的仓库会排在前面并可以打开；其他仓库仅为参照，不可编辑。
+gh-repos-signed-in = 已登录 GitHub
+gh-repos-signed-out = 尚未登录 GitHub
+gh-logout = 退出登录
+gh-signed-out = 已退出 GitHub 登录
+gh-logout-failed = 退出登录失败
 gh-repos-account = GitHub 账号
 gh-repos-only-shield = 仅显示 Shield Wizard 仓库
-gh-repos-add-access = 添加仓库访问权限
+gh-repos-edit-access = 编辑仓库访问权限
 gh-repos-loading = 正在加载仓库…
 gh-repos-shield-badge = Shield Wizard
 gh-repos-not-supported = 非 Shield Wizard 仓库
@@ -750,9 +822,14 @@ gh-install-return-note = GitHubでのインストール完了後、自動的に�
 
 gh-repos-title = リポジトリを選択
 gh-repos-description = Shield Wizardデータファイルを含むリポジトリが先頭に表示され、開くことができます。他のリポジトリは参照のみで、編集できません。
+gh-repos-signed-in = GitHubにサインイン済み
+gh-repos-signed-out = GitHubにサインインしていません
+gh-logout = サインアウト
+gh-signed-out = GitHubからサインアウトしました
+gh-logout-failed = サインアウトに失敗しました
 gh-repos-account = GitHubアカウント
 gh-repos-only-shield = Shield Wizardリポジトリのみ
-gh-repos-add-access = リポジトリアクセスを追加
+gh-repos-edit-access = リポジトリアクセスを編集
 gh-repos-loading = リポジトリを読み込み中…
 gh-repos-shield-badge = Shield Wizard
 gh-repos-not-supported = Shield Wizardリポジトリではありません

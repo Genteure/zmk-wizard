@@ -185,7 +185,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
   function expireSession() {
     clearSession();
-    githubStep.value = 'auth';
+    githubStep.value = 'repositories';
     githubError.value = 'GitHub session expired or was revoked. Please sign in again.';
     if (isEditing.value) {
       screen.value = 'github';
