@@ -29,8 +29,8 @@
           class="flex flex-col items-center gap-4 py-10"
         >
           <UIcon
-            name="i-svg-spinners-90-ring"
-            class="size-10 text-primary"
+            name="i-lucide-loader-circle"
+            class="size-10 text-primary animate-spin"
           />
           <p class="text-sm text-toned">
             {{ $t('gh-exchanging') }}
@@ -204,8 +204,8 @@
               class="flex items-center justify-center gap-2 py-8 text-sm text-toned"
             >
               <UIcon
-                name="i-svg-spinners-90-ring"
-                class="size-5"
+                name="i-lucide-loader-circle"
+                class="size-5 animate-spin"
               />
               {{ $t('gh-repos-loading') }}
             </div>
@@ -239,9 +239,16 @@
                   <UCard
                     v-for="repo in supportedRepos"
                     :key="repo.id"
-                    class="cursor-pointer shrink-0"
+                    class="cursor-pointer shrink-0 transition-opacity"
+                    :class="{
+                      'pointer-events-none': repoLoadingId !== null,
+                      'opacity-60': repoLoadingId !== null && repoLoadingId !== repo.id,
+                      'ring-2 ring-primary/30 bg-primary/5': repoLoadingId === repo.id,
+                    }"
                     role="button"
-                    :tabindex="0"
+                    :tabindex="repoLoadingId !== null ? -1 : 0"
+                    :aria-disabled="repoLoadingId !== null"
+                    :aria-busy="repoLoadingId === repo.id"
                     :ui="{ body: 'px-3 py-2' }"
                     @click="chooseRepo(repo)"
                     @keydown="onRepoKeydown($event, repo)"
@@ -260,8 +267,9 @@
                         </div>
                       </div>
                       <UIcon
-                        name="i-lucide-chevron-right"
-                        class="size-4 shrink-0 text-muted"
+                        :name="repoLoadingId === repo.id ? 'i-lucide-loader-circle' : 'i-lucide-chevron-right'"
+                        class="size-4 shrink-0"
+                        :class="repoLoadingId === repo.id ? 'animate-spin text-primary' : 'text-muted'"
                       />
                     </div>
                   </UCard>
@@ -444,6 +452,7 @@ const repoLoading = ref(false);
 const repoLoadingMore = ref(false);
 const reposPage = ref(1);
 const reposHasMore = ref(false);
+const repoLoadingId = ref<number | null>(null);
 
 const installationOptions = computed(() =>
   (workflow.githubInstallations ?? []).map(installation => ({
@@ -699,7 +708,9 @@ function onRepoKeydown(event: KeyboardEvent, repo: GithubRepoSummary): void {
 
 async function chooseRepo(repo: GithubRepoSummary): Promise<void> {
   if (!repo.hasShieldWizardConfig) return;
+  if (repoLoadingId.value !== null || workflow.githubBusy) return;
 
+  repoLoadingId.value = repo.id;
   workflow.githubBusy = true;
   workflow.githubError = null;
   try {
@@ -737,6 +748,7 @@ async function chooseRepo(repo: GithubRepoSummary): Promise<void> {
     });
   }
   finally {
+    repoLoadingId.value = null;
     workflow.githubBusy = false;
   }
 }

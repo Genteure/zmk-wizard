@@ -6,8 +6,8 @@
         class="min-h-screen flex flex-col items-center justify-center gap-3"
       >
         <UIcon
-          name="i-svg-spinners-90-ring"
-          class="size-10 text-primary"
+          name="i-lucide-loader-circle"
+          class="size-10 text-primary animate-spin"
         />
         <p class="text-sm text-toned">
           Loading Shield Wizard…

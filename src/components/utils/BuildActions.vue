@@ -120,8 +120,8 @@
                 class="flex h-full items-center justify-center gap-2 text-sm text-toned"
               >
                 <UIcon
-                  name="i-svg-spinners-90-ring"
-                  class="size-4"
+                  name="i-lucide-loader-circle"
+                  class="size-4 animate-spin"
                 />
                 {{ $t('commit-diff-loading') }}
               </div>
