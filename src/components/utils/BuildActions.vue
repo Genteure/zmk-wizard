@@ -476,12 +476,13 @@ import type { DropdownMenuItem, StepperItem, TreeItem } from '@nuxt/ui';
 import { actions } from 'astro:actions';
 import { PUBLIC_TURNSTILE_SITEKEY } from 'astro:env/client';
 import { useFluent } from 'fluent-vue';
-import { diffLines } from 'diff';
 import JSZip from 'jszip';
 import { decodeTime } from 'ulidx';
 import { computed, nextTick, ref, watch } from 'vue';
 import VueTurnstile from 'vue-turnstile';
 import { createZMKConfig } from '~/export';
+import { buildCommitDiffGroups } from '~/lib/diffPreview';
+import type { DiffLineType, DiffPreviewGroup } from '~/lib/diffPreview';
 import type { RepositoryFileChange } from '~/lib/repoChanges';
 import { ValidatedKeyboardSchema } from '~/lib/validators';
 import type { Key, Keyboard } from '~/types';
@@ -693,14 +694,8 @@ const importResultUrl = computed(() => {
 
 type CommitChangeStatus = RepositoryFileChange['status'];
 
-interface CommitDiffLine {
-  type: 'add' | 'remove' | 'context';
-  value: string;
-}
-
-type CommitDiffGroup
-  = | { kind: 'change'; type: CommitDiffLine['type']; value: string }
-    | { kind: 'fold'; count: number };
+type CommitDiffLine = { type: DiffLineType; value: string };
+type CommitDiffGroup = DiffPreviewGroup;
 
 const commitDiffSummary = computed(() => {
   const summary = { added: 0, modified: 0, deleted: 0 };
@@ -718,33 +713,7 @@ const commitDiffGroups = computed<CommitDiffGroup[]>(() => {
   const change = commitSelectedChange.value;
   if (!change) return [];
 
-  const groups: CommitDiffGroup[] = [];
-  let contextCount = 0;
-
-  const flushContext = () => {
-    if (contextCount === 0) return;
-    groups.push({ kind: 'fold', count: contextCount });
-    contextCount = 0;
-  };
-
-  for (const part of diffLines(change.oldContent, change.newContent)) {
-    const type: CommitDiffLine['type'] = part.added ? 'add' : part.removed ? 'remove' : 'context';
-    const values = part.value.split('\n');
-    if (part.value.endsWith('\n')) values.pop();
-
-    for (const rawValue of values) {
-      const value = rawValue.replace(/\r$/, '');
-      if (type === 'context') {
-        contextCount += 1;
-        continue;
-      }
-      flushContext();
-      groups.push({ kind: 'change', type, value });
-    }
-  }
-  flushContext();
-
-  return groups;
+  return buildCommitDiffGroups(change.oldContent, change.newContent);
 });
 
 function statusSymbol(status: CommitChangeStatus): string {
