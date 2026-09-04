@@ -455,7 +455,9 @@ export const server = {
     async handler(input) {
       await verifyTurnstile(input.captcha, 'repository build');
 
-      console.log('Building repository for keyboard:', input.keyboard.name);
+      if (import.meta.env.DEV) {
+        console.log('Building repository for keyboard:', input.keyboard.name);
+      }
       const keyboardConfig = createZMKConfig(input.keyboard);
       const gitRepo = await createGitRepository(keyboardConfig);
 

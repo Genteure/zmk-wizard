@@ -100,8 +100,10 @@ async function githubFetch<T>(
   init: RequestInit = {},
 ): Promise<T> {
   const method = init.method ?? 'GET';
-  const maskedToken = `${accessToken.slice(0, 4)}…${accessToken.slice(-4)}`;
-  console.log('[GitHub API request]', method, path, `token=${maskedToken}`);
+  if (import.meta.env.DEV) {
+    const maskedToken = `${accessToken.slice(0, 4)}…${accessToken.slice(-4)}`;
+    console.log('[GitHub API request]', method, path, `token=${maskedToken}`);
+  }
 
   const response = await fetch(`${GITHUB_API_BASE}${path}`, {
     ...init,
@@ -114,13 +116,15 @@ async function githubFetch<T>(
     },
   });
 
-  console.log(
-    '[GitHub API response]',
-    method,
-    path,
-    response.status,
-    response.headers.get('content-type'),
-  );
+  if (import.meta.env.DEV) {
+    console.log(
+      '[GitHub API response]',
+      method,
+      path,
+      response.status,
+      response.headers.get('content-type'),
+    );
+  }
 
   if (!response.ok) {
     const rawText = await response.text();
@@ -171,12 +175,14 @@ async function githubGraphqlFetch<T>(
   query: string,
   variables: Record<string, string>,
 ): Promise<GithubGraphqlResponse<T>> {
-  console.log(
-    '[GitHub GraphQL request]',
-    `query=${query.length} bytes`,
-    `variables=${Object.keys(variables).length}`,
-    `token=${accessToken.slice(0, 4)}…${accessToken.slice(-4)}`,
-  );
+  if (import.meta.env.DEV) {
+    console.log(
+      '[GitHub GraphQL request]',
+      `query=${query.length} bytes`,
+      `variables=${Object.keys(variables).length}`,
+      `token=${accessToken.slice(0, 4)}…${accessToken.slice(-4)}`,
+    );
+  }
 
   const response = await fetch(GITHUB_GRAPHQL_URL, {
     method: 'POST',
@@ -219,7 +225,10 @@ export async function exchangeGithubCode(
   clientId: string,
   clientSecret: string,
 ): Promise<GithubTokenResponse> {
-  console.log('[GitHub OAuth] exchanging code at github.com/login/oauth/access_token');
+  if (import.meta.env.DEV) {
+    console.log('[GitHub OAuth] exchanging code at github.com/login/oauth/access_token');
+  }
+
   const response = await fetch('https://github.com/login/oauth/access_token', {
     method: 'POST',
     headers: {
@@ -234,11 +243,13 @@ export async function exchangeGithubCode(
     }),
   });
 
-  console.log(
-    '[GitHub OAuth response]',
-    response.status,
-    response.headers.get('content-type'),
-  );
+  if (import.meta.env.DEV) {
+    console.log(
+      '[GitHub OAuth response]',
+      response.status,
+      response.headers.get('content-type'),
+    );
+  }
 
   const rawText = await response.text();
   let body: GithubTokenResponse & { error?: string; error_description?: string };
