@@ -266,21 +266,6 @@ function routeEditSession(): void {
   }
 }
 
-/**
- * After OAuth completes we know whether the app is installed. When it is
- * not, go straight to GitHub's install page instead of showing an
- * intermediate "please click Install" screen.
- */
-function redirectToInstallIfNeeded(): void {
-  if (
-    workflow.screen === 'github'
-    && workflow.githubStep === 'install'
-    && workflow.githubInstallUrl
-  ) {
-    window.location.assign(workflow.githubInstallUrl);
-  }
-}
-
 async function handleOAuthCallback(params: ReturnType<typeof parseWorkflowUrl>): Promise<void> {
   if (!params.code || !params.state) return;
   workflow.enterGithub('exchange');
@@ -314,7 +299,6 @@ async function handleOAuthCallback(params: ReturnType<typeof parseWorkflowUrl>):
   workflow.enterGithub();
   workflow.pendingRepo = data.repo;
   routeEditSession();
-  redirectToInstallIfNeeded();
 }
 
 async function handleInstallCallback(): Promise<void> {
@@ -406,7 +390,6 @@ async function initializeWorkflow(): Promise<void> {
     applyWorkflowTab(params, (tab, part) => nav.$patch({ activeTab: tab, activePart: part }));
     await refreshSession();
     routeEditSession();
-    redirectToInstallIfNeeded();
   }
   else {
     workflow.initialized = true;

@@ -64,6 +64,15 @@
             :description="$t('gh-install-signed-in')"
           />
 
+          <UAlert
+            v-if="workflow.githubInstallUrl"
+            color="info"
+            variant="soft"
+            icon="i-lucide-info"
+            :title="$t('gh-install-choose-repos-title')"
+            :description="$t('gh-install-choose-repos-hint')"
+          />
+
           <UButton
             v-if="workflow.githubInstallUrl"
             block
@@ -189,11 +198,7 @@
               />
             </div>
 
-            <div class="flex items-center justify-between gap-2">
-              <UCheckbox
-                v-model="onlyShieldWizardRepos"
-                :label="$t('gh-repos-only-shield')"
-              />
+            <div class="flex items-center justify-end gap-2">
               <UButton
                 v-if="workflow.githubInstallUrl"
                 variant="ghost"
@@ -216,78 +221,101 @@
               {{ $t('gh-repos-loading') }}
             </div>
 
-            <template v-else-if="filteredRepos.length > 0">
-              <div class="flex flex-col gap-3 h-[50vh] min-h-0 overflow-y-auto overscroll-contain px-1 py-1">
-                <UCard
-                  v-for="repo in filteredRepos"
-                  :key="repo.id"
-                  :class="repo.hasShieldWizardConfig
-                    ? 'cursor-pointer shrink-0'
-                    : 'cursor-not-allowed opacity-60 shrink-0'"
-                  :aria-disabled="!repo.hasShieldWizardConfig"
-                  :role="repo.hasShieldWizardConfig ? 'button' : undefined"
-                  :tabindex="repo.hasShieldWizardConfig ? 0 : undefined"
-                  :ui="{ body: repo.hasShieldWizardConfig ? 'px-3 py-2' : 'px-3 py-1.5' }"
-                  @click="chooseRepo(repo)"
-                  @keydown="onRepoKeydown($event, repo)"
+            <template v-else-if="repos.length > 0">
+              <div class="flex flex-col gap-3 max-h-[50vh] min-h-0 overflow-y-auto overscroll-contain px-1 py-1">
+                <UAlert
+                  v-if="showManyReposHint"
+                  class="mb-1 shrink-0"
+                  color="info"
+                  variant="soft"
+                  icon="i-lucide-info"
+                  :title="$t('gh-repos-many-title')"
+                  :description="$t('gh-repos-many-hint')"
+                />
+
+                <div
+                  v-if="supportedRepos.length === 0"
+                  class="flex flex-col items-center gap-2 py-6 text-sm text-toned"
                 >
-                  <div
-                    v-if="repo.hasShieldWizardConfig"
-                    class="flex items-center gap-3"
+                  <UIcon
+                    name="i-lucide-folder-search"
+                    class="size-8 text-muted"
+                  />
+                  <p class="text-center max-w-sm">
+                    {{ $t('gh-repos-no-supported') }}
+                  </p>
+                </div>
+
+                <template v-else>
+                  <UCard
+                    v-for="repo in supportedRepos"
+                    :key="repo.id"
+                    class="cursor-pointer shrink-0"
+                    role="button"
+                    :tabindex="0"
+                    :ui="{ body: 'px-3 py-2' }"
+                    @click="chooseRepo(repo)"
+                    @keydown="onRepoKeydown($event, repo)"
                   >
-                    <UIcon
-                      name="i-lucide-folder-git-2"
-                      class="size-6 shrink-0 text-secondary"
-                    />
-                    <div class="flex-1 min-w-0">
-                      <div class="font-medium truncate">
-                        {{ repo.fullName }}
+                    <div class="flex items-center gap-3">
+                      <UIcon
+                        name="i-lucide-folder-git-2"
+                        class="size-6 shrink-0 text-secondary"
+                      />
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium truncate">
+                          {{ repo.fullName }}
+                        </div>
+                        <div class="text-xs text-toned truncate">
+                          {{ repo.description || repo.defaultBranch }}
+                        </div>
                       </div>
-                      <div class="text-xs text-toned truncate">
-                        {{ repo.description || repo.defaultBranch }}
-                      </div>
+                      <UIcon
+                        name="i-lucide-chevron-right"
+                        class="size-4 shrink-0 text-muted"
+                      />
                     </div>
-                    <UBadge
-                      color="success"
-                      variant="soft"
-                      :label="$t('gh-repos-shield-badge')"
-                    />
-                    <UIcon
-                      name="i-lucide-chevron-right"
-                      class="size-4 shrink-0 text-muted"
-                    />
-                  </div>
+                  </UCard>
+                </template>
 
-                  <div
-                    v-else
-                    class="flex items-center gap-2"
-                  >
-                    <UIcon
-                      name="i-lucide-circle-off"
-                      class="size-4 shrink-0 text-muted"
-                    />
-                    <span class="flex-1 min-w-0 truncate text-sm text-toned">
-                      {{ repo.fullName }}
-                    </span>
-                    <UBadge
-                      color="neutral"
-                      variant="soft"
-                      :label="$t('gh-repos-not-supported')"
-                      class="shrink-0"
-                    />
-                  </div>
-                </UCard>
+                <div
+                  v-if="unsupportedRepos.length > 0"
+                  class="shrink-0 rounded-xl border border-dashed border-default bg-muted/30"
+                >
+                  <details class="group">
+                    <summary
+                      class="flex cursor-pointer select-none list-none items-center justify-between gap-2 px-4 py-3 text-sm text-toned [&::-webkit-details-marker]:hidden"
+                    >
+                      <span>
+                        {{ $t('gh-repos-unsupported-count', { count: unsupportedRepos.length }) }}
+                      </span>
+                      <UIcon
+                        name="i-lucide-chevron-down"
+                        class="size-4 shrink-0 text-muted transition-transform group-open:rotate-180"
+                      />
+                    </summary>
+                    <ul class="grid gap-1 border-t border-default px-4 py-3">
+                      <li
+                        v-for="repo in unsupportedRepos"
+                        :key="repo.id"
+                        class="truncate text-sm text-toned"
+                      >
+                        {{ repo.fullName }}
+                      </li>
+                    </ul>
+                  </details>
+                </div>
+
+                <UButton
+                  v-if="reposHasMore"
+                  block
+                  color="neutral"
+                  variant="outline"
+                  :label="$t('gh-repos-load-more')"
+                  :loading="repoLoadingMore"
+                  @click="loadMoreRepos"
+                />
               </div>
-
-              <UButton
-                v-if="reposHasMore"
-                block
-                color="neutral"
-                variant="outline"
-                :label="$t('gh-repos-load-more')"
-                :loading="repoLoadingMore"
-                @click="loadMoreRepos"
-              />
             </template>
 
             <div
@@ -323,7 +351,7 @@
                 class="size-10 text-muted"
               />
               <p class="text-center max-w-sm">
-                {{ onlyShieldWizardRepos ? $t('gh-repos-empty-filtered') : $t('gh-repos-empty') }}
+                {{ $t('gh-repos-empty') }}
               </p>
               <UButton
                 v-if="reposHasMore"
@@ -422,7 +450,6 @@ const nav = useNavigationStore();
 const githubDisabled = computed(() => !githubEnabledAtBuild || workflow.githubConfigured === false);
 const loggingOut = ref(false);
 
-const onlyShieldWizardRepos = ref(true);
 const repos = ref<GithubRepoSummary[]>([]);
 const repoLoading = ref(false);
 const repoLoadingMore = ref(false);
@@ -436,13 +463,19 @@ const installationOptions = computed(() =>
   })),
 );
 
-const filteredRepos = computed(() => {
-  const visible = onlyShieldWizardRepos.value
-    ? repos.value.filter(repo => repo.hasShieldWizardConfig)
-    : [...repos.value];
+const supportedRepos = computed(() =>
+  repos.value
+    .filter(repo => repo.hasShieldWizardConfig)
+    .sort(compareGithubRepos),
+);
 
-  return visible.sort(compareGithubRepos);
-});
+const unsupportedRepos = computed(() =>
+  repos.value
+    .filter(repo => !repo.hasShieldWizardConfig)
+    .sort(compareGithubRepos),
+);
+
+const showManyReposHint = computed(() => repos.value.length > 10 || reposHasMore.value);
 
 watch(
   () => workflow.selectedInstallationId,
@@ -733,26 +766,31 @@ gh-connect = Connect to GitHub
 gh-install-title = Install the Shield Wizard App
 gh-install-description = Choose which repositories the app may access. GitHub will bring you right back to this step when the installation is done.
 gh-install-signed-in = Signed in — now grant the app access to a repository.
-gh-install-action = Install Shield Wizard App
+gh-install-choose-repos-title = Choose only the repositories you want Shield Wizard to access
+gh-install-choose-repos-hint = Please use "Only select repositories" under "Repository access" instead of "All repositories" in GitHub application settings.
+gh-install-action = Continue to Install
 gh-install-url-missing = App installation link unavailable
 gh-install-url-missing-desc = PUBLIC_GITHUB_APP_SLUG or GITHUB_SESSION_SECRET is not configured. Set the app slug and configure the session secret.
 gh-install-return-note = You will be redirected back here automatically after GitHub finishes the installation.
 
 gh-repos-title = Choose a Repository
-gh-repos-description = Shield Wizard repositories are listed first and can be opened. Other repositories are shown for context but are not editable.
+gh-repos-description = Shield Wizard-compatible repositories can be opened. Unsupported repositories are listed separately for context only.
 gh-repos-signed-in = Signed in to GitHub
 gh-repos-signed-out = Not signed in to GitHub
 gh-logout = Sign Out
 gh-signed-out = Signed out of GitHub
 gh-logout-failed = Failed to sign out
 gh-repos-account = GitHub Account
-gh-repos-only-shield = Only Shield Wizard repositories
 gh-repos-edit-access = Edit Repository Access
 gh-repos-loading = Loading repositories…
-gh-repos-shield-badge = Shield Wizard
-gh-repos-not-supported = Not a Shield Wizard repository
+gh-repos-no-supported = No Shield Wizard-compatible repositories found. Create one with Shield Wizard first.
+gh-repos-unsupported-count = {$count ->
+  [1] 1 unsupported repository
+  *[other] {$count} unsupported repositories
+}
+gh-repos-many-title = Tip: narrow your repository access
+gh-repos-many-hint = Please use "Only select repositories" under "Repository access" instead of "All repositories" in GitHub application settings.
 gh-repos-empty = No repositories found for this installation. Grant the app access to a repository, or switch accounts.
-gh-repos-empty-filtered = No repositories here contain a Shield Wizard data file. Show all repositories, or create one with Shield Wizard first.
 gh-repos-load-more = Load More
 gh-repos-load-failed = Could not load repositories
 gh-retry = Retry
@@ -774,26 +812,31 @@ gh-connect = 连接到 GitHub
 gh-install-title = 安装 Shield Wizard App
 gh-install-description = 选择允许应用访问的仓库。安装完成后 GitHub 会自动带你回到这一步。
 gh-install-signed-in = 已登录——现在请为应用授予仓库访问权限。
-gh-install-action = 安装 Shield Wizard App
+gh-install-choose-repos-title = 只选择希望 Shield Wizard 访问的仓库
+gh-install-choose-repos-hint = 请在 GitHub 应用设置的“Repository access”中选择“Only select repositories”，而不是“All repositories”。
+gh-install-action = 继续安装
 gh-install-url-missing = 无法生成应用安装链接
 gh-install-url-missing-desc = PUBLIC_GITHUB_APP_SLUG 或 GITHUB_SESSION_SECRET 未配置。请设置应用 slug 并配置会话密钥。
 gh-install-return-note = GitHub 完成安装后会自动返回此页面。
 
 gh-repos-title = 选择仓库
-gh-repos-description = 包含 Shield Wizard 数据文件的仓库会排在前面并可以打开；其他仓库仅为参照，不可编辑。
+gh-repos-description = 可打开与 Shield Wizard 兼容的仓库。不支持的仓库会单独列出，仅供了解。
 gh-repos-signed-in = 已登录 GitHub
 gh-repos-signed-out = 尚未登录 GitHub
 gh-logout = 退出登录
 gh-signed-out = 已退出 GitHub 登录
 gh-logout-failed = 退出登录失败
 gh-repos-account = GitHub 账号
-gh-repos-only-shield = 仅显示 Shield Wizard 仓库
 gh-repos-edit-access = 编辑仓库访问权限
 gh-repos-loading = 正在加载仓库…
-gh-repos-shield-badge = Shield Wizard
-gh-repos-not-supported = 非 Shield Wizard 仓库
+gh-repos-no-supported = 没有找到与 Shield Wizard 兼容的仓库。请先用 Shield Wizard 创建一个。
+gh-repos-unsupported-count = {$count ->
+  [1] 1 个不支持的仓库
+  *[other] {$count} 个不支持的仓库
+}
+gh-repos-many-title = 小提示：限制仓库访问范围
+gh-repos-many-hint = 请在 GitHub 应用设置的“Repository access”中选择“Only select repositories”，而不是“All repositories”。
 gh-repos-empty = 此安装下没有找到仓库。请为应用授予仓库访问权限，或切换账号。
-gh-repos-empty-filtered = 这里没有包含 Shield Wizard 数据文件的仓库。显示全部仓库，或先使用 Shield Wizard 生成一个。
 gh-repos-load-more = 加载更多
 gh-repos-load-failed = 无法加载仓库
 gh-retry = 重试
@@ -815,26 +858,31 @@ gh-connect = GitHubに接続
 gh-install-title = Shield Wizard Appをインストール
 gh-install-description = アプリがアクセスできるリポジトリを選択してください。インストール完了後、GitHubがこの画面に戻します。
 gh-install-signed-in = サインイン済みです。アプリにリポジトリアクセスを許可してください。
-gh-install-action = Shield Wizard Appをインストール
+gh-install-choose-repos-title = Shield Wizardがアクセスするリポジトリを選択してください
+gh-install-choose-repos-hint = GitHubアプリの設定で「Repository access」の「All repositories」ではなく「Only select repositories」を選択してください。
+gh-install-action = 続けてインストール
 gh-install-url-missing = アプリインストールリンクを生成できません
 gh-install-url-missing-desc = PUBLIC_GITHUB_APP_SLUG または GITHUB_SESSION_SECRET が未設定です。アプリスラッグを設定し、セッションシークレットを構成してください。
 gh-install-return-note = GitHubでのインストール完了後、自動的にこのページへ戻ります。
 
 gh-repos-title = リポジトリを選択
-gh-repos-description = Shield Wizardデータファイルを含むリポジトリが先頭に表示され、開くことができます。他のリポジトリは参照のみで、編集できません。
+gh-repos-description = Shield Wizardと互換性のあるリポジトリは開ける。サポートされていないリポジトリは参考として別途表示されます。
 gh-repos-signed-in = GitHubにサインイン済み
 gh-repos-signed-out = GitHubにサインインしていません
 gh-logout = サインアウト
 gh-signed-out = GitHubからサインアウトしました
 gh-logout-failed = サインアウトに失敗しました
 gh-repos-account = GitHubアカウント
-gh-repos-only-shield = Shield Wizardリポジトリのみ
 gh-repos-edit-access = リポジトリアクセスを編集
 gh-repos-loading = リポジトリを読み込み中…
-gh-repos-shield-badge = Shield Wizard
-gh-repos-not-supported = Shield Wizardリポジトリではありません
+gh-repos-no-supported = Shield Wizardと互換性のあるリポジトリが見つかりません。先にShield Wizardで作成してください。
+gh-repos-unsupported-count = {$count ->
+  [1] サポートされていないリポジトリ 1 件
+  *[other] サポートされていないリポジトリ {$count} 件
+}
+gh-repos-many-title = ヒント：リポジトリアクセスを絞り込みましょう
+gh-repos-many-hint = GitHubアプリの設定で「Repository access」の「All repositories」ではなく「Only select repositories」を選択してください。
 gh-repos-empty = このインストールにはリポジトリがありません。アプリにアクセスを許可するか、アカウントを切り替えてください。
-gh-repos-empty-filtered = Shield Wizardデータファイルを含むリポジトリがありません。すべて表示するか、先にShield Wizardで生成してください。
 gh-repos-load-more = さらに読み込む
 gh-repos-load-failed = リポジトリを読み込めませんでした
 gh-retry = 再試行
