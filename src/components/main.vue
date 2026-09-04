@@ -135,7 +135,10 @@ function applyLoadedRepository(payload: {
   validationIssues: string[];
   wasLegacy: boolean;
 }): void {
+  const activeTab = nav.activeTab;
+  const activePart = nav.activePart;
   resetEditorState();
+  nav.$patch({ activeTab, activePart });
   history.batch(() => {
     keyboard.$patch((state) => {
       Object.assign(state, toRaw(payload.keyboard));

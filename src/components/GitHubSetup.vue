@@ -631,6 +631,7 @@ async function chooseRepo(repo: GithubRepoSummary): Promise<void> {
       return;
     }
     if (data) {
+      workflow.pendingRepo = null;
       emit('loaded', {
         keyboard: data.keyboard,
         repository: toEditingRepository(data.repository, data.dataFileSha),
