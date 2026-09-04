@@ -52,6 +52,8 @@ export interface GithubRepoSummary {
   description: string | null;
   htmlUrl: string;
   defaultBranch: string;
+  pushedAt: string | null;
+  updatedAt: string;
   owner: {
     login: string;
     avatarUrl: string;

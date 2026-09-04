@@ -68,6 +68,8 @@ export interface GithubRepository {
   description: string | null;
   htmlUrl: string;
   defaultBranch: string;
+  pushedAt: string | null;
+  updatedAt: string;
   owner: {
     login: string;
     avatarUrl: string;
@@ -299,6 +301,8 @@ export async function listInstallationRepositories(
       description: string | null;
       html_url: string;
       default_branch: string;
+      pushed_at: string | null;
+      updated_at: string;
       owner: { login: string; avatar_url: string };
     }>;
   }>(
@@ -314,6 +318,8 @@ export async function listInstallationRepositories(
     description: repo.description,
     htmlUrl: repo.html_url,
     defaultBranch: repo.default_branch,
+    pushedAt: repo.pushed_at,
+    updatedAt: repo.updated_at,
     owner: {
       login: repo.owner.login,
       avatarUrl: repo.owner.avatar_url,
@@ -388,6 +394,8 @@ export async function getGithubRepository(
     description: string | null;
     html_url: string;
     default_branch: string;
+    pushed_at: string | null;
+    updated_at: string;
     owner: { login: string; avatar_url: string };
   }>(accessToken, `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`);
 
@@ -399,6 +407,8 @@ export async function getGithubRepository(
     description: data.description,
     htmlUrl: data.html_url,
     defaultBranch: data.default_branch,
+    pushedAt: data.pushed_at,
+    updatedAt: data.updated_at,
     owner: {
       login: data.owner.login,
       avatarUrl: data.owner.avatar_url,

@@ -35,6 +35,7 @@ import {
   sealGithubSession,
   verifyGithubOAuthState,
 } from '~/lib/githubSession';
+import { compareGithubRepos } from '~/lib/githubRepoOrder';
 import { createGitRepository } from '~/lib/gitrepo';
 import { getRepoKV } from '~/lib/kv';
 import { parseShieldWizardData, SHIELD_WIZARD_DATA_FILE } from '~/lib/dataFormat';
@@ -643,12 +644,7 @@ export const server = {
           input.perPage,
         );
         const annotated = await markRepositoriesWithShieldConfig(token, repos);
-        annotated.sort((a, b) => {
-          if (a.hasShieldWizardConfig !== b.hasShieldWizardConfig) {
-            return a.hasShieldWizardConfig ? -1 : 1;
-          }
-          return a.fullName.localeCompare(b.fullName);
-        });
+        annotated.sort(compareGithubRepos);
         return { repos: annotated, hasMore };
       }
       catch (error) {

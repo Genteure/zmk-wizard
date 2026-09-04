@@ -193,14 +193,16 @@
                   ? 'cursor-pointer shrink-0'
                   : 'cursor-not-allowed opacity-60 shrink-0'"
                 :aria-disabled="!repo.hasShieldWizardConfig"
-                :ui="{ body: 'px-3 py-2' }"
+                :ui="{ body: repo.hasShieldWizardConfig ? 'px-3 py-2' : 'px-3 py-1.5' }"
                 @click="chooseRepo(repo)"
               >
-                <div class="flex items-center gap-3">
+                <div
+                  v-if="repo.hasShieldWizardConfig"
+                  class="flex items-center gap-3"
+                >
                   <UIcon
-                    :name="repo.hasShieldWizardConfig ? 'i-lucide-folder-git-2' : 'i-lucide-circle-off'"
-                    :class="repo.hasShieldWizardConfig ? 'text-secondary' : 'text-muted'"
-                    class="size-6 shrink-0"
+                    name="i-lucide-folder-git-2"
+                    class="size-6 shrink-0 text-secondary"
                   />
                   <div class="flex-1 min-w-0">
                     <div class="font-medium truncate">
@@ -211,21 +213,32 @@
                     </div>
                   </div>
                   <UBadge
-                    v-if="repo.hasShieldWizardConfig"
                     color="success"
                     variant="soft"
                     :label="$t('gh-repos-shield-badge')"
                   />
+                  <UIcon
+                    name="i-lucide-chevron-right"
+                    class="size-4 shrink-0 text-muted"
+                  />
+                </div>
+
+                <div
+                  v-else
+                  class="flex items-center gap-2"
+                >
+                  <UIcon
+                    name="i-lucide-circle-off"
+                    class="size-4 shrink-0 text-muted"
+                  />
+                  <span class="flex-1 min-w-0 truncate text-sm text-toned">
+                    {{ repo.fullName }}
+                  </span>
                   <UBadge
-                    v-else
                     color="neutral"
                     variant="soft"
                     :label="$t('gh-repos-not-supported')"
-                  />
-                  <UIcon
-                    v-if="repo.hasShieldWizardConfig"
-                    name="i-lucide-chevron-right"
-                    class="size-4 text-muted shrink-0"
+                    class="shrink-0"
                   />
                 </div>
               </UCard>
@@ -253,6 +266,15 @@
             <p class="text-center max-w-sm">
               {{ onlyShieldWizardRepos ? $t('gh-repos-empty-filtered') : $t('gh-repos-empty') }}
             </p>
+            <UButton
+              v-if="reposHasMore"
+              block
+              color="neutral"
+              variant="outline"
+              :label="$t('gh-repos-load-more')"
+              :loading="repoLoadingMore"
+              @click="loadMoreRepos"
+            />
             <UButton
               v-if="workflow.githubInstallUrl"
               size="sm"
@@ -291,6 +313,7 @@ import {
   useWorkflowStore,
 } from './workflow';
 import { locales } from './locales';
+import { compareGithubRepos } from '~/lib/githubRepoOrder';
 import { useNavigationStore } from './stores.ts';
 import LocaleSelect from './utils/LocaleSelect.vue';
 
@@ -357,12 +380,7 @@ const filteredRepos = computed(() => {
     ? repos.value.filter(repo => repo.hasShieldWizardConfig)
     : [...repos.value];
 
-  return visible.sort((a, b) => {
-    if (a.hasShieldWizardConfig !== b.hasShieldWizardConfig) {
-      return a.hasShieldWizardConfig ? -1 : 1;
-    }
-    return a.fullName.localeCompare(b.fullName);
-  });
+  return visible.sort(compareGithubRepos);
 });
 
 watch(
