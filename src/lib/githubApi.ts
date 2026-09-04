@@ -15,6 +15,7 @@ import { githubFileAdditions, githubFileDeletions } from './githubPolicy';
 
 const GITHUB_API_BASE = 'https://api.github.com';
 const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql';
+const GITHUB_USER_AGENT = 'shield-wizard-for-zmk';
 
 export class GithubApiError extends Error {
   override name = 'GithubApiError';
@@ -96,27 +97,44 @@ async function githubFetch<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
+  const method = init.method ?? 'GET';
+  const maskedToken = `${accessToken.slice(0, 4)}…${accessToken.slice(-4)}`;
+  console.log('[GitHub API request]', method, path, `token=${maskedToken}`);
+
   const response = await fetch(`${GITHUB_API_BASE}${path}`, {
     ...init,
     headers: {
       'Accept': 'application/vnd.github+json',
       'Authorization': `Bearer ${accessToken}`,
+      'User-Agent': GITHUB_USER_AGENT,
       'X-GitHub-Api-Version': '2022-11-28',
       ...(init.headers ?? {}),
     },
   });
 
+  console.log(
+    '[GitHub API response]',
+    method,
+    path,
+    response.status,
+    response.headers.get('content-type'),
+  );
+
   if (!response.ok) {
+    const rawText = await response.text();
     let body: unknown;
     try {
-      body = await response.json();
+      body = JSON.parse(rawText);
     }
     catch {
       body = undefined;
     }
     const message = (body as GithubErrorBody | undefined)?.message
       ?? `GitHub API request failed (${response.status})`;
-    console.error('[GitHub API error]', path, response.status, JSON.stringify(body));
+    console.error(
+      '[GitHub API error]',
+      { method, path, status: response.status, contentType: response.headers.get('content-type'), body, rawText: rawText.slice(0, 500) },
+    );
     throw new GithubApiError(message, response.status, body);
   }
 
@@ -160,11 +178,13 @@ export async function exchangeGithubCode(
   clientId: string,
   clientSecret: string,
 ): Promise<GithubTokenResponse> {
+  console.log('[GitHub OAuth] exchanging code at github.com/login/oauth/access_token');
   const response = await fetch('https://github.com/login/oauth/access_token', {
     method: 'POST',
     headers: {
       'Accept': 'application/json',
       'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': GITHUB_USER_AGENT,
     },
     body: new URLSearchParams({
       client_id: clientId,
@@ -173,14 +193,37 @@ export async function exchangeGithubCode(
     }),
   });
 
-  const body = await response.json() as GithubTokenResponse & { error?: string; error_description?: string };
+  console.log(
+    '[GitHub OAuth response]',
+    response.status,
+    response.headers.get('content-type'),
+  );
+
+  const rawText = await response.text();
+  let body: GithubTokenResponse & { error?: string; error_description?: string };
+  try {
+    body = JSON.parse(rawText) as GithubTokenResponse & { error?: string; error_description?: string };
+  }
+  catch {
+    console.error('[GitHub OAuth error] non-JSON response body:', rawText.slice(0, 500));
+    throw new GithubApiError(`GitHub OAuth returned a non-JSON response (${response.status})`, response.status, rawText);
+  }
+
   if (!response.ok || !body.access_token) {
+    console.error('[GitHub OAuth error]', { status: response.status, body });
     throw new GithubApiError(
       body.error_description || body.error || `Failed to exchange OAuth code (${response.status})`,
       response.status,
       body,
     );
   }
+
+  console.log(
+    '[GitHub OAuth success]',
+    `token_type=${body.token_type}`,
+    `scope=${body.scope ?? '(empty)'}`,
+    `token=${body.access_token.slice(0, 4)}…${body.access_token.slice(-4)}`,
+  );
 
   return body;
 }
@@ -495,12 +538,14 @@ export async function commitRepositoryChanges(
     throw new GithubApiError('No generated files can be updated: all generated paths are preserved', 422);
   }
 
+  console.log('[GitHub GraphQL request]', 'createCommitOnBranch', `${owner}/${repo}@${branch}`, `token=${accessToken.slice(0, 4)}…${accessToken.slice(-4)}`);
   const response = await fetch(GITHUB_GRAPHQL_URL, {
     method: 'POST',
     headers: {
       'Accept': 'application/vnd.github+json',
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
+      'User-Agent': GITHUB_USER_AGENT,
       'X-GitHub-Api-Version': '2022-11-28',
     },
     body: JSON.stringify({
