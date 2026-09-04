@@ -37,12 +37,12 @@ describe('workflow URL parsing', () => {
   });
 
   it('strips workflow keys but preserves hash and unrelated query', () => {
-    const url = new URL('https://example.test/?action=edit&code=abc&state=def&error=access_denied&error_description=denied&setup_action=install&installation_id=1&repo=a%2Fb&tab=layout&part=0&keep=1#kle=xyz');
+    const url = new URL('https://example.test/?action=edit&code=abc&state=def&error=access_denied&error_description=denied&setup_action=install&installation_id=1&repo=a%2Fb&tab=layout&part=0&iss=https%3A%2F%2Fgithub.com%2Flogin%2Foauth&keep=1#kle=xyz');
     const stripped = stripWorkflowSearch(url);
 
     expect(stripped).toContain('keep=1');
     expect(stripped).toContain('#kle=xyz');
-    for (const key of ['action', 'code', 'state', 'error', 'error_description', 'setup_action', 'installation_id', 'repo', 'tab', 'part']) {
+    for (const key of ['action', 'code', 'state', 'error', 'error_description', 'setup_action', 'installation_id', 'repo', 'tab', 'part', 'iss']) {
       expect(stripped).not.toContain(`${key}=`);
     }
   });

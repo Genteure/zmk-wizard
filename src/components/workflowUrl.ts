@@ -41,6 +41,7 @@ const WORKFLOW_SEARCH_KEYS = [
   'repo',
   'tab',
   'part',
+  'iss',
 ] as const;
 
 export function parseWorkflowUrl(url: URL): WorkflowUrlParams {
