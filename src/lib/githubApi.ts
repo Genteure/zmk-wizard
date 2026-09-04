@@ -5,11 +5,17 @@
 // and no client bundle cost. Auth is the GitHub App user-to-server
 // token from the stateless session cookie (see githubSession.ts).
 //
+// Local development: when GITHUB_HTTP_PROXY is set, `astro dev` routes
+// GitHub requests through that HTTP CONNECT proxy with tunnelfetch,
+// because Cloudflare's local workerd runtime cannot use an OS-level
+// proxy. Production builds ignore GITHUB_HTTP_PROXY and use `fetch`.
+//
 // API reference:
 //   https://docs.github.com/en/rest
 //   https://docs.github.com/en/graphql
 // ─────────────────────────────────────────────────────────────
 
+import { GITHUB_HTTP_PROXY } from 'astro:env/server';
 import { SHIELD_WIZARD_DATA_FILE } from './dataFormat';
 import { githubFileAdditions, githubFileDeletions } from './githubPolicy';
 
@@ -91,12 +97,76 @@ interface GithubErrorBody {
   documentation_url?: string;
 }
 
+const GITHUB_REQUEST_TIMEOUT_MS = 15_000;
+
+let devProxyFetchPromise: Promise<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>> | null = null;
+
+function getDevProxyFetch(timeoutMs: number): Promise<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>> {
+  devProxyFetchPromise ??= (async () => {
+    const { createFetch, resolveConnect } = await import('tunnelfetch');
+    const connect = await resolveConnect({
+      specifiers: ['cloudflare:sockets'],
+    });
+    return createFetch({
+      connect,
+      proxy: GITHUB_HTTP_PROXY,
+      timeouts: { totalMs: timeoutMs },
+    });
+  })();
+  return devProxyFetchPromise;
+}
+
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs = GITHUB_REQUEST_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    if (import.meta.env.DEV && GITHUB_HTTP_PROXY) {
+      try {
+        const proxyFetch = await getDevProxyFetch(timeoutMs);
+        return await proxyFetch(url, { ...init, signal: controller.signal });
+      }
+      catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new GithubApiError(
+            `GitHub request timed out after ${Math.round(timeoutMs / 1000)}s`,
+            504,
+          );
+        }
+        if (error instanceof GithubApiError) throw error;
+        throw new GithubApiError(
+          `GitHub dev proxy request failed: ${error instanceof Error ? error.message : String(error)}`,
+          502,
+        );
+      }
+    }
+
+    return await fetch(url, { ...init, signal: controller.signal });
+  }
+  catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new GithubApiError(
+        `GitHub request timed out after ${Math.round(timeoutMs / 1000)}s`,
+        504,
+      );
+    }
+    throw error;
+  }
+  finally {
+    clearTimeout(timer);
+  }
+}
+
 async function githubFetch<T>(
   accessToken: string,
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const response = await fetch(`${GITHUB_API_BASE}${path}`, {
+  const response = await fetchWithTimeout(`${GITHUB_API_BASE}${path}`, {
     ...init,
     headers: {
       'Accept': 'application/vnd.github+json',
@@ -160,7 +230,7 @@ export async function exchangeGithubCode(
   clientId: string,
   clientSecret: string,
 ): Promise<GithubTokenResponse> {
-  const response = await fetch('https://github.com/login/oauth/access_token', {
+  const response = await fetchWithTimeout('https://github.com/login/oauth/access_token', {
     method: 'POST',
     headers: {
       'Accept': 'application/json',
@@ -495,7 +565,7 @@ export async function commitRepositoryChanges(
     throw new GithubApiError('No generated files can be updated: all generated paths are preserved', 422);
   }
 
-  const response = await fetch(GITHUB_GRAPHQL_URL, {
+  const response = await fetchWithTimeout(GITHUB_GRAPHQL_URL, {
     method: 'POST',
     headers: {
       'Accept': 'application/vnd.github+json',

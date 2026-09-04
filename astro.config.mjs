@@ -40,6 +40,9 @@ export default defineConfig({
       // Random secret used to encrypt the GitHub access token inside the
       // stateless HttpOnly session cookie and to sign OAuth state values.
       GITHUB_SESSION_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
+      // Optional HTTP CONNECT proxy for local development only, e.g.
+      // http://proxy:20171. Ignored in production builds.
+      GITHUB_HTTP_PROXY: envField.string({ context: 'server', access: 'public', optional: true, default: '' }),
     },
   },
 
@@ -82,6 +85,14 @@ export default defineConfig({
   vite: {
     server: {
       allowedHosts: ['shield-wizard.genteure.workers.dev'],
+    },
+    optimizeDeps: {
+      exclude: ['tunnelfetch'],
+    },
+    ssr: {
+      optimizeDeps: {
+        exclude: ['tunnelfetch'],
+      },
     },
     plugins: [
       ui({

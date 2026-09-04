@@ -44,6 +44,9 @@ importers:
       reka-ui:
         specifier: 2.10.1
         version: 2.10.1(vue@3.5.40(typescript@6.0.3))
+      tunnelfetch:
+        specifier: 1.13.0
+        version: 1.13.0
       ulidx:
         specifier: 2.4.1
         version: 2.4.1
@@ -5182,6 +5185,10 @@ packages:
 
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
+
+  tunnelfetch@1.13.0:
+    resolution: {integrity: sha512-peH7FfiOqIInYgNkiqLuRu4cz5mFmwH2B4axYEfTV6qvcWVRabxzBNSgBXQn5QEliNFy0iLKeC9TbiQiRXTtNg==}
+    engines: {node: '>=22'}
 
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
@@ -11598,6 +11605,8 @@ snapshots:
       typescript: 6.0.3
 
   tslib@2.8.1: {}
+
+  tunnelfetch@1.13.0: {}
 
   type-check@0.4.0:
     dependencies:
