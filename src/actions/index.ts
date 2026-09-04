@@ -40,7 +40,8 @@ import {
 import { compareGithubRepos } from '~/lib/githubRepoOrder';
 import { createGitRepository } from '~/lib/gitrepo';
 import { githubFileAdditions, githubFileDeletions } from '~/lib/githubPolicy';
-import { computeRepositoryFileChanges } from '~/lib/repoChanges';
+import { buildCommitDiffGroups, type DiffPreviewGroup } from '~/lib/diffPreview';
+import { computeRepositoryFileChanges, type RepositoryFileChange } from '~/lib/repoChanges';
 import { getRepoKV } from '~/lib/kv';
 import { parseShieldWizardData, SHIELD_WIZARD_DATA_FILE } from '~/lib/dataFormat';
 import { KeyboardSchema, type Keyboard } from '~/types/keyboard';
@@ -391,6 +392,12 @@ async function requireExistingRepositoryKeyboard(
 interface RepositoryCommitPlan {
   files: ReturnType<typeof createZMKConfig>;
   preservedPaths: Set<string>;
+}
+
+interface GithubPreviewFileChange {
+  path: string;
+  status: RepositoryFileChange['status'];
+  diff: DiffPreviewGroup[];
 }
 
 async function buildRepositoryCommitPlan(
@@ -825,7 +832,7 @@ export const server = {
           }
         }
 
-        const changes = await computeRepositoryFileChanges({
+        const fileChanges = await computeRepositoryFileChanges({
           existingPaths,
           newFiles,
           preservedPaths,
@@ -834,6 +841,12 @@ export const server = {
             return file ? file.content : null;
           },
         });
+
+        const changes: GithubPreviewFileChange[] = fileChanges.map(change => ({
+          path: change.path,
+          status: change.status,
+          diff: buildCommitDiffGroups(change.oldContent, change.newContent),
+        }));
 
         return { changes };
       }

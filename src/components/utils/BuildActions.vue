@@ -479,7 +479,6 @@ import { decodeTime } from 'ulidx';
 import { computed, nextTick, ref, watch } from 'vue';
 import VueTurnstile from 'vue-turnstile';
 import { createZMKConfig } from '~/export';
-import { buildCommitDiffGroups } from '~/lib/diffPreview';
 import type { DiffLineType, DiffPreviewGroup } from '~/lib/diffPreview';
 import type { RepositoryFileChange } from '~/lib/repoChanges';
 import { ValidatedKeyboardSchema } from '~/lib/validators';
@@ -679,7 +678,7 @@ const captchaToken = ref('');
 const commitModalOpen = ref(false);
 const isCommitting = ref(false);
 const commitMessage = ref('Update keyboard configuration via Shield Wizard');
-const commitFileChanges = ref<RepositoryFileChange[]>([]);
+const commitFileChanges = ref<CommitFileChange[]>([]);
 const commitPreviewLoading = ref(false);
 const commitPreviewError = ref<string | null>(null);
 const selectedChangePath = ref<string | null>(null);
@@ -691,6 +690,12 @@ const importResultUrl = computed(() => {
 });
 
 type CommitChangeStatus = RepositoryFileChange['status'];
+
+type CommitFileChange = {
+  path: string;
+  status: CommitChangeStatus;
+  diff: DiffPreviewGroup[];
+};
 
 type CommitDiffLine = { type: DiffLineType; value: string };
 type CommitDiffGroup = DiffPreviewGroup;
@@ -707,12 +712,9 @@ const commitSelectedChange = computed(() =>
   commitFileChanges.value.find(change => change.path === selectedChangePath.value) ?? null,
 );
 
-const commitDiffGroups = computed<CommitDiffGroup[]>(() => {
-  const change = commitSelectedChange.value;
-  if (!change) return [];
-
-  return buildCommitDiffGroups(change.oldContent, change.newContent);
-});
+const commitDiffGroups = computed<CommitDiffGroup[]>(() =>
+  commitSelectedChange.value?.diff ?? [],
+);
 
 function statusSymbol(status: CommitChangeStatus): string {
   switch (status) {
