@@ -11,7 +11,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { SHIELD_WIZARD_DATA_FILE } from './dataFormat';
-import { githubFileAdditions, githubFileDeletions } from './githubPolicy';
+import { planFileChanges, type FilePolicy } from './filePolicy';
 
 const GITHUB_API_BASE = 'https://api.github.com';
 const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql';
@@ -616,7 +616,7 @@ export interface GithubCommitResult {
  * Replace every wizard-owned file in the repository with the freshly
  * generated versions and delete stale generated files, in one atomic
  * GraphQL mutation. `files` must be complete and already validated by
- * the caller; preserved user files are filtered out here.
+ * the caller; untouchable paths are filtered out here.
  */
 export async function commitRepositoryChanges(
   accessToken: string,
@@ -626,24 +626,31 @@ export async function commitRepositoryChanges(
     branch: string;
     files: Record<string, string>;
     commitMessage: string;
-    /** User-modified generated files that must not be overwritten. */
-    preservedPaths?: ReadonlySet<string>;
+    /** The generic file policy controlling which paths may be touched. */
+    policy: FilePolicy;
+    /** User-modified conditional generated files that must not be overwritten. */
+    userModifiedPaths?: ReadonlySet<string>;
   },
 ): Promise<GithubCommitResult> {
-  const { owner, repo, branch, files, commitMessage, preservedPaths = new Set<string>() } = params;
+  const { owner, repo, branch, files, commitMessage, policy, userModifiedPaths = new Set<string>() } = params;
 
   const expectedHeadOid = await getBranchHeadOid(accessToken, owner, repo, branch);
   const treeSha = await getCommitTreeSha(accessToken, owner, repo, expectedHeadOid);
   const existingPaths = await listRepositoryTreePaths(accessToken, owner, repo, treeSha);
 
-  const additions = githubFileAdditions(files, preservedPaths).map(({ path, contents }) => ({
+  const { additions: fileAdditions, deletions } = planFileChanges(
+    files,
+    existingPaths,
+    policy,
+    userModifiedPaths,
+  );
+  const additions = fileAdditions.map(({ path, contents }) => ({
     path,
     contents: encodeBase64Utf8(contents),
   }));
-  const deletions = githubFileDeletions(existingPaths, new Set(Object.keys(files)), preservedPaths);
 
   if (additions.length === 0) {
-    throw new GithubApiError('No generated files can be updated: all generated paths are preserved', 422);
+    throw new GithubApiError('No generated files can be updated: all writable paths are protected', 422);
   }
 
   console.log('[GitHub GraphQL request]', 'createCommitOnBranch', `${owner}/${repo}@${branch}`, `token=${accessToken.slice(0, 4)}…${accessToken.slice(-4)}`);

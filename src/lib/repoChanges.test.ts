@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { computeRepositoryFileChanges } from './repoChanges';
+import { createFilePolicy } from './filePolicy';
 import type { RepositoryFileChange } from './repoChanges';
+
+const myBoard = createFilePolicy('my_board');
 
 describe('computeRepositoryFileChanges', () => {
   it('reports new files as added', async () => {
@@ -10,6 +13,7 @@ describe('computeRepositoryFileChanges', () => {
         'README.md': 'readme',
         'boards/shields/my_board/my_board.overlay': 'overlay',
       },
+      policy: myBoard,
       readFile: async path => path === 'README.md' ? 'readme' : null,
     });
 
@@ -36,6 +40,7 @@ describe('computeRepositoryFileChanges', () => {
         ...files,
         'build.yaml': 'build: old',
       },
+      policy: myBoard,
       readFile: async path => files[path] ?? null,
     });
 
@@ -53,6 +58,7 @@ describe('computeRepositoryFileChanges', () => {
     const changes = await computeRepositoryFileChanges({
       existingPaths: ['boards/shields/my_board/old.overlay'],
       newFiles: {},
+      policy: myBoard,
       readFile: async () => 'old content',
     });
 
@@ -66,15 +72,16 @@ describe('computeRepositoryFileChanges', () => {
     ]);
   });
 
-  it('does not include preserved files even when the generated copy changed', async () => {
-    const extra = new Set(['README.md']);
+  it('does not include user-modified conditional files even when the generated copy changed', async () => {
+    const userModifiedPaths = new Set(['config/my_board.keymap']);
     const changes = await computeRepositoryFileChanges({
       existingPaths: ['README.md', 'config/my_board.keymap'],
       newFiles: {
         'README.md': 'new readme',
         'config/my_board.keymap': 'new keymap',
       },
-      preservedPaths: extra,
+      policy: myBoard,
+      userModifiedPaths,
       readFile: async () => 'old content',
     });
 
@@ -83,17 +90,18 @@ describe('computeRepositoryFileChanges', () => {
 
   it('sorts changes by path', async () => {
     const changes = await computeRepositoryFileChanges({
-      existingPaths: ['build.yaml'],
+      existingPaths: ['build.yaml', '.shield-wizard.json'],
       newFiles: {
-        'README.md': 'new readme',
+        '.shield-wizard.json': 'new data',
         'build.yaml': 'new build',
       },
+      policy: myBoard,
       readFile: async () => 'old content',
     });
 
     expect(changes.map(change => change.path)).toEqual([
+      '.shield-wizard.json',
       'build.yaml',
-      'README.md',
     ]);
   });
 });

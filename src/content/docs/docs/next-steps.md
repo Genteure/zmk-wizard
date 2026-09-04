@@ -49,13 +49,13 @@ and pick it from the list. Shield Wizard reads its data file, restores the
 full editor state, and **Save Changes to GitHub** regenerates the wizard-owned
 files and commits them for you.
 
-Shield Wizard never touches `config/` — your keymap, ZMK options, and west
-manifest always stay as you left them. If you have customized `README.md`,
-`build.yaml`, or the build workflow, those files are kept as well; when they
-still match the original generated content, Shield Wizard refreshes them.
-Everything else that Shield Wizard originally generated (board and shield
-files, the layout SVG, and its internal data file) is replaced with freshly
-generated content and stale generated files are removed. The shield name
+Shield Wizard defaults to not touching files. It fully replaces the
+generated `boards/shields/` tree and `snippets/`, always refreshes
+`config/<shield>.json`, the build workflow, the layout SVG, and its internal
+data file, and refreshes `config/<shield>.keymap`, `config/west.yml`,
+`zephyr/module.yml`, and `build.yaml` only when they still match the
+original generated content. Your other `config/*` files, `README.md`, and
+any unlisted user files stay exactly as you left them. The shield name
 cannot be changed while editing; start a new shield if you want a different
 name.
 

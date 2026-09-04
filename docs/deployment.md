@@ -203,21 +203,28 @@ The browser never submits file contents. `githubCommitChanges`:
    `ValidatedKeyboardSchema`;
 2. reads the current `.shield-wizard.json` and refuses shield renames;
 3. regenerates every file with `createZMKConfig`;
-4. computes the current branch HEAD and tree, filters preserved paths, and
-   commits atomically with the GraphQL
+4. computes the current branch HEAD and tree, filters untouchable paths,
+   and commits atomically with the GraphQL
    [`createCommitOnBranch`](https://docs.github.com/en/graphql/reference/mutations#createcommitonbranch)
    mutation.
 
-Preserved (never overwritten/deleted): `config/**`. Generated files that
-users commonly customize (`README.md`, `build.yaml`,
-`.github/workflows/build.yml`) are compared server-side against the baseline
-Shield Wizard would generate for the stored keyboard: modified copies are
-kept, untouched copies are refreshed. Wizard-owned files (board/shield
-overlays, `.github/shield-wizard-layout.svg`, `.shield-wizard.json`) are
-replaced by fresh server output, and stale generated files are deleted. The
-commit goes directly to the repository's default branch; a PR would make
-“edit and build” slower for this use case, but the commit is a normal GitHub
-commit users can revert.
+The generic file policy defaults to “do not touch”: only explicitly
+Shield Wizard-owned paths are added, overwritten, or deleted.
+
+- `boards/shields/<shield>/` and `snippets/` are fully synced: new files
+  are added, changed files are overwritten, and stale generated files are
+  deleted.
+- `config/<shield>.json`, `.github/workflows/build.yml`,
+  `.github/shield-wizard-layout.svg`, and `.shield-wizard.json` are always
+  refreshed.
+- `config/<shield>.keymap`, `config/west.yml`, `zephyr/module.yml`, and
+  `build.yaml` are refreshed only when the user has not modified them.
+- Other `config/*` files, `README.md`, and any unlisted user files are
+  never touched.
+
+The commit goes directly to the repository's default branch; a PR would
+make “edit and build” slower for this use case, but the commit is a normal
+GitHub commit users can revert.
 
 ### 4. GitHub CLI smoke checks
 
@@ -238,8 +245,10 @@ In the app:
 3. Select the repo; the editor must open with the stored configuration.
 4. Change the display name or a key position, then **Save Changes to
    GitHub**.
-5. Confirm the new commit exists, `config/` is untouched, and any
-   user-modified `README.md` / `build.yaml` / workflow file was preserved.
+5. Confirm the new commit exists, user-owned `config/*` files remain
+   untouched, and any user-modified conditional files
+   (`README.md` is never touched; `build.yaml`, the keymap, west.yml, and
+   `zephyr/module.yml` are preserved when customized) remain as expected.
 
 ## GitHub Actions workflows
 
@@ -481,7 +490,7 @@ preview alias.
 | “App installation link unavailable” | `PUBLIC_GITHUB_APP_SLUG` is empty or does not match the app URL. |
 | Session expires immediately / 401 on save | The token is over 8 hours old or `GITHUB_SESSION_SECRET` was rotated; sign in again. |
 | Rate limit | Repository listing checks `.shield-wizard.json` with bounded concurrency, but a page of repos still uses API calls. If GitHub returns 403, wait a few minutes. |
-| Shield rename rejected | Intentional. Renaming changes every generated path and would strand the preserved `config/` files; start a new shield instead. |
+| Shield rename rejected | Intentional. Renaming changes every generated path, including the generated `boards/shields/` tree, and would strand user-owned `config/` files; start a new shield instead. |
 
 ## References
 

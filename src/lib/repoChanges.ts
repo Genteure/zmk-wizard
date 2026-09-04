@@ -2,17 +2,17 @@
 // Repository change preview
 //
 // Computes the exact set of file changes that `githubCommitChanges`
-// will write to a repository. It deliberately mirrors the commit
-// policy: preserved paths (`config/**` and user-customized generated
-// files) are never shown as changed, because the commit action will
-// not touch them.
+// will write to a repository. It deliberately mirrors the file-change
+// policy: untouchable paths (`config/**` except the generated JSON,
+// README, etc.) and user-customized conditional files are never shown
+// as changed, because the commit action will not touch them.
 //
 // The preview returns old/new text content for each changed file so
 // callers can render a line-level diff with the `diff` package. It
 // never reads or transfers files that are not part of the commit.
 // ─────────────────────────────────────────────────────────────
 
-import { githubFileAdditions, githubFileDeletions } from './githubPolicy';
+import { planFileChanges, type FilePolicy } from './filePolicy';
 
 export type RepositoryFileChangeStatus = 'added' | 'modified' | 'deleted';
 
@@ -30,12 +30,13 @@ export interface ComputeRepositoryFileChangesInput {
   existingPaths: string[];
   /** The complete freshly generated Shield Wizard file set. */
   newFiles: Record<string, string>;
+  /** The generic file policy controlling which paths may be touched. */
+  policy: FilePolicy;
   /**
-   * Paths that the commit policy will not overwrite or delete. Defaults
-   * to no extra preserved paths (the built-in `config/**` rule is still
-   * applied by `githubFileAdditions`/`githubFileDeletions`).
+   * Conditional generated files that the user has modified and must not
+   * be overwritten or deleted. Defaults to no user modifications.
    */
-  preservedPaths?: ReadonlySet<string>;
+  userModifiedPaths?: ReadonlySet<string>;
   /** Reads the current repository content, or `null` when the file is missing. */
   readFile: (path: string) => Promise<string | null>;
 }
@@ -54,15 +55,20 @@ export async function computeRepositoryFileChanges(
   const {
     existingPaths,
     newFiles,
-    preservedPaths = new Set<string>(),
+    policy,
+    userModifiedPaths = new Set<string>(),
     readFile,
   } = input;
 
   const existingPathSet = new Set(existingPaths);
-  const newFilePathSet = new Set(Object.keys(newFiles));
   const changes: RepositoryFileChange[] = [];
 
-  const additions = githubFileAdditions(newFiles, preservedPaths);
+  const { additions, deletions } = planFileChanges(
+    newFiles,
+    existingPaths,
+    policy,
+    userModifiedPaths,
+  );
   for (const { path } of additions) {
     const newContent = newFiles[path] ?? '';
     const oldContent = existingPathSet.has(path) ? await readFile(path) : null;
@@ -77,7 +83,6 @@ export async function computeRepositoryFileChanges(
     }
   }
 
-  const deletions = githubFileDeletions(existingPaths, newFilePathSet, preservedPaths);
   for (const { path } of deletions) {
     const oldContent = await readFile(path);
     if (oldContent === null) continue;

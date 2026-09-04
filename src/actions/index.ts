@@ -39,7 +39,12 @@ import {
 } from '~/lib/githubSession';
 import { compareGithubRepos } from '~/lib/githubRepoOrder';
 import { createGitRepository } from '~/lib/gitrepo';
-import { githubFileAdditions, githubFileDeletions } from '~/lib/githubPolicy';
+import {
+  computeUserModifiedPaths,
+  createFilePolicy,
+  planFileChanges,
+  type FilePolicy,
+} from '~/lib/filePolicy';
 import { buildCommitDiffGroups, type DiffPreviewGroup } from '~/lib/diffPreview';
 import { computeRepositoryFileChanges, type RepositoryFileChange } from '~/lib/repoChanges';
 import { getRepoKV } from '~/lib/kv';
@@ -322,47 +327,27 @@ function parseRepositoryKeyboard(content: string): { keyboard: Keyboard; wasLega
   return { keyboard: legacy.data, wasLegacy: true };
 }
 
-/**
- * Generated files that users commonly customize. They are preserved
- * only when the repository copy differs from what Shield Wizard itself
- * would generate for the stored keyboard, so untouched files still get
- * refreshed on save. `config/**` is always preserved by the commit
- * policy and is intentionally not listed here.
- */
-const CONDITIONALLY_PRESERVED_PATHS = [
-  'README.md',
-  'build.yaml',
-  '.github/workflows/build.yml',
-] as const;
-
-async function computeUserModifiedPreservedPaths(
+async function computeUserModifiedPathsFromRepository(
   token: string,
   owner: string,
   repo: string,
   branch: string,
   existingKeyboard: Keyboard,
+  policy: FilePolicy,
 ): Promise<Set<string>> {
   const baseline = createZMKConfig(existingKeyboard);
-  const preserved = new Set<string>();
-
-  for (const filePath of CONDITIONALLY_PRESERVED_PATHS) {
-    const baselineContent = baseline[filePath];
-    if (baselineContent === undefined) continue;
-
+  return computeUserModifiedPaths(baseline, async (filePath) => {
     try {
       const current = await readGithubTextFile(token, owner, repo, filePath, branch);
-      if (current.content !== baselineContent) {
-        preserved.add(filePath);
-      }
+      return current.content;
     }
     catch (error) {
       // A missing file means the user deleted it; let Shield Wizard
       // recreate it instead of treating the deletion as a customization.
       if (!GithubApiError.isNotFound(error)) throw error;
+      return null;
     }
-  }
-
-  return preserved;
+  }, policy);
 }
 
 async function requireExistingRepositoryKeyboard(
@@ -391,7 +376,8 @@ async function requireExistingRepositoryKeyboard(
 
 interface RepositoryCommitPlan {
   files: ReturnType<typeof createZMKConfig>;
-  preservedPaths: Set<string>;
+  policy: FilePolicy;
+  userModifiedPaths: Set<string>;
 }
 
 interface GithubPreviewFileChange {
@@ -408,16 +394,18 @@ async function buildRepositoryCommitPlan(
   existingKeyboard: Keyboard,
   nextKeyboard: Keyboard,
 ): Promise<RepositoryCommitPlan> {
-  return {
-    files: createZMKConfig(nextKeyboard),
-    preservedPaths: await computeUserModifiedPreservedPaths(
-      token,
-      owner,
-      repo,
-      branch,
-      existingKeyboard,
-    ),
-  };
+  const files = createZMKConfig(nextKeyboard);
+  const policy = createFilePolicy(existingKeyboard.shield);
+  const userModifiedPaths = await computeUserModifiedPathsFromRepository(
+    token,
+    owner,
+    repo,
+    branch,
+    existingKeyboard,
+    policy,
+  );
+
+  return { files, policy, userModifiedPaths };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -783,19 +771,12 @@ export const server = {
 
         // Fetch every file that might be compared in one batched GraphQL
         // request instead of a separate REST call per file.
-        const newFilePathSet = new Set(Object.keys(newFiles));
-        const additionCandidates = githubFileAdditions(newFiles, new Set())
-          .map(entry => entry.path);
-        const deletionCandidates = githubFileDeletions(
-          existingPaths,
-          newFilePathSet,
-          new Set(),
-        ).map(entry => entry.path);
+        const policy = createFilePolicy(input.keyboard.shield);
+        const { additions, deletions } = planFileChanges(newFiles, existingPaths, policy);
         const fetchPaths = Array.from(new Set([
           SHIELD_WIZARD_DATA_FILE,
-          ...CONDITIONALLY_PRESERVED_PATHS,
-          ...additionCandidates,
-          ...deletionCandidates,
+          ...additions.map(entry => entry.path),
+          ...deletions.map(entry => entry.path),
         ]));
         const fetchedFiles = await fetchGithubTextFilesBatch(
           token,
@@ -822,20 +803,20 @@ export const server = {
 
         console.log('Previewing Shield Wizard changes for:', `${input.owner}/${input.repo}@${input.branch}`);
         const baseline = createZMKConfig(existing.keyboard);
-        const preservedPaths = new Set<string>();
-        for (const filePath of CONDITIONALLY_PRESERVED_PATHS) {
-          const baselineContent = baseline[filePath];
-          if (baselineContent === undefined) continue;
-          const current = fetchedFiles.get(filePath);
-          if (current && current.content !== baselineContent) {
-            preservedPaths.add(filePath);
-          }
-        }
+        const userModifiedPaths = await computeUserModifiedPaths(
+          baseline,
+          async (filePath) => {
+            const current = fetchedFiles.get(filePath);
+            return current?.content ?? null;
+          },
+          policy,
+        );
 
         const fileChanges = await computeRepositoryFileChanges({
           existingPaths,
           newFiles,
-          preservedPaths,
+          policy,
+          userModifiedPaths,
           readFile: async (filePath) => {
             const file = fetchedFiles.get(filePath);
             return file ? file.content : null;
@@ -871,8 +852,9 @@ export const server = {
 
       try {
         // The shield name is part of every generated file name. Renaming it
-        // in place would strand the preserved `config/` files and delete the
-        // board/shield tree, so refuse it and point the user at New Shield.
+        // in place would strand user-owned `config/` files and change the
+        // generated `boards/shields/` tree, so refuse it and point the user
+        // at New Shield.
         const { existing } = await requireExistingRepositoryKeyboard(
           token,
           input.owner,
@@ -888,7 +870,7 @@ export const server = {
         }
 
         console.log('Committing Shield Wizard changes to:', `${input.owner}/${input.repo}@${input.branch}`);
-        const { files, preservedPaths } = await buildRepositoryCommitPlan(
+        const { files, policy, userModifiedPaths } = await buildRepositoryCommitPlan(
           token,
           input.owner,
           input.repo,
@@ -902,7 +884,8 @@ export const server = {
           branch: input.branch,
           files,
           commitMessage: input.commitMessage,
-          preservedPaths,
+          policy,
+          userModifiedPaths,
         });
 
         return {
