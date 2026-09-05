@@ -28,6 +28,7 @@
 
       <App
         v-else
+        :key="workflow.editorSessionId"
         @new="startNewFlow"
         @edit="startEditFlow"
         @logout="logout"
@@ -80,7 +81,8 @@ const pendingImportChoice = shallowRef<ImportedLayout | null>(null);
 function applyImportedKeys(keys: Key[]) {
   keyboard.$patch({ layout: structuredClone(toRaw(keys)) });
   keyboard.sortLayout();
-  nav.activeTab = 'layout';
+  useSelectionStore().clearSelected();
+  nav.$patch({ activeTab: 'layout', activePart: null });
 }
 
 function applyImportChoice(choice: 'original' | 'generated') {
@@ -96,27 +98,44 @@ function applyImportChoice(choice: 'original' | 'generated') {
   clearLayoutHash();
 }
 
+function closePendingImport(options: { clearHash?: boolean } = {}): void {
+  importChoiceOpen.value = false;
+  pendingImportChoice.value = null;
+  if (options.clearHash) clearLayoutHash();
+}
+
 // ─── Workflow transitions ───────────────────────────────────
 
 function resetEditorState(): void {
   keyboard.$reset();
   history.clear();
   useSelectionStore().clearSelected();
+  // Close any pending URL-hash layout import from a previous task. The hash
+  // itself is intentionally left alone here: startup imports read it after
+  // the editor is initialized, and the choice modal keeps it until confirm.
+  closePendingImport();
   nav.$patch({
     activeTab: 'layout',
     activePart: null,
+    wiringSelection: null,
     dialog: { info: false },
     build: { repoId: '' },
   });
 }
 
 function startNewFlow(): void {
+  // If the user starts a new flow while the layout-import choice modal is
+  // open, that hash belongs to the previous task and should be discarded.
+  // Startup URLs are safe because the modal is not open yet at this point.
+  const hadPendingImport = importChoiceOpen.value;
   resetEditorState();
+  if (hadPendingImport) clearLayoutHash();
   workflow.enterNewEditor();
   nav.dialog.info = true;
 }
 
 function startEditFlow(): void {
+  closePendingImport({ clearHash: true });
   workflow.githubReturnScreen = workflow.screen;
   workflow.githubReturnMode = workflow.mode;
   workflow.enterGithub('repositories');
@@ -166,6 +185,7 @@ function applyLoadedRepository(payload: {
 }
 
 async function startLoginFlow(): Promise<void> {
+  closePendingImport({ clearHash: true });
   try {
     const { data, error } = await actions.githubBeginAuth({
       intent: 'login',
@@ -202,6 +222,7 @@ async function logout(): Promise<void> {
       // Keep the runtime "configured" flag so the GitHub setup page can
       // distinguish “configured but signed out” from “not configured”.
       workflow.githubConfigured = true;
+      closePendingImport({ clearHash: true });
       workflow.showStart();
       toast.add({
         color: 'neutral',

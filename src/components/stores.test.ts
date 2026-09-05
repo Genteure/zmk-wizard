@@ -389,6 +389,7 @@ describe('useKeyboardStore', () => {
       expect(kb.parts[0].kscans).toHaveLength(0);
       expect(kb.parts[0].pins[pinId('d0')]).toBeUndefined();
       expect(kb.parts[0].keys[key.id]?.input).toBeUndefined();
+      expect(key.id in kb.parts[0].keys).toBe(false);
     });
 
     test('no-op for invalid part index', () => {
@@ -786,6 +787,7 @@ describe('useKeyboardStore', () => {
       kb.setKeyWiring(0, key.id, { pinId: pinId('d0'), role: 'input' });
       kb.releasePin(0, pinId('d0'));
       expect(kb.parts[0].keys[key.id]).toBeUndefined();
+      expect(key.id in kb.parts[0].keys).toBe(false);
     });
   });
 
@@ -823,6 +825,22 @@ describe('useKeyboardStore', () => {
       kb.setEncoderPin(0, encId, 'pinA', pinId('d0'));
       kb.setEncoderPin(0, encId, 'pinA', undefined);
       expect(kb.parts[0].pins[pinId('d0')]).toBeUndefined();
+    });
+
+    test('does not drop the current pin when the requested pin is occupied', () => {
+      const kb = useKeyboardStore();
+      kb.addEncoder(0);
+      const encId = kb.parts[0].encoders[0].id;
+      kb.setEncoderPin(0, encId, 'pinA', pinId('d0'));
+
+      kb.addKscan(0, 'matrix');
+      const kscanId = kb.parts[0].kscans[0].id;
+      kb.assignPinToKscan(0, pinId('d1'), kscanId, 'input');
+
+      kb.setEncoderPin(0, encId, 'pinA', pinId('d1'));
+
+      expect(kb.parts[0].pins[pinId('d0')]).toMatchObject({ usage: 'encoder', role: 'pinA' });
+      expect(kb.parts[0].pins[pinId('d1')]).toMatchObject({ usage: 'kscan' });
     });
 
     test('no-op for non-existent encoder', () => {
@@ -1120,6 +1138,20 @@ describe('useKeyboardStore', () => {
       kb.assignBusPin(0, pinId('d0'), 'nonexistent', 'sda');
       expect(kb.parts[0].pins[pinId('d0')]).toBeUndefined();
     });
+
+    test('does not overwrite a pin already assigned elsewhere', () => {
+      const kb = useKeyboardStore();
+      kb.addKscan(0, 'matrix');
+      const kscanId = kb.parts[0].kscans[0].id;
+      kb.assignPinToKscan(0, pinId('d0'), kscanId, 'input');
+      kb.addDevice(0, 'i2c0', 'ssd1306');
+
+      kb.assignBusPin(0, pinId('d0'), 'i2c0', 'sda');
+
+      const usage = kb.parts[0].pins[pinId('d0')];
+      expect(usage).toBeDefined();
+      if (usage && 'usage' in usage) expect(usage.usage).toBe('kscan');
+    });
   });
 
   describe('assignDevicePin', () => {
@@ -1139,6 +1171,12 @@ describe('useKeyboardStore', () => {
       kb.assignDevicePin(0, pinId('d0'), 'other-device', 'irq');
       const usage = asDeviceUsage(kb.parts[0].pins[pinId('d0')]);
       expect(usage?.deviceId).toBe(deviceId);
+    });
+
+    test('no-op when device does not exist', () => {
+      const kb = useKeyboardStore();
+      kb.assignDevicePin(0, pinId('d0'), 'nonexistent-device', 'cs');
+      expect(kb.parts[0].pins[pinId('d0')]).toBeUndefined();
     });
   });
 
@@ -1172,6 +1210,42 @@ describe('useKeyboardStore', () => {
       expect(kb.parts[0].kscans[0].kind).toBe('matrix');
 
       expect(kb.parts[0].keys[keyId('tk0')]).toBeDefined();
+    });
+
+    test('replaces stale kscan state while preserving non-kscan pins', () => {
+      const kb = useKeyboardStore();
+
+      // Target part initially has its own kscan, a key wiring, and an encoder pin.
+      const targetKey = makeKey({ id: keyId('tk0'), part: 0, row: 0, col: 0 });
+      kb.$patch({ layout: [targetKey] });
+      kb.addKscan(0, 'matrix');
+      const targetKscanId = kb.parts[0].kscans[0].id;
+      kb.assignPinToKscan(0, pinId('d0'), targetKscanId, 'input');
+      kb.setKeyWiring(0, targetKey.id, { pinId: pinId('d0'), role: 'input' });
+      kb.addEncoder(0);
+      const encId = kb.parts[0].encoders[0].id;
+      kb.setEncoderPin(0, encId, 'pinA', pinId('d1'));
+
+      // Source part has a matching key and a kscan wiring.
+      const sourceKey = makeKey({ id: keyId('sk0'), part: 1, row: 0, col: 0 });
+      kb.$patch({ layout: [...kb.layout, sourceKey] });
+      kb.addKscan(1, 'matrix');
+      const sourceKscanId = kb.parts[1].kscans[0].id;
+      const sourcePin = pinId('d2');
+      kb.assignPinToKscan(1, sourcePin, sourceKscanId, 'input');
+      kb.setKeyWiring(1, sourceKey.id, { pinId: sourcePin, role: 'input' });
+
+      kb.copyFromPart(0, 1);
+
+      // Target's old kscan pin is gone, its old key wiring is replaced, and
+      // the unrelated encoder pin is preserved.
+      expect(kb.parts[0].pins[pinId('d0')]).toBeUndefined();
+      expect(kb.parts[0].pins[pinId('d1')]).toMatchObject({ usage: 'encoder', role: 'pinA' });
+      expect(kb.parts[0].pins[pinId('d2')]).toMatchObject({ usage: 'kscan' });
+      expect(kb.parts[0].keys[targetKey.id]).toEqual({ input: sourcePin });
+      // Every key wiring now references pins managed by the cloned kscans,
+      // not the deleted old kscan id.
+      expect(kb.parts[0].kscans.map(k => k.id)).not.toContain(targetKscanId);
     });
   });
 });

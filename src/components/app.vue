@@ -167,7 +167,7 @@ import Editors from './editor/editors.vue';
 import Graphics from './graphic/graphics.vue';
 import { useHistoryStore } from './history.ts';
 import { locales } from './locales';
-import { useKeyboardStore, useNavigationStore } from './stores.ts';
+import { useKeyboardStore, useNavigationStore, useSelectionStore } from './stores.ts';
 import WorkflowMenu from './WorkflowMenu.vue';
 import BuildActions from './utils/BuildActions.vue';
 import FeedbackDialog from './utils/FeedbackDialog.vue';
@@ -302,6 +302,7 @@ function applyDebugData() {
       // Pin map is sparse — no seeding needed.
       // Available pins are derived from controller + device metadata.
     });
+    useSelectionStore().clearSelected();
 
     if (issues.length > 0) {
       // Data was applied; keep the dialog open so the warnings are visible.

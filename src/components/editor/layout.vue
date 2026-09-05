@@ -391,6 +391,7 @@ function doImport() {
 function applyImportedLayout(keys: Key[]) {
   keyboard.$patch({ layout: structuredClone(toRaw(keys)) });
   keyboard.sortLayout();
+  useSelectionStore().clearSelected();
 
   toast.add({
     title: $t('imported-toast-title'),
@@ -467,6 +468,7 @@ function loadPreset() {
 
   keyboard.$patch({ layout: structuredClone(entry.keys) });
   keyboard.sortLayout();
+  useSelectionStore().clearSelected();
 
   presetOpen.value = false;
   presetSelected.value = '';

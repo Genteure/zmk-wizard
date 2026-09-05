@@ -103,6 +103,11 @@ export const useWorkflowStore = defineStore('workflow', () => {
   const githubReturnScreen = ref<WorkflowScreen | null>(null);
   /** Workflow to restore when cancelling GitHub flow back to the editor. */
   const githubReturnMode = ref<WorkflowMode | null>(null);
+  /** Bumped whenever a new editor session starts. Used as a Vue key so
+   *  editor-local UI state (modals, import buffers, commit drafts) cannot
+   *  survive from one unrelated task to the next. */
+  let nextEditorSessionId = 1;
+  const editorSessionId = ref(0);
 
   const isNew = computed(() => screen.value === 'editor' && mode.value === 'new');
   const isEditing = computed(() => screen.value === 'editor' && mode.value === 'edit');
@@ -125,6 +130,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
     githubError.value = null;
     editingRepository.value = null;
     pendingRepo.value = null;
+    githubReturnScreen.value = null;
+    githubReturnMode.value = null;
+    editorSessionId.value = nextEditorSessionId++;
   }
 
   function enterGithub(step: GithubStep = 'auth') {
@@ -140,6 +148,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
     editingRepository.value = repository;
     githubError.value = null;
     githubBusy.value = false;
+    githubReturnScreen.value = null;
+    githubReturnMode.value = null;
+    editorSessionId.value = nextEditorSessionId++;
   }
 
   function cancelGithub() {
@@ -196,6 +207,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     initialized,
     screen,
     mode,
+    editorSessionId,
     githubStep,
     githubBusy,
     githubError,

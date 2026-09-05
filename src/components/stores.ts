@@ -310,7 +310,7 @@ export const useKeyboardStore = defineStore('keyboard', {
             if (wiring.input === pinId) wiring.input = undefined;
             if (wiring.output === pinId) wiring.output = undefined;
             if (wiring.input === undefined && wiring.output === undefined) {
-              part.keys[keyId as KeyId] = undefined;
+              delete part.keys[keyId as KeyId];
             }
           }
         }
@@ -447,7 +447,7 @@ export const useKeyboardStore = defineStore('keyboard', {
           }
           // Clean up fully empty wiring entries.
           if (wiring.input === undefined && wiring.output === undefined) {
-            part.keys[keyId as KeyId] = undefined;
+            delete part.keys[keyId as KeyId];
           }
         }
       });
@@ -460,14 +460,22 @@ export const useKeyboardStore = defineStore('keyboard', {
         if (!part) return;
         const encoder = part.encoders.find(e => e.id === encoderId);
         if (!encoder) return;
-        // Find and release old pin for this encoder+phase
+        // Find the current pin for this encoder+phase.
+        let currentPin: PinId | undefined;
         for (const [pid, usage] of Object.entries(part.pins)) {
           if (usage?.usage === 'encoder' && usage.encoderId === encoderId && usage.role === phase) {
-            delete part.pins[pid as PinId];
+            currentPin = pid as PinId;
             break;
           }
         }
-        // Assign new pin if provided and available
+        // If the requested pin is already occupied by a different usage (or
+        // the opposite phase), do not release the existing pin — otherwise a
+        // failed reassignment would silently lose the current wiring.
+        if (pinId && pinId in part.pins && pinId !== currentPin) return;
+        // Release the old pin if it is being replaced or removed.
+        if (currentPin) delete part.pins[currentPin];
+        // Assign new pin if provided and available (this also covers re-selecting
+        // the same pin, which is a no-op at the state level).
         if (pinId && !(pinId in part.pins)) {
           part.pins[pinId as PinId] = { usage: 'encoder', encoderId: encoder.id, role: phase };
         }
@@ -595,6 +603,7 @@ export const useKeyboardStore = defineStore('keyboard', {
         const part = state.parts[partIdx];
         if (!part) return;
         if (!part.buses[busName as BusName]) return;
+        if (pinId in part.pins) return; // pin already in use
         part.pins[pinId] = { usage: 'bus', bus: busName as BusName, role };
       });
     },
@@ -604,6 +613,10 @@ export const useKeyboardStore = defineStore('keyboard', {
       this.$patch((state) => {
         const part = state.parts[partIdx];
         if (!part) return;
+        const deviceExists = Object.values(part.buses).some(bus =>
+          bus.devices.some(device => device.id === deviceId),
+        );
+        if (!deviceExists) return;
         if (pinId in part.pins) return; // pin already in use
         part.pins[pinId] = { usage: 'device', deviceId: deviceId as DeviceId, role };
       });
@@ -647,8 +660,14 @@ export const useKeyboardStore = defineStore('keyboard', {
           }
         });
 
-        // 3. Copy kscan pin assignments from source (updated kscan IDs)
-        const newPins = { ...toRaw(target.pins) };
+        // 3. Copy kscan pin assignments from source (updated kscan IDs).
+        // Drop the target's previous kscan pins so stale references to the
+        // replaced kscan drivers cannot survive; non-kscan pins (encoders,
+        // devices, buses) are preserved.
+        const newPins: typeof target.pins = {};
+        for (const [pinId, usage] of Object.entries(target.pins)) {
+          if (usage?.usage !== 'kscan') newPins[pinId as PinId] = usage;
+        }
         for (const [pinId, usage] of Object.entries(source.pins)) {
           if (usage.usage !== 'kscan') continue;
           const newKscanId = kscanIdMap.get(usage.kscan);
@@ -660,14 +679,16 @@ export const useKeyboardStore = defineStore('keyboard', {
           };
         }
 
-        // 4. Set key wiring from mapped result
-        const newKeys = { ...toRaw(target.keys) };
+        // 4. Replace key wiring with the mapped result. Copying wiring is a
+        // complete replacement, not a merge, so unmatched old wirings are
+        // cleared too.
+        const newKeys: typeof target.keys = {};
         for (const [targetKeyId, wiring] of Object.entries(result.keyWirings)) {
           newKeys[targetKeyId as KeyId] = wiring;
         }
 
         target.kscans = newKscans;
-        target.pins = newPins as typeof target.pins;
+        target.pins = newPins;
         target.keys = newKeys;
       });
     },
