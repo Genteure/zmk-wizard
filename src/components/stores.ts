@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ulid } from 'ulidx';
 import { computed, reactive, ref, toRaw, watch } from 'vue';
-import { KeyboardPartSchema, KeySchema, type AnyBusDevice, type Bus, type BusName, type BusPinRole, type ControllerId, type DeviceId, type EncoderId, type I2cBus, type I2cDevice, type Key, type Keyboard, type KeyId, type KscanDriver, type ModuleId, type PinId, type SpiBus, type SpiDevice } from '~/types';
+import { KeyboardPartSchema, KeySchema, type AnyBusDevice, type Bus, type BusName, type BusPinRole, type ControllerId, type DeviceId, type EncoderId, type I2cBus, type I2cDevice, type Key, type Keyboard, type KeyId, type KeyboardPart, type KscanDriver, type ModuleId, type PinId, type SingleKeyWiring, type SpiBus, type SpiDevice } from '~/types';
 import type { localeMap } from './locales';
 import { getDeviceMeta, type DeviceTypeName } from '~/metadata/device';
 import type { WiringTransform } from '~/lib/wiringMapping';
@@ -9,6 +9,115 @@ import { mapKeyWirings } from '~/lib/wiringMapping';
 
 function isSpiBus(bus: Bus): bus is SpiBus { return bus.type === 'spi'; }
 function isI2cBus(bus: Bus): bus is I2cBus { return bus.type === 'i2c'; }
+
+interface KscanPinInfo {
+  pinIds: Set<PinId>;
+  roleSwapPinIds: Set<PinId>;
+  hasInputPin: boolean;
+  hasOutputPin: boolean;
+}
+
+interface AssociatedKeyWiring {
+  keyId: KeyId;
+  wiring: SingleKeyWiring;
+}
+
+/**
+ * Collect all pins assigned to a kscan and, for matrix-style kscans, the
+ * input/output pins whose roles should be swapped.
+ */
+function getKscanPinInfo(
+  part: KeyboardPart,
+  kscanId: string,
+  swapPinRoles: boolean,
+): KscanPinInfo {
+  const pinIds = new Set<PinId>();
+  const roleSwapPinIds = new Set<PinId>();
+  let hasInputPin = false;
+  let hasOutputPin = false;
+
+  for (const [pinId, usage] of Object.entries(part.pins)) {
+    if (usage?.usage !== 'kscan' || usage.kscan !== kscanId) continue;
+    const id = pinId as PinId;
+
+    pinIds.add(id);
+    if (swapPinRoles && (usage.role === 'input' || usage.role === 'output')) {
+      roleSwapPinIds.add(id);
+    }
+    if (usage.role === 'input') hasInputPin = true;
+    if (usage.role === 'output') hasOutputPin = true;
+  }
+
+  return { pinIds, roleSwapPinIds, hasInputPin, hasOutputPin };
+}
+
+/**
+ * Collect key wirings that use pins from the given kscan. Also reports whether
+ * any key already has both input and output wired to this kscan.
+ */
+function getAssociatedKeyWirings(
+  part: KeyboardPart,
+  pinIds: Set<PinId>,
+): { keys: AssociatedKeyWiring[]; hasBothKeyRoles: boolean } {
+  const keys: AssociatedKeyWiring[] = [];
+  let hasBothKeyRoles = false;
+
+  for (const [keyId, wiring] of Object.entries(part.keys)) {
+    if (!wiring) continue;
+
+    const inputUsesKscan = wiring.input !== undefined && pinIds.has(wiring.input);
+    const outputUsesKscan = wiring.output !== undefined && pinIds.has(wiring.output);
+    if (!inputUsesKscan && !outputUsesKscan) continue;
+
+    if (inputUsesKscan && outputUsesKscan) {
+      hasBothKeyRoles = true;
+    }
+
+    keys.push({
+      keyId: keyId as KeyId,
+      wiring: { ...toRaw(wiring) },
+    });
+  }
+
+  return { keys, hasBothKeyRoles };
+}
+
+/** Swap a key wiring's input and output pin references. */
+function swapKeyWiring(wiring: SingleKeyWiring): SingleKeyWiring {
+  const next: SingleKeyWiring = {};
+  if (wiring.input !== undefined) {
+    next.output = wiring.input;
+  }
+  if (wiring.output !== undefined) {
+    next.input = wiring.output;
+  }
+  return next;
+}
+
+/**
+ * Matrix kscans need both input and output pins, or a key already using both.
+ * Charlieplex pins are dual-purpose, so only a key using both roles is required.
+ */
+function canSwapKscanInputOutput(
+  kind: KscanDriver['kind'],
+  hasInputPin: boolean,
+  hasOutputPin: boolean,
+  hasBothKeyRoles: boolean,
+): boolean {
+  return kind === 'charlieplex'
+    ? hasBothKeyRoles
+    : (hasInputPin && hasOutputPin) || hasBothKeyRoles;
+}
+
+/** Swap input/output roles on the selected kscan pins. */
+function swapKscanPinRoles(part: KeyboardPart, pinIds: Set<PinId>) {
+  for (const [pinId, usage] of Object.entries(part.pins)) {
+    if (!pinIds.has(pinId as PinId)) continue;
+    if (usage?.usage === 'kscan' && (usage.role === 'input' || usage.role === 'output')) {
+      usage.role = usage.role === 'input' ? 'output' : 'input';
+    }
+  }
+}
 
 // Pin map is sparse: only assigned pins have entries.
 // Available pins are derived from controller + device metadata (see pinInventory.ts).
@@ -214,6 +323,47 @@ export const useKeyboardStore = defineStore('keyboard', {
         if (!part) return;
         const kscan = part.kscans.find(k => k.id === kscanId);
         if (kscan) Object.assign(kscan, changes);
+      });
+    },
+
+    /**
+     * Swap the input/output role assignments for a kscan.
+     *
+     * For matrix kscans, each input pin becomes an output pin and each output
+     * pin becomes an input pin, while all pins stay assigned to the same kscan
+     * and the same split part. For charlieplex kscans the pins are already
+     * dual-purpose, so only the per-key input/output references are swapped.
+     *
+     * In every supported case the key wiring is updated in the same split part;
+     * pins are never moved to another kscan or another part.
+     */
+    swapKscanInputOutput(partIdx: number, kscanId: string) {
+      this.$patch((state) => {
+        const part = state.parts[partIdx];
+        if (!part) return;
+        const kscan = part.kscans.find(k => k.id === kscanId);
+        if (!kscan || kscan.kind === 'direct') return;
+
+        const isMatrix = kscan.kind === 'matrix';
+        const kscanPins = getKscanPinInfo(part, kscanId, isMatrix);
+        if (kscanPins.pinIds.size === 0) return;
+
+        const associatedKeys = getAssociatedKeyWirings(part, kscanPins.pinIds);
+        const canSwap = canSwapKscanInputOutput(
+          kscan.kind,
+          kscanPins.hasInputPin,
+          kscanPins.hasOutputPin,
+          associatedKeys.hasBothKeyRoles,
+        );
+        if (!canSwap) return;
+
+        if (isMatrix) {
+          swapKscanPinRoles(part, kscanPins.roleSwapPinIds);
+        }
+
+        for (const { keyId, wiring } of associatedKeys.keys) {
+          part.keys[keyId] = swapKeyWiring(wiring);
+        }
       });
     },
     /** Move a kscan up (-1) or down (+1) in the list. */
@@ -539,7 +689,8 @@ export const useNavigationStore = defineStore('navigation', () => {
   // Clear wiring selection when switching parts.
   watch(activePart, () => { wiringSelection.value = null; });
 
-  // Clear wiring selection when the selected pin is released (covers all release paths).
+  // Clear wiring selection when the selected pin is released, or when its role
+  // changes so it no longer matches the selected role (e.g. an input/output swap).
   const keyboard = useKeyboardStore();
   watch(
     () => {
@@ -548,9 +699,12 @@ export const useNavigationStore = defineStore('navigation', () => {
     },
     (newPins, oldPins) => {
       if (!newPins || !oldPins || !wiringSelection.value) return;
-      const selectedPinId = wiringSelection.value.pinId;
+      const { pinId: selectedPinId, role: selectedRole } = wiringSelection.value;
       const pid = selectedPinId as PinId;
-      if (!(pid in newPins) && pid in oldPins) {
+      const isReleased = pid in oldPins && !(pid in newPins);
+      const usage = newPins[pid];
+      const roleChanged = usage?.usage === 'kscan' && usage.role !== selectedRole;
+      if (isReleased || roleChanged) {
         wiringSelection.value = null;
       }
     },

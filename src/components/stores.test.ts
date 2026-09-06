@@ -486,6 +486,145 @@ describe('useKeyboardStore', () => {
     });
   });
 
+  describe('swapKscanInputOutput', () => {
+    test('swaps pin roles and associated key wiring', () => {
+      const kb = useKeyboardStore();
+      kb.addKscan(0, 'matrix');
+      const kscanId = kb.parts[0].kscans[0].id;
+      kb.assignPinToKscan(0, pinId('d0'), kscanId, 'input');
+      kb.assignPinToKscan(0, pinId('d1'), kscanId, 'output');
+
+      const key = makeKey();
+      kb.$patch({ layout: [key] });
+      kb.setKeyWiring(0, key.id, { pinId: pinId('d0'), role: 'input' });
+      kb.setKeyWiring(0, key.id, { pinId: pinId('d1'), role: 'output' });
+
+      kb.swapKscanInputOutput(0, kscanId);
+
+      expect(asKscanUsage(kb.parts[0].pins[pinId('d0')])?.role).toBe('output');
+      expect(asKscanUsage(kb.parts[0].pins[pinId('d1')])?.role).toBe('input');
+      expect(kb.parts[0].keys[key.id]).toEqual({
+        input: pinId('d1'),
+        output: pinId('d0'),
+      });
+    });
+
+    test('moves single-sided wiring to the swapped role', () => {
+      const kb = useKeyboardStore();
+      kb.addKscan(0, 'matrix');
+      const kscanId = kb.parts[0].kscans[0].id;
+      kb.assignPinToKscan(0, pinId('d0'), kscanId, 'input');
+      kb.assignPinToKscan(0, pinId('d1'), kscanId, 'output');
+
+      const key = makeKey();
+      kb.$patch({ layout: [key] });
+      kb.setKeyWiring(0, key.id, { pinId: pinId('d0'), role: 'input' });
+
+      kb.swapKscanInputOutput(0, kscanId);
+
+      expect(asKscanUsage(kb.parts[0].pins[pinId('d0')])?.role).toBe('output');
+      expect(asKscanUsage(kb.parts[0].pins[pinId('d1')])?.role).toBe('input');
+      expect(kb.parts[0].keys[key.id]).toEqual({
+        input: undefined,
+        output: pinId('d0'),
+      });
+    });
+
+    test('swaps charlieplex key wiring without changing pin roles', () => {
+      const kb = useKeyboardStore();
+      kb.addKscan(0, 'charlieplex');
+      const kscanId = kb.parts[0].kscans[0].id;
+      kb.assignPinToKscan(0, pinId('d0'), kscanId, 'input');
+      kb.assignPinToKscan(0, pinId('d1'), kscanId, 'input');
+
+      const key1 = makeKey();
+      const key2 = makeKey();
+      kb.$patch({ layout: [key1, key2] });
+      kb.setKeyWiring(0, key1.id, { pinId: pinId('d0'), role: 'input' });
+      kb.setKeyWiring(0, key1.id, { pinId: pinId('d1'), role: 'output' });
+      kb.setKeyWiring(0, key2.id, { pinId: pinId('d1'), role: 'input' });
+      kb.setKeyWiring(0, key2.id, { pinId: pinId('d0'), role: 'output' });
+
+      kb.swapKscanInputOutput(0, kscanId);
+
+      expect(asKscanUsage(kb.parts[0].pins[pinId('d0')])?.role).toBe('input');
+      expect(asKscanUsage(kb.parts[0].pins[pinId('d1')])?.role).toBe('input');
+      expect(kb.parts[0].keys[key1.id]).toEqual({
+        input: pinId('d1'),
+        output: pinId('d0'),
+      });
+      expect(kb.parts[0].keys[key2.id]).toEqual({
+        input: pinId('d0'),
+        output: pinId('d1'),
+      });
+    });
+
+    test('does not swap when the kscan lacks both input and output pins', () => {
+      const kb = useKeyboardStore();
+      kb.addKscan(0, 'direct');
+      const kscanId = kb.parts[0].kscans[0].id;
+      kb.assignPinToKscan(0, pinId('d0'), kscanId, 'input');
+
+      const key = makeKey();
+      kb.$patch({ layout: [key] });
+      kb.setKeyWiring(0, key.id, { pinId: pinId('d0'), role: 'input' });
+
+      kb.swapKscanInputOutput(0, kscanId);
+
+      expect(asKscanUsage(kb.parts[0].pins[pinId('d0')])?.role).toBe('input');
+      expect(kb.parts[0].keys[key.id]).toEqual({ input: pinId('d0') });
+    });
+
+    test('only touches the selected kscan and its split part', () => {
+      const kb = useKeyboardStore();
+      kb.addKscan(0, 'matrix');
+      const kscanId = kb.parts[0].kscans[0].id;
+      kb.addKscan(1, 'matrix');
+      const otherKscanId = kb.parts[1].kscans[0].id;
+
+      kb.assignPinToKscan(0, pinId('d0'), kscanId, 'input');
+      kb.assignPinToKscan(0, pinId('d1'), kscanId, 'output');
+      kb.assignPinToKscan(1, pinId('d2'), otherKscanId, 'input');
+      kb.assignPinToKscan(1, pinId('d3'), otherKscanId, 'output');
+
+      const key0 = makeKey();
+      const key1 = makeKey();
+      kb.$patch({
+        layout: [key0, key1],
+        parts: [
+          {
+            ...kb.parts[0],
+            keys: {
+              [key0.id]: { input: pinId('d0'), output: pinId('d1') },
+            },
+          },
+          {
+            ...kb.parts[1],
+            keys: {
+              [key1.id]: { input: pinId('d2'), output: pinId('d3') },
+            },
+          },
+        ],
+      });
+
+      kb.swapKscanInputOutput(0, kscanId);
+
+      expect(asKscanUsage(kb.parts[0].pins[pinId('d0')])?.role).toBe('output');
+      expect(asKscanUsage(kb.parts[0].pins[pinId('d1')])?.role).toBe('input');
+      expect(kb.parts[0].keys[key0.id]).toEqual({
+        input: pinId('d1'),
+        output: pinId('d0'),
+      });
+
+      expect(asKscanUsage(kb.parts[1].pins[pinId('d2')])?.role).toBe('input');
+      expect(asKscanUsage(kb.parts[1].pins[pinId('d3')])?.role).toBe('output');
+      expect(kb.parts[1].keys[key1.id]).toEqual({
+        input: pinId('d2'),
+        output: pinId('d3'),
+      });
+    });
+  });
+
   // ── Encoder CRUD ────────────────────────────────────────
 
   describe('addEncoder', () => {
@@ -1065,6 +1204,29 @@ describe('useNavigationStore', () => {
     const nav = useNavigationStore();
     nav.wiringSelection = { pinId: 'd0', role: 'input' };
     expect(nav.wiringSelection).toEqual({ pinId: 'd0', role: 'input' });
+  });
+  test('clears wiringSelection when the selected pin role changes (e.g. after a swap)', async () => {
+    const { nextTick } = await import('vue');
+    const kb = useKeyboardStore();
+    kb.addKscan(0, 'matrix');
+    const kscanId = kb.parts[0].kscans[0].id;
+    kb.assignPinToKscan(0, pinId('d0'), kscanId, 'input');
+
+    const nav = useNavigationStore();
+    nav.activePart = 0;
+    await nextTick();
+
+    nav.wiringSelection = { pinId: pinId('d0'), role: 'input' };
+    await nextTick();
+    expect(nav.wiringSelection).toEqual({ pinId: pinId('d0'), role: 'input' });
+
+    // Simulate an input/output swap flipping d0 from input to output.
+    kb.$patch((state) => {
+      const usage = state.parts[0].pins[pinId('d0')];
+      if (usage?.usage === 'kscan') usage.role = 'output';
+    });
+    await nextTick();
+    expect(nav.wiringSelection).toBeNull();
   });
 });
 

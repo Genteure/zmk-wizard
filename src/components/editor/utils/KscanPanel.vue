@@ -17,7 +17,7 @@ import { useFluent } from 'fluent-vue';
 import { computed, ref } from 'vue';
 import { kscanLabel } from '~/components/utils/labels';
 import { usePinInventory } from '~/lib/usePinInventory';
-import type { KeyboardPart, KscanDriverKind, PinId } from '~/types';
+import type { KeyboardPart, KscanDriver, KscanDriverKind, PinId } from '~/types';
 import type { DropdownMenuItem } from '@nuxt/ui';
 
 const ROLE_ORDER: Record<string, number> = { input: 0, output: 1, interrupt: 2 };
@@ -41,6 +41,7 @@ const emit = defineEmits<{
   removeKscan: [kscanId: string];
   moveKscan: [kscanId: string, direction: -1 | 1];
   patchKscan: [kscanId: string, changes: Record<string, unknown>];
+  swapKscanInputOutput: [kscanId: string];
   assignPin: [payload: { pinId: PinId; kscanId: string; role: 'input' | 'output' | 'interrupt' }];
   releasePin: [pinId: PinId];
 }>();
@@ -64,6 +65,47 @@ function kscanPins(kscanId: string) {
     .filter(([, u]) => u?.usage === 'kscan' && u.kscan === kscanId)
     .map(([id, u]) => ({ pinId: id as PinId, role: u!.role }));
   return pins.sort((a, b) => (ROLE_ORDER[a.role] ?? 3) - (ROLE_ORDER[b.role] ?? 3));
+}
+
+/** Whether a kscan has at least one key wired with both input and output pins from that kscan. */
+function kscanHasBothKeyRoles(kscanId: string): boolean {
+  const kscanPinIds = new Set(
+    Object.entries(props.part.pins)
+      .filter(([, u]) => u?.usage === 'kscan' && u.kscan === kscanId)
+      .map(([id]) => id as PinId),
+  );
+
+  for (const wiring of Object.values(props.part.keys)) {
+    if (
+      wiring?.input
+      && wiring?.output
+      && kscanPinIds.has(wiring.input)
+      && kscanPinIds.has(wiring.output)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Build the menu items for a kscan card. */
+function kscanMenuItems(kscan: KscanDriver): DropdownMenuItem[] {
+  if (kscan.kind === 'direct') {
+    return [{ type: 'label', label: $t('kscan-no-action') }];
+  }
+
+  const pins = kscanPins(kscan.id);
+  const hasInput = pins.some(pin => pin.role === 'input');
+  const hasOutput = pins.some(pin => pin.role === 'output');
+
+  if ((hasInput && hasOutput) || kscanHasBothKeyRoles(kscan.id)) {
+    return [{
+      label: $t('kscan-swap-input-output'),
+      onSelect: () => emit('swapKscanInputOutput', kscan.id),
+    }];
+  }
+
+  return [{ type: 'label', label: $t('kscan-no-action') }];
 }
 
 /** Find the interrupt pin currently assigned to a kscan (charlieplex only). */
@@ -184,6 +226,14 @@ function handleInterruptPin(kscanId: string, value: string) {
           <span class="text-sm font-mono text-base-content/50">{{ kscanLabel(part.name, part.kscans, kscan.id) }}</span>
         </div>
         <div class="flex items-center gap-1">
+          <UDropdownMenu :items="kscanMenuItems(kscan)">
+            <UButton
+              icon="i-lucide-more-vertical"
+              variant="subtle"
+              color="neutral"
+              size="xs"
+            />
+          </UDropdownMenu>
           <UFieldGroup
             v-if="part.kscans.length > 1"
             size="xs"
@@ -295,6 +345,8 @@ kscan-matrix-diodes-yes = With diodes
 kscan-matrix-diodes-no = Without diodes
 kscan-direct-mode = Mode
 kscan-charlieplex-interrupt-pin = Interrupt Pin
+kscan-no-action = No action available
+kscan-swap-input-output = Swap Input/Output
 no-pins-assigned = No pins assigned.
 none-option = — {none} —
 </ftl>
@@ -310,6 +362,8 @@ kscan-matrix-diodes-yes = 有二极管
 kscan-matrix-diodes-no = 无二极管
 kscan-direct-mode = 模式
 kscan-charlieplex-interrupt-pin = 中断引脚
+kscan-no-action = 无可用操作
+kscan-swap-input-output = 交换输入/输出
 no-pins-assigned = 未分配引脚
 none-option = — {none} —
 </ftl>
@@ -325,6 +379,8 @@ kscan-matrix-diodes-yes = ダイオードあり
 kscan-matrix-diodes-no = ダイオードなし
 kscan-direct-mode = モード
 kscan-charlieplex-interrupt-pin = 割り込みピン
+kscan-no-action = 利用可能な操作はありません
+kscan-swap-input-output = 入力/出力を入れ替え
 no-pins-assigned = ピンが割り当てられていません
 none-option = — {none} —
 </ftl>

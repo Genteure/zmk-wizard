@@ -130,6 +130,7 @@
       @remove-kscan="keyboard.removeKscan(nav.activePart!, $event)"
       @move-kscan="(id, dir) => keyboard.moveKscan(nav.activePart!, id, dir)"
       @patch-kscan="(id, changes) => keyboard.patchKscan(nav.activePart!, id, changes)"
+      @swap-kscan-input-output="(id) => keyboard.swapKscanInputOutput(nav.activePart!, id)"
       @assign-pin="keyboard.assignPinToKscan(nav.activePart!, $event.pinId, $event.kscanId, $event.role)"
       @release-pin="keyboard.releasePin(nav.activePart!, $event)"
     />
