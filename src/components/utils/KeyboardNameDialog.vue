@@ -38,8 +38,8 @@
             >
               <UFormField
                 class="w-full"
-                :label="$t('display-name')"
-                :help="$t('display-name-help')"
+                :label="$t('name')"
+                :help="$t('name-help')"
                 name="name"
               >
                 <UInput
@@ -56,8 +56,8 @@
 
               <UFormField
                 class="w-full"
-                :label="$t('shield-name')"
-                :help="isEditing ? $t('shield-name-fixed') : $t('shield-name-help')"
+                :label="$t('shield')"
+                :help="isEditing ? $t('shield-fixed') : $t('shield-help')"
                 name="shield"
               >
                 <UInput
@@ -284,12 +284,12 @@ async function onSubmit(event: FormSubmitEvent<FormSchema>) {
 </script>
 
 <ftl locale="en">
-subtitle = Create ZMK shields for custom keyboards without writing code
-display-name = Display Name
-display-name-help = Shows up on your computer and phone. Max 16 bytes.
-shield-name = Shield Name
-shield-name-help = For firmware and file names. Use lowercase letters, numbers, and underscores.
-shield-name-fixed = Shield name is fixed when editing an existing repository. Start a new shield to use a different name.
+subtitle = Build ZMK shields for custom keyboards, no code needed
+name = Display Name
+name-help = Shows up on your computer and phone. Max 16 bytes.
+shield = Shield Name
+shield-help = For firmware and file names. Use lowercase letters, numbers, and underscores.
+shield-fixed = Shield name cannot be changed when editing an existing repository. Start a new shield to use a different name.
 random-name = Can't think of a name? How about {$name}?
 split-part = Split Keyboard Parts
 parts-radio-label = {$count ->
@@ -297,16 +297,16 @@ parts-radio-label = {$count ->
   *[other] {$count} Parts
 }
 continue-to-editor = Continue to Editor
-save-changes-to-editor = Save Changes
+save-changes-to-editor = Continue to Editor
 </ftl>
 
 <ftl locale="zh-CN">
-subtitle = 免代码为 DIY 键盘生成 ZMK shield
-display-name = 显示名字
-display-name-help = 显示在电脑和手机上的名字。最长 16 字节。
-shield-name = Shield 名
-shield-name-help = 用于固件和文件名。使用小写字母、数字和下划线。
-shield-name-fixed = 编辑已有仓库时不能修改 Shield 名。如需换名，请新建一个 Shield。
+subtitle = 为自定义键盘搭建 ZMK shield，无需写代码
+name = 显示名字
+name-help = 显示在电脑和手机上的名字。最长 16 字节。
+shield = Shield 名
+shield-help = 用于固件和文件名。使用小写字母、数字和下划线。
+shield-fixed = 编辑已有仓库时不能修改 Shield 名。如需使用其他名称，请新建一个 Shield。
 random-name = 想不出名字？{$name}如何？
 split-part = 分体键盘构成
 parts-radio-label = {$count ->
@@ -314,16 +314,16 @@ parts-radio-label = {$count ->
   *[other] {$count} 个分体
 }
 continue-to-editor = 进入编辑器
-save-changes-to-editor = 保存修改
+save-changes-to-editor = 进入编辑器
 </ftl>
 
 <ftl locale="ja">
-subtitle = コード不要で、自作キーボードのZMKシールドを作成
-display-name = 表示名
-display-name-help = パソコンやスマートフォンに表示される名前です。最大16バイト。
-shield-name = シールド名
-shield-name-help = ファームウェアやファイル名に使われる名前です。小文字のアルファベット、数字、アンダースコアを使用してください。
-shield-name-fixed = 既存リポジトリの編集ではシールド名を変更できません。別の名前を使うには新しいシールドを開始してください。
+subtitle = カスタムキーボード用の ZMK シールドを、コードを書かずに作成できます
+name = 表示名
+name-help = パソコンやスマートフォンに表示される名前です。最大16バイト。
+shield = シールド名
+shield-help = ファームウェアやファイル名に使われる名前です。小文字のアルファベット、数字、アンダースコアを使用してください。
+shield-fixed = 既存のリポジトリを編集しているときは、シールド名を変更できません。別の名前にするには、新しいシールドを作成してください。
 random-name = 名前が思いつかない？{$name}はどう？
 split-part = 分割キーボードの構成
 parts-radio-label = {$count ->
@@ -331,5 +331,5 @@ parts-radio-label = {$count ->
   *[other] {$count} パーツ
 }
 continue-to-editor = エディターに進む
-save-changes-to-editor = 変更を保存
+save-changes-to-editor = エディターに進む
 </ftl>

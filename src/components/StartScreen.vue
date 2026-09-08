@@ -15,7 +15,7 @@
             Shield Wizard for ZMK
           </h1>
           <p class="text-toned">
-            {{ $t('start-subtitle') }}
+            {{ $t('subtitle') }}
           </p>
         </div>
 
@@ -35,12 +35,12 @@
                 />
               </div>
               <h2 class="text-lg font-semibold leading-tight text-highlighted">
-                {{ $t('start-new-title') }}
+                {{ $t('new-title') }}
               </h2>
             </div>
 
             <p class="text-sm leading-relaxed text-toned">
-              {{ $t('start-new-desc') }}
+              {{ $t('new-desc') }}
             </p>
           </UButton>
 
@@ -59,12 +59,12 @@
                 />
               </div>
               <h2 class="text-lg font-semibold leading-tight text-highlighted">
-                {{ $t('start-edit-title') }}
+                {{ $t('edit-title') }}
               </h2>
             </div>
 
             <p class="text-sm leading-relaxed text-toned">
-              {{ $t('start-edit-desc') }}
+              {{ $t('edit-desc') }}
             </p>
           </UButton>
         </div>
@@ -97,31 +97,31 @@ const nav = useNavigationStore();
 </script>
 
 <ftl locale="en">
-start-subtitle = Create ZMK shields for custom keyboards interactively, without writing code.
+subtitle = Build ZMK shields for custom keyboards, no code needed.
 
-start-new-title = Create a New Shield
-start-new-desc = Design a new ZMK keyboard, then get a git import link or download a ZIP archive.
+new-title = Create a New Shield
+new-desc = Design a new ZMK keyboard, then get a git import link or download a ZIP archive.
 
-start-edit-title = Edit a Repository
-start-edit-desc = Sign in with GitHub account, choose an existing Shield Wizard repository, update the keyboard, and save the files back.
+edit-title = Edit a Repository
+edit-desc = Sign in with GitHub, pick an existing Shield Wizard repository, update the keyboard, and save the files back.
 </ftl>
 
 <ftl locale="zh-CN">
-start-subtitle = 以交互方式为自定义键盘创建 ZMK shield，无需编写代码。
+subtitle = 为自定义键盘搭建 ZMK shield，无需写代码。
 
-start-new-title = 新建 Shield
-start-new-desc = 设计一个新的 ZMK 键盘，然后获取 git 导入链接或下载 ZIP 压缩包。
+new-title = 新建 Shield
+new-desc = 设计一个新的 ZMK 键盘，然后获取 git 导入链接或下载 ZIP 压缩包。
 
-start-edit-title = 编辑仓库
-start-edit-desc = 使用 GitHub 账户登录，选择一个已有的 Shield Wizard 仓库，更新键盘后将文件保存回去。
+edit-title = 编辑仓库
+edit-desc = 用 GitHub 账号登录，选择已有的 Shield Wizard 仓库，改完键盘配置后保存回仓库。
 </ftl>
 
 <ftl locale="ja">
-start-subtitle = カスタムキーボード用の ZMK シールドを、コードを書かずに対話的に作成できます。
+subtitle = カスタムキーボード用の ZMK シールドを、コードを書かずに作成できます。
 
-start-new-title = 新しいシールドを作成
-start-new-desc = 新しい ZMK キーボードを設計し、git インポートリンクを取得するか、ZIP アーカイブをダウンロードします。
+new-title = 新しいシールドを作成
+new-desc = 新しい ZMK キーボードを設計し、git インポートリンクを取得するか ZIP アーカイブをダウンロードします。
 
-start-edit-title = リポジトリを編集
-start-edit-desc = GitHub アカウントでサインインし、既存の Shield Wizard リポジトリを選択して、キーボードを更新し、ファイルを保存し直します。
+edit-title = リポジトリを編集
+edit-desc = GitHub アカウントでサインインし、既存の Shield Wizard リポジトリを選んでキーボードを更新し、ファイルを保存し直します。
 </ftl>

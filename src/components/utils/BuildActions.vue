@@ -40,7 +40,7 @@
     <!-- Preview modal -->
     <UModal
       v-model:open="previewModalOpen"
-      :title="$t('preview-modal-title')"
+      :title="$t('preview-title')"
       :close="true"
       :ui="{ content: 'max-w-5xl' }"
     >
@@ -76,7 +76,7 @@
     <!-- Commit changes modal (edit-existing-repository flow) -->
     <UModal
       v-model:open="commitModalOpen"
-      :title="$t('commit-modal-title')"
+      :title="$t('modal-title')"
       :description="workflow.editingRepository?.fullName + '@' + workflow.editingRepository?.defaultBranch"
       :close="!isCommitting"
       :ui="{ content: 'max-w-5xl' }"
@@ -84,7 +84,7 @@
       <template #body>
         <div class="flex flex-col gap-4">
           <UFormField
-            :label="$t('commit-message-label')"
+            :label="$t('message-label')"
             name="commitMessage"
           >
             <UInput
@@ -98,14 +98,14 @@
           <div class="flex flex-col gap-2 min-h-0">
             <div class="flex items-center justify-between gap-2">
               <h3 class="text-sm font-semibold">
-                {{ $t('commit-diff-title') }}
+                {{ $t('diff-title') }}
               </h3>
               <span
                 v-if="commitFileChanges.length > 0"
                 class="text-sm text-toned"
               >
                 {{
-                  $t('commit-diff-summary', {
+                  $t('diff-summary', {
                     added: commitDiffSummary.added,
                     modified: commitDiffSummary.modified,
                     deleted: commitDiffSummary.deleted,
@@ -123,7 +123,7 @@
                   name="i-lucide-loader-circle"
                   class="size-4 animate-spin"
                 />
-                {{ $t('commit-diff-loading') }}
+                {{ $t('diff-loading') }}
               </div>
 
               <div
@@ -134,7 +134,7 @@
                   color="error"
                   variant="soft"
                   icon="i-lucide-alert-circle"
-                  :title="$t('commit-diff-failed')"
+                  :title="$t('diff-failed')"
                   :description="commitPreviewError"
                 />
               </div>
@@ -143,7 +143,7 @@
                 v-else-if="commitFileChanges.length === 0"
                 class="flex h-full items-center justify-center rounded-lg border border-dashed border-default bg-muted/40 px-4 py-6 text-sm text-toned"
               >
-                {{ $t('commit-no-changes') }}
+                {{ $t('no-changes') }}
               </div>
 
               <div
@@ -218,7 +218,7 @@
                           v-else
                           class="select-none px-3 py-0.5 text-center text-muted"
                         >
-                          ⋯ {{ $t('commit-diff-collapsed-lines', { count: group.count }) }} ⋯
+                          ⋯ {{ $t('diff-collapsed-lines', { count: group.count }) }} ⋯
                         </div>
                       </template>
                     </div>
@@ -232,13 +232,13 @@
             <UButton
               color="neutral"
               variant="ghost"
-              :label="$t('commit-cancel')"
+              :label="$t('cancel')"
               :disabled="isCommitting"
               @click="commitModalOpen = false"
             />
             <UButton
               color="primary"
-              :label="$t('commit-confirm')"
+              :label="$t('confirm')"
               icon="i-lucide-git-commit-horizontal"
               :loading="isCommitting"
               :disabled="!validatedData || !commitMessage.trim() || commitPreviewLoading || (!commitPreviewError && commitFileChanges.length === 0)"
@@ -726,9 +726,9 @@ function statusSymbol(status: CommitChangeStatus): string {
 
 function statusLabel(status: CommitChangeStatus | undefined): string {
   switch (status) {
-    case 'added': return $t('commit-file-added');
-    case 'deleted': return $t('commit-file-deleted');
-    case 'modified': return $t('commit-file-modified');
+    case 'added': return $t('file-added');
+    case 'deleted': return $t('file-deleted');
+    case 'modified': return $t('file-modified');
     default: return '';
   }
 }
@@ -944,7 +944,7 @@ async function submitCommit() {
       icon: 'i-lucide-check',
       actions: [
         {
-          label: $t('commit-view-on-github'),
+          label: $t('view-on-github'),
           href: data.commitHtmlUrl,
           target: '_blank',
         },
@@ -1123,7 +1123,7 @@ build-download = Download ZIP Archive
 build-import-link = Create Import Link
 build-save-changes = Save Changes to GitHub
 build-preview = Preview Generated Files
-preview-modal-title = Files Preview
+preview-title = Files Preview
 preview-select-file = Select a file to preview
 import-slideover-description = Get a link to a hosted git repository with your keyboard configuration
 recommended-repo-name = Recommended repository name: { $name }
@@ -1135,42 +1135,41 @@ step1-desc = We host a temporary git repository with your custom keyboard config
 step2-title = Import to GitHub
 step2-desc = Import the repository to your GitHub account, and wait for the import to complete. It should take less than 5 minutes.
 
-step3-title = Trigger Build
-step3-desc = Go to the Actions tab of the imported repository, find the workflow named "Build ZMK firmware", trigger a new build by clicking the "Run workflow" button.
+step3-title = Run the Build
+step3-desc = Go to the Actions tab of the imported repository, find the workflow named "Build ZMK firmware", and click the "Run workflow" button to start a build.
 
-step4-title = Test The Firmware
-step4-desc = Once the build is complete, download the firmware from the latest build artifact, flash it to your keyboard, and test it out! The default A, B, C... keymap is perfect for testing all keys.
+step4-title = Test the Firmware
+step4-desc = Once the build is complete, download the firmware from the latest build artifact, flash it onto your keyboard, and test it out! The default A, B, C... keymap is perfect for testing all keys.
 
 step5-title = Customize Your Keyboard
 step5-desc = After confirming the default build works, you can start customizing keymap and build parameters. Enjoy your keyboard!
 
 error-modal-title = Validation Errors
 
-commit-modal-title = Confirm Changes to Repository
-commit-message-label = Commit Message
-commit-cancel = Cancel
-commit-confirm = Commit Changes
-commit-diff-title = Changes
-commit-diff-loading = Loading changes…
-commit-diff-failed = Could not load changes
-commit-no-changes = No changes to save. Edit the keyboard configuration first.
-commit-diff-summary = { $added } added, { $modified } modified, { $deleted } deleted
-commit-diff-collapsed-lines = { $count ->
+modal-title = Commit Changes
+message-label = Commit Message
+confirm = Commit
+diff-title = Changes
+diff-loading = Loading changes…
+diff-failed = Could not load changes
+no-changes = No changes to save. Edit the keyboard configuration first.
+diff-summary = { $added } added · { $modified } modified · { $deleted } deleted
+diff-collapsed-lines = { $count ->
   [1] { $count } unchanged line
   *[other] { $count } unchanged lines
 }
-commit-file-added = Added
-commit-file-modified = Modified
-commit-file-deleted = Deleted
-commit-failed = Failed to Save Changes
+file-added = Added
+file-modified = Modified
+file-deleted = Deleted
+commit-failed = Could not save changes
 commit-succeeded = Changes Saved
 commit-succeeded-desc = Saved to { $fullName }
-commit-view-on-github = View Commit on GitHub
+view-on-github = View Commit on GitHub
 
 captcha-error-title = Captcha Verification Failed
 build-error-title = Build Request Failed
 network-error-title = Network Error
-download-zip-failed = Failed to Download ZIP Archive
+download-zip-failed = Could not download the ZIP archive
 
 captcha-loading = Loading Captcha...
 import-captcha-description = Creating hosted repository is captcha protected to prevent abuse.
@@ -1205,7 +1204,7 @@ build-download = 下载 ZIP 压缩包
 build-import-link = 创建导入链接
 build-save-changes = 保存修改到 GitHub
 build-preview = 预览生成的文件
-preview-modal-title = 文件预览
+preview-title = 文件预览
 preview-select-file = 选择文件进行预览
 import-slideover-description = 获取一个包含你的键盘配置的托管 git 仓库链接
 import-generate-link = 生成链接
@@ -1217,34 +1216,33 @@ step1-desc = 我们提供一个临时的 git 仓库来存放你的键盘配置�
 step2-title = 导入到 GitHub
 step2-desc = 将仓库导入到你的 GitHub 账号，并等待导入完成。整个过程应该不超过 5 分钟。
 
-step3-title = 触发构建
-step3-desc = 进入导入的仓库的 Actions 页面，找到 “Build ZMK firmware” 工作流，点击 “Run workflow” 按钮触发构建。
+step3-title = 运行构建
+step3-desc = 打开导入仓库的 Actions 页面，找到名为 “Build ZMK firmware” 的工作流，点击 “Run workflow” 按钮开始构建。
 
 step4-title = 测试固件
-step4-desc = 构建完成后，从最新的构建产物中下载固件，刷入键盘并进行测试！默认的 A、B、C... 键位非常适合测试按键是否正常工作。
+step4-desc = 构建完成后，从最新的构建产物中下载固件，刷入键盘并进行测试。默认的 A、B、C... 键位很适合用来逐个测试按键。
 
 step5-title = 定制你的键盘
 step5-desc = 测试完生成的默认配置一切正常后，你可以开始定制键位和构建参数。享受你的键盘吧！
 
 error-modal-title = 验证错误
 
-commit-modal-title = 确认提交到仓库
-commit-message-label = 提交信息
-commit-cancel = 取消
-commit-confirm = 提交修改
-commit-diff-title = 变更
-commit-diff-loading = 正在加载变更…
-commit-diff-failed = 无法加载变更
-commit-no-changes = 没有可保存的变更。请先编辑键盘配置。
-commit-diff-summary = 新增 { $added } 个，修改 { $modified } 个，删除 { $deleted } 个
-commit-diff-collapsed-lines = { $count } 行未变更
-commit-file-added = 新增
-commit-file-modified = 修改
-commit-file-deleted = 删除
-commit-failed = 保存修改失败
-commit-succeeded = 修改已保存
-commit-succeeded-desc = 已保存到 { $fullName }
-commit-view-on-github = 在 GitHub 上查看提交
+modal-title = 提交变更
+message-label = 提交信息
+confirm = 提交变更
+diff-title = 变更
+diff-loading = 正在加载变更…
+diff-failed = 无法加载变更
+no-changes = 没有可提交的变更。请先编辑键盘配置。
+diff-summary = 新增 { $added } · 修改 { $modified } · 删除 { $deleted }
+diff-collapsed-lines = { $count } 行未变更
+file-added = 新增
+file-modified = 修改
+file-deleted = 删除
+commit-failed = 提交失败
+commit-succeeded = 变更已提交
+commit-succeeded-desc = 已提交到 { $fullName }
+view-on-github = 在 GitHub 上查看提交
 
 captcha-error-title = 验证码验证失败
 build-error-title = 构建请求失败
@@ -1281,9 +1279,9 @@ build = 生成
 build-save = 変更を保存
 build-download = ZIP アーカイブをダウンロード
 build-import-link = インポートリンクを作成
-build-save-changes = GitHubへ変更を保存
-build-preview = 生成ファイルをプレビュー
-preview-modal-title = ファイルプレビュー
+build-save-changes = GitHub に変更を保存
+build-preview = 生成されたファイルをプレビュー
+preview-title = ファイルプレビュー
 preview-select-file = プレビューするファイルを選択
 import-slideover-description = キーボード設定を含むホストされた git リポジトリへのリンクを取得します。
 import-generate-link = リンクを生成
@@ -1295,44 +1293,43 @@ step1-desc = カスタムキーボード設定を保持する一時的な git �
 step2-title = GitHub にインポート
 step2-desc = リポジトリを GitHub アカウントにインポートし、インポートが完了するまでお待ちください。通常 5 分以内に完了します。
 
-step3-title = ビルドをトリガー
-step3-desc = インポートしたリポジトリの Actions タブに移動し、「Build ZMK firmware」というワークフローを見つけ、「Run workflow」ボタンをクリックして新しいビルドをトリガーします。
+step3-title = ビルドを実行
+step3-desc = インポートしたリポジトリの Actions タブを開き、「Build ZMK firmware」というワークフローを見つけて「Run workflow」ボタンをクリックするとビルドが始まります。
 
 step4-title = ファームウェアをテスト
-step4-desc = ビルドが完了したら、最新のビルドアーティファクトからファームウェアをダウンロードし、キーボードに書き込んでテストしてください！デフォルトの A, B, C... キーマップはすべてのキーのテストに最適です。
+step4-desc = ビルドが完了したら、最新のビルド成果物からファームウェアをダウンロードし、キーボードに書き込んで動作を確認してください。デフォルトの A, B, C... キーマップは、すべてのキーを試すのにちょうどよい配列です。
 
 step5-title = キーボードをカスタマイズ
 step5-desc = デフォルトビルドが動作することを確認したら、キーマップとビルドパラメータのカスタマイズを始められます。キーボードをお楽しみください！
 
 error-modal-title = 検証エラー
 
-commit-modal-title = リポジトリへの変更を確認
-commit-message-label = コミットメッセージ
-commit-cancel = キャンセル
-commit-confirm = 変更を保存
-commit-diff-title = 変更内容
-commit-diff-loading = 変更内容を読み込み中…
-commit-diff-failed = 変更内容を読み込めませんでした
-commit-no-changes = 保存する変更はありません。先にキーボード設定を編集してください。
-commit-diff-summary = 追加 { $added }、変更 { $modified }、削除 { $deleted }
-commit-diff-collapsed-lines = 変更なし { $count } 行
-commit-file-added = 追加
-commit-file-modified = 変更
-commit-file-deleted = 削除
-commit-failed = 変更を保存できませんでした
-commit-succeeded = 変更を保存しました
-commit-succeeded-desc = { $fullName } に保存しました
-commit-view-on-github = GitHubでコミットを表示
+modal-title = 変更をコミット
+message-label = コミットメッセージ
+confirm = コミット
+diff-title = 変更内容
+diff-loading = 変更内容を読み込み中…
+diff-failed = 変更内容を読み込めませんでした
+no-changes = コミットする変更はありません。先にキーボード設定を編集してください。
+diff-summary = 追加 { $added } 件 · 変更 { $modified } 件 · 削除 { $deleted } 件
+diff-collapsed-lines = 変更のない { $count } 行
+file-added = 追加
+file-modified = 変更
+file-deleted = 削除
+commit-failed = 変更をコミットできませんでした
+commit-succeeded = 変更をコミットしました
+commit-succeeded-desc = { $fullName } にコミットしました
+view-on-github = GitHub でコミットを表示
 
 captcha-error-title = キャプチャ認証失敗
 build-error-title = ビルドリクエスト失敗
 network-error-title = ネットワークエラー
-download-zip-failed = ZIPアーカイブのダウンロードに失敗しました
+download-zip-failed = ZIP アーカイブをダウンロードできませんでした
 
 captcha-loading = キャプチャ読み込み中...
 import-captcha-description = 悪用を防ぐため、ホストリポジトリの作成はキャプチャで保護されています。
 import-link-expiry = リポジトリのリンクは24時間後に失効します。
-import-zip-fallback = うまくいかない場合は、ZIPアーカイブとして設定をダウンロードすることもできます。
+import-zip-fallback = うまくいかない場合は、ZIP アーカイブとして設定をダウンロードすることもできます。
 copy-to-clipboard = クリップボードにコピー
 import-repo-created-at = 作成: { DATETIME($date, year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric") }
 import-repo-expires-at = 有効期限: { DATETIME($date, year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric") }

@@ -5,11 +5,11 @@
         icon="i-lucide-arrow-left"
         color="neutral"
         variant="ghost"
-        :aria-label="$t('gh-back')"
+        :aria-label="$t('back')"
         @click="$emit('cancel')"
       >
         <span class="hidden sm:inline">
-          {{ $t('gh-back') }}
+          {{ $t('back') }}
         </span>
       </UButton>
       <div class="flex items-center gap-1.5 sm:gap-2">
@@ -33,7 +33,7 @@
             class="size-10 text-primary animate-spin"
           />
           <p class="text-sm text-toned">
-            {{ $t('gh-exchanging') }}
+            {{ $t('exchanging') }}
           </p>
         </div>
 
@@ -48,10 +48,10 @@
               class="size-10 text-secondary"
             />
             <h1 class="text-xl font-bold text-highlighted">
-              {{ $t('gh-install-title') }}
+              {{ $t('install-title') }}
             </h1>
             <p class="text-sm text-toned max-w-md">
-              {{ $t('gh-install-description') }}
+              {{ $t('install-description') }}
             </p>
           </div>
 
@@ -61,7 +61,7 @@
             variant="soft"
             icon="i-lucide-user"
             :title="workflow.githubUser.login"
-            :description="$t('gh-install-signed-in')"
+            :description="$t('install-signed-in')"
           />
 
           <UAlert
@@ -69,8 +69,8 @@
             color="info"
             variant="soft"
             icon="i-lucide-info"
-            :title="$t('gh-install-choose-repos-title')"
-            :description="$t('gh-install-choose-repos-hint')"
+            :title="$t('install-choose-repos-title')"
+            :description="$t('install-choose-repos-hint')"
           />
 
           <UButton
@@ -80,7 +80,7 @@
             color="secondary"
             variant="soft"
             icon="i-lucide-download"
-            :label="$t('gh-install-action')"
+            :label="$t('install-action')"
             :loading="workflow.githubBusy"
             @click="beginInstall"
           />
@@ -90,7 +90,7 @@
             color="warning"
             variant="soft"
             icon="i-lucide-triangle-alert"
-            :title="$t('gh-install-url-missing')"
+            :title="$t('install-url-missing')"
           />
         </div>
 
@@ -100,7 +100,7 @@
           class="flex flex-col gap-4"
         >
           <h1 class="text-lg font-bold text-highlighted text-center">
-            {{ $t('gh-repos-title') }}
+            {{ $t('repos-title') }}
           </h1>
 
           <!-- Signed out: keep sign-in on the same repository picker page -->
@@ -114,10 +114,10 @@
                 class="size-10 text-secondary"
               />
               <h2 class="text-lg font-semibold text-highlighted">
-                {{ $t('gh-auth-title') }}
+                {{ $t('auth-title') }}
               </h2>
               <p class="text-xs text-toned">
-                {{ $t('gh-repos-signed-out') }}
+                {{ $t('repos-signed-out') }}
               </p>
             </div>
 
@@ -126,7 +126,7 @@
               color="warning"
               variant="soft"
               icon="i-lucide-triangle-alert"
-              :title="$t('gh-not-configured')"
+              :title="$t('not-configured')"
             />
 
             <UButton
@@ -135,7 +135,7 @@
               color="secondary"
               variant="soft"
               icon="i-lucide-log-in"
-              :label="$t('gh-connect')"
+              :label="$t('connect')"
               :loading="workflow.githubBusy"
               :disabled="githubDisabled"
               @click="beginAuth"
@@ -155,7 +155,7 @@
                     {{ workflow.githubUser.login }}
                   </div>
                   <div class="text-xs text-toned">
-                    {{ $t('gh-repos-signed-in') }}
+                    {{ $t('repos-signed-in') }}
                   </div>
                 </div>
               </div>
@@ -163,7 +163,7 @@
                 color="neutral"
                 variant="ghost"
                 size="sm"
-                :label="$t('gh-logout')"
+                :label="$t('logout')"
                 :loading="loggingOut"
                 @click="logout"
               />
@@ -174,7 +174,7 @@
               class="flex flex-col gap-1"
             >
               <span class="text-xs font-medium text-toned">
-                {{ $t('gh-repos-account') }}
+                {{ $t('repos-account') }}
               </span>
               <USelect
                 :model-value="workflow.selectedInstallationId ?? undefined"
@@ -190,7 +190,7 @@
                 variant="ghost"
                 :href="workflow.githubInstallUrl"
               >
-                {{ $t('gh-repos-edit-access') }}
+                {{ $t('repos-edit-access') }}
               </UButton>
             </div>
 
@@ -204,7 +204,7 @@
                 name="i-lucide-loader-circle"
                 class="size-5 animate-spin"
               />
-              {{ $t('gh-repos-loading') }}
+              {{ $t('repos-loading') }}
             </div>
 
             <template v-else-if="repos.length > 0">
@@ -215,8 +215,8 @@
                   color="info"
                   variant="soft"
                   icon="i-lucide-info"
-                  :title="$t('gh-repos-many-title')"
-                  :description="$t('gh-repos-many-hint')"
+                  :title="$t('repos-many-title')"
+                  :description="$t('repos-many-hint')"
                 />
 
                 <div
@@ -228,7 +228,7 @@
                     class="size-8 text-muted"
                   />
                   <p class="text-center max-w-sm">
-                    {{ $t('gh-repos-no-supported') }}
+                    {{ $t('repos-no-supported') }}
                   </p>
                 </div>
 
@@ -281,7 +281,7 @@
                       class="flex cursor-pointer select-none list-none items-center justify-between gap-2 px-4 py-3 text-sm text-toned [&::-webkit-details-marker]:hidden"
                     >
                       <span>
-                        {{ $t('gh-repos-unsupported-count', { count: unsupportedRepos.length }) }}
+                        {{ $t('repos-unsupported-count', { count: unsupportedRepos.length }) }}
                       </span>
                       <UIcon
                         name="i-lucide-chevron-down"
@@ -305,7 +305,7 @@
                   block
                   color="neutral"
                   variant="outline"
-                  :label="$t('gh-repos-load-more')"
+                  :label="$t('repos-load-more')"
                   :loading="repoLoadingMore"
                   @click="loadMoreRepos"
                 />
@@ -321,7 +321,7 @@
                 class="size-10 text-error"
               />
               <p class="text-center max-w-sm font-medium">
-                {{ $t('gh-repos-load-failed') }}
+                {{ $t('repos-load-failed') }}
               </p>
               <p class="text-center max-w-sm text-error">
                 {{ workflow.githubError }}
@@ -330,7 +330,7 @@
                 block
                 color="primary"
                 variant="soft"
-                :label="$t('gh-retry')"
+                :label="$t('retry')"
                 icon="i-lucide-refresh-cw"
                 @click="loadRepos(true)"
               />
@@ -345,14 +345,14 @@
                 class="size-10 text-muted"
               />
               <p class="text-center max-w-sm">
-                {{ $t('gh-repos-empty') }}
+                {{ $t('repos-empty') }}
               </p>
               <UButton
                 v-if="reposHasMore"
                 block
                 color="neutral"
                 variant="outline"
-                :label="$t('gh-repos-load-more')"
+                :label="$t('repos-load-more')"
                 :loading="repoLoadingMore"
                 @click="loadMoreRepos"
               />
@@ -361,7 +361,7 @@
                 :href="workflow.githubInstallUrl"
                 class="text-sm text-primary underline underline-offset-4 hover:text-primary/80"
               >
-                {{ $t('gh-repos-edit-access') }}
+                {{ $t('repos-edit-access') }}
               </ULink>
             </div>
           </template>
@@ -373,7 +373,7 @@
           color="error"
           variant="soft"
           icon="i-lucide-alert-circle"
-          :title="$t('gh-error')"
+          :title="$t('error')"
           :description="workflow.githubError"
         />
       </UCard>
@@ -581,7 +581,7 @@ async function logout(): Promise<void> {
     if (error) {
       toast.add({
         color: 'error',
-        title: $t('gh-logout-failed'),
+        title: $t('logout-failed'),
         description: error.message,
       });
       return;
@@ -593,13 +593,13 @@ async function logout(): Promise<void> {
     workflow.pendingRepo = null;
     toast.add({
       color: 'neutral',
-      title: $t('gh-signed-out'),
+      title: $t('signed-out'),
     });
   }
   catch (error) {
     toast.add({
       color: 'error',
-      title: $t('gh-logout-failed'),
+      title: $t('logout-failed'),
       description: error instanceof Error ? error.message : String(error),
     });
   }
@@ -722,7 +722,7 @@ async function chooseRepo(repo: GithubRepoSummary): Promise<void> {
       }
       toast.add({
         color: 'error',
-        title: $t('gh-load-failed'),
+        title: $t('load-failed'),
         description: error.message,
       });
       return;
@@ -740,7 +740,7 @@ async function chooseRepo(repo: GithubRepoSummary): Promise<void> {
   catch (error) {
     toast.add({
       color: 'error',
-      title: $t('gh-load-failed'),
+      title: $t('load-failed'),
       description: error instanceof Error ? error.message : String(error),
     });
   }
@@ -752,124 +752,124 @@ async function chooseRepo(repo: GithubRepoSummary): Promise<void> {
 </script>
 
 <ftl locale="en">
-gh-back = Back
-gh-exchanging = Finishing GitHub sign-in…
+back = Back
+exchanging = Finishing GitHub sign-in…
 
-gh-auth-title = Sign in with GitHub
-gh-not-configured = GitHub integration is not configured on this server
-gh-connect = Connect to GitHub
+auth-title = Sign in with GitHub
+not-configured = GitHub integration is not configured on this server
+connect = Connect to GitHub
 
-gh-install-title = Install the Shield Wizard App
-gh-install-description = Choose which repositories the app may access.
-gh-install-signed-in = Signed in, now grant the app access to a repository.
-gh-install-choose-repos-title = Choose only the repositories you want Shield Wizard to access
-gh-install-choose-repos-hint = Please use "Only select repositories" instead of "All repositories".
-gh-install-action = Continue to Install
-gh-install-url-missing = App installation link unavailable
+install-title = Install the Shield Wizard App
+install-description = Choose which repositories the app may access.
+install-signed-in = Signed in. Grant the app access to the repositories you want to edit.
+install-choose-repos-title = Choose which repositories Shield Wizard can access
+install-choose-repos-hint = Choose “Only select repositories” instead of “All repositories”.
+install-action = Continue to Install
+install-url-missing = App installation link unavailable
 
-gh-repos-title = Choose a Repository
-gh-repos-signed-in = Signed in to GitHub
-gh-repos-signed-out = Not signed in to GitHub
-gh-logout = Sign Out
-gh-signed-out = Signed out of GitHub
-gh-logout-failed = Failed to sign out
-gh-repos-account = GitHub Account
-gh-repos-edit-access = Edit Repository Access
-gh-repos-loading = Loading repositories…
-gh-repos-no-supported = No Shield Wizard compatible repositories found. Create one with Shield Wizard first.
-gh-repos-unsupported-count = {$count ->
+repos-title = Choose a Repository
+repos-signed-in = Signed in to GitHub
+repos-signed-out = Not signed in to GitHub
+logout = Sign Out
+signed-out = Signed out of GitHub
+logout-failed = Failed to sign out
+repos-account = GitHub Account
+repos-edit-access = Edit Repository Access
+repos-loading = Loading repositories…
+repos-no-supported = No Shield Wizard compatible repositories found. Create one with Shield Wizard first.
+repos-unsupported-count = {$count ->
   [1] 1 unsupported repository
   *[other] {$count} unsupported repositories
 }
-gh-repos-many-title = Narrow your repository access
-gh-repos-many-hint = Please use "Only select repositories" under "Repository access" instead of "All repositories" in GitHub application settings.
-gh-repos-empty = No repositories found for this installation. Grant the app access to a repository, or switch accounts.
-gh-repos-load-more = Load More
-gh-repos-load-failed = Could not load repositories
-gh-retry = Retry
+repos-many-title = Repository Access Too Broad
+repos-many-hint = In GitHub's app settings, choose “Only select repositories” instead of “All repositories”.
+repos-empty = No repositories found. Grant the app access to a repository, or switch accounts.
+repos-load-more = Load More
+repos-load-failed = Could not load repositories
+retry = Try Again
 
-gh-error = Something went wrong
-gh-load-failed = Failed to open repository
+error = Something went wrong
+load-failed = Could not open repository
 </ftl>
 
 <ftl locale="zh-CN">
-gh-back = 返回
-gh-exchanging = 正在完成 GitHub 登录…
+back = 返回
+exchanging = 正在完成 GitHub 登录…
 
-gh-auth-title = 使用 GitHub 登录
-gh-not-configured = 此服务器尚未配置 GitHub 集成
-gh-connect = 使用 GitHub 登录
+auth-title = 使用 GitHub 登录
+not-configured = 此服务器尚未配置 GitHub 集成
+connect = 使用 GitHub 登录
 
-gh-install-title = 安装 Shield Wizard App
-gh-install-description = 选择允许应用访问的仓库。
-gh-install-signed-in = 已登录，现在请为应用授予仓库访问权限。
-gh-install-choose-repos-title = 只选择希望 Shield Wizard 访问的仓库
-gh-install-choose-repos-hint = 请选择“Only select repositories”，而不是“All repositories”。
-gh-install-action = 继续安装
-gh-install-url-missing = 无法生成应用安装链接
+install-title = 安装 Shield Wizard App
+install-description = 选择允许应用访问的仓库。
+install-signed-in = 已登录。请给应用授予要编辑的仓库的访问权限。
+install-choose-repos-title = 选择允许 Shield Wizard 访问的仓库
+install-choose-repos-hint = 请在 GitHub 应用设置里把“All repositories”改为“Only select repositories”。
+install-action = 继续安装
+install-url-missing = 无法生成应用安装链接
 
-gh-repos-title = 选择仓库
-gh-repos-signed-in = 已登录 GitHub
-gh-repos-signed-out = 尚未登录 GitHub
-gh-logout = 退出登录
-gh-signed-out = 已退出 GitHub 登录
-gh-logout-failed = 退出登录失败
-gh-repos-account = GitHub 账号
-gh-repos-edit-access = 编辑仓库访问权限
-gh-repos-loading = 正在加载仓库…
-gh-repos-no-supported = 没有找到与 Shield Wizard 兼容的仓库。请先用 Shield Wizard 创建一个。
-gh-repos-unsupported-count = {$count ->
+repos-title = 选择仓库
+repos-signed-in = 已登录 GitHub
+repos-signed-out = 尚未登录 GitHub
+logout = 退出登录
+signed-out = 已退出 GitHub 账号
+logout-failed = 退出登录失败
+repos-account = GitHub 账号
+repos-edit-access = 管理仓库访问权限
+repos-loading = 正在加载仓库…
+repos-no-supported = 没有找到兼容 Shield Wizard 的仓库。请先用 Shield Wizard 创建一个仓库。
+repos-unsupported-count = {$count ->
   [1] 1 个不支持的仓库
   *[other] {$count} 个不支持的仓库
 }
-gh-repos-many-title = 限制仓库访问范围
-gh-repos-many-hint = 请在 GitHub 应用设置的“Repository access”中选择“Only select repositories”，而不是“All repositories”。
-gh-repos-empty = 此安装下没有找到仓库。请为应用授予仓库访问权限，或切换账号。
-gh-repos-load-more = 加载更多
-gh-repos-load-failed = 无法加载仓库
-gh-retry = 重试
+repos-many-title = 应用可访问的仓库过多
+repos-many-hint = 请在 GitHub 应用设置中选择“Only select repositories”，不要选“All repositories”。
+repos-empty = 没有找到仓库。请让应用能访问至少一个仓库，或切换账号。
+repos-load-more = 加载更多
+repos-load-failed = 无法加载仓库
+retry = 重试
 
-gh-error = 出错了
-gh-load-failed = 无法打开仓库
+error = 出错了
+load-failed = 无法打开仓库
 </ftl>
 
 <ftl locale="ja">
-gh-back = 戻る
-gh-exchanging = GitHubサインインを完了しています…
+back = 戻る
+exchanging = GitHub のサインインを完了しています…
 
-gh-auth-title = GitHubでサインイン
-gh-not-configured = このサーバーではGitHub連携が未設定です
-gh-connect = GitHubに接続
+auth-title = GitHub でサインイン
+not-configured = このサーバーでは GitHub 連携が設定されていません
+connect = GitHub にサインイン
 
-gh-install-title = Shield Wizard Appをインストール
-gh-install-description = アプリがアクセスできるリポジトリを選択してください。
-gh-install-signed-in = サインイン済みです。アプリにリポジトリアクセスを許可してください。
-gh-install-choose-repos-title = Shield Wizardがアクセスするリポジトリを選択してください
-gh-install-choose-repos-hint = 「All repositories」ではなく「Only select repositories」を選択してください。
-gh-install-action = 続けてインストール
-gh-install-url-missing = アプリインストールリンクを生成できません
+install-title = Shield Wizard App をインストール
+install-description = アプリがアクセスできるリポジトリを選択してください。
+install-signed-in = サインイン済みです。編集したいリポジトリへのアクセスをアプリに許可してください。
+install-choose-repos-title = Shield Wizard にアクセスさせるリポジトリを選んでください
+install-choose-repos-hint = 「All repositories」ではなく「Only select repositories」を選んでください。
+install-action = インストールへ進む
+install-url-missing = アプリのインストールリンクを取得できません
 
-gh-repos-title = リポジトリを選択
-gh-repos-signed-in = GitHubにサインイン済み
-gh-repos-signed-out = GitHubにサインインしていません
-gh-logout = サインアウト
-gh-signed-out = GitHubからサインアウトしました
-gh-logout-failed = サインアウトに失敗しました
-gh-repos-account = GitHubアカウント
-gh-repos-edit-access = リポジトリアクセスを編集
-gh-repos-loading = リポジトリを読み込み中…
-gh-repos-no-supported = Shield Wizardと互換性のあるリポジトリが見つかりません。先にShield Wizardで作成してください。
-gh-repos-unsupported-count = {$count ->
-  [1] サポートされていないリポジトリ 1 件
-  *[other] サポートされていないリポジトリ {$count} 件
+repos-title = リポジトリを選択
+repos-signed-in = GitHub にサインイン済み
+repos-signed-out = GitHub にサインインしていません
+logout = サインアウト
+signed-out = GitHub からサインアウトしました
+logout-failed = サインアウトできませんでした
+repos-account = GitHub アカウント
+repos-edit-access = リポジトリのアクセス権を管理
+repos-loading = リポジトリを読み込み中…
+repos-no-supported = Shield Wizard に対応したリポジトリが見つかりません。先に Shield Wizard で作成してください。
+repos-unsupported-count = {$count ->
+  [1] 未対応のリポジトリ 1 件
+  *[other] 未対応のリポジトリ {$count} 件
 }
-gh-repos-many-title = リポジトリアクセスを絞り込みましょう
-gh-repos-many-hint = GitHubアプリの設定で「Repository access」の「All repositories」ではなく「Only select repositories」を選択してください。
-gh-repos-empty = このインストールにはリポジトリがありません。アプリにアクセスを許可するか、アカウントを切り替えてください。
-gh-repos-load-more = さらに読み込む
-gh-repos-load-failed = リポジトリを読み込めませんでした
-gh-retry = 再試行
+repos-many-title = アクセスできるリポジトリが多すぎます
+repos-many-hint = GitHub アプリの設定で「All repositories」ではなく「Only select repositories」を選んでください。
+repos-empty = リポジトリが見つかりません。アプリにいずれかのリポジトリへのアクセスを許可するか、アカウントを切り替えてください。
+repos-load-more = もっと読み込む
+repos-load-failed = リポジトリを読み込めませんでした
+retry = 再試行
 
-gh-error = エラーが発生しました
-gh-load-failed = リポジトリを開けませんでした
+error = エラーが発生しました
+load-failed = リポジトリを開けませんでした
 </ftl>

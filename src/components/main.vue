@@ -10,7 +10,7 @@
           class="size-10 text-primary animate-spin"
         />
         <p class="text-sm text-toned">
-          Loading Shield Wizard…
+          {{ $t('loading') }}
         </p>
       </div>
 
@@ -170,7 +170,7 @@ function applyLoadedRepository(payload: {
   if (payload.validationIssues.length > 0) {
     toast.add({
       color: 'warning',
-      title: $t('workflow-loaded-with-issues'),
+      title: $t('loaded-with-issues'),
       description: payload.validationIssues.slice(0, 3).join('\n'),
       duration: 0,
     });
@@ -178,8 +178,8 @@ function applyLoadedRepository(payload: {
   if (payload.wasLegacy) {
     toast.add({
       color: 'info',
-      title: $t('workflow-legacy-data'),
-      description: $t('workflow-legacy-data-desc'),
+      title: $t('legacy-data'),
+      description: $t('legacy-data-desc'),
     });
   }
 }
@@ -195,7 +195,7 @@ async function startLoginFlow(): Promise<void> {
     if (error) {
       toast.add({
         color: 'error',
-        title: $t('workflow-login-failed'),
+        title: $t('login-failed'),
         description: error.message,
       });
       return;
@@ -207,7 +207,7 @@ async function startLoginFlow(): Promise<void> {
   catch (error) {
     toast.add({
       color: 'error',
-      title: $t('workflow-login-failed'),
+      title: $t('login-failed'),
       description: error instanceof Error ? error.message : String(error),
     });
   }
@@ -226,14 +226,14 @@ async function logout(): Promise<void> {
       workflow.showStart();
       toast.add({
         color: 'neutral',
-        title: $t('workflow-logged-out'),
+        title: $t('logged-out'),
       });
     }
   }
   catch (error) {
     toast.add({
       color: 'error',
-      title: $t('workflow-logout-failed'),
+      title: $t('logout-failed'),
       description: error instanceof Error ? error.message : String(error),
     });
   }
@@ -332,7 +332,7 @@ async function handleInstallCallback(params: ReturnType<typeof parseWorkflowUrl>
 
   if (params.setupAction !== 'install' || !params.state) {
     replaceWorkflowUrl();
-    workflow.setGithubError($t('workflow-oauth-error'), 'repositories');
+    workflow.setGithubError($t('oauth-error'), 'repositories');
     return;
   }
 
@@ -343,7 +343,7 @@ async function handleInstallCallback(params: ReturnType<typeof parseWorkflowUrl>
   replaceWorkflowUrl();
 
   if (error || !data) {
-    workflow.setGithubError(error?.message ?? $t('workflow-oauth-error'), 'repositories');
+    workflow.setGithubError(error?.message ?? $t('oauth-error'), 'repositories');
     return;
   }
 
@@ -412,7 +412,7 @@ async function initializeWorkflow(): Promise<void> {
     workflow.initialized = true;
     replaceWorkflowUrl();
     workflow.showStart();
-    workflow.githubError = params.errorDescription ?? params.error ?? $t('workflow-oauth-error');
+    workflow.githubError = params.errorDescription ?? params.error ?? $t('oauth-error');
   }
   else if (isInstallCallback(params)) {
     workflow.initialized = true;
@@ -478,31 +478,34 @@ for (const lang of navigator.languages) {
 </script>
 
 <ftl locale="en">
-workflow-loaded-with-issues = Loaded with validation warnings
-workflow-legacy-data = Legacy repository data
-workflow-legacy-data-desc = This repository predates the stable data format. Saving will upgrade it to the versioned format on the server.
-workflow-logged-out = Signed out of GitHub
-workflow-logout-failed = Failed to sign out
-workflow-login-failed = Failed to start GitHub sign-in
-workflow-oauth-error = GitHub sign-in could not be completed.
+loading = Loading Shield Wizard…
+loaded-with-issues = Repository loaded with warnings
+legacy-data = Legacy repository data
+legacy-data-desc = This repository predates the stable data format. Saving will upgrade it to the versioned format on the server.
+logged-out = Signed out of GitHub
+logout-failed = Failed to sign out
+login-failed = Failed to start GitHub sign-in
+oauth-error = GitHub sign-in could not be completed.
 </ftl>
 
 <ftl locale="zh-CN">
-workflow-loaded-with-issues = 已加载，但存在验证警告
-workflow-legacy-data = 旧版仓库数据
-workflow-legacy-data-desc = 此仓库生成于稳定数据格式之前。保存时服务器会把它升级为带版本号的格式。
-workflow-logged-out = 已退出 GitHub 登录
-workflow-logout-failed = 退出登录失败
-workflow-login-failed = 无法开始 GitHub 登录
-workflow-oauth-error = GitHub 登录未能完成。
+loading = 正在加载 Shield Wizard…
+loaded-with-issues = 仓库已加载，但有警告
+legacy-data = 旧版仓库数据
+legacy-data-desc = 这个仓库还是旧版数据格式。保存时服务器会自动升级为带版本号的新格式。
+logged-out = 已退出 GitHub 账号
+logout-failed = 退出登录失败
+login-failed = 无法开始 GitHub 登录
+oauth-error = GitHub 登录未能完成。
 </ftl>
 
 <ftl locale="ja">
-workflow-loaded-with-issues = 検証警告付きで読み込みました
-workflow-legacy-data = 旧形式のリポジトリデータ
-workflow-legacy-data-desc = このリポジトリは安定データ形式より前の形式です。保存時にサーバー側でバージョン付き形式へアップグレードされます。
-workflow-logged-out = GitHubからサインアウトしました
-workflow-logout-failed = サインアウトに失敗しました
-workflow-login-failed = GitHubサインインを開始できませんでした
-workflow-oauth-error = GitHubサインインを完了できませんでした。
+loading = Shield Wizard を読み込んでいます…
+loaded-with-issues = リポジトリを読み込みましたが警告があります
+legacy-data = 旧形式のリポジトリデータ
+legacy-data-desc = このリポジトリは安定版のデータ形式より前に作られたものです。保存すると、サーバー側で新しい形式にアップグレードされます。
+logged-out = GitHub からサインアウトしました
+logout-failed = サインアウトできませんでした
+login-failed = GitHub のサインインを開始できませんでした
+oauth-error = GitHub のサインインを完了できませんでした。
 </ftl>
