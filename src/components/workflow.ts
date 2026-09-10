@@ -97,6 +97,16 @@ export const useWorkflowStore = defineStore('workflow', () => {
   const githubInstallUrl = ref<string | null>(null);
   const selectedInstallationId = ref<number | null>(null);
   const editingRepository = ref<EditingRepository | null>(null);
+  /** Set when a GitHub action failed because the session expired. Unlike a
+   *  plain error, the editor stays open (with the unsaved work) and offers
+   *  to sign in again instead of dropping the user at the picker. */
+  const sessionExpired = ref(false);
+  /** Commit message for the current save. Kept in the store so it survives
+   *  the editor remount that follows a re-authentication. */
+  const commitMessage = ref('');
+  /** One-shot request to reopen the commit modal once a restored draft is
+   *  back in the editor. */
+  const resumeCommit = ref(false);
   /** Where the GitHub flow was opened from, so Back can return there. */
   const githubReturnScreen = ref<WorkflowScreen | null>(null);
   /** Workflow to restore when cancelling GitHub flow back to the editor. */
@@ -123,6 +133,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
     editingRepository.value = null;
     githubReturnScreen.value = null;
     githubReturnMode.value = null;
+    sessionExpired.value = false;
+    commitMessage.value = '';
+    resumeCommit.value = false;
   }
 
   function enterNewEditor() {
@@ -133,6 +146,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
     editingRepository.value = null;
     githubReturnScreen.value = null;
     githubReturnMode.value = null;
+    sessionExpired.value = false;
+    commitMessage.value = '';
+    resumeCommit.value = false;
     editorSessionId.value = nextEditorSessionId++;
   }
 
@@ -141,6 +157,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
     screen.value = 'github';
     githubStep.value = step;
     githubError.value = null;
+    // Leaving the editor ends the reconnect offer; the picker has its own
+    // sign-in path.
+    sessionExpired.value = false;
   }
 
   function enterEditor(repository: EditingRepository | null = null) {
@@ -151,6 +170,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
     githubBusy.value = false;
     githubReturnScreen.value = null;
     githubReturnMode.value = null;
+    sessionExpired.value = false;
+    commitMessage.value = '';
+    resumeCommit.value = false;
     editorSessionId.value = nextEditorSessionId++;
   }
 
@@ -178,6 +200,8 @@ export const useWorkflowStore = defineStore('workflow', () => {
     githubInstallations.value = session.installations;
     githubInstallUrl.value = session.installUrl;
     githubError.value = session.githubError;
+    // A fresh session means the expiry is over.
+    if (session.user) sessionExpired.value = false;
   }
 
   function clearSession() {
@@ -194,13 +218,21 @@ export const useWorkflowStore = defineStore('workflow', () => {
     githubStep.value = step;
   }
 
-  function expireSession() {
+  /**
+   * Record that the GitHub session expired or was revoked.
+   *
+   * This intentionally does NOT navigate away from the editor: the unsaved
+   * keyboard state only exists in memory, so dropping the user at the picker
+   * (and then reloading the repository after re-auth) would silently throw
+   * the work away. The caller is responsible for snapshotting a draft and
+   * offering a re-authentication action; `message` is only used by screens
+   * that render the error themselves (the repository picker).
+   */
+  function expireSession(message?: string) {
     clearSession();
     githubStep.value = 'repositories';
-    githubError.value = 'GitHub session expired or was revoked. Please sign in again.';
-    if (isEditing.value) {
-      screen.value = 'github';
-    }
+    githubError.value = message ?? null;
+    sessionExpired.value = true;
   }
 
   return {
@@ -217,6 +249,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
     githubInstallUrl,
     selectedInstallationId,
     editingRepository,
+    sessionExpired,
+    commitMessage,
+    resumeCommit,
     githubReturnScreen,
     githubReturnMode,
     isNew,

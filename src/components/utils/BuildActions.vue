@@ -82,7 +82,49 @@
       :ui="{ content: 'max-w-5xl' }"
     >
       <template #body>
-        <div class="flex flex-col gap-4">
+        <!-- Session expired mid-save: the work is snapshotted in this tab
+             and the user only needs to sign in again. -->
+        <div
+          v-if="workflow.sessionExpired"
+          class="flex flex-col gap-4"
+        >
+          <UAlert
+            color="warning"
+            variant="soft"
+            icon="i-lucide-triangle-alert"
+            :title="$t('session-expired-title')"
+            :description="$t('session-expired-description')"
+          />
+          <div class="flex flex-wrap items-center justify-end gap-2">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              :label="$t('not-now')"
+              :disabled="reauthBusy"
+              @click="dismissSessionExpired"
+            />
+            <UButton
+              color="neutral"
+              variant="outline"
+              icon="i-lucide-download"
+              :label="$t('build-download')"
+              :disabled="reauthBusy"
+              @click="downloadZip"
+            />
+            <UButton
+              color="primary"
+              icon="i-lucide-log-in"
+              :label="$t('sign-in-and-save')"
+              :loading="reauthBusy"
+              @click="reauthAndResume"
+            />
+          </div>
+        </div>
+
+        <div
+          v-else
+          class="flex flex-col gap-4"
+        >
           <UFormField
             :label="$t('message-label')"
             name="commitMessage"
@@ -493,13 +535,15 @@ import { PUBLIC_TURNSTILE_SITEKEY } from 'astro:env/client';
 import { useFluent } from 'fluent-vue';
 import JSZip from 'jszip';
 import { decodeTime } from 'ulidx';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, toRaw, watch } from 'vue';
 import VueTurnstile from 'vue-turnstile';
 import { createZMKConfig } from '~/export';
 import type { DiffLineType, DiffPreviewGroup } from '~/lib/diffPreview';
 import type { RepositoryFileChange } from '~/lib/repoChanges';
 import { ValidatedKeyboardSchema } from '~/lib/validators';
 import type { Key, Keyboard } from '~/types';
+import { clearEditorDraft, saveEditorDraft } from '../editorDraft';
+import { useGithubFlow } from '../githubFlow';
 import { useKeyboardStore, useNavigationStore } from '../stores';
 import { useWorkflowStore } from '../workflow';
 import LayoutConfirmModal from './LayoutConfirmModal.vue';
@@ -509,6 +553,7 @@ const toast = useToast();
 const keyboard = useKeyboardStore();
 const navigation = useNavigationStore();
 const workflow = useWorkflowStore();
+const flow = useGithubFlow();
 
 const recommendedRepoName = computed(() => `zmk-config-${keyboard.shield}`);
 const previewModalOpen = ref(false);
@@ -694,7 +739,14 @@ const isBuilding = ref(false);
 const captchaToken = ref('');
 const commitModalOpen = ref(false);
 const isCommitting = ref(false);
-const commitMessage = ref('Update keyboard configuration via Shield Wizard');
+/** Bound to the store so the message survives the editor remount that
+ *  follows a re-authentication. */
+const commitMessage = computed({
+  get: () => workflow.commitMessage,
+  set: (value: string) => { workflow.commitMessage = value; },
+});
+/** Re-authentication request started from the session-expired prompt. */
+const reauthBusy = ref(false);
 const commitFileChanges = ref<CommitFileChange[]>([]);
 const commitPreviewLoading = ref(false);
 const commitPreviewError = ref<string | null>(null);
@@ -795,9 +847,13 @@ function diffLineTextClass(type: CommitDiffLine['type']): string {
   }
 }
 
-function onDropdownOpenChange(open: boolean) {
-  if (!open) return;
-
+/**
+ * Business-validate the keyboard and cache the result for the build/save
+ * actions. Returns false after showing the grouped error modal, so callers
+ * can stop. Extracted from the dropdown handler because the commit modal is
+ * also opened directly when a draft is restored after re-authentication.
+ */
+function validateKeyboard(): boolean {
   const result = ValidatedKeyboardSchema.safeParse(keyboard.$state);
 
   if (!result.success) {
@@ -826,10 +882,17 @@ function onDropdownOpenChange(open: boolean) {
     errorModalOpen.value = true;
     validatedData.value = null;
     dropdownOpen.value = false;
-    return;
+    return false;
   }
 
   validatedData.value = result.data as unknown as Keyboard;
+  return true;
+}
+
+function onDropdownOpenChange(open: boolean) {
+  if (!open) return;
+
+  if (!validateKeyboard()) return;
 
   // When editing an existing repository, skip the pre-build keymap layout
   // confirmation and let the user go straight to the save menu.
@@ -894,10 +957,73 @@ function openImportSlideover() {
 
 function openCommit() {
   if (!workflow.isEditing || !workflow.editingRepository) return;
+  if (!validateKeyboard()) return;
+  if (!commitMessage.value.trim()) {
+    commitMessage.value = $t('commit-message-default');
+  }
   dropdownOpen.value = false;
   commitPreviewStale.value = false;
   commitModalOpen.value = true;
+  // A previous attempt already proved the session is dead: show the
+  // reconnect prompt instead of hitting the API again.
+  if (workflow.sessionExpired) return;
   void loadCommitPreview();
+}
+
+/**
+ * The GitHub session died mid-save. Keep the work in this tab, snapshot it
+ * so it survives the OAuth redirect, and leave the commit modal open in a
+ * "sign in again" state rather than dropping the user at the picker.
+ */
+function handleSessionExpired() {
+  const repository = workflow.editingRepository;
+  if (repository && validatedData.value) {
+    saveEditorDraft({
+      repository,
+      keyboard: toRaw(validatedData.value),
+      commitMessage: commitMessage.value,
+    });
+  }
+  workflow.expireSession();
+}
+
+async function reauthAndResume() {
+  if (reauthBusy.value) return;
+  reauthBusy.value = true;
+  try {
+    const result = await flow.beginAuth({
+      intent: 'login',
+      returnScreen: 'editor',
+      returnMode: 'edit',
+    });
+    if (!result.ok) {
+      toast.add({
+        color: 'error',
+        title: $t('login-failed'),
+        description: result.message,
+      });
+      return;
+    }
+    window.location.assign(result.authorizeUrl);
+  }
+  finally {
+    reauthBusy.value = false;
+  }
+}
+
+/**
+ * Close the reconnect prompt without signing in. The editor keeps the work
+ * and the draft stays in this tab, so reopening "Save Changes" offers the
+ * same prompt again.
+ */
+function dismissSessionExpired() {
+  commitModalOpen.value = false;
+  commitFileChanges.value = [];
+  commitPreviewError.value = null;
+  commitPreviewReady.value = false;
+  commitBaseOid.value = null;
+  commitPreviewStale.value = false;
+  selectedChangePath.value = null;
 }
 
 async function loadCommitPreview() {
@@ -920,8 +1046,7 @@ async function loadCommitPreview() {
 
     if (error) {
       if (error.code === 'UNAUTHORIZED') {
-        workflow.expireSession();
-        commitModalOpen.value = false;
+        handleSessionExpired();
         return;
       }
       commitPreviewError.value = error.message;
@@ -961,8 +1086,7 @@ async function submitCommit() {
 
     if (error) {
       if (error.code === 'UNAUTHORIZED') {
-        workflow.expireSession();
-        commitModalOpen.value = false;
+        handleSessionExpired();
         return;
       }
       if (error.code === 'CONFLICT') {
@@ -990,6 +1114,8 @@ async function submitCommit() {
 
     commitPreviewStale.value = false;
     commitModalOpen.value = false;
+    // The saved state is now the baseline; there is nothing left to resume.
+    clearEditorDraft();
     toast.add({
       color: 'success',
       title: $t('commit-succeeded'),
@@ -1111,6 +1237,15 @@ watch(slideoverOpen, async (isOpen) => {
   focusLinkInputAndMoveCursorToEnd();
 });
 
+// A draft restored after re-authentication asks the editor to reopen the
+// save dialog so the user lands back where the expired session interrupted
+// them, with a fresh diff against the current branch head.
+onMounted(() => {
+  if (!workflow.resumeCommit) return;
+  workflow.resumeCommit = false;
+  void nextTick(() => { openCommit(); });
+});
+
 const menuItems = computed<DropdownMenuItem[][]>(() => {
   const primary: DropdownMenuItem = workflow.isEditing
     ? {
@@ -1201,12 +1336,17 @@ error-modal-title = Validation Errors
 
 modal-title = Commit Changes
 message-label = Commit Message
+commit-message-default = Update keyboard configuration via Shield Wizard
 confirm = Commit
 diff-title = Changes
 diff-loading = Loading changes…
 diff-failed = Could not load changes
 diff-retry = Try Again
 no-changes = No changes to save. Edit the keyboard configuration first.
+session-expired-title = GitHub session expired
+session-expired-description = Sign in again to save your changes. Your edits are kept in this tab, and you can review the diff before saving.
+sign-in-and-save = Sign In and Save
+not-now = Not Now
 diff-summary = { $added } added · { $modified } modified · { $deleted } deleted
 diff-collapsed-lines = { $count ->
   [1] { $count } unchanged line
@@ -1285,12 +1425,17 @@ error-modal-title = 验证错误
 
 modal-title = 提交变更
 message-label = 提交信息
+commit-message-default = 通过 Shield Wizard 更新键盘配置
 confirm = 提交变更
 diff-title = 变更
 diff-loading = 正在加载变更…
 diff-failed = 无法加载变更
 diff-retry = 重试
 no-changes = 没有可提交的变更。请先编辑键盘配置。
+session-expired-title = GitHub 登录已过期
+session-expired-description = 请重新登录以保存修改。改动会保留在当前标签页，保存前还可以再检查一次变更。
+sign-in-and-save = 重新登录并保存
+not-now = 暂不
 diff-summary = 新增 { $added } · 修改 { $modified } · 删除 { $deleted }
 diff-collapsed-lines = { $count } 行未变更
 file-added = 新增
@@ -1365,12 +1510,17 @@ error-modal-title = 検証エラー
 
 modal-title = 変更をコミット
 message-label = コミットメッセージ
+commit-message-default = Shield Wizard でキーボード設定を更新
 confirm = コミット
 diff-title = 変更内容
 diff-loading = 変更内容を読み込み中…
 diff-failed = 変更内容を読み込めませんでした
 diff-retry = 再試行
 no-changes = コミットする変更はありません。先にキーボード設定を編集してください。
+session-expired-title = GitHub のセッションが切れました
+session-expired-description = 変更を保存するには、もう一度サインインしてください。編集内容はこのタブに保持され、保存前に差分を確認できます。
+sign-in-and-save = サインインして保存
+not-now = 後で
 diff-summary = 追加 { $added } 件 · 変更 { $modified } 件 · 削除 { $deleted } 件
 diff-collapsed-lines = 変更のない { $count } 行
 file-added = 追加

@@ -53,6 +53,7 @@ import App from './app.vue';
 import LayoutImportChoiceModal from './editor/utils/LayoutImportChoiceModal.vue';
 import type { ImportedLayout } from './editor/utils/layouthelper';
 import { clearLayoutHash, extractLayoutChoiceFromHash } from './editor/utils/urlImport';
+import { clearEditorDraft, loadEditorDraft, saveEditorDraft } from './editorDraft';
 import GitHubSetup from './GitHubSetup.vue';
 import { useGithubFlow } from './githubFlow';
 import StartScreen from './StartScreen.vue';
@@ -124,12 +125,61 @@ function resetEditorState(): void {
   });
 }
 
+/**
+ * Snapshot the editor before an OAuth redirect. The redirect reloads the
+ * whole app, so without this the in-memory keyboard (and the commit
+ * message) would be lost even though the user is only re-authenticating.
+ */
+function captureEditorDraft(): void {
+  const repository = workflow.editingRepository;
+  if (!repository) return;
+  saveEditorDraft({
+    repository,
+    keyboard: toRaw(keyboard.$state),
+    commitMessage: workflow.commitMessage,
+  });
+}
+
+/**
+ * Restore a draft captured before the OAuth redirect. Returns false when
+ * there is nothing usable, so the caller can fall back to the normal
+ * post-login routing.
+ */
+function restoreEditorDraft(): boolean {
+  const draft = loadEditorDraft();
+  if (!draft) return false;
+
+  resetEditorState();
+  history.batch(() => {
+    keyboard.$patch((state) => {
+      Object.assign(state, toRaw(draft.keyboard));
+    });
+  });
+  // The restored state is the new baseline, not an undoable step.
+  history.clear();
+  workflow.enterEditor(draft.repository);
+  // enterEditor() clears session-scoped state, so the restored message and
+  // the one-shot resume request must be applied after it.
+  workflow.commitMessage = draft.commitMessage;
+  workflow.resumeCommit = true;
+  nav.dialog.info = false;
+  clearEditorDraft();
+
+  toast.add({
+    color: 'info',
+    title: $t('draft-restored'),
+    description: $t('draft-restored-desc'),
+  });
+  return true;
+}
+
 function startNewFlow(): void {
   // If the user starts a new flow while the layout-import choice modal is
   // open, that hash belongs to the previous task and should be discarded.
   // Startup URLs are safe because the modal is not open yet at this point.
   const hadPendingImport = importChoiceOpen.value;
   resetEditorState();
+  clearEditorDraft();
   if (hadPendingImport) clearLayoutHash();
   workflow.enterNewEditor();
   nav.dialog.info = true;
@@ -154,6 +204,9 @@ function applyLoadedRepository(payload: {
   const activeTab = nav.activeTab;
   const activePart = nav.activePart;
   resetEditorState();
+  // A repository loaded from GitHub is authoritative: any snapshot from an
+  // interrupted save is superseded.
+  clearEditorDraft();
   nav.$patch({ activeTab, activePart });
   history.batch(() => {
     keyboard.$patch((state) => {
@@ -187,31 +240,24 @@ function applyLoadedRepository(payload: {
 
 async function startLoginFlow(): Promise<void> {
   closePendingImport({ clearHash: true });
-  try {
-    const { data, error } = await actions.githubBeginAuth({
-      intent: 'login',
-      returnScreen: workflow.screen === 'editor' ? 'editor' : 'start',
-      returnMode: workflow.mode,
-    });
-    if (error) {
-      toast.add({
-        color: 'error',
-        title: $t('login-failed'),
-        description: error.message,
-      });
-      return;
-    }
-    if (data) {
-      window.location.assign(data.authorizeUrl);
-    }
-  }
-  catch (error) {
+  // Signing in leaves the page for GitHub; keep an editing session's work
+  // so the callback can restore it.
+  if (workflow.isEditing) captureEditorDraft();
+
+  const result = await flow.beginAuth({
+    intent: 'login',
+    returnScreen: workflow.screen === 'editor' ? 'editor' : 'start',
+    returnMode: workflow.mode,
+  });
+  if (!result.ok) {
     toast.add({
       color: 'error',
       title: $t('login-failed'),
-      description: error instanceof Error ? error.message : String(error),
+      description: result.message,
     });
+    return;
   }
+  window.location.assign(result.authorizeUrl);
 }
 
 async function logout(): Promise<void> {
@@ -226,6 +272,7 @@ async function logout(): Promise<void> {
   }
 
   closePendingImport({ clearHash: true });
+  clearEditorDraft();
   workflow.showStart();
   toast.add({
     color: 'neutral',
@@ -255,6 +302,10 @@ async function handleOAuthCallback(params: ReturnType<typeof parseWorkflowUrl>):
 
   if (data.intent === 'login') {
     if (data.returnScreen === 'editor') {
+      // Re-entering an interrupted edit: restore the snapshot captured
+      // before the redirect and reopen the save dialog.
+      if (restoreEditorDraft()) return;
+
       workflow.enterEditor();
       // A page reload during OAuth loses the in-memory repository, so an
       // "edit" return can no longer resolve to one. Fall back to a new
@@ -436,6 +487,8 @@ legacy-data = Legacy repository data
 legacy-data-desc = This repository predates the stable data format. Saving will upgrade it to the versioned format on the server.
 login-failed = Failed to start GitHub sign-in
 oauth-error = GitHub sign-in could not be completed.
+draft-restored = Unsaved changes restored
+draft-restored-desc = Review the changes and save them to GitHub.
 </ftl>
 
 <ftl locale="zh-CN">
@@ -445,6 +498,8 @@ legacy-data = 旧版仓库数据
 legacy-data-desc = 这个仓库还是旧版数据格式。保存时服务器会自动升级为带版本号的新格式。
 login-failed = 无法开始 GitHub 登录
 oauth-error = GitHub 登录未能完成。
+draft-restored = 已恢复未保存的修改
+draft-restored-desc = 请检查变更内容，然后保存到 GitHub。
 </ftl>
 
 <ftl locale="ja">
@@ -454,4 +509,6 @@ legacy-data = 旧形式のリポジトリデータ
 legacy-data-desc = このリポジトリは安定版のデータ形式より前に作られたものです。保存すると、サーバー側で新しい形式にアップグレードされます。
 login-failed = GitHub のサインインを開始できませんでした
 oauth-error = GitHub のサインインを完了できませんでした。
+draft-restored = 未保存の変更を復元しました
+draft-restored-desc = 変更内容を確認して GitHub に保存してください。
 </ftl>

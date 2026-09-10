@@ -634,19 +634,12 @@ async function beginAuth(): Promise<void> {
   workflow.githubBusy = true;
   workflow.githubError = null;
   try {
-    const { data, error } = await actions.githubBeginAuth({
-      intent: 'edit',
-    });
-    if (error) {
-      workflow.setGithubError(error.message);
+    const result = await flow.beginAuth({ intent: 'edit' });
+    if (!result.ok) {
+      workflow.setGithubError(result.message);
       return;
     }
-    if (data) {
-      window.location.assign(data.authorizeUrl);
-    }
-  }
-  catch (error) {
-    workflow.setGithubError(error instanceof Error ? error.message : String(error));
+    window.location.assign(result.authorizeUrl);
   }
   finally {
     workflow.githubBusy = false;
@@ -723,7 +716,7 @@ async function loadRepos(reset: boolean): Promise<void> {
 
     if (error) {
       if (error.code === 'UNAUTHORIZED') {
-        workflow.expireSession();
+        workflow.expireSession($t('session-expired'));
         return;
       }
       workflow.setGithubError(error.message, 'repositories');
@@ -776,7 +769,7 @@ async function chooseRepo(repo: GithubRepoSummary): Promise<void> {
     });
     if (error) {
       if (error.code === 'UNAUTHORIZED') {
-        workflow.expireSession();
+        workflow.expireSession($t('session-expired'));
         return;
       }
       toast.add({
@@ -853,6 +846,7 @@ retry = Try Again
 
 error = Something went wrong
 load-failed = Could not open repository
+session-expired = Your GitHub session expired. Sign in again to continue.
 </ftl>
 
 <ftl locale="zh-CN">
@@ -899,6 +893,7 @@ retry = 重试
 
 error = 出错了
 load-failed = 无法打开仓库
+session-expired = GitHub 登录已过期，请重新登录后继续。
 </ftl>
 
 <ftl locale="ja">
@@ -945,4 +940,5 @@ retry = 再試行
 
 error = エラーが発生しました
 load-failed = リポジトリを開けませんでした
+session-expired = GitHub のセッションが切れました。もう一度サインインしてください。
 </ftl>

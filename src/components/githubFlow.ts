@@ -20,6 +20,14 @@ import { useWorkflowStore } from './workflow';
 
 export type SignOutResult = { ok: true } | { ok: false; message: string };
 
+export type BeginAuthResult = { ok: true; authorizeUrl: string } | { ok: false; message: string };
+
+export interface BeginAuthParams {
+  intent: 'edit' | 'login';
+  returnScreen?: 'start' | 'editor';
+  returnMode?: 'new' | 'edit' | null;
+}
+
 export function useGithubFlow() {
   const workflow = useWorkflowStore();
 
@@ -91,6 +99,25 @@ export function useGithubFlow() {
     }
   }
 
+  /**
+   * Ask the server for a GitHub authorize URL. Callers decide how to follow
+   * it (`window.location.assign` today); keeping the request here means the
+   * editor, the picker, and the re-authentication prompt all share one path.
+   */
+  async function beginAuth(params: BeginAuthParams): Promise<BeginAuthResult> {
+    try {
+      const { data, error } = await actions.githubBeginAuth(params);
+      if (error) return { ok: false, message: error.message };
+      if (!data?.authorizeUrl) {
+        return { ok: false, message: 'GitHub did not return an authorization URL.' };
+      }
+      return { ok: true, authorizeUrl: data.authorizeUrl };
+    }
+    catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
   /** Clear the server cookie and the local session snapshot. */
   async function signOut(): Promise<SignOutResult> {
     try {
@@ -108,5 +135,5 @@ export function useGithubFlow() {
     }
   }
 
-  return { refreshSession, routeAfterSession, signOut };
+  return { beginAuth, refreshSession, routeAfterSession, signOut };
 }
