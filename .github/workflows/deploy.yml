@@ -13,7 +13,11 @@ name: Deploy
 
 on:
   push:
-    # All branch pushes; tags are ignored.
+    # All branch pushes; tags are ignored. The explicit `branches` filter is
+    # required: if only `tags-ignore` is defined, GitHub treats the branch ref
+    # as undefined and never runs this workflow for branch pushes.
+    branches:
+      - "**"
     tags-ignore:
       - "**"
   pull_request:
