@@ -130,11 +130,6 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
         to: workflow.editingRepository?.htmlUrl ?? 'https://github.com',
         target: '_blank',
       },
-      {
-        label: $t('edit-other'),
-        icon: 'i-lucide-folder-search',
-        onSelect() { requestAction('edit'); },
-      },
     ]);
   }
 
@@ -186,7 +181,6 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
 <ftl locale="en">
 new-shield = New Shield
 edit-repo = Edit Existing Repository
-edit-other = Edit a Different Repository
 view-repo = View Repository on GitHub
 connect-github = Connect to GitHub
 confirm-title = Switch Workflow?
@@ -206,7 +200,6 @@ confirm-action = Continue
 <ftl locale="zh-CN">
 new-shield = 新建 Shield
 edit-repo = 编辑已有仓库
-edit-other = 编辑其他仓库
 view-repo = 在 GitHub 上查看仓库
 connect-github = 连接 GitHub
 confirm-title = 切换工作流？
@@ -226,7 +219,6 @@ confirm-action = 继续
 <ftl locale="ja">
 new-shield = 新しいシールド
 edit-repo = 既存のリポジトリを編集
-edit-other = 別のリポジトリを編集
 view-repo = GitHub でリポジトリを表示
 connect-github = GitHub にサインイン
 confirm-title = ワークフローを切り替えますか？
