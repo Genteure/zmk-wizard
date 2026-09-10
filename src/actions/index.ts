@@ -226,12 +226,11 @@ function githubErrorLooksLikeRateLimit(error: GithubApiError): boolean {
   return text.includes('rate limit') || text.includes('rate_limit');
 }
 
-async function makeInstallUrl(repo?: string, context?: ActionAPIContext): Promise<string | null> {
+async function makeInstallUrl(context?: ActionAPIContext): Promise<string | null> {
   if (!PUBLIC_GITHUB_APP_SLUG || !GITHUB_SESSION_SECRET) return null;
   const nonce = crypto.randomUUID();
   const state = await createGithubOAuthState(requireGithubSessionSecret(), {
     intent: 'edit',
-    repo,
   }, { nonce });
   if (context) {
     context.cookies.set(GITHUB_OAUTH_STATE_COOKIE, nonce, oauthStateCookieOptions());
@@ -243,7 +242,6 @@ async function makeInstallUrl(repo?: string, context?: ActionAPIContext): Promis
 
 async function readGithubSession(
   context: ActionAPIContext,
-  repo?: string,
 ): Promise<GithubSessionResult> {
   if (!isGithubConfigured()) {
     return { configured: false, user: null, installations: null, installUrl: null, githubError: null };
@@ -260,7 +258,7 @@ async function readGithubSession(
       configured: true,
       user: null,
       installations: null,
-      installUrl: await makeInstallUrl(repo, context),
+      installUrl: await makeInstallUrl(context),
       githubError: null,
     };
   }
@@ -272,7 +270,7 @@ async function readGithubSession(
       configured: true,
       user,
       installations,
-      installUrl: await makeInstallUrl(repo, context),
+      installUrl: await makeInstallUrl(context),
       githubError: null,
     };
   }
@@ -285,7 +283,7 @@ async function readGithubSession(
         configured: true,
         user: null,
         installations: null,
-        installUrl: await makeInstallUrl(repo, context),
+        installUrl: await makeInstallUrl(context),
         githubError: null,
       };
     }
@@ -296,7 +294,7 @@ async function readGithubSession(
         configured: true,
         user: null,
         installations: null,
-        installUrl: await makeInstallUrl(repo, context),
+        installUrl: await makeInstallUrl(context),
         githubError: error.message,
       };
     }
@@ -310,7 +308,7 @@ async function readGithubSession(
       configured: true,
       user: null,
       installations: null,
-      installUrl: await makeInstallUrl(repo, context),
+      installUrl: await makeInstallUrl(context),
       githubError: null,
     };
   }
@@ -634,7 +632,6 @@ export const server = {
   githubBeginAuth: defineAction({
     input: z.object({
       intent: z.enum(['edit', 'login']),
-      repo: z.string().regex(/^[^/\s]+\/[^/\s]+$/, 'repo must be in owner/name form').optional(),
       returnScreen: z.enum(['start', 'editor']).optional(),
       returnMode: z.enum(['new', 'edit']).nullable().optional(),
     }),
@@ -644,7 +641,6 @@ export const server = {
       const nonce = crypto.randomUUID();
       const state = await createGithubOAuthState(requireGithubSessionSecret(), {
         intent: input.intent,
-        repo: input.repo,
         returnScreen: input.returnScreen,
         returnMode: input.returnMode,
       }, { nonce });
@@ -702,10 +698,9 @@ export const server = {
           intent: oauthState.intent,
           returnScreen: oauthState.returnScreen ?? null,
           returnMode: oauthState.returnMode ?? null,
-          repo: oauthState.repo ?? null,
           user,
           installations,
-          installUrl: await makeInstallUrl(oauthState.repo, context),
+          installUrl: await makeInstallUrl(context),
           githubError: null,
         };
       }
@@ -735,7 +730,7 @@ export const server = {
       }
       clearGithubOAuthStateCookie(context);
 
-      return { verified: true, intent: oauthState.intent, repo: oauthState.repo ?? null };
+      return { verified: true, intent: oauthState.intent };
     },
   }),
 

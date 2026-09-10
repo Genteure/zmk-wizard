@@ -37,8 +37,6 @@ export interface GithubOAuthStatePayload {
   nonce: string;
   /** Epoch milliseconds after which the state is rejected. */
   expiresAt: number;
-  /** Optional `owner/name` to open directly after auth. */
-  repo?: string;
   /** UI the user came from (used when `intent` is `login`). */
   returnScreen?: 'start' | 'editor';
   /** Workflow the user was in when logging in. */
@@ -218,7 +216,6 @@ export async function createGithubOAuthState(
     intent: payload.intent,
     nonce,
     expiresAt: now + ttlMs,
-    ...(payload.repo !== undefined ? { repo: payload.repo } : {}),
     ...(payload.returnScreen !== undefined ? { returnScreen: payload.returnScreen } : {}),
     ...(payload.returnMode !== undefined ? { returnMode: payload.returnMode } : {}),
   };
@@ -261,7 +258,6 @@ export async function verifyGithubOAuthState(
       || (payload.intent !== 'edit' && payload.intent !== 'login')
       || (payload.returnScreen !== undefined && payload.returnScreen !== 'start' && payload.returnScreen !== 'editor')
       || (payload.returnMode !== undefined && payload.returnMode !== 'new' && payload.returnMode !== 'edit' && payload.returnMode !== null)
-      || (payload.repo !== undefined && typeof payload.repo !== 'string')
     ) {
       return null;
     }
@@ -271,7 +267,6 @@ export async function verifyGithubOAuthState(
       intent: payload.intent,
       nonce: payload.nonce,
       expiresAt: payload.expiresAt,
-      repo: payload.repo,
       returnScreen: payload.returnScreen,
       returnMode: payload.returnMode,
     };

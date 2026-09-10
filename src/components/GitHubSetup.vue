@@ -619,11 +619,6 @@ onMounted(async () => {
 
   if (workflow.githubStep !== 'repositories') return;
 
-  if (workflow.pendingRepo && workflow.githubUser) {
-    const opened = await tryOpenPendingRepo();
-    if (opened) return;
-  }
-
   if (workflow.githubInstallations?.length) {
     if (workflow.selectedInstallationId === null) {
       workflow.selectedInstallationId = workflow.githubInstallations[0].id;
@@ -641,7 +636,6 @@ async function beginAuth(): Promise<void> {
   try {
     const { data, error } = await actions.githubBeginAuth({
       intent: 'edit',
-      repo: workflow.pendingRepo ?? undefined,
     });
     if (error) {
       workflow.setGithubError(error.message);
@@ -697,45 +691,6 @@ async function logout(): Promise<void> {
  */
 async function retryInstallUrl(): Promise<void> {
   await flow.refreshSession({ busy: true });
-}
-
-async function tryOpenPendingRepo(): Promise<boolean> {
-  const pending = workflow.pendingRepo;
-  if (!pending) return false;
-  const [owner, repo] = pending.split('/', 2);
-  if (!owner || !repo) return false;
-
-  workflow.githubBusy = true;
-  try {
-    const { data, error } = await actions.githubLoadRepository({ owner, repo });
-    if (error) {
-      if (error.code === 'UNAUTHORIZED') {
-        workflow.expireSession();
-        return true;
-      }
-      workflow.githubError = error.message;
-      workflow.githubStep = 'repositories';
-      return false;
-    }
-    if (data) {
-      workflow.pendingRepo = null;
-      emit('loaded', {
-        keyboard: data.keyboard,
-        repository: toEditingRepository(data.repository, data.dataFileSha),
-        validationIssues: data.validationIssues,
-        wasLegacy: data.wasLegacy,
-      });
-      return true;
-    }
-    return false;
-  }
-  catch (error) {
-    workflow.githubError = error instanceof Error ? error.message : String(error);
-    return false;
-  }
-  finally {
-    workflow.githubBusy = false;
-  }
 }
 
 async function loadRepos(reset: boolean): Promise<void> {
@@ -832,7 +787,6 @@ async function chooseRepo(repo: GithubRepoSummary): Promise<void> {
       return;
     }
     if (data) {
-      workflow.pendingRepo = null;
       emit('loaded', {
         keyboard: data.keyboard,
         repository: toEditingRepository(data.repository, data.dataFileSha),

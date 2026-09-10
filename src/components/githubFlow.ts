@@ -101,7 +101,6 @@ export function useGithubFlow() {
       // Keep the runtime "configured" flag so the GitHub setup page can
       // distinguish “configured but signed out” from “not configured”.
       workflow.githubConfigured = true;
-      workflow.pendingRepo = null;
       return { ok: true };
     }
     catch (error) {

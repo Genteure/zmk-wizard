@@ -50,7 +50,6 @@ describe('github oauth state', () => {
   it('round-trips the flow payload and survives URL encoding', async () => {
     const state = await createGithubOAuthState(SECRET, {
       intent: 'edit',
-      repo: 'octocat/zmk-config',
       returnScreen: 'editor',
       returnMode: 'edit',
     });
@@ -60,7 +59,6 @@ describe('github oauth state', () => {
     const payload = await verifyGithubOAuthState(SECRET, decodeURIComponent(state));
     expect(payload).toMatchObject({
       intent: 'edit',
-      repo: 'octocat/zmk-config',
       returnScreen: 'editor',
       returnMode: 'edit',
     });

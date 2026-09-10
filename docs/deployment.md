@@ -167,7 +167,6 @@ string once and then strips the workflow parameters from the address bar:
 | `/` | launcher: choose **New Shield** or **Edit Existing Repository** |
 | `/?action=new` | open a fresh editor for a new shield |
 | `/?action=edit` | GitHub flow: sign in → install app → choose repo → editor |
-| `/?action=edit&repo=owner/name` | same, but tries to open that repo directly |
 | `/?code=...&state=...` | GitHub OAuth callback; server exchanges code and sets the session cookie |
 | `/?setup_action=install&state=...` | GitHub App installation callback; continue to repo selection |
 | `/?action=new&tab=keyboard` | open the editor on a specific tab |

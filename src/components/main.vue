@@ -269,7 +269,6 @@ async function handleOAuthCallback(params: ReturnType<typeof parseWorkflowUrl>):
 
   // `edit` intent: continue in the GitHub setup flow.
   workflow.enterGithub();
-  workflow.pendingRepo = data.repo;
   flow.routeAfterSession();
 }
 
@@ -382,7 +381,6 @@ async function initializeWorkflow(): Promise<void> {
   else if (params.action === 'edit') {
     replaceWorkflowUrl();
     workflow.initialized = true;
-    workflow.pendingRepo = params.repo;
     startEditFlow();
     applyWorkflowTab(params, (tab, part) => nav.$patch({ activeTab: tab, activePart: part }));
     await flow.refreshSession();

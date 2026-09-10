@@ -97,8 +97,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
   const githubInstallUrl = ref<string | null>(null);
   const selectedInstallationId = ref<number | null>(null);
   const editingRepository = ref<EditingRepository | null>(null);
-  /** `owner/name` requested through a URL and waiting for auth/install. */
-  const pendingRepo = ref<string | null>(null);
   /** Where the GitHub flow was opened from, so Back can return there. */
   const githubReturnScreen = ref<WorkflowScreen | null>(null);
   /** Workflow to restore when cancelling GitHub flow back to the editor. */
@@ -122,7 +120,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
     mode.value = null;
     githubStep.value = 'auth';
     githubError.value = null;
-    pendingRepo.value = null;
     editingRepository.value = null;
     githubReturnScreen.value = null;
     githubReturnMode.value = null;
@@ -134,7 +131,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
     githubStep.value = 'auth';
     githubError.value = null;
     editingRepository.value = null;
-    pendingRepo.value = null;
     githubReturnScreen.value = null;
     githubReturnMode.value = null;
     editorSessionId.value = nextEditorSessionId++;
@@ -170,7 +166,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
       githubStep.value = 'auth';
       githubError.value = null;
       githubBusy.value = false;
-      pendingRepo.value = null;
       return;
     }
 
@@ -222,7 +217,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
     githubInstallUrl,
     selectedInstallationId,
     editingRepository,
-    pendingRepo,
     githubReturnScreen,
     githubReturnMode,
     isNew,

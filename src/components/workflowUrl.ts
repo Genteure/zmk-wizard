@@ -7,7 +7,6 @@
 //
 //   ?action=new                 launcher chose "new shield"
 //   ?action=edit                launcher chose "edit existing repo"
-//   ?action=edit&repo=o/r       open that repo after auth/install
 //   ?code=...&state=...         GitHub OAuth callback
 //   ?setup_action=install...    GitHub App installation callback
 //   ?tab=layout|keyboard|parts  optional editor tab to restore
@@ -25,7 +24,6 @@ export interface WorkflowUrlParams {
   errorDescription: string | null;
   setupAction: string | null;
   installationId: string | null;
-  repo: string | null;
   tab: 'layout' | 'keyboard' | 'parts' | null;
   part: number | null;
 }
@@ -38,7 +36,6 @@ const WORKFLOW_SEARCH_KEYS = [
   'error_description',
   'setup_action',
   'installation_id',
-  'repo',
   'tab',
   'part',
   'iss',
@@ -58,7 +55,6 @@ export function parseWorkflowUrl(url: URL): WorkflowUrlParams {
     errorDescription: search.get('error_description'),
     setupAction: search.get('setup_action'),
     installationId: search.get('installation_id'),
-    repo: search.get('repo'),
     tab: tab === 'layout' || tab === 'keyboard' || tab === 'parts' ? tab : null,
     part: Number.isInteger(part) && part >= 0 ? part : null,
   };

@@ -9,7 +9,7 @@ import {
 
 describe('workflow URL parsing', () => {
   it('recognizes new/edit actions and editor tab', () => {
-    const params = parseWorkflowUrl(new URL('https://example.test/?action=edit&repo=octocat%2Fzmk-config&tab=keyboard&part=1'));
+    const params = parseWorkflowUrl(new URL('https://example.test/?action=edit&tab=keyboard&part=1'));
     expect(params).toEqual({
       action: 'edit',
       code: null,
@@ -18,7 +18,6 @@ describe('workflow URL parsing', () => {
       errorDescription: null,
       setupAction: null,
       installationId: null,
-      repo: 'octocat/zmk-config',
       tab: 'keyboard',
       part: 1,
     });
@@ -37,12 +36,12 @@ describe('workflow URL parsing', () => {
   });
 
   it('strips workflow keys but preserves hash and unrelated query', () => {
-    const url = new URL('https://example.test/?action=edit&code=abc&state=def&error=access_denied&error_description=denied&setup_action=install&installation_id=1&repo=a%2Fb&tab=layout&part=0&iss=https%3A%2F%2Fgithub.com%2Flogin%2Foauth&keep=1#kle=xyz');
+    const url = new URL('https://example.test/?action=edit&code=abc&state=def&error=access_denied&error_description=denied&setup_action=install&installation_id=1&tab=layout&part=0&iss=https%3A%2F%2Fgithub.com%2Flogin%2Foauth&keep=1#kle=xyz');
     const stripped = stripWorkflowSearch(url);
 
     expect(stripped).toContain('keep=1');
     expect(stripped).toContain('#kle=xyz');
-    for (const key of ['action', 'code', 'state', 'error', 'error_description', 'setup_action', 'installation_id', 'repo', 'tab', 'part', 'iss']) {
+    for (const key of ['action', 'code', 'state', 'error', 'error_description', 'setup_action', 'installation_id', 'tab', 'part', 'iss']) {
       expect(stripped).not.toContain(`${key}=`);
     }
   });
