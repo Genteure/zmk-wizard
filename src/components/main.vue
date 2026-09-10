@@ -358,7 +358,15 @@ async function initializeWorkflow(): Promise<void> {
     workflow.initialized = true;
     replaceWorkflowUrl();
     workflow.showStart();
-    workflow.githubError = params.errorDescription ?? params.error ?? $t('oauth-error');
+    // The launcher has no place to show a stored error, so surface the
+    // denial/failure as a toast instead of leaving the user with no
+    // explanation for why they are back at the start screen.
+    const reason = params.errorDescription ?? params.error;
+    toast.add({
+      color: 'error',
+      title: $t('oauth-error'),
+      ...(reason ? { description: reason } : {}),
+    });
   }
   else if (isInstallCallback(params)) {
     workflow.initialized = true;

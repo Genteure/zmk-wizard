@@ -5,6 +5,7 @@
         icon="i-lucide-arrow-left"
         color="neutral"
         variant="ghost"
+        :disabled="isExchanging"
         :aria-label="$t('back')"
         @click="$emit('cancel')"
       >
@@ -268,17 +269,37 @@
             </div>
 
             <template v-else-if="repos.length > 0">
-              <div class="flex flex-col gap-3 max-h-[50vh] min-h-0 overflow-y-auto overscroll-contain px-1 py-1">
-                <UAlert
-                  v-if="showManyReposHint"
-                  class="mb-1 shrink-0"
-                  color="info"
-                  variant="soft"
-                  icon="i-lucide-info"
-                  :title="$t('repos-many-title')"
-                  :description="$t('repos-many-hint')"
-                />
+              <UAlert
+                v-if="showManyReposHint"
+                color="info"
+                variant="soft"
+                icon="i-lucide-info"
+                :title="$t('repos-many-title')"
+                :description="$t('repos-many-hint')"
+              />
 
+              <UInput
+                v-model="repoQuery"
+                class="w-full"
+                icon="i-lucide-search"
+                :placeholder="$t('repos-search')"
+              >
+                <template
+                  v-if="repoQuery"
+                  #trailing
+                >
+                  <UButton
+                    icon="i-lucide-x"
+                    color="neutral"
+                    variant="link"
+                    size="xs"
+                    :aria-label="$t('repos-search-clear')"
+                    @click="repoQuery = ''"
+                  />
+                </template>
+              </UInput>
+
+              <div class="flex flex-col gap-3 max-h-[50vh] min-h-0 overflow-y-auto overscroll-contain px-1 py-1">
                 <div
                   v-if="supportedRepos.length === 0"
                   class="flex flex-col items-center gap-2 py-6 text-sm text-toned"
@@ -293,9 +314,23 @@
                   </p>
                 </div>
 
+                <div
+                  v-else-if="filteredSupportedRepos.length === 0"
+                  class="flex flex-col items-center gap-2 py-6 text-sm text-toned"
+                  role="status"
+                >
+                  <UIcon
+                    name="i-lucide-search-x"
+                    class="size-8 text-muted"
+                  />
+                  <p class="text-center max-w-sm">
+                    {{ $t('repos-no-match', { query: repoQuery.trim() }) }}
+                  </p>
+                </div>
+
                 <template v-else>
                   <UCard
-                    v-for="repo in supportedRepos"
+                    v-for="repo in filteredSupportedRepos"
                     :key="repo.id"
                     class="cursor-pointer shrink-0 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                     :class="{
@@ -334,7 +369,7 @@
                 </template>
 
                 <div
-                  v-if="unsupportedRepos.length > 0"
+                  v-if="filteredUnsupportedRepos.length > 0"
                   class="shrink-0 rounded-xl border border-dashed border-default bg-muted/30"
                 >
                   <details class="group">
@@ -342,7 +377,7 @@
                       class="flex cursor-pointer select-none list-none items-center justify-between gap-2 px-4 py-3 text-sm text-toned [&::-webkit-details-marker]:hidden"
                     >
                       <span>
-                        {{ $t('repos-unsupported-count', { count: unsupportedRepos.length }) }}
+                        {{ $t('repos-unsupported-count', { count: filteredUnsupportedRepos.length }) }}
                       </span>
                       <UIcon
                         name="i-lucide-chevron-down"
@@ -351,7 +386,7 @@
                     </summary>
                     <ul class="grid gap-1 border-t border-default px-4 py-3">
                       <li
-                        v-for="repo in unsupportedRepos"
+                        v-for="repo in filteredUnsupportedRepos"
                         :key="repo.id"
                         class="truncate text-sm text-toned"
                       >
@@ -449,6 +484,7 @@ import {
 } from './workflow';
 import { locales } from './locales';
 import { compareGithubRepos } from '~/lib/githubRepoOrder';
+import { filterReposByQuery } from '~/lib/repoFilter';
 import { useNavigationStore } from './stores.ts';
 import LocaleSelect from './utils/LocaleSelect.vue';
 
@@ -498,6 +534,7 @@ const flow = useGithubFlow();
 const nav = useNavigationStore();
 
 const githubDisabled = computed(() => !githubEnabledAtBuild || workflow.githubConfigured === false);
+const isExchanging = computed(() => workflow.githubStep === 'exchange');
 const loggingOut = ref(false);
 
 const repos = ref<GithubRepoSummary[]>([]);
@@ -506,6 +543,14 @@ const repoLoadingMore = ref(false);
 const reposPage = ref(1);
 const reposHasMore = ref(false);
 const repoLoadingId = ref<number | null>(null);
+const repoQuery = ref('');
+
+/**
+ * Monotonic id for repository list requests. A response is only applied
+ * when it belongs to the newest request, so switching accounts while a
+ * load is in flight cannot show the previous installation's repositories.
+ */
+let reposRequestId = 0;
 
 const steps = computed(() => [
   { key: 'signin', label: $t('step-signin') },
@@ -538,7 +583,25 @@ const unsupportedRepos = computed(() =>
     .sort(compareGithubRepos),
 );
 
-const showManyReposHint = computed(() => repos.value.length > 10 || reposHasMore.value);
+const selectedInstallation = computed(() =>
+  (workflow.githubInstallations ?? []).find(
+    installation => installation.id === workflow.selectedInstallationId,
+  ) ?? null,
+);
+
+/**
+ * Warn only when the installation can access *all* repositories; a long
+ * list of explicitly selected repositories is not "too broad".
+ */
+const showManyReposHint = computed(() => selectedInstallation.value?.repositorySelection === 'all');
+
+const filteredSupportedRepos = computed(() =>
+  filterReposByQuery(supportedRepos.value, repoQuery.value),
+);
+
+const filteredUnsupportedRepos = computed(() =>
+  filterReposByQuery(unsupportedRepos.value, repoQuery.value),
+);
 
 watch(
   () => workflow.selectedInstallationId,
@@ -678,6 +741,9 @@ async function tryOpenPendingRepo(): Promise<boolean> {
 async function loadRepos(reset: boolean): Promise<void> {
   const installationId = workflow.selectedInstallationId;
   if (installationId === null) return;
+  if (!reset && repoLoadingMore.value) return;
+
+  const requestId = ++reposRequestId;
 
   if (reset) {
     repos.value = [];
@@ -696,6 +762,10 @@ async function loadRepos(reset: boolean): Promise<void> {
       page: reset ? 1 : reposPage.value + 1,
       perPage: 100,
     });
+    // A newer request (e.g. the user switched accounts) has superseded
+    // this one; drop the response instead of overwriting fresher state.
+    if (requestId !== reposRequestId) return;
+
     if (error) {
       if (error.code === 'UNAUTHORIZED') {
         workflow.expireSession();
@@ -714,11 +784,14 @@ async function loadRepos(reset: boolean): Promise<void> {
     }
   }
   catch (error) {
+    if (requestId !== reposRequestId) return;
     workflow.setGithubError(error instanceof Error ? error.message : String(error), 'repositories');
   }
   finally {
-    repoLoading.value = false;
-    repoLoadingMore.value = false;
+    if (requestId === reposRequestId) {
+      repoLoading.value = false;
+      repoLoadingMore.value = false;
+    }
   }
 }
 
@@ -809,6 +882,9 @@ repos-signed-out = Not signed in to GitHub
 repos-account = GitHub Account
 repos-edit-access = Edit Repository Access
 repos-loading = Loading repositories…
+repos-search = Search repositories…
+repos-search-clear = Clear search
+repos-no-match = No Shield Wizard repositories match “{ $query }”.
 repos-no-supported = No Shield Wizard compatible repositories found. Create one with Shield Wizard first.
 repos-unsupported-count = {$count ->
   [1] 1 unsupported repository
@@ -852,6 +928,9 @@ repos-signed-out = 尚未登录 GitHub
 repos-account = GitHub 账号
 repos-edit-access = 管理仓库访问权限
 repos-loading = 正在加载仓库…
+repos-search = 搜索仓库…
+repos-search-clear = 清除搜索
+repos-no-match = 没有匹配“{ $query }”的 Shield Wizard 仓库。
 repos-no-supported = 没有找到兼容 Shield Wizard 的仓库。请先用 Shield Wizard 创建一个仓库。
 repos-unsupported-count = {$count ->
   [1] 1 个不支持的仓库
@@ -895,6 +974,9 @@ repos-signed-out = GitHub にサインインしていません
 repos-account = GitHub アカウント
 repos-edit-access = リポジトリのアクセス権を管理
 repos-loading = リポジトリを読み込み中…
+repos-search = リポジトリを検索…
+repos-search-clear = 検索をクリア
+repos-no-match = 「{ $query }」に一致する Shield Wizard リポジトリはありません。
 repos-no-supported = Shield Wizard に対応したリポジトリが見つかりません。先に Shield Wizard で作成してください。
 repos-unsupported-count = {$count ->
   [1] 未対応のリポジトリ 1 件
