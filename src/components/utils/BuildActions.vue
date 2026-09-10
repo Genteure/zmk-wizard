@@ -77,7 +77,7 @@
     <UModal
       v-model:open="commitModalOpen"
       :title="$t('modal-title')"
-      :description="workflow.editingRepository?.fullName + '@' + workflow.editingRepository?.defaultBranch"
+      :description="commitRepositoryLabel"
       :close="!isCommitting"
       :ui="{ content: 'max-w-5xl' }"
     >
@@ -711,6 +711,12 @@ const commitDiffSummary = computed(() => {
 const commitSelectedChange = computed(() =>
   commitFileChanges.value.find(change => change.path === selectedChangePath.value) ?? null,
 );
+
+/** `owner/repo@branch` shown as the commit modal subtitle. */
+const commitRepositoryLabel = computed(() => {
+  const repository = workflow.editingRepository;
+  return repository ? `${repository.fullName}@${repository.defaultBranch}` : undefined;
+});
 
 const commitDiffGroups = computed<CommitDiffGroup[]>(() =>
   commitSelectedChange.value?.diff ?? [],

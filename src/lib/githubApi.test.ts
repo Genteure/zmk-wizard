@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import { markRepositoriesWithShieldConfig, type GithubRepository } from './githubApi';
+import { markRepositoriesWithShieldConfig, listInstallationRepositories, type GithubRepository } from './githubApi';
 
 function repo(overrides: Partial<GithubRepository> = {}): GithubRepository {
   return {
@@ -108,5 +108,63 @@ describe('markRepositoriesWithShieldConfig', () => {
     await expect(
       markRepositoriesWithShieldConfig('token', [repo({ name: 'x' })]),
     ).rejects.toMatchObject({ status: 401 });
+  });
+});
+
+describe('listInstallationRepositories pagination', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  const apiRepo = {
+    id: 1,
+    name: 'r',
+    full_name: 'o/r',
+    private: false,
+    description: null,
+    html_url: 'https://github.com/o/r',
+    default_branch: 'main',
+    pushed_at: null,
+    updated_at: '2026-01-01T00:00:00Z',
+    owner: { login: 'o', avatar_url: 'a' },
+  };
+
+  function mockPage(repositories: unknown[], totalCount: number): void {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ total_count: totalCount, repositories }),
+    }));
+  }
+
+  test('stops paging on a short page even when the reported total is higher', async () => {
+    mockPage([apiRepo], 50);
+
+    const { repos, hasMore } = await listInstallationRepositories('token', 1, 1, 100);
+
+    expect(repos).toHaveLength(1);
+    expect(hasMore).toBe(false);
+  });
+
+  test('does not offer another page when the total is zero', async () => {
+    mockPage([], 0);
+
+    const { repos, hasMore } = await listInstallationRepositories('token', 1, 1, 100);
+
+    expect(repos).toHaveLength(0);
+    expect(hasMore).toBe(false);
+  });
+
+  test('offers another page only for a full page with repositories remaining', async () => {
+    mockPage(
+      Array.from({ length: 100 }, (_, index) => ({ ...apiRepo, id: index + 1, name: `r${index}` })),
+      150,
+    );
+
+    const { hasMore } = await listInstallationRepositories('token', 1, 1, 100);
+
+    expect(hasMore).toBe(true);
   });
 });

@@ -54,6 +54,7 @@ import LayoutImportChoiceModal from './editor/utils/LayoutImportChoiceModal.vue'
 import type { ImportedLayout } from './editor/utils/layouthelper';
 import { clearLayoutHash, extractLayoutChoiceFromHash } from './editor/utils/urlImport';
 import GitHubSetup from './GitHubSetup.vue';
+import { useGithubFlow } from './githubFlow';
 import StartScreen from './StartScreen.vue';
 import { fluent, localeBundleMap, localeMap } from './locales';
 import { useHistoryStore } from './history';
@@ -71,9 +72,9 @@ const nav = useNavigationStore();
 const keyboard = useKeyboardStore();
 const history = useHistoryStore();
 const workflow = useWorkflowStore();
+const flow = useGithubFlow();
 
 const importChoiceOpen = ref(false);
-const loggingOut = ref(false);
 // shallowRef: candidates are only replaced wholesale; deep reactivity would
 // wrap the Key arrays in proxies that structuredClone rejects.
 const pendingImportChoice = shallowRef<ImportedLayout | null>(null);
@@ -214,83 +215,25 @@ async function startLoginFlow(): Promise<void> {
 }
 
 async function logout(): Promise<void> {
-  loggingOut.value = true;
-  try {
-    const { error } = await actions.githubLogout();
-    if (!error) {
-      workflow.clearSession();
-      // Keep the runtime "configured" flag so the GitHub setup page can
-      // distinguish “configured but signed out” from “not configured”.
-      workflow.githubConfigured = true;
-      closePendingImport({ clearHash: true });
-      workflow.showStart();
-      toast.add({
-        color: 'neutral',
-        title: $t('logged-out'),
-      });
-    }
-  }
-  catch (error) {
+  const result = await flow.signOut();
+  if (!result.ok) {
     toast.add({
       color: 'error',
       title: $t('logout-failed'),
-      description: error instanceof Error ? error.message : String(error),
+      description: result.message,
     });
-  }
-  finally {
-    loggingOut.value = false;
-  }
-}
-
-// ─── Session refresh / OAuth routing ─────────────────────────
-
-async function refreshSession(): Promise<boolean> {
-  try {
-    const { data, error } = await actions.githubGetSession();
-    if (error) {
-      // Keep the last known session shape so a transient GitHub API error
-      // (e.g. rate limit) is not misreported as "GitHub not configured".
-      if (workflow.screen === 'github') {
-        workflow.setGithubError(error.message, workflow.githubStep);
-      }
-      return false;
-    }
-    if (!data) return false;
-
-    const previousUser = workflow.githubUser;
-    const previousInstallations = workflow.githubInstallations;
-    workflow.setSession(data);
-    // A rate-limit response can arrive without a user object even though
-    // the token is still valid. Keep the last known identity so the UI does
-    // not force the user to sign in again for a transient API error.
-    if (data.githubError && previousUser && !data.user) {
-      workflow.githubUser = previousUser;
-      workflow.githubInstallations = previousInstallations;
-    }
-    if (workflow.screen === 'github') {
-      routeEditSession();
-    }
-    return true;
-  }
-  catch (error) {
-    console.warn('Failed to refresh GitHub session:', error);
-    return false;
-  }
-}
-
-function routeEditSession(): void {
-  if (!workflow.githubUser) {
-    workflow.githubStep = 'repositories';
     return;
   }
-  workflow.githubStep = (workflow.githubInstallations?.length ?? 0) > 0
-    ? 'repositories'
-    : 'install';
-  const first = workflow.githubInstallations?.[0];
-  if (first && workflow.selectedInstallationId === null) {
-    workflow.selectedInstallationId = first.id;
-  }
+
+  closePendingImport({ clearHash: true });
+  workflow.showStart();
+  toast.add({
+    color: 'neutral',
+    title: $t('logged-out'),
+  });
 }
+
+// ─── OAuth routing ───────────────────────────────────────────
 
 async function handleOAuthCallback(params: ReturnType<typeof parseWorkflowUrl>): Promise<void> {
   if (!params.code || !params.state) return;
@@ -304,7 +247,7 @@ async function handleOAuthCallback(params: ReturnType<typeof parseWorkflowUrl>):
   replaceWorkflowUrl();
 
   if (error || !data) {
-    workflow.setGithubError(error?.message ?? 'OAuth callback failed', 'repositories');
+    workflow.setGithubError(error?.message ?? $t('oauth-error'), 'repositories');
     return;
   }
 
@@ -313,7 +256,10 @@ async function handleOAuthCallback(params: ReturnType<typeof parseWorkflowUrl>):
   if (data.intent === 'login') {
     if (data.returnScreen === 'editor') {
       workflow.enterEditor();
-      workflow.mode = data.returnMode ?? 'new';
+      // A page reload during OAuth loses the in-memory repository, so an
+      // "edit" return can no longer resolve to one. Fall back to a new
+      // shield rather than an edit mode with nothing to save.
+      workflow.mode = data.returnMode === 'edit' && workflow.editingRepository ? 'edit' : 'new';
     }
     else {
       workflow.showStart();
@@ -324,7 +270,7 @@ async function handleOAuthCallback(params: ReturnType<typeof parseWorkflowUrl>):
   // `edit` intent: continue in the GitHub setup flow.
   workflow.enterGithub();
   workflow.pendingRepo = data.repo;
-  routeEditSession();
+  flow.routeAfterSession();
 }
 
 async function handleInstallCallback(params: ReturnType<typeof parseWorkflowUrl>): Promise<void> {
@@ -347,7 +293,7 @@ async function handleInstallCallback(params: ReturnType<typeof parseWorkflowUrl>
     return;
   }
 
-  await refreshSession();
+  await flow.refreshSession();
 }
 
 function replaceWorkflowUrl(): void {
@@ -423,7 +369,7 @@ async function initializeWorkflow(): Promise<void> {
     workflow.initialized = true;
     startNewFlow();
     applyWorkflowTab(params, (tab, part) => nav.$patch({ activeTab: tab, activePart: part }));
-    void refreshSession();
+    void flow.refreshSession();
   }
   else if (params.action === 'edit') {
     replaceWorkflowUrl();
@@ -431,13 +377,13 @@ async function initializeWorkflow(): Promise<void> {
     workflow.pendingRepo = params.repo;
     startEditFlow();
     applyWorkflowTab(params, (tab, part) => nav.$patch({ activeTab: tab, activePart: part }));
-    await refreshSession();
-    routeEditSession();
+    await flow.refreshSession();
+    flow.routeAfterSession();
   }
   else {
     workflow.initialized = true;
     workflow.showStart();
-    await refreshSession();
+    await flow.refreshSession();
   }
 
   handleLayoutHashImport();
@@ -482,8 +428,6 @@ loading = Loading Shield Wizard…
 loaded-with-issues = Repository loaded with warnings
 legacy-data = Legacy repository data
 legacy-data-desc = This repository predates the stable data format. Saving will upgrade it to the versioned format on the server.
-logged-out = Signed out of GitHub
-logout-failed = Failed to sign out
 login-failed = Failed to start GitHub sign-in
 oauth-error = GitHub sign-in could not be completed.
 </ftl>
@@ -493,8 +437,6 @@ loading = 正在加载 Shield Wizard…
 loaded-with-issues = 仓库已加载，但有警告
 legacy-data = 旧版仓库数据
 legacy-data-desc = 这个仓库还是旧版数据格式。保存时服务器会自动升级为带版本号的新格式。
-logged-out = 已退出 GitHub 账号
-logout-failed = 退出登录失败
 login-failed = 无法开始 GitHub 登录
 oauth-error = GitHub 登录未能完成。
 </ftl>
@@ -504,8 +446,6 @@ loading = Shield Wizard を読み込んでいます…
 loaded-with-issues = リポジトリを読み込みましたが警告があります
 legacy-data = 旧形式のリポジトリデータ
 legacy-data-desc = このリポジトリは安定版のデータ形式より前に作られたものです。保存すると、サーバー側で新しい形式にアップグレードされます。
-logged-out = GitHub からサインアウトしました
-logout-failed = サインアウトできませんでした
 login-failed = GitHub のサインインを開始できませんでした
 oauth-error = GitHub のサインインを完了できませんでした。
 </ftl>

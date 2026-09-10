@@ -23,6 +23,48 @@
 
     <main class="flex-1 flex items-center justify-center p-4 pb-16">
       <UCard class="w-full max-w-2xl">
+        <!-- Progress through sign-in → install → choose repository -->
+        <ol
+          v-if="workflow.githubStep !== 'exchange'"
+          class="mb-5 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-2 text-xs"
+          :aria-label="$t('steps-label')"
+        >
+          <li
+            v-for="(step, index) in steps"
+            :key="step.key"
+            class="flex items-center gap-1.5"
+          >
+            <span
+              class="flex items-center gap-1.5 whitespace-nowrap"
+              :class="index <= currentStepIndex ? 'text-highlighted' : 'text-dimmed'"
+            >
+              <span
+                class="flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
+                :class="index < currentStepIndex
+                  ? 'bg-primary text-white'
+                  : index === currentStepIndex
+                    ? 'bg-primary/15 text-primary ring-1 ring-primary/40'
+                    : 'bg-muted text-dimmed'"
+              >
+                <UIcon
+                  v-if="index < currentStepIndex"
+                  name="i-lucide-check"
+                  class="size-3"
+                />
+                <template v-else>{{ index + 1 }}</template>
+              </span>
+              <span :class="index === currentStepIndex ? 'font-medium' : ''">
+                {{ step.label }}
+              </span>
+            </span>
+            <UIcon
+              v-if="index < steps.length - 1"
+              name="i-lucide-chevron-right"
+              class="size-3.5 shrink-0 text-dimmed"
+            />
+          </li>
+        </ol>
+
         <!-- OAuth code exchange in progress -->
         <div
           v-if="workflow.githubStep === 'exchange'"
@@ -73,25 +115,41 @@
             :description="$t('install-choose-repos-hint')"
           />
 
-          <UButton
-            v-if="workflow.githubInstallUrl"
-            block
-            size="lg"
-            color="secondary"
-            variant="soft"
-            icon="i-lucide-download"
-            :label="$t('install-action')"
-            :loading="workflow.githubBusy"
-            @click="beginInstall"
-          />
+          <template v-if="workflow.githubInstallUrl">
+            <UButton
+              block
+              size="lg"
+              color="secondary"
+              variant="soft"
+              icon="i-lucide-download"
+              :label="$t('install-action')"
+              :loading="workflow.githubBusy"
+              @click="beginInstall"
+            />
 
-          <UAlert
-            v-else
-            color="warning"
-            variant="soft"
-            icon="i-lucide-triangle-alert"
-            :title="$t('install-url-missing')"
-          />
+            <p class="text-center text-xs text-toned">
+              {{ $t('install-return-hint') }}
+            </p>
+          </template>
+
+          <template v-else>
+            <UAlert
+              color="warning"
+              variant="soft"
+              icon="i-lucide-triangle-alert"
+              :title="$t('install-url-missing')"
+            />
+
+            <UButton
+              block
+              color="neutral"
+              variant="outline"
+              icon="i-lucide-refresh-cw"
+              :label="$t('retry')"
+              :loading="workflow.githubBusy"
+              @click="retryInstallUrl"
+            />
+          </template>
         </div>
 
         <!-- Repository selection -->
@@ -199,6 +257,8 @@
             <div
               v-if="repoLoading || (workflow.githubBusy && repos.length === 0)"
               class="flex items-center justify-center gap-2 py-8 text-sm text-toned"
+              role="status"
+              aria-live="polite"
             >
               <UIcon
                 name="i-lucide-loader-circle"
@@ -222,6 +282,7 @@
                 <div
                   v-if="supportedRepos.length === 0"
                   class="flex flex-col items-center gap-2 py-6 text-sm text-toned"
+                  role="status"
                 >
                   <UIcon
                     name="i-lucide-folder-search"
@@ -236,7 +297,7 @@
                   <UCard
                     v-for="repo in supportedRepos"
                     :key="repo.id"
-                    class="cursor-pointer shrink-0 transition-opacity"
+                    class="cursor-pointer shrink-0 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                     :class="{
                       'pointer-events-none': repoLoadingId !== null,
                       'opacity-60': repoLoadingId !== null && repoLoadingId !== repo.id,
@@ -315,6 +376,7 @@
             <div
               v-else-if="workflow.githubError && repos.length === 0"
               class="flex flex-col items-center gap-3 py-8 text-sm"
+              role="alert"
             >
               <UIcon
                 name="i-lucide-alert-circle"
@@ -339,6 +401,7 @@
             <div
               v-else
               class="flex flex-col items-center gap-3 py-8 text-sm text-toned"
+              role="status"
             >
               <UIcon
                 name="i-lucide-folder-search"
@@ -347,15 +410,6 @@
               <p class="text-center max-w-sm">
                 {{ $t('repos-empty') }}
               </p>
-              <UButton
-                v-if="reposHasMore"
-                block
-                color="neutral"
-                variant="outline"
-                :label="$t('repos-load-more')"
-                :loading="repoLoadingMore"
-                @click="loadMoreRepos"
-              />
               <ULink
                 v-if="workflow.githubInstallUrl"
                 :href="workflow.githubInstallUrl"
@@ -387,6 +441,7 @@ import { useFluent } from 'fluent-vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import type { Keyboard } from '~/types';
 import { GITHUB_ENABLED_AT_BUILD as githubEnabledAtBuild } from './githubConfig';
+import { useGithubFlow } from './githubFlow';
 import {
   type EditingRepository,
   type GithubRepoSummary,
@@ -439,6 +494,7 @@ function toEditingRepository(
 const { $t } = useFluent();
 const toast = useToast();
 const workflow = useWorkflowStore();
+const flow = useGithubFlow();
 const nav = useNavigationStore();
 
 const githubDisabled = computed(() => !githubEnabledAtBuild || workflow.githubConfigured === false);
@@ -450,6 +506,18 @@ const repoLoadingMore = ref(false);
 const reposPage = ref(1);
 const reposHasMore = ref(false);
 const repoLoadingId = ref<number | null>(null);
+
+const steps = computed(() => [
+  { key: 'signin', label: $t('step-signin') },
+  { key: 'install', label: $t('step-install') },
+  { key: 'repository', label: $t('step-repository') },
+]);
+
+/** Index of the step the user is currently on (see the progress list). */
+const currentStepIndex = computed(() => {
+  if (!workflow.githubUser) return 0;
+  return workflow.githubStep === 'install' ? 1 : 2;
+});
 
 const installationOptions = computed(() =>
   (workflow.githubInstallations ?? []).map(installation => ({
@@ -483,7 +551,7 @@ onMounted(async () => {
   if (workflow.githubStep === 'exchange') return;
 
   if (workflow.githubConfigured && !workflow.githubUser) {
-    await refreshSession();
+    await flow.refreshSession({ busy: true });
   }
 
   if (workflow.githubStep !== 'repositories') return;
@@ -502,45 +570,6 @@ onMounted(async () => {
     }
   }
 });
-
-async function refreshSession(): Promise<void> {
-  workflow.githubBusy = true;
-  try {
-    const { data, error } = await actions.githubGetSession();
-    if (error) {
-      workflow.setGithubError(error.message);
-      return;
-    }
-    if (data) {
-      const previousUser = workflow.githubUser;
-      const previousInstallations = workflow.githubInstallations;
-      workflow.setSession(data);
-      if (data.githubError && previousUser && !data.user) {
-        workflow.githubUser = previousUser;
-        workflow.githubInstallations = previousInstallations;
-      }
-      routeAfterSession(workflow.githubInstallations ?? []);
-    }
-  }
-  catch (error) {
-    workflow.setGithubError(error instanceof Error ? error.message : String(error));
-  }
-  finally {
-    workflow.githubBusy = false;
-  }
-}
-
-function routeAfterSession(installations: unknown[]): void {
-  if (!workflow.githubUser) {
-    workflow.githubStep = 'repositories';
-    return;
-  }
-  workflow.githubStep = installations.length > 0 ? 'repositories' : 'install';
-  if (installations.length > 0 && workflow.selectedInstallationId === null) {
-    const first = workflow.githubInstallations?.[0];
-    if (first) workflow.selectedInstallationId = first.id;
-  }
-}
 
 async function beginAuth(): Promise<void> {
   if (!githubEnabledAtBuild) return;
@@ -577,35 +606,34 @@ async function logout(): Promise<void> {
   if (loggingOut.value) return;
   loggingOut.value = true;
   try {
-    const { error } = await actions.githubLogout();
-    if (error) {
+    const result = await flow.signOut();
+    if (!result.ok) {
       toast.add({
         color: 'error',
         title: $t('logout-failed'),
-        description: error.message,
+        description: result.message,
       });
       return;
     }
-    workflow.clearSession();
-    workflow.githubConfigured = true;
     workflow.githubStep = 'repositories';
     workflow.githubError = null;
-    workflow.pendingRepo = null;
     toast.add({
       color: 'neutral',
-      title: $t('signed-out'),
-    });
-  }
-  catch (error) {
-    toast.add({
-      color: 'error',
-      title: $t('logout-failed'),
-      description: error instanceof Error ? error.message : String(error),
+      title: $t('logged-out'),
     });
   }
   finally {
     loggingOut.value = false;
   }
+}
+
+/**
+ * Re-read the session to obtain a fresh app-installation URL. Used by the
+ * install screen when the first response did not include one (e.g. a
+ * transient GitHub API error), so the step is not a dead end.
+ */
+async function retryInstallUrl(): Promise<void> {
+  await flow.refreshSession({ busy: true });
 }
 
 async function tryOpenPendingRepo(): Promise<boolean> {
@@ -679,7 +707,10 @@ async function loadRepos(reset: boolean): Promise<void> {
     if (data) {
       repos.value = reset ? data.repos : [...repos.value, ...data.repos];
       reposPage.value = reset ? 1 : reposPage.value + 1;
-      reposHasMore.value = data.hasMore;
+      // A page that came back empty (or short) means the API returned every
+      // repository, so there is nothing left to load — even if the reported
+      // total count suggests otherwise.
+      reposHasMore.value = data.hasMore && data.repos.length > 0;
     }
   }
   catch (error) {
@@ -754,6 +785,10 @@ async function chooseRepo(repo: GithubRepoSummary): Promise<void> {
 <ftl locale="en">
 back = Back
 exchanging = Finishing GitHub sign-in…
+steps-label = Setup progress
+step-signin = Sign in
+step-install = Install app
+step-repository = Choose repository
 
 auth-title = Sign in with GitHub
 not-configured = GitHub integration is not configured on this server
@@ -765,14 +800,12 @@ install-signed-in = Signed in. Grant the app access to the repositories you want
 install-choose-repos-title = Choose which repositories Shield Wizard can access
 install-choose-repos-hint = Choose “Only select repositories” instead of “All repositories”.
 install-action = Continue to Install
+install-return-hint = GitHub will bring you back here automatically when the installation finishes.
 install-url-missing = App installation link unavailable
 
 repos-title = Choose a Repository
 repos-signed-in = Signed in to GitHub
 repos-signed-out = Not signed in to GitHub
-logout = Sign Out
-signed-out = Signed out of GitHub
-logout-failed = Failed to sign out
 repos-account = GitHub Account
 repos-edit-access = Edit Repository Access
 repos-loading = Loading repositories…
@@ -795,6 +828,10 @@ load-failed = Could not open repository
 <ftl locale="zh-CN">
 back = 返回
 exchanging = 正在完成 GitHub 登录…
+steps-label = 设置进度
+step-signin = 登录
+step-install = 安装应用
+step-repository = 选择仓库
 
 auth-title = 使用 GitHub 登录
 not-configured = 此服务器尚未配置 GitHub 集成
@@ -806,14 +843,12 @@ install-signed-in = 已登录。请给应用授予要编辑的仓库的访问权
 install-choose-repos-title = 选择允许 Shield Wizard 访问的仓库
 install-choose-repos-hint = 请在 GitHub 应用设置里把“All repositories”改为“Only select repositories”。
 install-action = 继续安装
+install-return-hint = 安装完成后会自动回到这里。
 install-url-missing = 无法生成应用安装链接
 
 repos-title = 选择仓库
 repos-signed-in = 已登录 GitHub
 repos-signed-out = 尚未登录 GitHub
-logout = 退出登录
-signed-out = 已退出 GitHub 账号
-logout-failed = 退出登录失败
 repos-account = GitHub 账号
 repos-edit-access = 管理仓库访问权限
 repos-loading = 正在加载仓库…
@@ -836,6 +871,10 @@ load-failed = 无法打开仓库
 <ftl locale="ja">
 back = 戻る
 exchanging = GitHub のサインインを完了しています…
+steps-label = セットアップの進行状況
+step-signin = サインイン
+step-install = アプリをインストール
+step-repository = リポジトリを選択
 
 auth-title = GitHub でサインイン
 not-configured = このサーバーでは GitHub 連携が設定されていません
@@ -847,14 +886,12 @@ install-signed-in = サインイン済みです。編集したいリポジトリ
 install-choose-repos-title = Shield Wizard にアクセスさせるリポジトリを選んでください
 install-choose-repos-hint = 「All repositories」ではなく「Only select repositories」を選んでください。
 install-action = インストールへ進む
+install-return-hint = インストールが完了すると、自動的にここに戻ります。
 install-url-missing = アプリのインストールリンクを取得できません
 
 repos-title = リポジトリを選択
 repos-signed-in = GitHub にサインイン済み
 repos-signed-out = GitHub にサインインしていません
-logout = サインアウト
-signed-out = GitHub からサインアウトしました
-logout-failed = サインアウトできませんでした
 repos-account = GitHub アカウント
 repos-edit-access = リポジトリのアクセス権を管理
 repos-loading = リポジトリを読み込み中…

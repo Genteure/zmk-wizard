@@ -29,6 +29,9 @@ yes = Yes
 no = No
 cancel = Cancel
 none = None
+logout = Sign Out
+logged-out = Signed out of GitHub
+logout-failed = Failed to sign out
 `));
 
 localeBundleMap['zh-CN'].addResource(new FluentResource(
@@ -41,6 +44,9 @@ yes = 是
 no = 否
 cancel = 取消
 none = 无
+logout = 退出登录
+logged-out = 已退出 GitHub 账号
+logout-failed = 退出登录失败
 `));
 
 localeBundleMap.ja.addResource(new FluentResource(
@@ -53,6 +59,9 @@ yes = はい
 no = いいえ
 cancel = キャンセル
 none = なし
+logout = サインアウト
+logged-out = GitHub からサインアウトしました
+logout-failed = サインアウトできませんでした
 `));
 
 export const fluent = createFluentVue({

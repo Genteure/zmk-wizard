@@ -376,8 +376,11 @@ export async function listInstallationRepositories(
     },
   }));
 
+  // A page that is not completely full (or is empty) means GitHub returned
+  // every repository, so stop paging even when the reported total count
+  // disagrees (e.g. the installation lost access to some repos mid-paging).
   const end = page * perPage;
-  const hasMore = end < data.total_count;
+  const hasMore = repos.length === perPage && end < data.total_count;
 
   return { repos, hasMore };
 }

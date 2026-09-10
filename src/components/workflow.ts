@@ -110,7 +110,12 @@ export const useWorkflowStore = defineStore('workflow', () => {
   const editorSessionId = ref(0);
 
   const isNew = computed(() => screen.value === 'editor' && mode.value === 'new');
-  const isEditing = computed(() => screen.value === 'editor' && mode.value === 'edit');
+  // Edit mode is only meaningful with a repository to save back to. Keeping
+  // the two in lockstep prevents a "Save Changes" action that has nowhere to
+  // go (e.g. an OAuth return after the in-memory repository was lost).
+  const isEditing = computed(() =>
+    screen.value === 'editor' && mode.value === 'edit' && editingRepository.value !== null,
+  );
 
   function showStart() {
     screen.value = 'start';
