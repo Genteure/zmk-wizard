@@ -48,13 +48,12 @@
 import { actions } from 'astro:actions';
 import { useFluent } from 'fluent-vue';
 import { onMounted, ref, shallowRef, toRaw, watch } from 'vue';
+import { lazyComponent, scheduleIdlePreload } from '~/lib/lazyComponent';
 import type { Key, Keyboard } from '~/types';
-import App from './app.vue';
-import LayoutImportChoiceModal from './editor/utils/LayoutImportChoiceModal.vue';
 import type { ImportedLayout } from './editor/utils/layouthelper';
-import { clearLayoutHash, extractLayoutChoiceFromHash } from './editor/utils/urlImport';
+import { clearLayoutHash, KLE_HASH_PREFIX } from './editor/utils/layoutHash';
+import { loadUrlImport, preloadUrlImport } from './editor/utils/urlImportPreload';
 import { clearEditorDraft, loadEditorDraft, saveEditorDraft } from './editorDraft';
-import GitHubSetup from './GitHubSetup.vue';
 import { useGithubFlow } from './githubFlow';
 import StartScreen from './StartScreen.vue';
 import { fluent, localeBundleMap, localeMap } from './locales';
@@ -65,6 +64,13 @@ import {
   useWorkflowStore,
 } from './workflow';
 import { applyWorkflowTab, isInstallCallback, isOAuthCallback, isOAuthErrorCallback, parseWorkflowUrl, stripWorkflowSearch } from './workflowUrl';
+
+// Heavy screens are loaded on demand so the initial island bundle only carries
+// the start screen and the shared shell, then prefetched once the browser is
+// idle so entering them during that visit is instant.
+const App = lazyComponent(() => import('./app.vue'));
+const GitHubSetup = lazyComponent(() => import('./GitHubSetup.vue'));
+const LayoutImportChoiceModal = lazyComponent(() => import('./editor/utils/LayoutImportChoiceModal.vue'));
 
 const { $t } = useFluent();
 const toast = useToast();
@@ -359,8 +365,13 @@ function replaceWorkflowUrl(): void {
 
 // ─── URL hash layout import ──────────────────────────────────
 
-function handleLayoutHashImport(): void {
+async function handleLayoutHashImport(): Promise<void> {
+  // Bail out before loading the KLE parser for the common no-hash visit.
+  if (typeof window === 'undefined') return;
+  if (!window.location.hash.startsWith(KLE_HASH_PREFIX)) return;
+
   try {
+    const { extractLayoutChoiceFromHash } = await loadUrlImport();
     const parsed = extractLayoutChoiceFromHash();
     if (!parsed) return;
 
@@ -493,12 +504,21 @@ async function initializeWorkflow(): Promise<void> {
     await flow.refreshSession();
   }
 
-  handleLayoutHashImport();
+  await handleLayoutHashImport();
 }
 
 onMounted(() => {
   showDeploymentNotice();
   void initializeWorkflow();
+
+  // Nothing here is needed for the first paint, so warm it up on idle rather
+  // than making the user wait for a chunk after they click.
+  scheduleIdlePreload(
+    App.preload,
+    GitHubSetup.preload,
+    LayoutImportChoiceModal.preload,
+    preloadUrlImport,
+  );
 });
 
 watch(

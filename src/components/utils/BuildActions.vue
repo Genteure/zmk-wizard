@@ -533,12 +533,12 @@ import type { DropdownMenuItem, StepperItem, TreeItem } from '@nuxt/ui';
 import { actions } from 'astro:actions';
 import { PUBLIC_TURNSTILE_SITEKEY } from 'astro:env/client';
 import { useFluent } from 'fluent-vue';
-import JSZip from 'jszip';
 import { decodeTime } from 'ulidx';
 import { computed, nextTick, onMounted, ref, toRaw, watch } from 'vue';
 import VueTurnstile from 'vue-turnstile';
 import { createZMKConfig } from '~/export';
 import type { DiffLineType, DiffPreviewGroup } from '~/lib/diffPreview';
+import { lazyComponent, scheduleIdlePreload } from '~/lib/lazyComponent';
 import type { RepositoryFileChange } from '~/lib/repoChanges';
 import { ValidatedKeyboardSchema } from '~/lib/validators';
 import type { Key, Keyboard } from '~/types';
@@ -546,7 +546,12 @@ import { clearEditorDraft, saveEditorDraft } from '../editorDraft';
 import { useGithubFlow } from '../githubFlow';
 import { useKeyboardStore, useNavigationStore } from '../stores';
 import { useWorkflowStore } from '../workflow';
-import LayoutConfirmModal from './LayoutConfirmModal.vue';
+
+// jszip is only needed by the explicit ZIP download; keep it out of the
+// initial graph but warm it up on idle so the download starts instantly.
+const loadJSZip = () => import('jszip');
+
+const LayoutConfirmModal = lazyComponent(() => import('./LayoutConfirmModal.vue'));
 
 const { $t } = useFluent();
 const toast = useToast();
@@ -917,10 +922,12 @@ function onEditLayout() {
   navigation.$patch({ activeTab: 'layout', activePart: null });
 }
 
-function downloadZip() {
+async function downloadZip() {
   if (!validatedData.value) return;
   dropdownOpen.value = false;
   try {
+    // Reuses the chunk already prefetched on idle when available.
+    const { default: JSZip } = await loadJSZip();
     const files = createZMKConfig(validatedData.value);
     const zip = new JSZip();
     for (const [filePath, content] of Object.entries(files)) {
@@ -1241,6 +1248,7 @@ watch(slideoverOpen, async (isOpen) => {
 // save dialog so the user lands back where the expired session interrupted
 // them, with a fresh diff against the current branch head.
 onMounted(() => {
+  scheduleIdlePreload(loadJSZip, LayoutConfirmModal.preload);
   if (!workflow.resumeCommit) return;
   workflow.resumeCommit = false;
   void nextTick(() => { openCommit(); });

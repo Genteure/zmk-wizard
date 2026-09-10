@@ -1,14 +1,9 @@
 import LZString from 'lz-string';
 import type { Key } from '~/types';
+import { KLE_HASH_PREFIX } from './layoutHash';
 import { parseKleJson, parseKleJsonWithChoice, type ImportedLayout } from './layouthelper';
 
-/**
- * Hash prefix used to pass a KLE layout into the wizard, e.g.
- * `https://shield-wizard.genteure.com/#kle=<lz-compressed>`.
- * The payload is `LZString.compressToEncodedURIComponent(JSON.stringify(kleArray))`,
- * matching the encoding used by kle-ng (editor.keyboard-tools.xyz).
- */
-const KLE_HASH_PREFIX = '#kle=';
+export { clearLayoutHash } from './layoutHash';
 
 /** Guard against pathological payloads (mirrors kle-ng's 1 MB limit). */
 const MAX_DECOMPRESSED_SIZE = 1_000_000;
@@ -54,15 +49,4 @@ export function extractLayoutChoiceFromHash(): ImportedLayout | null {
   if (json === null) return null;
 
   return parseKleJsonWithChoice(json);
-}
-
-/**
- * Remove the `#kle=` hash from the URL without reloading, so a refresh or a
- * later share doesn't re-import the incoming layout.
- */
-export function clearLayoutHash(): void {
-  if (typeof window === 'undefined') return;
-  if (window.location.hash.startsWith(KLE_HASH_PREFIX)) {
-    history.replaceState({}, document.title, window.location.href.split('#')[0]);
-  }
 }

@@ -3,6 +3,7 @@ import { defineConfig, envField, sessionDrivers } from 'astro/config';
 import path from 'node:path';
 
 import starlight from '@astrojs/starlight';
+import prunePagefindAssets from './scripts/integration-prune-pagefind.mjs';
 import versionPlugin from './scripts/vite-plugin-version.js';
 
 import vue from '@astrojs/vue';
@@ -72,6 +73,8 @@ export default defineConfig({
         },
       ],
     }),
+    // Registered after Starlight so it runs after Pagefind writes its assets.
+    prunePagefindAssets(),
   ],
 
   redirects: {

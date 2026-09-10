@@ -241,7 +241,7 @@
 <script setup lang="ts">
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui';
 import { useFluent } from 'fluent-vue';
-import { computed, ref, shallowRef, toRaw } from 'vue';
+import { computed, onMounted, ref, shallowRef, toRaw } from 'vue';
 import type { Key } from '~/types';
 
 import { useKeyboardStore, useSelectionStore } from '../stores';
@@ -258,10 +258,18 @@ import {
 import { exportPhysicalLayoutDts } from '~/export/shield';
 import { config_json } from '~/export/contents';
 import { getLayouts } from '~/lib/physicalLayouts';
+import { lazyComponent, scheduleIdlePreload } from '~/lib/lazyComponent';
 import LayoutPreview from '../graphic/LayoutPreview.vue';
 import BootstrapLayout from './BootstrapLayout.vue';
-import LayoutImportChoiceModal from './utils/LayoutImportChoiceModal.vue';
 import PopoverInputNumber from './utils/PopoverInputNumber.vue';
+
+// The row/col choice modal is only reachable after an import action, so it is
+// split out and prefetched on idle.
+const LayoutImportChoiceModal = lazyComponent(() => import('./utils/LayoutImportChoiceModal.vue'));
+
+onMounted(() => {
+  scheduleIdlePreload(LayoutImportChoiceModal.preload);
+});
 
 const { $t } = useFluent();
 

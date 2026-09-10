@@ -159,19 +159,23 @@
 import type { DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui';
 import { useFluent } from 'fluent-vue';
 import { version } from 'virtual:version';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { isShieldWizardDataEnvelope, parseShieldWizardData, serializeShieldWizardData } from '~/lib/dataFormat';
+import { lazyComponent, scheduleIdlePreload } from '~/lib/lazyComponent';
 import { KeyboardSchema, type Keyboard } from '~/types';
 
 import Editors from './editor/editors.vue';
-import Graphics from './graphic/graphics.vue';
 import { useHistoryStore } from './history.ts';
 import { locales } from './locales';
 import { useKeyboardStore, useNavigationStore, useSelectionStore } from './stores.ts';
 import WorkflowMenu from './WorkflowMenu.vue';
-import BuildActions from './utils/BuildActions.vue';
-import FeedbackDialog from './utils/FeedbackDialog.vue';
 import LocaleSelect from './utils/LocaleSelect.vue';
+
+// Split out panels that are not needed for the first paint of the editor,
+// then prefetched on idle (see `editorPreloads` below).
+const Graphics = lazyComponent(() => import('./graphic/graphics.vue'));
+const BuildActions = lazyComponent(() => import('./utils/BuildActions.vue'));
+const FeedbackDialog = lazyComponent(() => import('./utils/FeedbackDialog.vue'));
 
 const emit = defineEmits<{
   new: [];
@@ -195,6 +199,14 @@ const { $t } = useFluent();
 const keyboard = useKeyboardStore();
 const nav = useNavigationStore();
 const history = useHistoryStore();
+
+// The editor shell is visible, so its panels will almost certainly be wanted:
+// one is on screen beside the editors, the other two are buttons the user may
+// click at any moment. Fetch them once the browser is idle instead of waiting
+// for that click to start the download.
+onMounted(() => {
+  scheduleIdlePreload(Graphics.preload, BuildActions.preload, FeedbackDialog.preload);
+});
 
 const versionLabel = `${version.branch || ''}${version.dirty ? ' • dirty' : ''} ${version.short || version.commit || 'unknown'}`.trim();
 

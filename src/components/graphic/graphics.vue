@@ -179,7 +179,8 @@
 <script setup lang="ts">
 import type { TabsItem } from '@nuxt/ui';
 import { useFluent } from 'fluent-vue';
-import { computed, reactive, ref, watch, watchEffect } from 'vue';
+import { computed, onMounted, reactive, ref, watch, watchEffect } from 'vue';
+import { lazyComponent, scheduleIdlePreload } from '~/lib/lazyComponent';
 import { resolvePinInventory } from '~/lib/pinInventory';
 import type { BoundingBox, CanvasTool, KeyId, PinId } from '~/types';
 import { useKeyboardStore, useNavigationStore, useSelectionStore } from '../stores';
@@ -188,7 +189,6 @@ import type { Gesture } from './composables/useCanvasGestures';
 import { useCanvasHotkeys, type CanvasHandle } from './composables/useCanvasHotkeys';
 import type { ContextMenuItem } from './ContextMenu.vue';
 import ContextMenu from './ContextMenu.vue';
-import HelpModal from './HelpModal.vue';
 import KeyEntity from './KeyEntity.vue';
 import {
   DEFAULT_BORDER_RADIUS,
@@ -203,7 +203,14 @@ import {
   rotateKeyAroundCenter,
 } from './keyShape';
 
+// Help content is only shown on demand and is not needed to draw the canvas.
+const HelpModal = lazyComponent(() => import('./HelpModal.vue'));
+
 const { $t } = useFluent();
+
+onMounted(() => {
+  scheduleIdlePreload(HelpModal.preload);
+});
 
 // ─── Stores ────────────────────────────────────────────────────
 const nav = useNavigationStore();

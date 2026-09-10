@@ -12,12 +12,21 @@
 <script setup lang="ts">
 import type { TabsItem } from '@nuxt/ui';
 import { useFluent } from 'fluent-vue';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 
 import { useKeyboardStore, useNavigationStore } from '~/components/stores.ts';
-import KeyboardEditor from './keyboard.vue';
-import LayoutEditor from './layout.vue';
-import PartEditor from './part.vue';
+import { lazyComponent, scheduleIdlePreload } from '~/lib/lazyComponent';
+
+// Each tab editor is a sizeable subtree; load the selected one on demand and
+// prefetch the rest on idle, since switching tabs is the main thing a visitor
+// does and should not wait on a download.
+const KeyboardEditor = lazyComponent(() => import('./keyboard.vue'));
+const LayoutEditor = lazyComponent(() => import('./layout.vue'));
+const PartEditor = lazyComponent(() => import('./part.vue'));
+
+onMounted(() => {
+  scheduleIdlePreload(KeyboardEditor.preload, LayoutEditor.preload, PartEditor.preload);
+});
 
 const { $t } = useFluent();
 
