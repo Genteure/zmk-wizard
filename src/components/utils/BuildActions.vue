@@ -114,6 +114,15 @@
               </span>
             </div>
 
+            <UAlert
+              v-if="commitPreviewStale"
+              color="warning"
+              variant="soft"
+              icon="i-lucide-triangle-alert"
+              :title="$t('commit-conflict-title')"
+              :description="$t('commit-conflict-description')"
+            />
+
             <div class="h-96">
               <div
                 v-if="commitPreviewLoading"
@@ -128,14 +137,22 @@
 
               <div
                 v-else-if="commitPreviewError"
-                class="h-full overflow-y-auto"
+                class="flex h-full flex-col items-center justify-center gap-3 overflow-y-auto"
               >
                 <UAlert
+                  class="w-full"
                   color="error"
                   variant="soft"
                   icon="i-lucide-alert-circle"
                   :title="$t('diff-failed')"
                   :description="commitPreviewError"
+                />
+                <UButton
+                  color="primary"
+                  variant="soft"
+                  icon="i-lucide-refresh-cw"
+                  :label="$t('diff-retry')"
+                  @click="loadCommitPreview"
                 />
               </div>
 
@@ -241,7 +258,7 @@
               :label="$t('confirm')"
               icon="i-lucide-git-commit-horizontal"
               :loading="isCommitting"
-              :disabled="!validatedData || !commitMessage.trim() || commitPreviewLoading || (!commitPreviewError && commitFileChanges.length === 0)"
+              :disabled="!validatedData || !commitMessage.trim() || !commitPreviewReady || commitPreviewLoading || commitFileChanges.length === 0 || isCommitting"
               @click="submitCommit"
             />
           </div>
@@ -681,6 +698,13 @@ const commitMessage = ref('Update keyboard configuration via Shield Wizard');
 const commitFileChanges = ref<CommitFileChange[]>([]);
 const commitPreviewLoading = ref(false);
 const commitPreviewError = ref<string | null>(null);
+/** Commit the current diff was generated from; required to commit. */
+const commitBaseOid = ref<string | null>(null);
+/** True only after a preview finished successfully. The commit button is
+ *  gated on this, so a failed or stale preview can never be committed. */
+const commitPreviewReady = ref(false);
+/** Set when the server rejected a commit because the branch moved. */
+const commitPreviewStale = ref(false);
 const selectedChangePath = ref<string | null>(null);
 const importLinkInput = ref<{ $el?: Element } | null>(null);
 const importResultUrl = computed(() => {
@@ -871,6 +895,7 @@ function openImportSlideover() {
 function openCommit() {
   if (!workflow.isEditing || !workflow.editingRepository) return;
   dropdownOpen.value = false;
+  commitPreviewStale.value = false;
   commitModalOpen.value = true;
   void loadCommitPreview();
 }
@@ -881,6 +906,8 @@ async function loadCommitPreview() {
 
   commitPreviewLoading.value = true;
   commitPreviewError.value = null;
+  commitPreviewReady.value = false;
+  commitBaseOid.value = null;
   commitFileChanges.value = [];
   selectedChangePath.value = null;
 
@@ -902,6 +929,8 @@ async function loadCommitPreview() {
     }
 
     commitFileChanges.value = data?.changes ?? [];
+    commitBaseOid.value = data?.baseOid ?? null;
+    commitPreviewReady.value = commitBaseOid.value !== null;
     if (commitFileChanges.value.length > 0) {
       selectedChangePath.value = commitFileChanges.value[0].path;
     }
@@ -916,7 +945,9 @@ async function loadCommitPreview() {
 
 async function submitCommit() {
   const repository = workflow.editingRepository;
+  const baseOid = commitBaseOid.value;
   if (!validatedData.value || !repository || !commitMessage.value.trim()) return;
+  if (!baseOid || !commitPreviewReady.value) return;
 
   isCommitting.value = true;
   try {
@@ -924,6 +955,7 @@ async function submitCommit() {
       owner: repository.owner.login,
       repo: repository.name,
       commitMessage: commitMessage.value.trim(),
+      baseOid,
       keyboard: validatedData.value,
     });
 
@@ -931,6 +963,20 @@ async function submitCommit() {
       if (error.code === 'UNAUTHORIZED') {
         workflow.expireSession();
         commitModalOpen.value = false;
+        return;
+      }
+      if (error.code === 'CONFLICT') {
+        // Someone else changed the repository between preview and commit.
+        // Keep the modal and the commit message, refresh the diff, and make
+        // the user approve the new state before the next attempt.
+        commitPreviewStale.value = true;
+        toast.add({
+          color: 'warning',
+          title: $t('commit-conflict-title'),
+          description: $t('commit-conflict-description'),
+          icon: 'i-lucide-triangle-alert',
+        });
+        await loadCommitPreview();
         return;
       }
       toast.add({
@@ -942,6 +988,7 @@ async function submitCommit() {
       return;
     }
 
+    commitPreviewStale.value = false;
     commitModalOpen.value = false;
     toast.add({
       color: 'success',
@@ -1158,6 +1205,7 @@ confirm = Commit
 diff-title = Changes
 diff-loading = Loading changes…
 diff-failed = Could not load changes
+diff-retry = Try Again
 no-changes = No changes to save. Edit the keyboard configuration first.
 diff-summary = { $added } added · { $modified } modified · { $deleted } deleted
 diff-collapsed-lines = { $count ->
@@ -1167,6 +1215,8 @@ diff-collapsed-lines = { $count ->
 file-added = Added
 file-modified = Modified
 file-deleted = Deleted
+commit-conflict-title = Repository changed
+commit-conflict-description = Someone changed this repository after the changes were loaded. Review the updated diff and commit again.
 commit-failed = Could not save changes
 commit-succeeded = Changes Saved
 commit-succeeded-desc = Saved to { $fullName }
@@ -1239,12 +1289,15 @@ confirm = 提交变更
 diff-title = 变更
 diff-loading = 正在加载变更…
 diff-failed = 无法加载变更
+diff-retry = 重试
 no-changes = 没有可提交的变更。请先编辑键盘配置。
 diff-summary = 新增 { $added } · 修改 { $modified } · 删除 { $deleted }
 diff-collapsed-lines = { $count } 行未变更
 file-added = 新增
 file-modified = 修改
 file-deleted = 删除
+commit-conflict-title = 仓库已发生变化
+commit-conflict-description = 生成变更后，仓库已被其他人修改。请查看更新后的变更内容，然后重新提交。
 commit-failed = 提交失败
 commit-succeeded = 变更已提交
 commit-succeeded-desc = 已提交到 { $fullName }
@@ -1316,12 +1369,15 @@ confirm = コミット
 diff-title = 変更内容
 diff-loading = 変更内容を読み込み中…
 diff-failed = 変更内容を読み込めませんでした
+diff-retry = 再試行
 no-changes = コミットする変更はありません。先にキーボード設定を編集してください。
 diff-summary = 追加 { $added } 件 · 変更 { $modified } 件 · 削除 { $deleted } 件
 diff-collapsed-lines = 変更のない { $count } 行
 file-added = 追加
 file-modified = 変更
 file-deleted = 削除
+commit-conflict-title = リポジトリが更新されました
+commit-conflict-description = 変更を読み込んだ後に、他の人によってリポジトリが更新されました。更新された差分を確認して、もう一度コミットしてください。
 commit-failed = 変更をコミットできませんでした
 commit-succeeded = 変更をコミットしました
 commit-succeeded-desc = { $fullName } にコミットしました

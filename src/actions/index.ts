@@ -18,12 +18,13 @@ import {
   commitRepositoryChanges,
   exchangeGithubCode,
   fetchGithubTextFilesBatch,
+  getBranchHeadOid,
   getGithubRepository,
   getGithubUser,
   GithubApiError,
   listGithubInstallations,
   listInstallationRepositories,
-  listRepositoryTreePathsForBranch,
+  listRepositoryTreePathsForCommit,
   markRepositoriesWithShieldConfig,
   readGithubTextFile,
   type GithubInstallation,
@@ -192,6 +193,12 @@ function githubActionError(error: unknown, fallbackCode: ActionError['code']): n
       message: error.message,
     });
   }
+  if (GithubApiError.isConflict(error)) {
+    throw new ActionError({
+      code: 'CONFLICT',
+      message: 'This repository changed since the changes were previewed. Review the updated diff and commit again.',
+    });
+  }
   if (error instanceof GithubApiError) {
     throw new ActionError({
       code: fallbackCode,
@@ -357,14 +364,15 @@ async function computeUserModifiedPathsFromRepository(
   token: string,
   owner: string,
   repo: string,
-  branch: string,
+  /** Commit OID or branch to read from; pinned to the commit the diff was based on. */
+  ref: string,
   existingKeyboard: Keyboard,
   policy: FilePolicy,
 ): Promise<Set<string>> {
   const baseline = createZMKConfig(existingKeyboard);
   return computeUserModifiedPaths(baseline, async (filePath) => {
     try {
-      const current = await readGithubTextFile(token, owner, repo, filePath, branch);
+      const current = await readGithubTextFile(token, owner, repo, filePath, ref);
       return current.content;
     }
     catch (error) {
@@ -380,7 +388,7 @@ async function requireExistingRepositoryKeyboard(
   token: string,
   owner: string,
   repo: string,
-  branch: string,
+  ref: string,
   nextKeyboard: Keyboard,
 ) {
   const existingFile = await readGithubTextFile(
@@ -388,7 +396,7 @@ async function requireExistingRepositoryKeyboard(
     owner,
     repo,
     SHIELD_WIZARD_DATA_FILE,
-    branch,
+    ref,
   );
   const existing = parseRepositoryKeyboard(existingFile.content);
   if (existing.keyboard.shield !== nextKeyboard.shield) {
@@ -416,7 +424,8 @@ async function buildRepositoryCommitPlan(
   token: string,
   owner: string,
   repo: string,
-  branch: string,
+  /** Commit OID or branch to read from; pinned to the commit the diff was based on. */
+  ref: string,
   existingKeyboard: Keyboard,
   nextKeyboard: Keyboard,
 ): Promise<RepositoryCommitPlan> {
@@ -434,7 +443,7 @@ async function buildRepositoryCommitPlan(
     token,
     owner,
     repo,
-    branch,
+    ref,
     existingKeyboard,
     policy,
   );
@@ -814,6 +823,12 @@ export const server = {
     },
   }),
 
+  /**
+   * Compute the diff the user must approve before saving. The whole
+   * preview is pinned to one commit (`baseOid`) so the returned diff and
+   * the OID the client sends back to `githubCommitChanges` describe the
+   * same repository snapshot.
+   */
   githubPreviewChanges: defineAction({
     input: z.object({
       owner: z.string().min(1).max(100).regex(/^[A-Za-z0-9_.-]+$/),
@@ -826,12 +841,15 @@ export const server = {
       try {
         const repository = await getGithubRepository(token, input.owner, input.repo);
         const branch = repository.defaultBranch;
+        // Resolve the head once and read everything at that exact commit,
+        // so a branch that moves mid-preview cannot yield a mixed snapshot.
+        const baseOid = await getBranchHeadOid(token, input.owner, input.repo, branch);
         const dataFile = await readGithubTextFile(
           token,
           input.owner,
           input.repo,
           SHIELD_WIZARD_DATA_FILE,
-          branch,
+          baseOid,
         );
         const existing = parseRepositoryKeyboard(dataFile.content);
         if (existing.keyboard.shield !== input.keyboard.shield) {
@@ -841,15 +859,15 @@ export const server = {
           });
         }
         if (JSON.stringify(existing.keyboard) === JSON.stringify(input.keyboard)) {
-          return { changes: [] };
+          return { changes: [], baseOid };
         }
 
         const newFiles = createZMKConfig(input.keyboard);
-        const existingPaths = await listRepositoryTreePathsForBranch(
+        const existingPaths = await listRepositoryTreePathsForCommit(
           token,
           input.owner,
           input.repo,
-          branch,
+          baseOid,
         );
 
         // Cover both the previous and next generation's snippet roots from
@@ -868,11 +886,11 @@ export const server = {
           token,
           input.owner,
           input.repo,
-          branch,
+          baseOid,
           fetchPaths,
         );
 
-        console.log('Previewing Shield Wizard changes for:', `${input.owner}/${input.repo}@${branch}`);
+        console.log('Previewing Shield Wizard changes for:', `${input.owner}/${input.repo}@${baseOid}`);
         const baseline = createZMKConfig(existing.keyboard);
         const userModifiedPaths = await computeUserModifiedPaths(
           baseline,
@@ -900,7 +918,7 @@ export const server = {
           diff: buildCommitDiffGroups(change.oldContent, change.newContent),
         }));
 
-        return { changes };
+        return { changes, baseOid };
       }
       catch (error) {
         if (error instanceof ActionError) throw error;
@@ -915,6 +933,9 @@ export const server = {
       owner: z.string().min(1).max(100).regex(/^[A-Za-z0-9_.-]+$/),
       repo: z.string().min(1).max(100).regex(/^[A-Za-z0-9_.-]+$/),
       commitMessage: z.string().trim().min(1).max(100),
+      /** Commit the preview diff was generated from. Required so a commit
+       *  can only apply a change set the user actually reviewed. */
+      baseOid: z.string().regex(/^[0-9a-f]{40}$/, 'baseOid must be a 40-character commit SHA'),
       keyboard: ValidatedKeyboardSchema,
     }),
     async handler(input, context) {
@@ -927,12 +948,14 @@ export const server = {
         // The shield name is part of every generated file name. Renaming it
         // in place would strand user-owned `config/` files and change the
         // generated `boards/shields/` tree, so refuse it and point the user
-        // at New Shield.
+        // at New Shield. Read at `baseOid` so the plan matches the diff the
+        // user approved; the mutation below rejects the commit if the
+        // branch has moved since then.
         const { existing } = await requireExistingRepositoryKeyboard(
           token,
           input.owner,
           input.repo,
-          branch,
+          input.baseOid,
           input.keyboard,
         );
         if (JSON.stringify(existing.keyboard) === JSON.stringify(input.keyboard)) {
@@ -942,12 +965,12 @@ export const server = {
           });
         }
 
-        console.log('Committing Shield Wizard changes to:', `${input.owner}/${input.repo}@${branch}`);
+        console.log('Committing Shield Wizard changes to:', `${input.owner}/${input.repo}@${input.baseOid}`);
         const { files, policy, userModifiedPaths } = await buildRepositoryCommitPlan(
           token,
           input.owner,
           input.repo,
-          branch,
+          input.baseOid,
           existing.keyboard,
           input.keyboard,
         );
@@ -955,6 +978,7 @@ export const server = {
           owner: input.owner,
           repo: input.repo,
           branch,
+          expectedHeadOid: input.baseOid,
           files,
           commitMessage: input.commitMessage,
           policy,

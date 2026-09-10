@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
-import { markRepositoriesWithShieldConfig, listInstallationRepositories, type GithubRepository } from './githubApi';
+import { createFilePolicy } from './filePolicy';
+import { commitRepositoryChanges, markRepositoriesWithShieldConfig, listInstallationRepositories, type GithubRepository } from './githubApi';
 
 function repo(overrides: Partial<GithubRepository> = {}): GithubRepository {
   return {
@@ -108,6 +109,131 @@ describe('markRepositoriesWithShieldConfig', () => {
     await expect(
       markRepositoriesWithShieldConfig('token', [repo({ name: 'x' })]),
     ).rejects.toMatchObject({ status: 401 });
+  });
+});
+
+describe('commitRepositoryChanges optimistic concurrency', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  const BASE_OID = 'a'.repeat(40);
+  const MOVED_OID = 'b'.repeat(40);
+
+  function jsonResponse(
+    body: unknown,
+    init: { ok?: boolean; status?: number } = {},
+  ) {
+    return {
+      ok: init.ok ?? true,
+      status: init.status ?? 200,
+      headers: { get: () => 'application/json' },
+      json: async () => body,
+      text: async () => JSON.stringify(body),
+    };
+  }
+
+  function commitParams(expectedHeadOid: string) {
+    return {
+      owner: 'o',
+      repo: 'r',
+      branch: 'main',
+      expectedHeadOid,
+      files: { '.shield-wizard.json': '{}' },
+      commitMessage: 'update',
+      policy: createFilePolicy('demo'),
+    };
+  }
+
+  test('sends the caller-provided head and does not re-resolve the branch', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (url.endsWith(`/git/commits/${BASE_OID}`)) {
+        return jsonResponse({ tree: { sha: 'tree1' } });
+      }
+      if (url.includes('/git/trees/tree1')) {
+        return jsonResponse({ truncated: false, tree: [] });
+      }
+      if (url === 'https://api.github.com/graphql') {
+        return jsonResponse({
+          data: {
+            createCommitOnBranch: {
+              commit: { oid: 'c'.repeat(40), url: 'https://github.com/o/r/commit/c' },
+            },
+          },
+        });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await commitRepositoryChanges('token', commitParams(BASE_OID));
+
+    expect(result.commitSha).toBe('c'.repeat(40));
+
+    const mutationCall = fetchMock.mock.calls
+      .find(([url]) => url === 'https://api.github.com/graphql');
+    expect(mutationCall).toBeDefined();
+    const mutationBody = JSON.parse((mutationCall![1] as RequestInit).body as string) as {
+      variables: { input: { expectedHeadOid: string } };
+    };
+    expect(mutationBody.variables.input.expectedHeadOid).toBe(BASE_OID);
+
+    // The happy path must not spend a round trip re-reading the branch ref;
+    // the OID the diff was built against is the concurrency token.
+    expect(fetchMock.mock.calls.some(([url]) => url.includes('/git/ref/heads/'))).toBe(false);
+  });
+
+  test('reports a branch that moved since the preview as a 409 conflict', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (url.endsWith(`/git/commits/${BASE_OID}`)) {
+        return jsonResponse({ tree: { sha: 'tree1' } });
+      }
+      if (url.includes('/git/trees/tree1')) {
+        return jsonResponse({ truncated: false, tree: [] });
+      }
+      if (url === 'https://api.github.com/graphql') {
+        return jsonResponse(
+          { errors: [{ message: 'Head branch was modified. Review and try the commit again.' }] },
+          { ok: false, status: 409 },
+        );
+      }
+      if (url.endsWith('/git/ref/heads/main')) {
+        return jsonResponse({ object: { sha: MOVED_OID, type: 'commit' } });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      commitRepositoryChanges('token', commitParams(BASE_OID)),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
+  test('keeps the original failure when the head did not move', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (url.endsWith(`/git/commits/${BASE_OID}`)) {
+        return jsonResponse({ tree: { sha: 'tree1' } });
+      }
+      if (url.includes('/git/trees/tree1')) {
+        return jsonResponse({ truncated: false, tree: [] });
+      }
+      if (url === 'https://api.github.com/graphql') {
+        return jsonResponse(
+          { errors: [{ message: 'Something else broke' }] },
+          { ok: false, status: 500 },
+        );
+      }
+      if (url.endsWith('/git/ref/heads/main')) {
+        return jsonResponse({ object: { sha: BASE_OID, type: 'commit' } });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      commitRepositoryChanges('token', commitParams(BASE_OID)),
+    ).rejects.toMatchObject({ status: 500, message: 'Something else broke' });
   });
 });
 

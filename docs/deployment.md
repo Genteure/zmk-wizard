@@ -200,16 +200,25 @@ is intentionally shared: it is the login, not the UI state.
 
 #### Save
 
-The browser never submits file contents. `githubCommitChanges`:
+The browser never submits file contents. `githubPreviewChanges` pins the
+whole diff to one commit (`baseOid`, the branch head at preview time) and
+returns it with the file changes, so the diff the user approves and the
+commit describe the same snapshot. `githubCommitChanges`:
 
 1. validates the full keyboard state server-side with
    `ValidatedKeyboardSchema`;
-2. reads the current `.shield-wizard.json` and refuses shield renames;
+2. reads `.shield-wizard.json` at the previewed `baseOid` and refuses shield
+   renames;
 3. regenerates every file with `createZMKConfig`;
-4. computes the current branch HEAD and tree, filters untouchable paths,
-   and commits atomically with the GraphQL
+4. filters untouchable paths and commits atomically with the GraphQL
    [`createCommitOnBranch`](https://docs.github.com/en/graphql/reference/mutations#createcommitonbranch)
-   mutation.
+   mutation, passing `baseOid` as `expectedHeadOid`.
+
+If the branch moved since the preview, GitHub rejects the mutation. The
+server re-reads the branch head, maps the mismatch to a `CONFLICT` action
+error, and the commit modal keeps the user's message, refreshes the diff,
+and requires a fresh confirmation before retrying. A commit is never applied
+against a snapshot the user did not review.
 
 The generic file policy defaults to “do not touch”: only explicitly
 Shield Wizard-owned paths are added, overwritten, or deleted.

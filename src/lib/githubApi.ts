@@ -39,6 +39,15 @@ export class GithubApiError extends Error {
   static isRateLimited(error: unknown): error is GithubApiError {
     return error instanceof GithubApiError && error.status === 403;
   }
+
+  /**
+   * The branch moved past the commit the caller based its change set on.
+   * Used for optimistic concurrency: the client must refresh the diff
+   * before retrying.
+   */
+  static isConflict(error: unknown): error is GithubApiError {
+    return error instanceof GithubApiError && error.status === 409;
+  }
 }
 
 export interface GithubUser {
@@ -504,31 +513,37 @@ export async function readGithubTextFile(
   };
 }
 
-/** Return every blob path reachable from a branch's current commit. */
-export async function listRepositoryTreePathsForBranch(
+/**
+ * List every blob path reachable from a specific commit. Callers that
+ * already resolved the branch head (preview and commit) must use this
+ * instead of resolving the branch again, so a branch that moves mid-flight
+ * cannot produce a listing that straddles two commits.
+ */
+export async function listRepositoryTreePathsForCommit(
   accessToken: string,
   owner: string,
   repo: string,
-  branch: string,
+  commitOid: string,
 ): Promise<string[]> {
-  const headOid = await getBranchHeadOid(accessToken, owner, repo, branch);
-  const treeSha = await getCommitTreeSha(accessToken, owner, repo, headOid);
+  const treeSha = await getCommitTreeSha(accessToken, owner, repo, commitOid);
   return listRepositoryTreePaths(accessToken, owner, repo, treeSha);
 }
 
 /**
- * Read many text files from a branch in a small number of GraphQL
- * requests. The REST contents API only supports one file per request,
- * so the preview flow uses this batched reader instead.
+ * Read many text files at one commit in a small number of GraphQL
+ * requests. The REST contents API only supports one file per request, so
+ * the preview flow uses this batched reader instead.
  *
- * Missing files return `null` in the result map. Files that are too
- * large for GraphQL (`text` is truncated) throw a 422 error.
+ * `ref` is any Git revision expression accepted by GitHub — pass the commit
+ * OID the preview is pinned to, or a branch name. Missing files return
+ * `null` in the result map. Files that are too large for GraphQL (`text` is
+ * truncated) throw a 422 error.
  */
 export async function fetchGithubTextFilesBatch(
   accessToken: string,
   owner: string,
   repo: string,
-  branch: string,
+  ref: string,
   paths: string[],
 ): Promise<Map<string, GithubTextFile | null>> {
   const uniquePaths = Array.from(new Set(paths));
@@ -554,7 +569,7 @@ export async function fetchGithubTextFilesBatch(
     `;
     const variables: Record<string, string> = { owner, name: repo };
     batch.forEach((path, index) => {
-      variables[`f${index}`] = `refs/heads/${branch}:${path}`;
+      variables[`f${index}`] = `${ref}:${path}`;
     });
 
     const response = await fetch(GITHUB_GRAPHQL_URL, {
@@ -606,7 +621,12 @@ export async function fetchGithubTextFilesBatch(
 // Commit API
 // ─────────────────────────────────────────────────────────────
 
-async function getBranchHeadOid(
+/**
+ * Resolve the current head commit OID of a branch. This is the value
+ * `createCommitOnBranch` expects as `expectedHeadOid`, so it doubles as the
+ * optimistic-concurrency token for the preview → commit flow.
+ */
+export async function getBranchHeadOid(
   accessToken: string,
   owner: string,
   repo: string,
@@ -677,6 +697,11 @@ export interface GithubCommitResult {
  * generated versions and delete stale generated files, in one atomic
  * GraphQL mutation. `files` must be complete and already validated by
  * the caller; untouchable paths are filtered out here.
+ *
+ * `expectedHeadOid` is the commit the caller's change set (and the diff the
+ * user approved) was computed against. GitHub rejects the mutation when the
+ * branch has moved past it, which is what makes the preview a real
+ * confirmation rather than a best-effort hint.
  */
 export async function commitRepositoryChanges(
   accessToken: string,
@@ -684,6 +709,8 @@ export async function commitRepositoryChanges(
     owner: string;
     repo: string;
     branch: string;
+    /** Commit OID the caller's change set was computed against. */
+    expectedHeadOid: string;
     files: Record<string, string>;
     commitMessage: string;
     /** The generic file policy controlling which paths may be touched. */
@@ -692,9 +719,17 @@ export async function commitRepositoryChanges(
     userModifiedPaths?: ReadonlySet<string>;
   },
 ): Promise<GithubCommitResult> {
-  const { owner, repo, branch, files, commitMessage, policy, userModifiedPaths = new Set<string>() } = params;
+  const {
+    owner,
+    repo,
+    branch,
+    expectedHeadOid,
+    files,
+    commitMessage,
+    policy,
+    userModifiedPaths = new Set<string>(),
+  } = params;
 
-  const expectedHeadOid = await getBranchHeadOid(accessToken, owner, repo, branch);
   const treeSha = await getCommitTreeSha(accessToken, owner, repo, expectedHeadOid);
   const existingPaths = await listRepositoryTreePaths(accessToken, owner, repo, treeSha);
 
@@ -755,6 +790,24 @@ export async function commitRepositoryChanges(
 
   const commit = body.data?.createCommitOnBranch?.commit;
   if (!response.ok || !commit) {
+    // `createCommitOnBranch` rejects the mutation when the branch moved
+    // past `expectedHeadOid`. Re-read the head to tell that concurrent
+    // edit (409 → refresh the diff and retry) apart from a real failure.
+    let branchMoved = false;
+    try {
+      branchMoved = (await getBranchHeadOid(accessToken, owner, repo, branch)) !== expectedHeadOid;
+    }
+    catch {
+      // If the re-check itself fails, report the original error.
+    }
+    if (branchMoved) {
+      throw new GithubApiError(
+        'The repository changed since the changes were previewed',
+        409,
+        body,
+      );
+    }
+
     const message = body.errors?.[0]?.message
       ?? `GitHub failed to create the commit (${response.status})`;
     throw new GithubApiError(message, response.ok ? 422 : response.status, body);
