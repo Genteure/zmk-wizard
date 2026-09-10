@@ -396,6 +396,56 @@ function handleLayoutHashImport(): void {
 
 // ─── Startup ─────────────────────────────────────────────────
 
+/**
+ * Warn visitors that they are on a preview deployment rather than the
+ * stable host. Runs at page load so the notice is visible before the user
+ * picks new/edit and enters the editor.
+ */
+function showDeploymentNotice(): void {
+  const hostname = window.location.hostname;
+  if (hostname === 'shield-wizard.genteure.com') {
+    return;
+  }
+
+  // *.workers.dev
+  if (hostname === 'localhost' || hostname.endsWith('.workers.dev')) {
+    toast.add({
+      color: 'warning',
+      title: $t('host-title-preview'),
+      description: $t('host-desc-preview'),
+      actions: [
+        {
+          color: 'primary',
+          variant: 'outline',
+          label: $t('host-action'),
+          onClick() {
+            window.open('https://shield-wizard.genteure.com', '_blank');
+          },
+        },
+      ],
+      duration: 0, // Do not auto-dismiss
+    });
+    return;
+  }
+
+  toast.add({
+    color: 'warning',
+    title: $t('host-title-unknown'),
+    description: $t('host-desc-unknown'),
+    actions: [
+      {
+        color: 'primary',
+        variant: 'outline',
+        label: $t('host-action'),
+        onClick() {
+          window.open('https://shield-wizard.genteure.com', '_blank');
+        },
+      },
+    ],
+    duration: 30000, // 30 seconds
+  });
+}
+
 async function initializeWorkflow(): Promise<void> {
   const url = new URL(window.location.href);
   const params = parseWorkflowUrl(url);
@@ -447,6 +497,7 @@ async function initializeWorkflow(): Promise<void> {
 }
 
 onMounted(() => {
+  showDeploymentNotice();
   void initializeWorkflow();
 });
 
@@ -489,6 +540,13 @@ login-failed = Failed to start GitHub sign-in
 oauth-error = GitHub sign-in could not be completed.
 draft-restored = Unsaved changes restored
 draft-restored-desc = Review the changes and save them to GitHub.
+
+host-title-preview = This is a preview deployment
+host-title-unknown = Unknown Deployment Mode
+-host-desc-stable = Please visit shield-wizard.genteure.com for the latest stable version of Shield Wizard.
+host-desc-preview = You are using a preview deployment of Shield Wizard hosted on *.workers.dev domains. {-host-desc-stable}
+host-desc-unknown = You are using (presumably) a preview deployment of Shield Wizard. {-host-desc-stable}
+host-action = Go to shield-wizard.genteure.com
 </ftl>
 
 <ftl locale="zh-CN">
@@ -500,6 +558,13 @@ login-failed = 无法开始 GitHub 登录
 oauth-error = GitHub 登录未能完成。
 draft-restored = 已恢复未保存的修改
 draft-restored-desc = 请检查变更内容，然后保存到 GitHub。
+
+host-title-preview = 当前为预览部署
+host-title-unknown = 未知部署模式
+-host-desc-stable = 最新稳定版本的 Shield Wizard 位于 shield-wizard.genteure.com。
+host-desc-preview = 你正在使用 Shield Wizard 在 *.workers.dev 域名上提供的预览版本。{-host-desc-stable}
+host-desc-unknown = 你正在使用（可能是）Shield Wizard 的预览部署。{-host-desc-stable}
+host-action = 打开 shield-wizard.genteure.com
 </ftl>
 
 <ftl locale="ja">
@@ -511,4 +576,11 @@ login-failed = GitHub のサインインを開始できませんでした
 oauth-error = GitHub のサインインを完了できませんでした。
 draft-restored = 未保存の変更を復元しました
 draft-restored-desc = 変更内容を確認して GitHub に保存してください。
+
+host-title-preview = これはプレビュー版です
+host-title-unknown = デプロイモード不明
+-host-desc-stable = 最新版の Shield Wizard は shield-wizard.genteure.com からどうぞ。
+host-desc-preview = *.workers.dev ドメインで公開されているプレビュー版の Shield Wizard を利用しています。{-host-desc-stable}
+host-desc-unknown = （おそらく）プレビュー版の Shield Wizard を利用しています。{-host-desc-stable}
+host-action = shield-wizard.genteure.com へ移動
 </ftl>

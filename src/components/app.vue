@@ -159,7 +159,7 @@
 import type { DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui';
 import { useFluent } from 'fluent-vue';
 import { version } from 'virtual:version';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { isShieldWizardDataEnvelope, parseShieldWizardData, serializeShieldWizardData } from '~/lib/dataFormat';
 import { KeyboardSchema, type Keyboard } from '~/types';
 
@@ -181,8 +181,6 @@ const emit = defineEmits<{
 }>();
 
 const mobileMenuOpen = ref(false);
-
-const toast = useToast();
 
 function handleMobileWorkflow(action: 'new' | 'edit' | 'logout' | 'login') {
   mobileMenuOpen.value = false;
@@ -209,51 +207,6 @@ Generated At: ${version.buildDate || '(unknown)'}
 `;
   navigator.clipboard.writeText(text);
 }
-
-onMounted(() => {
-  const hostname = window.location.hostname;
-  if (hostname === 'shield-wizard.genteure.com') {
-    return;
-  }
-
-  // *.workers.dev
-  if (hostname === 'localhost' || hostname.endsWith('.workers.dev')) {
-    toast.add({
-      color: 'warning',
-      title: $t('host-title-preview'),
-      description: $t('host-desc-preview'),
-      actions: [
-        {
-          color: 'primary',
-          variant: 'outline',
-          label: $t('host-action'),
-          onClick() {
-            window.open('https://shield-wizard.genteure.com', '_blank');
-          },
-        },
-      ],
-      duration: 0, // Do not auto-dismiss
-    });
-    return;
-  }
-
-  toast.add({
-    color: 'warning',
-    title: $t('host-title-unknown'),
-    description: $t('host-desc-unknown'),
-    actions: [
-      {
-        color: 'primary',
-        variant: 'outline',
-        label: $t('host-action'),
-        onClick() {
-          window.open('https://shield-wizard.genteure.com', '_blank');
-        },
-      },
-    ],
-    duration: 30000, // 30 seconds
-  });
-});
 
 const debugOpen = ref(false);
 const debugData = ref('');
@@ -435,13 +388,6 @@ menu-debug-data = Show Internal Data
 debug-title = Internal Data
 debug-warning = Warning: Debug-only. Applying data will replace the current keyboard configuration and may produce invalid or unsupported state. Use only with trusted data and at your own risk.
 debug-apply = Apply Debug Data
-
-host-title-preview = This is a preview deployment
-host-title-unknown = Unknown Deployment Mode
--host-desc-stable = Please visit shield-wizard.genteure.com for the latest stable version of Shield Wizard.
-host-desc-preview = You are using a preview deployment of Shield Wizard hosted on *.workers.dev domains. {-host-desc-stable}
-host-desc-unknown = You are using (presumably) a preview deployment of Shield Wizard. {-host-desc-stable}
-host-action = Go to shield-wizard.genteure.com
 </ftl>
 
 <ftl locale="zh-CN">
@@ -461,13 +407,6 @@ menu-debug-data = 查看内部数据
 debug-title = 内部数据
 debug-warning = 警告：仅供调试。应用数据将替换当前键盘配置，可能产生无效或不支持的状态。仅限受信任的数据，风险自负。
 debug-apply = 应用调试数据
-
-host-title-preview = 当前为预览部署
-host-title-unknown = 未知部署模式
--host-desc-stable = 最新稳定版本的 Shield Wizard 位于 shield-wizard.genteure.com。
-host-desc-preview = 你正在使用 Shield Wizard 在 *.workers.dev 域名上提供的预览版本。{-host-desc-stable}
-host-desc-unknown = 你正在使用（可能是）Shield Wizard 的预览部署。{-host-desc-stable}
-host-action = 打开 shield-wizard.genteure.com
 </ftl>
 
 <ftl locale="ja">
@@ -487,11 +426,4 @@ menu-debug-data = 内部データを表示
 debug-title = 内部データ
 debug-warning = 警告：デバッグ専用です。データを適用すると現在のキーボード設定が置き換えられ、無効または未対応の状態が生じる可能性があります。信頼できるデータのみ使用し、自己責任でお願いします。
 debug-apply = デバッグデータを適用
-
-host-title-preview = これはプレビュー版です
-host-title-unknown = デプロイモード不明
--host-desc-stable = 最新版の Shield Wizard は shield-wizard.genteure.com からどうぞ。
-host-desc-preview = *.workers.dev ドメインで公開されているプレビュー版の Shield Wizard を利用しています。{-host-desc-stable}
-host-desc-unknown = （おそらく）プレビュー版の Shield Wizard を利用しています。{-host-desc-stable}
-host-action = shield-wizard.genteure.com へ移動
 </ftl>
