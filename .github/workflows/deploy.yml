@@ -54,7 +54,7 @@ jobs:
           # time. Keep the same value as the current production deployment.
           PUBLIC_TURNSTILE_SITEKEY: ${{ secrets.PUBLIC_TURNSTILE_SITEKEY || vars.PUBLIC_TURNSTILE_SITEKEY || '1x00000000000000000000AA' }}
       - name: Deploy to production
-        uses: cloudflare/wrangler-action@2ef9f398b9175c68f953e40d679493850d640a85 # v4.1.3
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
