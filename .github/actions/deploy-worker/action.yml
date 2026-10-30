@@ -38,7 +38,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+    - uses: pnpm/setup@ce3b1e5f04cd26dbb4614172464b544b5633cc92 # v2.1.0
       with:
         cache: true
         install: false
@@ -55,7 +55,7 @@ runs:
         PUBLIC_TURNSTILE_SITEKEY: ${{ inputs.public-turnstile-sitekey }}
     - name: Upload worker version
       id: upload
-      uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+      uses: cloudflare/wrangler-action@2ef9f398b9175c68f953e40d679493850d640a85 # v4.1.3
       with:
         apiToken: ${{ inputs.cloudflare-api-token }}
         accountId: ${{ inputs.cloudflare-account-id }}
