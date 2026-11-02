@@ -44,7 +44,7 @@
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "24.19.2",
     "astro": "7.4.4",
-    "eslint": "10.13.0",
+    "eslint": "10.14.0",
     "eslint-plugin-astro": "3.2.1",
     "jiti": "2.7.0",
     "lint-staged": "17.6.0",
