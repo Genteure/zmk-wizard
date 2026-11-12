@@ -38,7 +38,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - uses: pnpm/setup@ce3b1e5f04cd26dbb4614172464b544b5633cc92 # v2.1.0
+    - uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
       with:
         cache: true
         install: false
