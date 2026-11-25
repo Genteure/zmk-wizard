@@ -69,6 +69,14 @@ export default defineConfig({
     plugins: [
       ui({
         router: false,
+        // Bundle icons used by the app (plus Nuxt UI's defaults) from the
+        // installed @iconify-json/lucide collection, so the client never
+        // fetches icons from api.iconify.design at runtime.
+        icon: {
+          clientBundle: {
+            scan: true,
+          },
+        },
         theme: {
           colors:
             [
