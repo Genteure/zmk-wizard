@@ -7,7 +7,7 @@
   "packageRules": [
     {
       "matchPackageNames": ["@types/node"],
-      "allowedVersions": "24.x"
+      "allowedVersions": "26.x"
     }
   ],
   "customManagers": [
