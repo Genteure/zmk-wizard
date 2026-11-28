@@ -52,7 +52,7 @@
     "tailwindcss": "4.3.5",
     "typescript": "6.0.3",
     "unplugin-fluent-vue": "1.4.1",
-    "vitest": "5.1.1",
+    "vitest": "5.1.2",
     "vue-tsc": "3.3.11",
     "wrangler": "4.167.0",
     "yaml": "2.9.1"
