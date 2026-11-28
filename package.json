@@ -42,7 +42,7 @@
     "@astrojs/vue": "7.1.6",
     "@nuxt/eslint-config": "1.17.0",
     "@tailwindcss/vite": "4.3.5",
-    "@types/node": "26.6.6",
+    "@types/node": "26.6.10",
     "astro": "7.4.13",
     "eslint": "10.15.0",
     "eslint-plugin-astro": "3.2.1",
